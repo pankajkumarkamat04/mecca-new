@@ -1,0 +1,866 @@
+'use client';
+
+import React, { useMemo, useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from 'react-query';
+import Layout from '@/components/layout/Layout';
+import Button from '@/components/ui/Button';
+import DataTable from '@/components/ui/DataTable';
+import Modal from '@/components/ui/Modal';
+import Input from '@/components/ui/Input';
+import Select from '@/components/ui/Select';
+import { invoicesAPI, customersAPI, productsAPI } from '@/lib/api';
+import { useSettings } from '@/contexts/SettingsContext';
+import { formatCurrency, formatDate, getStatusColor, buildPrintableInvoiceHTML } from '@/lib/utils';
+import { Invoice } from '@/types';
+import toast from 'react-hot-toast';
+import { z } from 'zod';
+import { Form, FormActions, FormField, FormSection } from '@/components/ui/Form';
+import {
+  PlusIcon,
+  EyeIcon,
+  DocumentTextIcon,
+  QrCodeIcon,
+  PrinterIcon,
+  ShareIcon,
+} from '@heroicons/react/24/outline';
+
+const InvoicesPage: React.FC = () => {
+  const { company } = useSettings();
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
+  const [isPayModalOpen, setIsPayModalOpen] = useState(false);
+  const [paymentForm, setPaymentForm] = useState<{ amount: string; method: string; reference: string; date: string }>({ amount: '', method: 'cash', reference: '', date: new Date().toISOString().slice(0,10) });
+  const [pendingStatus, setPendingStatus] = useState<string>('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize] = useState(10);
+  const [filterStatus, setFilterStatus] = useState('all');
+
+  const queryClient = useQueryClient();
+
+  // Fetch invoices
+  const { data: invoicesData, isLoading } = useQuery(
+    ['invoices', currentPage, pageSize, searchTerm, filterStatus],
+    () => invoicesAPI.getInvoices({
+      page: currentPage,
+      limit: pageSize,
+      search: searchTerm,
+      status: filterStatus === 'all' ? undefined : filterStatus,
+    }),
+    {
+      keepPreviousData: true,
+      staleTime: 0,
+      refetchOnMount: 'always',
+      refetchOnWindowFocus: true,
+      refetchOnReconnect: true,
+    }
+  );
+
+  // Create invoice
+  const createInvoiceMutation = useMutation(
+    (data: any) => invoicesAPI.createInvoice(data),
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries(['invoices']);
+        setIsCreateModalOpen(false);
+        toast.success('Invoice created successfully');
+      },
+      onError: (error: any) => {
+        toast.error(error.response?.data?.message || 'Failed to create invoice');
+      },
+    }
+  );
+
+  const updateStatusMutation = useMutation(
+    ({ id, status }: { id: string; status: string }) => invoicesAPI.updateInvoice(id, { status }),
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries(['invoices']);
+        toast.success('Invoice status updated');
+      },
+      onError: (error: any) => { toast.error(error.response?.data?.message || 'Failed to update status'); },
+    }
+  );
+
+  const addPaymentMutation = useMutation(
+    ({ id, payload }: { id: string; payload: any }) => invoicesAPI.addPayment(id, payload),
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries(['invoices']);
+        setIsPayModalOpen(false);
+        toast.success('Payment recorded');
+      },
+      onError: (error: any) => { toast.error(error.response?.data?.message || 'Failed to record payment'); },
+    }
+  );
+
+  // Supporting data
+  const { data: customersList } = useQuery(['customers-list'], () => customersAPI.getCustomers({ limit: 100, page: 1 }));
+  const { data: productsList } = useQuery(['products-list'], () => productsAPI.getProducts({ limit: 100, page: 1 }));
+  const customerOptions = (customersList?.data?.data || []).map((c: any) => ({ value: c._id, label: `${c.firstName} ${c.lastName}` }));
+  const productOptions = (productsList?.data?.data || []).map((p: any) => ({ value: p._id, label: `${p.name} (${p.sku})` }));
+
+  // Form schema
+  const invoiceSchema = useMemo(() => z.object({
+    customer: z.string().min(1, 'Customer is required'),
+    invoiceDate: z.string().min(1),
+    dueDate: z.string().optional().or(z.literal('')),
+    items: z.array(z.object({
+      product: z.string().min(1),
+      quantity: z.coerce.number().min(1),
+      unitPrice: z.coerce.number().min(0),
+      taxRate: z.coerce.number().min(0).max(100).optional().default(0),
+    })).min(1),
+    notes: z.string().optional().or(z.literal('')),
+  }), []);
+
+  const handleViewInvoice = (invoice: Invoice) => {
+    setSelectedInvoice(invoice);
+    setIsViewModalOpen(true);
+  };
+
+  const handlePrintInvoice = (invoice: Invoice) => {
+    const html = buildPrintableInvoiceHTML(invoice as any, company);
+    const w = window.open('', '_blank', 'width=900,height=650');
+    if (!w) { toast.error('Pop-up blocked. Allow pop-ups to print.'); return; }
+    w.document.open();
+    w.document.write(html);
+    w.document.close();
+  };
+
+  const handleShareInvoice = (invoice: Invoice) => {
+    // TODO: Implement share functionality
+    toast.success('Share functionality will be implemented');
+  };
+
+  const handleGenerateQR = (invoice: Invoice) => {
+    // TODO: Implement QR generation
+    toast.success('QR code generation will be implemented');
+  };
+
+  const getStatusBadge = (status: string) => {
+    const statusConfig = {
+      draft: { color: 'bg-gray-100 text-gray-800', label: 'Draft' },
+      sent: { color: 'bg-blue-100 text-blue-800', label: 'Sent' },
+      paid: { color: 'bg-green-100 text-green-800', label: 'Paid' },
+      partial: { color: 'bg-yellow-100 text-yellow-800', label: 'Partial' },
+      overdue: { color: 'bg-red-100 text-red-800', label: 'Overdue' },
+      cancelled: { color: 'bg-red-100 text-red-800', label: 'Cancelled' },
+    };
+
+    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.draft;
+    
+    return (
+      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.color}`}>
+        {config.label}
+      </span>
+    );
+  };
+
+  const columns = [
+    {
+      key: 'invoiceNumber',
+      label: 'Invoice',
+      sortable: true,
+      render: (value: string, row: Invoice) => (
+        <div>
+          <div className="text-sm font-medium text-gray-900">{value}</div>
+          <div className="text-sm text-gray-500">{formatDate(row.invoiceDate)}</div>
+        </div>
+      ),
+    },
+    {
+      key: 'customer',
+      label: 'Customer',
+      sortable: true,
+      render: (value: any, row: Invoice) => (
+        <div>
+          <div className="text-sm font-medium text-gray-900">
+            {typeof row.customer === 'object' 
+              ? `${row.customer.firstName} ${row.customer.lastName}`
+              : 'Unknown Customer'
+            }
+          </div>
+          <div className="text-sm text-gray-500">
+            {typeof row.customer === 'object' ? row.customer.email : ''}
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: 'totalAmount',
+      label: 'Total',
+      sortable: true,
+      render: (value: number, row: any) => {
+        const toNumber = (v: any, fb = 0) => {
+          const n = typeof v === 'string' ? Number(v) : v;
+          return Number.isFinite(n) ? n : fb;
+        };
+        const items = row.items || [];
+        const lineBase = (it: any) => toNumber(it.unitPrice) * toNumber(it.quantity);
+        const lineDiscount = (it: any) => (lineBase(it) * toNumber(it.discount)) / 100;
+        const lineAfterDiscount = (it: any) => lineBase(it) - lineDiscount(it);
+        const lineTax = (it: any) => (lineAfterDiscount(it) * toNumber(it.taxRate)) / 100;
+        const computedSubtotal = items.reduce((s: number, it: any) => s + lineBase(it), 0);
+        const computedTotalDiscount = items.reduce((s: number, it: any) => s + lineDiscount(it), 0);
+        const computedTotalTax = items.reduce((s: number, it: any) => s + lineTax(it), 0);
+        const shippingCost = toNumber(row.shipping?.cost);
+        const subtotal = toNumber(row.subtotal, computedSubtotal);
+        const totalDiscount = toNumber(row.totalDiscount, computedTotalDiscount);
+        const totalTax = toNumber(row.totalTax, computedTotalTax);
+        const totalAmount = toNumber(row.total, subtotal - totalDiscount + totalTax + shippingCost);
+        const paid = toNumber(row.paid);
+        return (
+          <div>
+            <div className="text-sm font-medium text-gray-900">
+              {formatCurrency(totalAmount)}
+            </div>
+            <div className="text-sm text-gray-500">
+              Paid: {formatCurrency(paid)}
+            </div>
+          </div>
+        );
+      },
+    },
+    {
+      key: 'status',
+      label: 'Status',
+      sortable: true,
+      render: (value: string) => getStatusBadge(value),
+    },
+    {
+      key: 'options',
+      label: 'Options',
+      render: (_: any, row: any) => {
+        if (row.status === 'paid') return <span className="text-xs text-gray-500">Paid</span>;
+        return (
+          <div className="flex flex-col gap-2 min-w-[220px]">
+            <div className="flex items-center gap-2">
+              <Select
+                options={[
+                  { value: 'draft', label: 'Draft' },
+                  { value: 'sent', label: 'Sent' },
+                  { value: 'partial', label: 'Partial' },
+                  { value: 'overdue', label: 'Overdue' },
+                  { value: 'cancelled', label: 'Cancelled' },
+                ]}
+                value={row.status}
+                onChange={async (e) => {
+                  const next = e.target.value;
+                  if (!next || next === row.status) return;
+                  const ok = window.confirm(`Change status to ${next}?`);
+                  if (!ok) return;
+                  await updateStatusMutation.mutateAsync({ id: row._id, status: next });
+                }}
+              />
+            </div>
+            <div>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  setSelectedInvoice(row);
+                  const inv: any = row;
+                  const toNumber = (v: any, fb = 0) => { const n = typeof v === 'string' ? Number(v) : v; return Number.isFinite(n) ? n : fb; };
+                  const items = inv.items || [];
+                  const lineBase = (it: any) => toNumber(it.unitPrice) * toNumber(it.quantity);
+                  const lineDiscount = (it: any) => (lineBase(it) * toNumber(it.discount)) / 100;
+                  const lineAfterDiscount = (it: any) => lineBase(it) - lineDiscount(it);
+                  const lineTax = (it: any) => (lineAfterDiscount(it) * toNumber(it.taxRate)) / 100;
+                  const computedSubtotal = items.reduce((s: number, it: any) => s + lineBase(it), 0);
+                  const computedTotalDiscount = items.reduce((s: number, it: any) => s + lineDiscount(it), 0);
+                  const computedTotalTax = items.reduce((s: number, it: any) => s + lineTax(it), 0);
+                  const shippingCost = toNumber(inv.shipping?.cost);
+                  const subtotal = toNumber(inv.subtotal, computedSubtotal);
+                  const totalDiscount = toNumber(inv.totalDiscount, computedTotalDiscount);
+                  const totalTax = toNumber(inv.totalTax, computedTotalTax);
+                  const totalAmount = toNumber(inv.total, subtotal - totalDiscount + totalTax + shippingCost);
+                  const paid = toNumber(inv.paid);
+                  const due = Math.max(0, totalAmount - paid);
+                  setPaymentForm({ amount: String(due.toFixed(2)), method: 'cash', reference: '', date: new Date().toISOString().slice(0,10) });
+                  setIsPayModalOpen(true);
+                }}
+              >
+                Pay
+              </Button>
+            </div>
+          </div>
+        );
+      },
+    },
+    {
+      key: 'dueDate',
+      label: 'Due Date',
+      sortable: true,
+      render: (value: string, row: Invoice) => (
+        <div>
+          <div className="text-sm text-gray-900">
+            {value ? formatDate(value) : 'No due date'}
+          </div>
+          {(row as any).isOverdue && (
+            <div className="text-xs text-red-600">
+              {(row as any).daysOverdue} days overdue
+            </div>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: 'actions',
+      label: 'Actions',
+      render: (_: any, row: Invoice) => (
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={() => handleViewInvoice(row)}
+            className="text-blue-600 hover:text-blue-900"
+            title="View Invoice"
+          >
+            <EyeIcon className="h-4 w-4" />
+          </button>
+          <button
+            onClick={() => handlePrintInvoice(row)}
+            className="text-gray-600 hover:text-gray-900"
+            title="Print Invoice"
+          >
+            <PrinterIcon className="h-4 w-4" />
+          </button>
+          <button
+            onClick={() => handleGenerateQR(row)}
+            className="text-purple-600 hover:text-purple-900"
+            title="Generate QR Code"
+          >
+            <QrCodeIcon className="h-4 w-4" />
+          </button>
+          <button
+            onClick={() => handleShareInvoice(row)}
+            className="text-green-600 hover:text-green-900"
+            title="Share Invoice"
+          >
+            <ShareIcon className="h-4 w-4" />
+          </button>
+        </div>
+      ),
+    },
+  ];
+
+  const statusOptions = [
+    { value: 'all', label: 'All Status' },
+    { value: 'draft', label: 'Draft' },
+    { value: 'sent', label: 'Sent' },
+    { value: 'paid', label: 'Paid' },
+    { value: 'partial', label: 'Partial' },
+    { value: 'overdue', label: 'Overdue' },
+    { value: 'cancelled', label: 'Cancelled' },
+  ];
+
+  return (
+    <Layout title="Invoices">
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Invoices</h1>
+            <p className="text-gray-600">Manage invoices, payments, and billing</p>
+          </div>
+          <Button
+            onClick={() => setIsCreateModalOpen(true)}
+            leftIcon={<DocumentTextIcon className="h-4 w-4" />}
+          >
+            Create Invoice
+          </Button>
+        </div>
+
+        {/* Search and Filters */}
+        <div className="bg-white p-4 rounded-lg shadow">
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex-1">
+              <Input
+                placeholder="Search invoices by number, customer, or amount..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                fullWidth
+              />
+            </div>
+            <div className="w-full sm:w-48">
+              <Select
+                options={statusOptions}
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+                fullWidth
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm">
+                Overdue
+              </Button>
+              <Button variant="outline" size="sm">
+                Export
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* Invoices Table */}
+        <DataTable
+          columns={columns}
+          data={invoicesData?.data?.data || []}
+          loading={isLoading}
+          pagination={invoicesData?.data?.pagination}
+          onPageChange={setCurrentPage}
+          emptyMessage="No invoices found"
+        />
+
+        {/* Create Invoice Modal */}
+        <Modal
+          isOpen={isCreateModalOpen}
+          onClose={() => setIsCreateModalOpen(false)}
+          title="Create New Invoice"
+          size="xl"
+        >
+          <Form
+            schema={invoiceSchema}
+            defaultValues={{
+              customer: '',
+              invoiceDate: new Date().toISOString().slice(0, 10),
+              dueDate: '',
+              items: [{ product: '', quantity: 1, unitPrice: 0 }],
+              notes: '',
+            }}
+            onSubmit={async (values) => {
+              const payload: any = { ...values };
+              if (!payload.dueDate) delete payload.dueDate;
+              if (!payload.notes) delete payload.notes;
+              // Compute totals on backend; only send raw fields
+              await createInvoiceMutation.mutateAsync(payload);
+            }}
+            loading={createInvoiceMutation.isLoading}
+          >{(methods) => (
+            <div className="space-y-6">
+              <FormSection title="Invoice Details">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <FormField label="Customer" required error={methods.formState.errors.customer?.message as string}>
+                    <Select
+                      options={[{ value: '', label: 'Select customer', disabled: true }, ...customerOptions]}
+                      value={methods.watch('customer')}
+                      onChange={(e) => methods.setValue('customer', e.target.value)}
+                      fullWidth
+                    />
+                  </FormField>
+                  <FormField label="Invoice Date" required error={methods.formState.errors.invoiceDate?.message as string}>
+                    <Input type="date" {...methods.register('invoiceDate')} fullWidth />
+                  </FormField>
+                  <FormField label="Due Date" error={methods.formState.errors.dueDate?.message as string}>
+                    <Input type="date" {...methods.register('dueDate')} fullWidth />
+                  </FormField>
+                </div>
+              </FormSection>
+
+              <FormSection title="Items">
+                <div className="space-y-3">
+                  {methods.watch('items').map((item, idx) => (
+                    <div key={idx} className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                      <FormField label="Product" required error={(methods.formState.errors.items as any)?.[idx]?.product?.message as string}>
+                        <Select
+                          options={[{ value: '', label: 'Select product', disabled: true }, ...productOptions]}
+                          value={methods.watch(`items.${idx}.product` as const)}
+                          onChange={(e) => methods.setValue(`items.${idx}.product` as const, e.target.value)}
+                          fullWidth
+                        />
+                      </FormField>
+                      <FormField label="Quantity" required error={(methods.formState.errors.items as any)?.[idx]?.quantity?.message as string}>
+                        <Input type="number" min={1} {...methods.register(`items.${idx}.quantity` as const)} fullWidth />
+                      </FormField>
+                      <FormField label="Unit Price" required error={(methods.formState.errors.items as any)?.[idx]?.unitPrice?.message as string}>
+                        <Input type="number" step="0.01" {...methods.register(`items.${idx}.unitPrice` as const)} fullWidth />
+                      </FormField>
+                      <FormField label="Tax %" error={(methods.formState.errors.items as any)?.[idx]?.taxRate?.message as string}>
+                        <Input type="number" step="0.1" {...methods.register(`items.${idx}.taxRate` as const)} fullWidth />
+                      </FormField>
+                      <div className="flex items-end">
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            const current = methods.getValues('items');
+                            if (current.length > 1) methods.setValue('items', current.filter((_, i) => i !== idx));
+                          }}
+                        >
+                          Remove
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                  <Button
+                    variant="outline"
+                    onClick={() => methods.setValue('items', [...methods.getValues('items'), { product: '', quantity: 1, unitPrice: 0 }])}
+                  >
+                    Add Item
+                  </Button>
+                </div>
+              </FormSection>
+
+              <FormSection title="Notes">
+                <FormField label="Notes">
+                  <Input {...methods.register('notes')} placeholder="Optional notes" fullWidth />
+                </FormField>
+              </FormSection>
+
+              <FormActions
+                onCancel={() => setIsCreateModalOpen(false)}
+                submitText={createInvoiceMutation.isLoading ? 'Creating...' : 'Create Invoice'}
+                loading={createInvoiceMutation.isLoading}
+              />
+            </div>
+          )}</Form>
+        </Modal>
+
+        {/* View Invoice Modal */}
+        <Modal
+          isOpen={isViewModalOpen}
+          onClose={() => setIsViewModalOpen(false)}
+          title="Invoice Details"
+          size="xl"
+        >
+          {selectedInvoice && (
+            <div className="space-y-6">
+              {(() => {
+                const inv: any = selectedInvoice;
+                const toNumber = (v: any, fb = 0) => {
+                  const n = typeof v === 'string' ? Number(v) : v;
+                  return Number.isFinite(n) ? n : fb;
+                };
+                const items = inv.items || [];
+                const lineBase = (it: any) => toNumber(it.unitPrice) * toNumber(it.quantity);
+                const lineDiscount = (it: any) => (lineBase(it) * toNumber(it.discount)) / 100;
+                const lineAfterDiscount = (it: any) => lineBase(it) - lineDiscount(it);
+                const lineTax = (it: any) => (lineAfterDiscount(it) * toNumber(it.taxRate)) / 100;
+                const computedSubtotal = items.reduce((s: number, it: any) => s + lineBase(it), 0);
+                const computedTotalDiscount = items.reduce((s: number, it: any) => s + lineDiscount(it), 0);
+                const computedTotalTax = items.reduce((s: number, it: any) => s + lineTax(it), 0);
+                const shippingCost = toNumber(inv.shipping?.cost);
+                const subtotal = toNumber(inv.subtotal, computedSubtotal);
+                const totalDiscount = toNumber(inv.totalDiscount, computedTotalDiscount);
+                const totalTax = toNumber(inv.totalTax, computedTotalTax);
+                const totalAmount = toNumber(inv.total, subtotal - totalDiscount + totalTax + shippingCost);
+                const paid = toNumber(inv.paid);
+                const due = toNumber(inv.balance, Math.max(0, totalAmount - paid));
+                return (
+                  <div className="hidden" data-subtotals-prep>
+                    {/* precompute values for summary below */}
+                  </div>
+                );
+              })()}
+              {/* Invoice Header */}
+              <div className="grid grid-cols-2 gap-6">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    Invoice #{selectedInvoice.invoiceNumber}
+                  </h3>
+                  <p className="text-sm text-gray-500">
+                    Date: {formatDate(selectedInvoice.invoiceDate)}
+                  </p>
+                  {selectedInvoice.dueDate && (
+                    <p className="text-sm text-gray-500">
+                      Due: {formatDate(selectedInvoice.dueDate)}
+                    </p>
+                  )}
+                </div>
+                <div className="text-right">
+                  <InvoiceHeaderRight invoice={selectedInvoice as any} />
+                  {getStatusBadge(selectedInvoice.status)}
+                </div>
+              </div>
+
+              {/* Customer Info */}
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h4 className="font-medium text-gray-900 mb-2">Bill To:</h4>
+                {typeof selectedInvoice.customer === 'object' ? (
+                  <div>
+                    <p className="font-medium">
+                      {selectedInvoice.customer.firstName} {selectedInvoice.customer.lastName}
+                    </p>
+                    <p className="text-sm text-gray-600">{selectedInvoice.customer.email}</p>
+                    {selectedInvoice.customer.phone && (
+                      <p className="text-sm text-gray-600">{selectedInvoice.customer.phone}</p>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-gray-500">No customer information</p>
+                )}
+              </div>
+
+              {/* Invoice Items */}
+              <div>
+                <h4 className="font-medium text-gray-900 mb-3">Items</h4>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Item
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Quantity
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Price
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Total
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {selectedInvoice.items.map((item: any, index: number) => (
+                        <tr key={index}>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {typeof item.product === 'object' && item.product?.name
+                              ? item.product.name
+                              : (item.name || 'Unknown Product')}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {item.quantity}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {formatCurrency(item.unitPrice)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {(() => {
+                              const toNumber = (v: any, fb = 0) => {
+                                const n = typeof v === 'string' ? Number(v) : v;
+                                return Number.isFinite(n) ? n : fb;
+                              };
+                              const qty = toNumber(item.quantity, 0);
+                              const unit = toNumber(item.unitPrice, 0);
+                              const discountPct = toNumber(item.discount, 0);
+                              const taxRate = toNumber(item.taxRate, 0);
+                              const base = qty * unit;
+                              const afterDiscount = base - (base * discountPct) / 100;
+                              const tax = (afterDiscount * taxRate) / 100;
+                              const total = afterDiscount + tax;
+                              return formatCurrency(total);
+                            })()}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Invoice Summary */}
+              <div className="bg-gray-50 p-4 rounded-lg">
+                {(() => {
+                  const inv: any = selectedInvoice;
+                  const toNumber = (v: any, fb = 0) => {
+                    const n = typeof v === 'string' ? Number(v) : v;
+                    return Number.isFinite(n) ? n : fb;
+                  };
+                  const items = inv.items || [];
+                  const lineBase = (it: any) => toNumber(it.unitPrice) * toNumber(it.quantity);
+                  const lineDiscount = (it: any) => (lineBase(it) * toNumber(it.discount)) / 100;
+                  const lineAfterDiscount = (it: any) => lineBase(it) - lineDiscount(it);
+                  const lineTax = (it: any) => (lineAfterDiscount(it) * toNumber(it.taxRate)) / 100;
+                  const computedSubtotal = items.reduce((s: number, it: any) => s + lineBase(it), 0);
+                  const computedTotalDiscount = items.reduce((s: number, it: any) => s + lineDiscount(it), 0);
+                  const computedTotalTax = items.reduce((s: number, it: any) => s + lineTax(it), 0);
+                  const shippingCost = toNumber(inv.shipping?.cost);
+                  const subtotal = toNumber(inv.subtotal, computedSubtotal);
+                  const totalDiscount = toNumber(inv.totalDiscount, computedTotalDiscount);
+                  const totalTax = toNumber(inv.totalTax, computedTotalTax);
+                  const totalAmount = toNumber(inv.total, subtotal - totalDiscount + totalTax + shippingCost);
+                  const paid = toNumber(inv.paid);
+                  const due = toNumber(inv.balance, Math.max(0, totalAmount - paid));
+                  return (
+                    <>
+                      <div className="flex justify-between text-sm text-gray-600 mb-2">
+                        <span>Subtotal:</span>
+                        <span>{formatCurrency(subtotal)}</span>
+                      </div>
+                      <div className="flex justify-between text-sm text-gray-600 mb-2">
+                        <span>Discount:</span>
+                        <span>-{formatCurrency(totalDiscount)}</span>
+                      </div>
+                      <div className="flex justify-between text-sm text-gray-600 mb-2">
+                        <span>Tax:</span>
+                        <span>{formatCurrency(totalTax)}</span>
+                      </div>
+                      <div className="flex justify-between text-lg font-semibold text-gray-900 border-t border-gray-200 pt-2">
+                        <span>Total:</span>
+                        <span>{formatCurrency(totalAmount)}</span>
+                      </div>
+                      <div className="flex justify-between text-sm text-gray-600 mt-2">
+                        <span>Paid:</span>
+                        <span>{formatCurrency(paid)}</span>
+                      </div>
+                      <div className="flex justify-between text-sm font-medium text-gray-900">
+                        <span>Due:</span>
+                        <span>{formatCurrency(due)}</span>
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+
+              {/* Actions */}
+              <div className="space-y-4">
+                {/* Status change and quick pay (only if not paid) */}
+                {selectedInvoice.status !== 'paid' && (
+                  <div className="bg-gray-50 p-4 rounded-lg flex flex-col md:flex-row md:items-end md:justify-between gap-3">
+                    <div className="flex-1">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Change Status</label>
+                      <div className="flex gap-3 items-center">
+                        <Select
+                          options={[
+                            { value: 'draft', label: 'Draft' },
+                            { value: 'sent', label: 'Sent' },
+                            { value: 'partial', label: 'Partial' },
+                            { value: 'overdue', label: 'Overdue' },
+                            { value: 'cancelled', label: 'Cancelled' },
+                          ]}
+                          value={selectedInvoice.status}
+                          onChange={async (e) => {
+                            const next = e.target.value;
+                            if (!next || next === selectedInvoice.status) return;
+                            const ok = window.confirm(`Change status to ${next}?`);
+                            if (!ok) return;
+                            await updateStatusMutation.mutateAsync({ id: (selectedInvoice as any)._id, status: next });
+                            setSelectedInvoice({ ...(selectedInvoice as any), status: next } as any);
+                          }}
+                          fullWidth
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Payment</label>
+                      <Button onClick={() => {
+                        // default amount = due
+                        const inv: any = selectedInvoice;
+                        const toNumber = (v: any, fb = 0) => { const n = typeof v === 'string' ? Number(v) : v; return Number.isFinite(n) ? n : fb; };
+                        const items = inv.items || [];
+                        const lineBase = (it: any) => toNumber(it.unitPrice) * toNumber(it.quantity);
+                        const lineDiscount = (it: any) => (lineBase(it) * toNumber(it.discount)) / 100;
+                        const lineAfterDiscount = (it: any) => lineBase(it) - lineDiscount(it);
+                        const lineTax = (it: any) => (lineAfterDiscount(it) * toNumber(it.taxRate)) / 100;
+                        const computedSubtotal = items.reduce((s: number, it: any) => s + lineBase(it), 0);
+                        const computedTotalDiscount = items.reduce((s: number, it: any) => s + lineDiscount(it), 0);
+                        const computedTotalTax = items.reduce((s: number, it: any) => s + lineTax(it), 0);
+                        const shippingCost = toNumber(inv.shipping?.cost);
+                        const subtotal = toNumber(inv.subtotal, computedSubtotal);
+                        const totalDiscount = toNumber(inv.totalDiscount, computedTotalDiscount);
+                        const totalTax = toNumber(inv.totalTax, computedTotalTax);
+                        const totalAmount = toNumber(inv.total, subtotal - totalDiscount + totalTax + shippingCost);
+                        const paid = toNumber(inv.paid);
+                        const due = Math.max(0, totalAmount - paid);
+                        setPaymentForm({ amount: String(due.toFixed(2)), method: 'cash', reference: '', date: new Date().toISOString().slice(0,10) });
+                        setIsPayModalOpen(true);
+                      }}>Pay</Button>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex justify-end space-x-3">
+                <Button
+                  variant="outline"
+                  onClick={() => handlePrintInvoice(selectedInvoice)}
+                  leftIcon={<PrinterIcon className="h-4 w-4" />}
+                >
+                  Print
+                </Button>
+                <Button
+                  onClick={() => handleGenerateQR(selectedInvoice)}
+                  leftIcon={<QrCodeIcon className="h-4 w-4" />}
+                >
+                  Generate QR
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setIsViewModalOpen(false)}
+                >
+                  Close
+                </Button>
+                </div>
+              </div>
+            </div>
+          )}
+        </Modal>
+
+        {/* Pay Modal */}
+        <Modal isOpen={isPayModalOpen} onClose={() => setIsPayModalOpen(false)} title="Record Payment" size="md">
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Amount</label>
+              <Input value={paymentForm.amount} onChange={(e) => setPaymentForm(prev => ({ ...prev, amount: e.target.value }))} fullWidth />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Method</label>
+                <Select
+                  options={[
+                    { value: 'cash', label: 'Cash' },
+                    { value: 'card', label: 'Card' },
+                    { value: 'bank', label: 'Bank' },
+                  ]}
+                  value={paymentForm.method}
+                  onChange={(e) => setPaymentForm(prev => ({ ...prev, method: e.target.value }))}
+                  fullWidth
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
+                <Input type="date" value={paymentForm.date} onChange={(e) => setPaymentForm(prev => ({ ...prev, date: e.target.value }))} fullWidth />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Reference</label>
+              <Input value={paymentForm.reference} onChange={(e) => setPaymentForm(prev => ({ ...prev, reference: e.target.value }))} placeholder="Optional" fullWidth />
+            </div>
+            <div className="flex justify-end gap-3">
+              <Button variant="outline" onClick={() => setIsPayModalOpen(false)}>Cancel</Button>
+              <Button onClick={async () => {
+                if (!selectedInvoice) return;
+                const amountNum = Number(paymentForm.amount);
+                if (!Number.isFinite(amountNum) || amountNum <= 0) { toast.error('Enter a valid amount'); return; }
+                await addPaymentMutation.mutateAsync({ id: (selectedInvoice as any)._id, payload: {
+                  amount: amountNum,
+                  method: paymentForm.method,
+                  reference: paymentForm.reference || undefined,
+                  date: paymentForm.date,
+                } });
+              }} disabled={addPaymentMutation.isLoading}>
+                {addPaymentMutation.isLoading ? 'Saving...' : 'Record Payment'}
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      </div>
+    </Layout>
+  );
+};
+
+export default InvoicesPage;
+
+// Header right block: company logo (if available) and total
+const InvoiceHeaderRight: React.FC<{ invoice: any }> = ({ invoice }) => {
+  try {
+    // Lazy require hook context at runtime
+    const { useSettings } = require('@/contexts/SettingsContext');
+    const { company } = useSettings();
+    return (
+      <div>
+        <div className="flex items-center justify-end gap-3">
+          {company?.logo?.url && (
+            <img src={company.logo.url} alt="Logo" className="h-10 w-auto object-contain" />
+          )}
+          <div className="text-2xl font-bold text-gray-900">
+            {formatCurrency(invoice?.total ?? invoice?.totalAmount ?? 0)}
+          </div>
+        </div>
+      </div>
+    );
+  } catch {
+    return (
+      <div className="text-2xl font-bold text-gray-900">{formatCurrency(invoice?.total ?? invoice?.totalAmount ?? 0)}</div>
+    );
+  }
+};
