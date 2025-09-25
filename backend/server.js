@@ -23,6 +23,8 @@ const transactionRoutes = require('./routes/transactions');
 const reportRoutes = require('./routes/reports');
 const workshopRoutes = require('./routes/workshop');
 const settingsRoutes = require('./routes/settings');
+const quotationRoutes = require('./routes/quotations');
+const orderRoutes = require('./routes/orders');
 
 const app = express();
 
@@ -101,6 +103,8 @@ app.use('/api/categories', categoryRoutes);
 app.use('/api/transactions', transactionRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/workshop', workshopRoutes);
+app.use('/api/quotations', quotationRoutes);
+app.use('/api/orders', orderRoutes);
 
 // API documentation endpoint
 app.get('/api', (req, res) => {
@@ -123,7 +127,9 @@ app.get('/api', (req, res) => {
       // accounts: '/api/accounts',
       transactions: '/api/transactions',
       reports: '/api/reports',
-      workshop: '/api/workshop'
+      workshop: '/api/workshop',
+      quotations: '/api/quotations',
+      orders: '/api/orders'
     },
     documentation: 'See individual route files for detailed API documentation'
   });

@@ -8,7 +8,8 @@ import DataTable from '@/components/ui/DataTable';
 import Modal from '@/components/ui/Modal';
 import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
-import { supportAPI } from '@/lib/api';
+import { supportAPI, customersAPI } from '@/lib/api';
+import api from '@/lib/api';
 import { formatDate, formatNumber } from '@/lib/utils';
 import { SupportTicket } from '@/types';
 import toast from 'react-hot-toast';
@@ -425,20 +426,13 @@ const SupportPage: React.FC = () => {
           title="Create New Support Ticket"
           size="lg"
         >
-          <div className="space-y-4">
-            <p className="text-gray-600">Support ticket creation form will be implemented here.</p>
-            <div className="flex justify-end space-x-3">
-              <Button
-                variant="outline"
-                onClick={() => setIsCreateModalOpen(false)}
-              >
-                Cancel
-              </Button>
-              <Button>
-                Create Ticket
-              </Button>
-            </div>
-          </div>
+          <CreateTicketForm
+            onClose={() => setIsCreateModalOpen(false)}
+            onSuccess={() => {
+              queryClient.invalidateQueries(['support-tickets']);
+              setIsCreateModalOpen(false);
+            }}
+          />
         </Modal>
 
         {/* View Ticket Modal */}
@@ -594,6 +588,262 @@ const SupportPage: React.FC = () => {
         </Modal>
       </div>
     </Layout>
+  );
+};
+
+// Create Ticket Form Component
+const CreateTicketForm: React.FC<{ onClose: () => void; onSuccess: () => void }> = ({ onClose, onSuccess }) => {
+  const [formData, setFormData] = useState({
+    subject: '',
+    description: '',
+    customer: '',
+    category: 'general',
+    priority: 'medium',
+    type: 'customer',
+    assignedTo: '',
+    tags: [] as string[]
+  });
+  const [newTag, setNewTag] = useState('');
+
+  // Fetch customers for dropdown
+  const { data: customersData } = useQuery(
+    'customers-list',
+    () => customersAPI.getCustomers({ limit: 100, page: 1 }),
+    { staleTime: 5 * 60 * 1000 } // Cache for 5 minutes
+  );
+
+  // Fetch users for assignment dropdown
+  const { data: usersData } = useQuery(
+    'users-list',
+    () => api.get('/users', { params: { limit: 100, page: 1 } }),
+    { staleTime: 5 * 60 * 1000 }
+  );
+
+  const createTicketMutation = useMutation(
+    (ticketData: any) => supportAPI.createSupportTicket(ticketData),
+    {
+      onSuccess: () => {
+        toast.success('Support ticket created successfully');
+        onSuccess();
+      },
+      onError: (error: any) => {
+        toast.error(error.response?.data?.message || 'Failed to create support ticket');
+      },
+    }
+  );
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.subject || !formData.description) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+
+    // Only include customer if it's selected
+    const ticketData = { ...formData };
+    if (!ticketData.customer) {
+      delete (ticketData as any).customer;
+    }
+
+    await createTicketMutation.mutateAsync(ticketData);
+  };
+
+  const handleAddTag = () => {
+    if (newTag.trim() && !formData.tags.includes(newTag.trim())) {
+      setFormData(prev => ({
+        ...prev,
+        tags: [...prev.tags, newTag.trim()]
+      }));
+      setNewTag('');
+    }
+  };
+
+  const handleRemoveTag = (tagToRemove: string) => {
+    setFormData(prev => ({
+      ...prev,
+      tags: prev.tags.filter(tag => tag !== tagToRemove)
+    }));
+  };
+
+  const customerOptions = (customersData?.data?.data?.data || []).map((customer: any) => ({
+    value: customer._id,
+    label: `${customer.firstName} ${customer.lastName} (${customer.email})`
+  }));
+
+  const userOptions = (usersData?.data?.data?.data || []).map((user: any) => ({
+    value: user._id,
+    label: `${user.firstName} ${user.lastName} (${user.email})`
+  }));
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Subject <span className="text-red-500">*</span>
+          </label>
+          <Input
+            type="text"
+            value={formData.subject}
+            onChange={(e) => setFormData(prev => ({ ...prev, subject: e.target.value }))}
+            placeholder="Brief description of the issue"
+            required
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Customer
+          </label>
+          <Select
+            options={[
+              { value: '', label: 'Select customer (optional)', disabled: false },
+              ...customerOptions
+            ]}
+            value={formData.customer}
+            onChange={(e) => setFormData(prev => ({ ...prev, customer: e.target.value }))}
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Category
+          </label>
+          <Select
+            options={[
+              { value: 'general', label: 'General' },
+              { value: 'technical', label: 'Technical' },
+              { value: 'billing', label: 'Billing' },
+              { value: 'bug_report', label: 'Bug Report' },
+              { value: 'feature_request', label: 'Feature Request' },
+              { value: 'complaint', label: 'Complaint' }
+            ]}
+            value={formData.category}
+            onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Priority
+          </label>
+          <Select
+            options={[
+              { value: 'low', label: 'Low' },
+              { value: 'medium', label: 'Medium' },
+              { value: 'high', label: 'High' },
+              { value: 'urgent', label: 'Urgent' }
+            ]}
+            value={formData.priority}
+            onChange={(e) => setFormData(prev => ({ ...prev, priority: e.target.value }))}
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Type
+          </label>
+          <Select
+            options={[
+              { value: 'customer', label: 'Customer' },
+              { value: 'employee', label: 'Employee' }
+            ]}
+            value={formData.type}
+            onChange={(e) => setFormData(prev => ({ ...prev, type: e.target.value }))}
+          />
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Assigned To
+        </label>
+        <Select
+          options={[
+            { value: '', label: 'Unassigned', disabled: false },
+            ...userOptions
+          ]}
+          value={formData.assignedTo}
+          onChange={(e) => setFormData(prev => ({ ...prev, assignedTo: e.target.value }))}
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Description <span className="text-red-500">*</span>
+        </label>
+        <textarea
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          rows={4}
+          value={formData.description}
+          onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+          placeholder="Please provide detailed information about the issue..."
+          required
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Tags
+        </label>
+        <div className="space-y-2">
+          <div className="flex gap-2">
+            <Input
+              type="text"
+              value={newTag}
+              onChange={(e) => setNewTag(e.target.value)}
+              placeholder="Add a tag"
+              onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddTag())}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleAddTag}
+              disabled={!newTag.trim()}
+            >
+              Add
+            </Button>
+          </div>
+          {formData.tags.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {formData.tags.map((tag, index) => (
+                <span
+                  key={index}
+                  className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
+                >
+                  {tag}
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveTag(tag)}
+                    className="ml-1 text-blue-600 hover:text-blue-800"
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="flex justify-end space-x-3 pt-4 border-t">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onClose}
+        >
+          Cancel
+        </Button>
+        <Button
+          type="submit"
+          disabled={createTicketMutation.isLoading}
+        >
+          {createTicketMutation.isLoading ? 'Creating...' : 'Create Ticket'}
+        </Button>
+      </div>
+    </form>
   );
 };
 

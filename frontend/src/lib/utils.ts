@@ -9,10 +9,10 @@ export function cn(...inputs: ClassValue[]) {
 export const formatDate = (date: string | Date, formatString = 'MMM dd, yyyy') => {
   try {
     const dateObj = typeof date === 'string' ? parseISO(date) : date;
-    if (!isValid(dateObj)) return 'Invalid Date';
+    if (!isValid(dateObj)) return 'N/A';
     return format(dateObj, formatString);
   } catch {
-    return 'Invalid Date';
+    return 'N/A';
   }
 };
 

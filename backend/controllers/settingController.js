@@ -49,6 +49,44 @@ const getSettings = async (req, res) => {
   }
 };
 
+// @desc Get public application settings (no auth required)
+// @route GET /api/settings/public
+// @access Public
+const getPublicSettings = async (req, res) => {
+  try {
+    const settings = await Setting.getSingleton();
+    
+    // Return only public-safe settings
+    const publicSettings = {
+      company: {
+        name: settings.company.name,
+        logo: settings.company.logo,
+        website: settings.company.website,
+        email: settings.company.email,
+        phone: settings.company.phone,
+        address: settings.company.address,
+        defaultCurrency: settings.company.defaultCurrency
+      },
+      appearance: {
+        theme: settings.appearance.theme,
+        language: settings.appearance.language,
+        timezone: settings.appearance.timezone,
+        dateFormat: settings.appearance.dateFormat
+      },
+      system: {
+        allowRegistration: settings.system.allowRegistration,
+        maintenanceMode: settings.system.maintenanceMode,
+        passwordPolicy: settings.system.passwordPolicy
+      }
+    };
+    
+    res.json({ success: true, data: publicSettings });
+  } catch (error) {
+    console.error('Get public settings error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
 // @desc Update application settings
 // @route PUT /api/settings
 // @access Private
@@ -136,7 +174,8 @@ const deleteLogo = async (req, res) => {
 };
 
 module.exports = { 
-  getSettings, 
+  getSettings,
+  getPublicSettings, 
   updateSettings, 
   uploadLogo, 
   deleteLogo,

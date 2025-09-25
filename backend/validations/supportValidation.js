@@ -17,6 +17,7 @@ const createSupportTicketValidation = [
     .trim(),
   
   body('customer')
+    .optional()
     .isMongoId()
     .withMessage('Valid customer ID is required'),
   

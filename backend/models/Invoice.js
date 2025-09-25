@@ -257,7 +257,7 @@ invoiceSchema.index({ 'onlinePaymentLink.token': 1 });
 
 // Pre-save middleware to calculate totals
 invoiceSchema.pre('save', function(next) {
-  // Calculate item totals
+  // Calculate item totals (without tax for subtotal calculation)
   this.items.forEach(item => {
     const discountAmount = (item.unitPrice * item.quantity * item.discount) / 100;
     const afterDiscount = (item.unitPrice * item.quantity) - discountAmount;
@@ -265,8 +265,12 @@ invoiceSchema.pre('save', function(next) {
     item.total = afterDiscount + taxAmount;
   });
 
-  // Calculate subtotal
-  this.subtotal = this.items.reduce((sum, item) => sum + item.total, 0);
+  // Calculate subtotal (without taxes)
+  this.subtotal = this.items.reduce((sum, item) => {
+    const discountAmount = (item.unitPrice * item.quantity * item.discount) / 100;
+    const afterDiscount = (item.unitPrice * item.quantity) - discountAmount;
+    return sum + afterDiscount;
+  }, 0);
 
   // Calculate total discount
   this.totalDiscount = this.discounts.reduce((sum, discount) => {

@@ -251,9 +251,45 @@ export const reportsAPI = {
   
 };
 
+// Quotations API
+export const quotationsAPI = {
+  getQuotations: (params?: any) => api.get('/quotations', { params }),
+  getQuotationById: (id: string) => api.get(`/quotations/${id}`),
+  createQuotation: (quotationData: any) => api.post('/quotations', quotationData),
+  updateQuotation: (id: string, quotationData: any) => api.put(`/quotations/${id}`, quotationData),
+  deleteQuotation: (id: string) => api.delete(`/quotations/${id}`),
+  sendQuotation: (id: string) => api.post(`/quotations/${id}/send`),
+  markAsViewed: (id: string) => api.post(`/quotations/${id}/view`),
+  acceptQuotation: (id: string) => api.post(`/quotations/${id}/accept`),
+  rejectQuotation: (id: string) => api.post(`/quotations/${id}/reject`),
+  convertToOrder: (id: string) => api.post(`/quotations/${id}/convert-to-order`),
+  convertToInvoice: (id: string) => api.post(`/quotations/${id}/convert`),
+  getQuotationStats: () => api.get('/quotations/stats'),
+};
+
+// Orders API
+export const ordersAPI = {
+  getOrders: (params?: any) => api.get('/orders', { params }),
+  getOrderById: (id: string) => api.get(`/orders/${id}`),
+  createOrder: (orderData: any) => api.post('/orders', orderData),
+  updateOrder: (id: string, orderData: any) => api.put(`/orders/${id}`, orderData),
+  deleteOrder: (id: string) => api.delete(`/orders/${id}`),
+  updateOrderStatus: (id: string, status: string, notes?: string) => 
+    api.put(`/orders/${id}/status`, { status, notes }),
+  updatePaymentStatus: (id: string, paymentData: any) => 
+    api.put(`/orders/${id}/payment`, paymentData),
+  assignOrder: (id: string, assignedTo: string) => 
+    api.put(`/orders/${id}/assign`, { assignedTo }),
+  convertToInvoice: (id: string) => api.post(`/orders/${id}/convert-to-invoice`),
+  getOrderStats: () => api.get('/orders/stats'),
+  getOrdersByCustomer: (customerId: string, params?: any) => 
+    api.get(`/orders/customer/${customerId}`, { params }),
+};
+
 // Settings API
 export const settingsAPI = {
   getSettings: () => api.get('/settings'),
+  getPublicSettings: () => api.get('/settings/public'),
   updateSettings: (data: any) => api.put('/settings', data),
   uploadLogo: (formData: FormData) => api.post('/settings/logo', formData, {
     headers: { 'Content-Type': 'multipart/form-data' }

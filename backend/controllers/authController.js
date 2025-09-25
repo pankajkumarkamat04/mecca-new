@@ -1,6 +1,7 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const Customer = require('../models/Customer');
 
 // @desc    Register user
 // @route   POST /api/auth/register
@@ -29,6 +30,23 @@ const register = async (req, res) => {
     });
 
     await user.save();
+
+    // If role is customer, also create a Customer record
+    if (role === 'customer') {
+      console.log('Creating customer record for user:', user._id);
+      const customer = new Customer({
+        firstName,
+        lastName,
+        email,
+        phone,
+        user: user._id, // Link to the user record
+        createdBy: user._id, // Self-created during registration
+        isActive: true,
+        registrationDate: new Date()
+      });
+      await customer.save();
+      console.log('Customer record created with ID:', customer._id);
+    }
 
     // Generate JWT token
     const token = jwt.sign(

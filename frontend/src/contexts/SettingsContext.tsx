@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { settingsAPI } from '@/lib/api';
 import { useQuery } from 'react-query';
+import { useAuth } from './AuthContext';
 
 interface CompanySettings {
   name: string;
@@ -95,12 +96,22 @@ interface SettingsProviderProps {
 }
 
 export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) => {
+  const { user } = useAuth();
+  
+  // Use authenticated settings if user is logged in, otherwise use public settings
   const { data: settingsData, isLoading } = useQuery(
-    ['app-settings'],
-    () => settingsAPI.getSettings(),
+    ['app-settings', user ? 'authenticated' : 'public'],
+    () => user ? settingsAPI.getSettings() : settingsAPI.getPublicSettings(),
     {
       staleTime: 5 * 60 * 1000, // 5 minutes
       cacheTime: 10 * 60 * 1000, // 10 minutes
+      retry: (failureCount, error: any) => {
+        // If authenticated call fails, try public settings
+        if (user && error?.response?.status === 401) {
+          return false;
+        }
+        return failureCount < 3;
+      },
     }
   );
 

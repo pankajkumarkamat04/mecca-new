@@ -672,6 +672,62 @@ const getDashboardStats = async (req, res) => {
 
     // Employee statistics removed with HRM module
 
+    // Sales trend data for the last 30 days
+    const salesTrend = await Invoice.aggregate([
+      {
+        $match: {
+          invoiceDate: { $gte: new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000) },
+          status: { $in: ['paid', 'partial'] }
+        }
+      },
+      {
+        $group: {
+          _id: { $dateToString: { format: '%Y-%m-%d', date: '$invoiceDate' } },
+          totalSales: { $sum: '$totalAmount' },
+          totalInvoices: { $sum: 1 }
+        }
+      },
+      { $sort: { _id: 1 } }
+    ]);
+
+    // Top products by quantity sold in the last 30 days
+    const topProducts = await Invoice.aggregate([
+      {
+        $match: {
+          invoiceDate: { $gte: new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000) },
+          status: { $in: ['paid', 'partial'] }
+        }
+      },
+      { $unwind: '$items' },
+      {
+        $group: {
+          _id: '$items.product',
+          totalQuantity: { $sum: '$items.quantity' },
+          totalRevenue: { $sum: '$items.total' }
+        }
+      },
+      { $sort: { totalQuantity: -1 } },
+      { $limit: 10 },
+      {
+        $lookup: {
+          from: 'products',
+          localField: '_id',
+          foreignField: '_id',
+          as: 'productInfo'
+        }
+      },
+      { $unwind: { path: '$productInfo', preserveNullAndEmptyArrays: true } },
+      {
+        $project: {
+          productId: '$_id',
+          name: { $ifNull: ['$productInfo.name', 'Unknown'] },
+          sku: '$productInfo.sku',
+          totalQuantity: 1,
+          totalRevenue: 1
+        }
+      }
+    ]);
+
     res.json({
       success: true,
       data: {
@@ -691,7 +747,8 @@ const getDashboardStats = async (req, res) => {
           openTickets,
           overdueTickets: overdueTickets.length
         },
-        
+        salesTrend,
+        topProducts
       }
     });
   } catch (error) {

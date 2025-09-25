@@ -24,6 +24,7 @@ import {
   ClipboardDocumentListIcon,
   CogIcon,
   ArrowRightOnRectangleIcon,
+  ShoppingBagIcon,
 } from '@heroicons/react/24/outline';
 
 interface SidebarItem {
@@ -85,6 +86,18 @@ const sidebarItems: SidebarItem[] = [
     href: '/invoices',
     icon: DocumentTextIcon,
     permission: { module: 'invoices', action: 'read' },
+  },
+  {
+    name: 'Quotations',
+    href: '/quotations',
+    icon: DocumentTextIcon,
+    permission: { module: 'quotations', action: 'read' },
+  },
+  {
+    name: 'Orders',
+    href: '/orders',
+    icon: ShoppingBagIcon,
+    permission: { module: 'orders', action: 'read' },
   },
   {
     name: 'Inventory',

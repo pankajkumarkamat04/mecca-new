@@ -21,8 +21,7 @@ const supportSchema = new mongoose.Schema({
   },
   customer: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Customer',
-    required: [true, 'Customer is required']
+    ref: 'Customer'
   },
   assignedTo: {
     type: mongoose.Schema.Types.ObjectId,

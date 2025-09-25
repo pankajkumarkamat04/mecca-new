@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Layout from '@/components/layout/Layout';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
-import { supportAPI } from '@/lib/api';
+import { supportAPI, customersAPI } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
 import DataTable from '@/components/ui/DataTable';
 import { useAuth } from '@/contexts/AuthContext';
@@ -40,18 +40,45 @@ const CustomerSupportPage: React.FC = () => {
   });
   const [newMessage, setNewMessage] = useState('');
 
+  // Fetch customer record by email
+  const { data: customerData, isLoading: customerLoading, error: customerError } = useQuery(
+    ['customer-by-email', user?.email],
+    async () => {
+      try {
+        // Try to get customer by searching
+        const response = await customersAPI.getCustomers({ 
+          page: 1, 
+          limit: 100, // Get more results to ensure we find the customer
+          search: user?.email 
+        });
+        // Find customer by exact email match
+        const customers = response?.data?.data || [];
+        const customer = customers.find((c: any) => c.email === user?.email);
+        
+        return customer || null;
+      } catch (error) {
+        return null;
+      }
+    },
+    {
+      enabled: !!user?.email,
+      retry: 2,
+      staleTime: 5 * 60 * 1000, // 5 minutes
+    }
+  );
+
   // Fetch customer's support tickets
   const { data: ticketsData, isLoading } = useQuery(
     ['customer-support-tickets', currentPage, pageSize, statusFilter, priorityFilter],
     () => supportAPI.getSupportTickets({
       page: currentPage,
       limit: pageSize,
-      customerId: user?._id,
+      customerId: customerData?._id,
       status: statusFilter !== 'all' ? statusFilter : undefined,
       priority: priorityFilter !== 'all' ? priorityFilter : undefined,
     }),
     {
-      enabled: !!user?._id,
+      enabled: !!customerData?._id,
     }
   );
 
@@ -70,7 +97,7 @@ const CustomerSupportPage: React.FC = () => {
   // Add conversation mutation
   const addConversationMutation = useMutation(
     ({ ticketId, message }: { ticketId: string; message: string }) => 
-      supportAPI.addConversation(ticketId, { message, sender: 'customer' }),
+      supportAPI.addConversation(ticketId, { message, isInternal: false }),
     {
       onSuccess: () => {
         queryClient.invalidateQueries('customer-support-tickets');
@@ -81,14 +108,27 @@ const CustomerSupportPage: React.FC = () => {
 
   const handleCreateTicket = async () => {
     if (!newTicket.subject || !newTicket.description) return;
+    
+    if (customerLoading) {
+      return;
+    }
+    
+    if (!customerData?._id) {
+      alert('Unable to find your customer account. Please contact support.');
+      return;
+    }
 
-    await createTicketMutation.mutateAsync({
-      ...newTicket,
-      customerId: user?._id,
-      customerName: `${user?.firstName} ${user?.lastName}`,
-      customerEmail: user?.email,
-      customerPhone: user?.phone,
-    });
+    // Create clean ticket data with only required fields
+    const ticketData = {
+      subject: newTicket.subject,
+      description: newTicket.description,
+      priority: newTicket.priority,
+      category: newTicket.category,
+      customer: customerData._id, // Use actual customer ID
+      type: 'customer'
+    };
+
+    await createTicketMutation.mutateAsync(ticketData);
   };
 
   const handleAddMessage = async () => {
@@ -414,8 +454,9 @@ const CustomerSupportPage: React.FC = () => {
                 <option value="general">General</option>
                 <option value="billing">Billing</option>
                 <option value="technical">Technical</option>
-                <option value="feature">Feature Request</option>
-                <option value="bug">Bug Report</option>
+                <option value="feature_request">Feature Request</option>
+                <option value="bug_report">Bug Report</option>
+                <option value="complaint">Complaint</option>
               </select>
             </div>
 
@@ -441,9 +482,22 @@ const CustomerSupportPage: React.FC = () => {
               </Button>
               <Button
                 onClick={handleCreateTicket}
-                disabled={!newTicket.subject || !newTicket.description || createTicketMutation.isLoading}
+                disabled={
+                  !newTicket.subject || 
+                  !newTicket.description || 
+                  createTicketMutation.isLoading || 
+                  customerLoading ||
+                  !customerData?._id
+                }
               >
-                {createTicketMutation.isLoading ? 'Creating...' : 'Create Ticket'}
+                {createTicketMutation.isLoading 
+                  ? 'Creating...' 
+                  : customerLoading 
+                  ? 'Loading...' 
+                  : !customerData?._id 
+                  ? 'Customer Account Not Found' 
+                  : 'Create Ticket'
+                }
               </Button>
             </div>
           </div>
