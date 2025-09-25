@@ -8,7 +8,7 @@ import DataTable from '@/components/ui/DataTable';
 import Modal from '@/components/ui/Modal';
 import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
-import { inventoryAPI, productsAPI } from '@/lib/api';
+import { inventoryAPI, productsAPI, enhancedInventoryAPI, warehouseAPI } from '@/lib/api';
 import { formatCurrency, formatDate, formatNumber } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { StockMovement, Product } from '@/types';
@@ -23,6 +23,10 @@ import {
   CubeIcon,
   ExclamationTriangleIcon,
   ChartBarIcon,
+  BuildingOfficeIcon,
+  ClipboardDocumentListIcon,
+  TruckIcon,
+  ShoppingCartIcon,
 } from '@heroicons/react/24/outline';
 
 const InventoryPage: React.FC = () => {
@@ -30,6 +34,9 @@ const InventoryPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState('levels');
   const [isMovementModalOpen, setIsMovementModalOpen] = useState(false);
   const [isAdjustmentModalOpen, setIsAdjustmentModalOpen] = useState(false);
+  const [isStockTakingModalOpen, setIsStockTakingModalOpen] = useState(false);
+  const [isReceivingModalOpen, setIsReceivingModalOpen] = useState(false);
+  const [isPickingModalOpen, setIsPickingModalOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -67,6 +74,15 @@ const InventoryPage: React.FC = () => {
     () => productsAPI.getLowStockProducts(),
     {
       enabled: activeTab === 'alerts',
+    }
+  );
+
+  // Fetch warehouse dashboard
+  const { data: warehouseDashboard, isLoading: dashboardLoading } = useQuery(
+    ['warehouse-dashboard'],
+    () => enhancedInventoryAPI.getWarehouseDashboard(),
+    {
+      enabled: activeTab === 'warehouse',
     }
   );
 
@@ -361,6 +377,10 @@ const InventoryPage: React.FC = () => {
     { id: 'levels', name: 'Inventory Levels', icon: CubeIcon },
     { id: 'movements', name: 'Stock Movements', icon: ArrowPathIcon },
     { id: 'alerts', name: 'Low Stock Alerts', icon: ExclamationTriangleIcon },
+    { id: 'warehouse', name: 'Warehouse Operations', icon: BuildingOfficeIcon },
+    { id: 'stock-taking', name: 'Stock Taking', icon: ClipboardDocumentListIcon },
+    { id: 'receiving', name: 'Receiving', icon: TruckIcon },
+    { id: 'picking', name: 'Picking', icon: ShoppingCartIcon },
   ];
 
   return (
@@ -387,6 +407,33 @@ const InventoryPage: React.FC = () => {
                 leftIcon={<PlusIcon className="h-4 w-4" />}
               >
                 Record Movement
+              </Button>
+            )}
+            {hasPermission('inventory', 'update') && (
+              <Button
+                onClick={() => setIsStockTakingModalOpen(true)}
+                leftIcon={<ClipboardDocumentListIcon className="h-4 w-4" />}
+                variant="secondary"
+              >
+                Stock Taking
+              </Button>
+            )}
+            {hasPermission('inventory', 'create') && (
+              <Button
+                onClick={() => setIsReceivingModalOpen(true)}
+                leftIcon={<TruckIcon className="h-4 w-4" />}
+                variant="secondary"
+              >
+                Receiving
+              </Button>
+            )}
+            {hasPermission('inventory', 'update') && (
+              <Button
+                onClick={() => setIsPickingModalOpen(true)}
+                leftIcon={<ShoppingCartIcon className="h-4 w-4" />}
+                variant="secondary"
+              >
+                Picking
               </Button>
             )}
           </div>
@@ -486,6 +533,149 @@ const InventoryPage: React.FC = () => {
               loading={levelsLoading}
               emptyMessage="No low stock alerts"
             />
+          </div>
+        )}
+
+        {/* Warehouse Operations Tab */}
+        {activeTab === 'warehouse' && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="bg-white p-6 rounded-lg shadow">
+                <div className="flex items-center">
+                  <BuildingOfficeIcon className="h-8 w-8 text-blue-600" />
+                  <div className="ml-4">
+                    <p className="text-sm font-medium text-gray-500">Total Warehouses</p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {warehouseDashboard?.data?.warehouseStats?.totalWarehouses || 0}
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-white p-6 rounded-lg shadow">
+                <div className="flex items-center">
+                  <ExclamationTriangleIcon className="h-8 w-8 text-red-600" />
+                  <div className="ml-4">
+                    <p className="text-sm font-medium text-gray-500">Low Stock Alerts</p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {warehouseDashboard?.data?.lowStockAlerts || 0}
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-white p-6 rounded-lg shadow">
+                <div className="flex items-center">
+                  <ShoppingCartIcon className="h-8 w-8 text-green-600" />
+                  <div className="ml-4">
+                    <p className="text-sm font-medium text-gray-500">Pending Orders</p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {warehouseDashboard?.data?.pendingOrders || 0}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="bg-white rounded-lg shadow">
+              <div className="px-6 py-4 border-b border-gray-200">
+                <h3 className="text-lg font-medium text-gray-900">Recent Warehouse Movements</h3>
+              </div>
+              <div className="p-6">
+                {warehouseDashboard?.data?.recentMovements?.length > 0 ? (
+                  <div className="space-y-3">
+                    {warehouseDashboard?.data?.recentMovements?.map((movement: any, index: number) => (
+                      <div key={index} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-b-0">
+                        <div className="flex items-center">
+                          <div className={`w-2 h-2 rounded-full mr-3 ${
+                            movement.movementType === 'in' ? 'bg-green-500' :
+                            movement.movementType === 'out' ? 'bg-red-500' :
+                            'bg-blue-500'
+                          }`} />
+                          <div>
+                            <p className="text-sm font-medium text-gray-900">
+                              {movement.product?.name || 'Unknown Product'}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {movement.movementType} - {movement.quantity} units
+                            </p>
+                          </div>
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          {new Date(movement.createdAt).toLocaleDateString()}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-gray-500 text-center py-4">No recent movements</p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Stock Taking Tab */}
+        {activeTab === 'stock-taking' && (
+          <div className="space-y-4">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="flex items-center">
+                <ClipboardDocumentListIcon className="h-5 w-5 text-blue-600 mr-2" />
+                <h3 className="text-sm font-medium text-blue-800">
+                  Stock Taking / Cycle Count
+                </h3>
+              </div>
+              <p className="mt-1 text-sm text-blue-700">
+                Perform physical inventory counts and adjust stock levels accordingly.
+              </p>
+            </div>
+            <div className="text-center py-8">
+              <ClipboardDocumentListIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Stock Taking Operations</h3>
+              <p className="text-gray-500 mb-4">Use the Stock Taking button above to start a cycle count.</p>
+            </div>
+          </div>
+        )}
+
+        {/* Receiving Tab */}
+        {activeTab === 'receiving' && (
+          <div className="space-y-4">
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+              <div className="flex items-center">
+                <TruckIcon className="h-5 w-5 text-green-600 mr-2" />
+                <h3 className="text-sm font-medium text-green-800">
+                  Goods Receiving
+                </h3>
+              </div>
+              <p className="mt-1 text-sm text-green-700">
+                Process incoming goods from suppliers and update inventory levels.
+              </p>
+            </div>
+            <div className="text-center py-8">
+              <TruckIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Receiving Operations</h3>
+              <p className="text-gray-500 mb-4">Use the Receiving button above to process incoming goods.</p>
+            </div>
+          </div>
+        )}
+
+        {/* Picking Tab */}
+        {activeTab === 'picking' && (
+          <div className="space-y-4">
+            <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+              <div className="flex items-center">
+                <ShoppingCartIcon className="h-5 w-5 text-purple-600 mr-2" />
+                <h3 className="text-sm font-medium text-purple-800">
+                  Order Picking
+                </h3>
+              </div>
+              <p className="mt-1 text-sm text-purple-700">
+                Process order picking operations and update inventory levels.
+              </p>
+            </div>
+            <div className="text-center py-8">
+              <ShoppingCartIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Picking Operations</h3>
+              <p className="text-gray-500 mb-4">Use the Picking button above to process order picking.</p>
+            </div>
           </div>
         )}
 

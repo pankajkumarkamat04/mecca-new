@@ -8,7 +8,12 @@ const {
   getInventoryStats,
   getProductMovements,
   getProductStock,
-  performStockAdjustment
+  performStockAdjustment,
+  performReplenishmentCheck,
+  performStockTaking,
+  processReceiving,
+  processPicking,
+  getWarehouseDashboard
 } = require('../controllers/inventoryController');
 
 const router = express.Router();
@@ -47,5 +52,30 @@ router.get('/products/:productId/movements', auth, validateObjectId('productId')
 // @desc    Get current stock for a product
 // @access  Private
 router.get('/products/:productId/stock', auth, validateObjectId('productId'), getProductStock);
+
+// @route   GET /api/inventory/warehouse-dashboard
+// @desc    Get warehouse operations dashboard
+// @access  Private
+router.get('/warehouse-dashboard', auth, getWarehouseDashboard);
+
+// @route   POST /api/inventory/replenishment-check
+// @desc    Perform stock replenishment check
+// @access  Private
+router.post('/replenishment-check', auth, checkPermission('inventory', 'update'), performReplenishmentCheck);
+
+// @route   POST /api/inventory/stock-taking
+// @desc    Perform stock taking/cycle count
+// @access  Private
+router.post('/stock-taking', auth, checkPermission('inventory', 'update'), performStockTaking);
+
+// @route   POST /api/inventory/receiving
+// @desc    Process receiving goods
+// @access  Private
+router.post('/receiving', auth, checkPermission('inventory', 'create'), processReceiving);
+
+// @route   POST /api/inventory/picking
+// @desc    Process picking for orders
+// @access  Private
+router.post('/picking', auth, checkPermission('inventory', 'update'), processPicking);
 
 module.exports = router;

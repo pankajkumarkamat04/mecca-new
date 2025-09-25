@@ -74,19 +74,54 @@ const productSchema = new mongoose.Schema({
       default: 1000,
       min: [0, 'Maximum stock cannot be negative']
     },
+    reorderPoint: {
+      type: Number,
+      default: 0,
+      min: [0, 'Reorder point cannot be negative']
+    },
+    reorderQuantity: {
+      type: Number,
+      default: 0,
+      min: [0, 'Reorder quantity cannot be negative']
+    },
     warehouse: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Warehouse'
+    },
+    warehouseLocation: {
+      zone: String,
+      aisle: String,
+      shelf: String,
+      bin: String,
+      locationCode: String
     },
     serialNumbers: [String],
     trackSerial: {
       type: Boolean,
       default: false
     },
+    trackBatch: {
+      type: Boolean,
+      default: false
+    },
+    trackExpiry: {
+      type: Boolean,
+      default: false
+    },
     alertOnLowStock: {
       type: Boolean,
       default: true
-    }
+    },
+    autoReorder: {
+      type: Boolean,
+      default: false
+    },
+    lastStockCheck: Date,
+    lastMovement: Date,
+    stockMovements: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'StockMovement'
+    }]
   },
   variations: [{
     name: {

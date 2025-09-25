@@ -25,6 +25,9 @@ const workshopRoutes = require('./routes/workshop');
 const settingsRoutes = require('./routes/settings');
 const quotationRoutes = require('./routes/quotations');
 const orderRoutes = require('./routes/orders');
+const warehouseRoutes = require('./routes/warehouses');
+const purchaseOrderRoutes = require('./routes/purchaseOrders');
+const stockAlertRoutes = require('./routes/stockAlerts');
 
 const app = express();
 
@@ -105,6 +108,9 @@ app.use('/api/reports', reportRoutes);
 app.use('/api/workshop', workshopRoutes);
 app.use('/api/quotations', quotationRoutes);
 app.use('/api/orders', orderRoutes);
+app.use('/api/warehouses', warehouseRoutes);
+app.use('/api/purchase-orders', purchaseOrderRoutes);
+app.use('/api/stock-alerts', stockAlertRoutes);
 
 // API documentation endpoint
 app.get('/api', (req, res) => {
@@ -129,7 +135,10 @@ app.get('/api', (req, res) => {
       reports: '/api/reports',
       workshop: '/api/workshop',
       quotations: '/api/quotations',
-      orders: '/api/orders'
+      orders: '/api/orders',
+      warehouses: '/api/warehouses',
+      purchaseOrders: '/api/purchase-orders',
+      stockAlerts: '/api/stock-alerts'
     },
     documentation: 'See individual route files for detailed API documentation'
   });

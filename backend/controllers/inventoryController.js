@@ -1,6 +1,10 @@
+const mongoose = require('mongoose');
 const StockMovement = require('../models/StockMovement');
 const Product = require('../models/Product');
 const Supplier = require('../models/Supplier');
+const Warehouse = require('../models/Warehouse');
+const StockAlert = require('../models/StockAlert');
+const PurchaseOrder = require('../models/PurchaseOrder');
 
 // @desc    Get stock movements
 // @route   GET /api/inventory/movements
@@ -358,6 +362,395 @@ const performStockAdjustment = async (req, res) => {
   }
 };
 
+// @desc    Perform stock replenishment check
+// @route   POST /api/inventory/replenishment-check
+// @access  Private
+const performReplenishmentCheck = async (req, res) => {
+  try {
+    const { warehouseId, autoCreateOrders } = req.body;
+
+    // Build filter for products that need replenishment
+    const productFilter = { 
+      isActive: true,
+      'inventory.autoReorder': true
+    };
+    
+    if (warehouseId) {
+      productFilter['inventory.warehouse'] = warehouseId;
+    }
+
+    const products = await Product.find(productFilter)
+      .populate('supplier')
+      .populate('inventory.warehouse');
+
+    const replenishmentData = [];
+    const ordersCreated = [];
+
+    for (const product of products) {
+      const currentStock = product.inventory.currentStock;
+      const reorderPoint = product.inventory.reorderPoint;
+      const reorderQuantity = product.inventory.reorderQuantity;
+
+      if (currentStock <= reorderPoint && reorderQuantity > 0) {
+        const replenishmentItem = {
+          product: product._id,
+          productName: product.name,
+          sku: product.sku,
+          currentStock,
+          reorderPoint,
+          reorderQuantity,
+          supplier: product.supplier,
+          warehouse: product.inventory.warehouse,
+          needsReplenishment: true
+        };
+
+        replenishmentData.push(replenishmentItem);
+
+        // Auto-create purchase order if enabled
+        if (autoCreateOrders && product.supplier) {
+          const orderData = {
+            supplier: product.supplier._id,
+            warehouse: product.inventory.warehouse?._id,
+            items: [{
+              product: product._id,
+              name: product.name,
+              sku: product.sku,
+              description: product.description,
+              quantity: reorderQuantity,
+              unitCost: product.pricing.costPrice,
+              totalCost: reorderQuantity * product.pricing.costPrice
+            }],
+            subtotal: reorderQuantity * product.pricing.costPrice,
+            totalAmount: reorderQuantity * product.pricing.costPrice,
+            status: 'draft',
+            notes: 'Auto-generated replenishment order',
+            priority: currentStock === 0 ? 'urgent' : 'high',
+            createdBy: req.user._id
+          };
+
+          const purchaseOrder = new PurchaseOrder(orderData);
+          await purchaseOrder.save();
+          ordersCreated.push(purchaseOrder._id);
+        }
+      }
+    }
+
+    res.json({
+      success: true,
+      message: `Replenishment check completed. ${replenishmentData.length} products need replenishment.`,
+      data: {
+        productsNeedingReplenishment: replenishmentData.length,
+        replenishmentData,
+        ordersCreated: ordersCreated.length,
+        orderIds: ordersCreated
+      }
+    });
+  } catch (error) {
+    console.error('Perform replenishment check error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+};
+
+// @desc    Perform stock taking/cycle count
+// @route   POST /api/inventory/stock-taking
+// @access  Private
+const performStockTaking = async (req, res) => {
+  try {
+    const { warehouseId, products, notes } = req.body;
+
+    const warehouse = await Warehouse.findById(warehouseId);
+    if (!warehouse) {
+      return res.status(404).json({
+        success: false,
+        message: 'Warehouse not found'
+      });
+    }
+
+    const stockTakingResults = [];
+    const adjustments = [];
+
+    for (const stockItem of products) {
+      const product = await Product.findById(stockItem.productId);
+      if (!product) continue;
+
+      const recordedStock = product.inventory.currentStock;
+      const actualStock = stockItem.actualQuantity;
+      const difference = actualStock - recordedStock;
+
+      // Create stock movement for adjustment
+      if (difference !== 0) {
+        const adjustmentMovement = new StockMovement({
+          product: product._id,
+          warehouse: warehouseId,
+          warehouseName: warehouse.name,
+          movementType: 'stock_take',
+          quantity: Math.abs(difference),
+          unitCost: product.pricing.costPrice,
+          totalCost: Math.abs(difference) * product.pricing.costPrice,
+          previousStock: recordedStock,
+          newStock: actualStock,
+          reason: 'Stock taking adjustment',
+          notes: notes,
+          createdBy: req.user._id
+        });
+
+        await adjustmentMovement.save();
+
+        // Update product stock
+        product.inventory.currentStock = actualStock;
+        product.inventory.lastStockCheck = new Date();
+        product.inventory.lastMovement = new Date();
+        await product.save();
+
+        adjustments.push(adjustmentMovement._id);
+      }
+
+      stockTakingResults.push({
+        product: product.name,
+        sku: product.sku,
+        recordedStock,
+        actualStock,
+        difference,
+        adjusted: difference !== 0
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Stock taking completed successfully',
+      data: {
+        warehouse: warehouse.name,
+        totalProductsChecked: products.length,
+        adjustmentsMade: adjustments.length,
+        stockTakingResults,
+        adjustmentMovements: adjustments
+      }
+    });
+  } catch (error) {
+    console.error('Perform stock taking error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+};
+
+// @desc    Process receiving goods
+// @route   POST /api/inventory/receiving
+// @access  Private
+const processReceiving = async (req, res) => {
+  try {
+    const { warehouseId, receivedItems, purchaseOrderId, notes } = req.body;
+
+    const warehouse = await Warehouse.findById(warehouseId);
+    if (!warehouse) {
+      return res.status(404).json({
+        success: false,
+        message: 'Warehouse not found'
+      });
+    }
+
+    const receivingMovements = [];
+
+    for (const receivedItem of receivedItems) {
+      const product = await Product.findById(receivedItem.productId);
+      if (!product) continue;
+
+      // Create receiving movement
+      const receivingMovement = new StockMovement({
+        product: product._id,
+        warehouse: warehouseId,
+        warehouseName: warehouse.name,
+        movementType: 'receiving',
+        quantity: receivedItem.quantity,
+        unitCost: receivedItem.unitCost || product.pricing.costPrice,
+        totalCost: receivedItem.quantity * (receivedItem.unitCost || product.pricing.costPrice),
+        previousStock: product.inventory.currentStock,
+        newStock: product.inventory.currentStock + receivedItem.quantity,
+        reference: purchaseOrderId ? `PO-${purchaseOrderId}` : 'Manual receiving',
+        referenceType: purchaseOrderId ? 'purchase_order' : 'manual',
+        referenceId: purchaseOrderId,
+        reason: 'Goods receiving',
+        notes: notes,
+        batchNumber: receivedItem.batchNumber,
+        expiryDate: receivedItem.expiryDate,
+        serialNumbers: receivedItem.serialNumbers,
+        createdBy: req.user._id
+      });
+
+      await receivingMovement.save();
+
+      // Update product stock
+      product.inventory.currentStock += receivedItem.quantity;
+      product.inventory.warehouse = warehouseId;
+      product.inventory.warehouseLocation = receivedItem.location;
+      product.inventory.lastMovement = new Date();
+      await product.save();
+
+      receivingMovements.push(receivingMovement._id);
+    }
+
+    res.json({
+      success: true,
+      message: 'Goods received successfully',
+      data: {
+        warehouse: warehouse.name,
+        itemsReceived: receivedItems.length,
+        receivingMovements
+      }
+    });
+  } catch (error) {
+    console.error('Process receiving error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+};
+
+// @desc    Process picking for orders
+// @route   POST /api/inventory/picking
+// @access  Private
+const processPicking = async (req, res) => {
+  try {
+    const { warehouseId, pickedItems, orderReference, notes } = req.body;
+
+    const warehouse = await Warehouse.findById(warehouseId);
+    if (!warehouse) {
+      return res.status(404).json({
+        success: false,
+        message: 'Warehouse not found'
+      });
+    }
+
+    const pickingMovements = [];
+
+    for (const pickedItem of pickedItems) {
+      const product = await Product.findById(pickedItem.productId);
+      if (!product) continue;
+
+      // Check if sufficient stock
+      if (product.inventory.currentStock < pickedItem.quantity) {
+        return res.status(400).json({
+          success: false,
+          message: `Insufficient stock for ${product.name}. Available: ${product.inventory.currentStock}, Required: ${pickedItem.quantity}`
+        });
+      }
+
+      // Create picking movement
+      const pickingMovement = new StockMovement({
+        product: product._id,
+        warehouse: warehouseId,
+        warehouseName: warehouse.name,
+        movementType: 'picking',
+        quantity: pickedItem.quantity,
+        unitCost: product.pricing.costPrice,
+        totalCost: pickedItem.quantity * product.pricing.costPrice,
+        previousStock: product.inventory.currentStock,
+        newStock: product.inventory.currentStock - pickedItem.quantity,
+        reference: orderReference,
+        referenceType: 'order',
+        reason: 'Order picking',
+        notes: notes,
+        fromLocation: product.inventory.warehouseLocation,
+        createdBy: req.user._id
+      });
+
+      await pickingMovement.save();
+
+      // Update product stock
+      product.inventory.currentStock -= pickedItem.quantity;
+      product.inventory.lastMovement = new Date();
+      await product.save();
+
+      pickingMovements.push(pickingMovement._id);
+    }
+
+    res.json({
+      success: true,
+      message: 'Picking completed successfully',
+      data: {
+        warehouse: warehouse.name,
+        itemsPicked: pickedItems.length,
+        pickingMovements
+      }
+    });
+  } catch (error) {
+    console.error('Process picking error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+};
+
+// @desc    Get warehouse operations dashboard
+// @route   GET /api/inventory/warehouse-dashboard
+// @access  Private
+const getWarehouseDashboard = async (req, res) => {
+  try {
+    const warehouseId = req.query.warehouseId;
+
+    // Get warehouse statistics
+    const warehouseStats = await Warehouse.getStatistics();
+
+    // Get inventory statistics
+    const inventoryStats = await StockMovement.aggregate([
+      {
+        $match: warehouseId ? { warehouse: mongoose.Types.ObjectId(warehouseId) } : {}
+      },
+      {
+        $group: {
+          _id: '$movementType',
+          count: { $sum: 1 },
+          totalQuantity: { $sum: '$quantity' },
+          totalValue: { $sum: '$totalCost' }
+        }
+      }
+    ]);
+
+    // Get low stock alerts
+    const lowStockAlerts = await StockAlert.countDocuments({
+      isResolved: false,
+      alertType: { $in: ['low_stock', 'out_of_stock'] },
+      ...(warehouseId && { warehouse: warehouseId })
+    });
+
+    // Get pending purchase orders
+    const pendingOrders = await PurchaseOrder.countDocuments({
+      status: { $in: ['sent', 'confirmed', 'partial'] },
+      ...(warehouseId && { warehouse: warehouseId })
+    });
+
+    // Get recent movements
+    const recentMovements = await StockMovement.find(warehouseId ? { warehouse: warehouseId } : {})
+      .populate('product', 'name sku')
+      .populate('warehouse', 'name')
+      .sort({ createdAt: -1 })
+      .limit(10);
+
+    res.json({
+      success: true,
+      data: {
+        warehouseStats,
+        inventoryStats,
+        lowStockAlerts,
+        pendingOrders,
+        recentMovements
+      }
+    });
+  } catch (error) {
+    console.error('Get warehouse dashboard error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+};
+
 module.exports = {
   getStockMovements,
   createStockMovement,
@@ -365,5 +758,10 @@ module.exports = {
   getInventoryStats,
   getProductMovements,
   getProductStock,
-  performStockAdjustment
+  performStockAdjustment,
+  performReplenishmentCheck,
+  performStockTaking,
+  processReceiving,
+  processPicking,
+  getWarehouseDashboard
 };

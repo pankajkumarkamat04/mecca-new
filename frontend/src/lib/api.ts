@@ -314,4 +314,57 @@ export const workshopAPI = {
   cancelJob: (id: string) => api.put(`/workshop/${id}/cancel`),
 };
 
+// Warehouse API
+export const warehouseAPI = {
+  getWarehouses: (params?: any) => api.get('/warehouses', { params }),
+  getWarehouseById: (id: string) => api.get(`/warehouses/${id}`),
+  createWarehouse: (data: any) => api.post('/warehouses', data),
+  updateWarehouse: (id: string, data: any) => api.put(`/warehouses/${id}`, data),
+  deleteWarehouse: (id: string) => api.delete(`/warehouses/${id}`),
+  getWarehouseStats: () => api.get('/warehouses/stats'),
+  getWarehouseInventory: (id: string) => api.get(`/warehouses/${id}/inventory`),
+  addLocation: (id: string, data: any) => api.post(`/warehouses/${id}/locations`, data),
+  updateLocation: (id: string, locationId: string, data: any) => 
+    api.put(`/warehouses/${id}/locations/${locationId}`, data),
+  removeLocation: (id: string, locationId: string) => 
+    api.delete(`/warehouses/${id}/locations/${locationId}`),
+  transferProducts: (data: any) => api.post('/warehouses/transfer', data),
+};
+
+// Purchase Order API
+export const purchaseOrderAPI = {
+  getPurchaseOrders: (params?: any) => api.get('/purchase-orders', { params }),
+  getPurchaseOrderById: (id: string) => api.get(`/purchase-orders/${id}`),
+  createPurchaseOrder: (data: any) => api.post('/purchase-orders', data),
+  updatePurchaseOrder: (id: string, data: any) => api.put(`/purchase-orders/${id}`, data),
+  deletePurchaseOrder: (id: string) => api.delete(`/purchase-orders/${id}`),
+  sendPurchaseOrder: (id: string) => api.post(`/purchase-orders/${id}/send`),
+  confirmPurchaseOrder: (id: string) => api.post(`/purchase-orders/${id}/confirm`),
+  receivePurchaseOrder: (id: string, data: any) => api.post(`/purchase-orders/${id}/receive`, data),
+  cancelPurchaseOrder: (id: string, data: any) => api.post(`/purchase-orders/${id}/cancel`, data),
+  getPurchaseOrderStats: () => api.get('/purchase-orders/stats'),
+};
+
+// Stock Alert API
+export const stockAlertAPI = {
+  getStockAlerts: (params?: any) => api.get('/stock-alerts', { params }),
+  getUnresolvedAlerts: (params?: any) => api.get('/stock-alerts/unresolved', { params }),
+  getStockAlertById: (id: string) => api.get(`/stock-alerts/${id}`),
+  createStockAlert: (data: any) => api.post('/stock-alerts', data),
+  markAlertAsRead: (id: string) => api.put(`/stock-alerts/${id}/read`),
+  resolveAlert: (id: string, data: any) => api.put(`/stock-alerts/${id}/resolve`, data),
+  bulkResolveAlerts: (data: any) => api.put('/stock-alerts/bulk-resolve', data),
+  checkLowStock: (data: any) => api.post('/stock-alerts/check-low-stock', data),
+  getStockAlertStats: () => api.get('/stock-alerts/stats'),
+};
+
+// Enhanced Inventory API
+export const enhancedInventoryAPI = {
+  getWarehouseDashboard: (params?: any) => api.get('/inventory/warehouse-dashboard', { params }),
+  performReplenishmentCheck: (data: any) => api.post('/inventory/replenishment-check', data),
+  performStockTaking: (data: any) => api.post('/inventory/stock-taking', data),
+  processReceiving: (data: any) => api.post('/inventory/receiving', data),
+  processPicking: (data: any) => api.post('/inventory/picking', data),
+};
+
 export default api;

@@ -10,9 +10,24 @@ const stockMovementSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Warehouse'
   },
+  warehouseName: String,
+  fromLocation: {
+    zone: String,
+    aisle: String,
+    shelf: String,
+    bin: String,
+    locationCode: String
+  },
+  toLocation: {
+    zone: String,
+    aisle: String,
+    shelf: String,
+    bin: String,
+    locationCode: String
+  },
   movementType: {
     type: String,
-    enum: ['in', 'out', 'transfer', 'adjustment', 'return', 'damage', 'expired'],
+    enum: ['in', 'out', 'transfer', 'adjustment', 'return', 'damage', 'expired', 'receiving', 'picking', 'packing', 'shipping', 'cycle_count', 'stock_take'],
     required: [true, 'Movement type is required']
   },
   quantity: {
@@ -47,7 +62,7 @@ const stockMovementSchema = new mongoose.Schema({
   },
   referenceType: {
     type: String,
-    enum: ['purchase_order', 'sale', 'invoice', 'transfer', 'adjustment', 'manual'],
+    enum: ['purchase_order', 'sale', 'invoice', 'transfer', 'adjustment', 'manual', 'receiving', 'picking', 'packing', 'shipping', 'cycle_count', 'stock_take'],
     default: 'manual'
   },
   referenceId: {
@@ -98,7 +113,13 @@ stockMovementSchema.virtual('description').get(function() {
     'adjustment': `Stock adjusted by ${quantity} units for ${product}`,
     'return': `${quantity} units returned for ${product}`,
     'damage': `${quantity} units marked as damaged for ${product}`,
-    'expired': `${quantity} units expired for ${product}`
+    'expired': `${quantity} units expired for ${product}`,
+    'receiving': `${quantity} units received for ${product}`,
+    'picking': `${quantity} units picked for ${product}`,
+    'packing': `${quantity} units packed for ${product}`,
+    'shipping': `${quantity} units shipped for ${product}`,
+    'cycle_count': `Cycle count: ${quantity} units for ${product}`,
+    'stock_take': `Stock take: ${quantity} units for ${product}`
   };
   
   return descriptions[type] || `${quantity} units ${type} for ${product}`;
@@ -113,7 +134,13 @@ stockMovementSchema.virtual('statusColor').get(function() {
     'adjustment': 'yellow',
     'return': 'purple',
     'damage': 'red',
-    'expired': 'orange'
+    'expired': 'orange',
+    'receiving': 'green',
+    'picking': 'blue',
+    'packing': 'purple',
+    'shipping': 'blue',
+    'cycle_count': 'yellow',
+    'stock_take': 'orange'
   };
   return statusColors[this.movementType] || 'gray';
 });

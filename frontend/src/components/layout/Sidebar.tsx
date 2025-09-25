@@ -25,6 +25,9 @@ import {
   CogIcon,
   ArrowRightOnRectangleIcon,
   ShoppingBagIcon,
+  BuildingOfficeIcon,
+  ShoppingCartIcon,
+  ExclamationTriangleIcon,
 } from '@heroicons/react/24/outline';
 
 interface SidebarItem {
@@ -105,7 +108,24 @@ const sidebarItems: SidebarItem[] = [
     icon: ArchiveBoxIcon,
     permission: { module: 'inventory', action: 'read' },
   },
-
+  {
+    name: 'Warehouses',
+    href: '/warehouses',
+    icon: BuildingOfficeIcon,
+    permission: { module: 'warehouses', action: 'read' },
+  },
+  {
+    name: 'Purchase Orders',
+    href: '/purchase-orders',
+    icon: ShoppingCartIcon,
+    permission: { module: 'purchaseOrders', action: 'read' },
+  },
+  {
+    name: 'Stock Alerts',
+    href: '/stock-alerts',
+    icon: ExclamationTriangleIcon,
+    permission: { module: 'stockAlerts', action: 'read' },
+  },
   {
     name: 'Support',
     href: '/support',
