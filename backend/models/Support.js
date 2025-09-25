@@ -5,8 +5,7 @@ const supportSchema = new mongoose.Schema({
     type: String,
     unique: true,
     uppercase: true,
-    trim: true,
-    index: true
+    trim: true
   },
   subject: {
     type: String,

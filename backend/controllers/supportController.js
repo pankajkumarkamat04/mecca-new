@@ -16,6 +16,7 @@ const getSupportTickets = async (req, res) => {
     const category = req.query.category || '';
     const assignedTo = req.query.assignedTo || '';
     const type = req.query.type || '';
+    const customerId = req.query.customerId || '';
 
     // Build filter object
     const filter = { isActive: true };
@@ -31,6 +32,7 @@ const getSupportTickets = async (req, res) => {
     if (category) filter.category = category;
     if (assignedTo) filter.assignedTo = assignedTo;
     if (type) filter.type = type;
+    if (customerId) filter.customer = customerId;
 
     const tickets = await Support.find(filter)
       .populate('customer', 'firstName lastName email')

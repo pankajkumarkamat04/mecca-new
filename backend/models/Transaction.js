@@ -5,8 +5,7 @@ const transactionSchema = new mongoose.Schema({
     type: String,
     unique: true,
     uppercase: true,
-    trim: true,
-    index: true
+    trim: true
   },
   date: {
     type: Date,

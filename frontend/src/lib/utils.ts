@@ -473,3 +473,53 @@ export const deepClone = <T>(obj: T): T => {
   }
   return obj;
 };
+
+// API Error handling utilities
+export interface ApiError {
+  success: false;
+  message: string;
+  errors?: Array<{
+    field: string;
+    message: string;
+    value?: any;
+    location?: string;
+  }>;
+  details?: any;
+}
+
+export const getErrorMessage = (error: any): string => {
+  if (error?.response?.data?.message) {
+    return error.response.data.message;
+  }
+  if (error?.message) {
+    return error.message;
+  }
+  return 'An unexpected error occurred';
+};
+
+export const getValidationErrors = (error: any): Array<{
+  field: string;
+  message: string;
+  value?: any;
+  location?: string;
+}> => {
+  if (error?.response?.data?.errors) {
+    return error.response.data.errors;
+  }
+  return [];
+};
+
+export const formatValidationErrors = (error: any): string => {
+  const validationErrors = getValidationErrors(error);
+  if (validationErrors.length === 0) {
+    return getErrorMessage(error);
+  }
+  
+  return validationErrors
+    .map(err => `${err.field}: ${err.message}`)
+    .join(', ');
+};
+
+export const hasValidationErrors = (error: any): boolean => {
+  return getValidationErrors(error).length > 0;
+};

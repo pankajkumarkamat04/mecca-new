@@ -12,15 +12,13 @@ const productSchema = new mongoose.Schema({
     required: [true, 'SKU is required'],
     unique: true,
     uppercase: true,
-    trim: true,
-    index: true
+    trim: true
   },
   barcode: {
     type: String,
     unique: true,
     sparse: true,
-    trim: true,
-    index: true
+    trim: true
   },
   description: {
     type: String,

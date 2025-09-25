@@ -114,7 +114,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         localStorage.setItem('intendedPath', intendedPath);
       }
     } catch (error: any) {
-      const message = error.response?.data?.message || 'Login failed';
+      const message = error.formattedMessage || error.response?.data?.message || 'Login failed';
       toast.error(message);
       throw error;
     } finally {
@@ -135,7 +135,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       toast.success('Registration successful!');
     } catch (error: any) {
-      const message = error.response?.data?.message || 'Registration failed';
+      const message = error.formattedMessage || error.response?.data?.message || 'Registration failed';
       toast.error(message);
       throw error;
     } finally {

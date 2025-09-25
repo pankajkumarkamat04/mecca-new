@@ -12,8 +12,7 @@ const supplierSchema = new mongoose.Schema({
     unique: true,
     uppercase: true,
     trim: true,
-    maxlength: [20, 'Supplier code cannot exceed 20 characters'],
-    index: true
+    maxlength: [20, 'Supplier code cannot exceed 20 characters']
   },
   contactPerson: {
     firstName: String,

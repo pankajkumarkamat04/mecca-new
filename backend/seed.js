@@ -854,6 +854,7 @@ async function seed() {
     {
       invoiceNumber: 'INV-2024-01-0001',
       customer: customers[0]._id,
+      customerPhone: customers[0].phone,
       items: [
         {
           product: products[0]._id,
@@ -877,6 +878,7 @@ async function seed() {
     {
       invoiceNumber: 'INV-2024-01-0002',
       customer: customers[1]._id,
+      customerPhone: customers[1].phone,
       items: [
         {
           product: products[1]._id,

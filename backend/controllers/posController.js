@@ -147,7 +147,7 @@ const createTransaction = async (req, res) => {
       });
     }
 
-    // Create invoice with computed totals
+    // Create invoice with computed totals (no due date for POS transactions)
     const invoice = new Invoice({
       invoiceNumber,
       type: 'sale',
@@ -165,6 +165,7 @@ const createTransaction = async (req, res) => {
       paid: transactionData.paymentMethod === 'cash' ? total : 0,
       balance: transactionData.paymentMethod === 'cash' ? 0 : total,
       notes: transactionData.note || undefined,
+      isPosTransaction: true, // Mark as POS transaction
       createdBy: req.user._id
     });
 

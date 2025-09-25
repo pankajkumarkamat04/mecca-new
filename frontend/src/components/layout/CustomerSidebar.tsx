@@ -95,7 +95,7 @@ const CustomerSidebar: React.FC<CustomerSidebarProps> = ({ isOpen, onClose }) =>
 
           <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto">
             {items.map((item) => {
-              const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
+              const isActive = pathname === item.href || (item.href !== '/customer' && pathname.startsWith(item.href + '/'));
               return (
                 <Link
                   key={item.name}

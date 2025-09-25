@@ -6,13 +6,18 @@ import { useQuery } from 'react-query';
 import { invoicesAPI, workshopAPI } from '@/lib/api';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import DataTable from '@/components/ui/DataTable';
+import Modal from '@/components/ui/Modal';
 import { useAuth } from '@/contexts/AuthContext';
-import { DocumentTextIcon, EyeIcon, WrenchScrewdriverIcon } from '@heroicons/react/24/outline';
+import { DocumentTextIcon, EyeIcon, WrenchScrewdriverIcon, XMarkIcon } from '@heroicons/react/24/outline';
 
 const CustomerPurchasesPage: React.FC = () => {
   const { user } = useAuth();
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(10);
+  const [selectedInvoice, setSelectedInvoice] = useState<any>(null);
+  const [selectedJob, setSelectedJob] = useState<any>(null);
+  const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
+  const [isJobModalOpen, setIsJobModalOpen] = useState(false);
 
   // Fetch customer's invoices/purchases
   const { data: purchasesData, isLoading: purchasesLoading } = useQuery(
@@ -54,7 +59,7 @@ const CustomerPurchasesPage: React.FC = () => {
       ),
     },
     {
-      key: 'totalAmount',
+      key: 'total',
       label: 'Total',
       sortable: true,
       render: (value: number) => (
@@ -83,8 +88,8 @@ const CustomerPurchasesPage: React.FC = () => {
         <div className="flex items-center space-x-2">
           <button
             onClick={() => {
-              // Open invoice details modal or navigate to invoice page
-              console.log('View invoice:', row._id);
+              setSelectedInvoice(row);
+              setIsInvoiceModalOpen(true);
             }}
             className="text-blue-600 hover:text-blue-900"
             title="View Invoice"
@@ -151,8 +156,8 @@ const CustomerPurchasesPage: React.FC = () => {
         <div className="flex items-center space-x-2">
           <button
             onClick={() => {
-              // Open workshop job details modal
-              console.log('View workshop job:', row._id);
+              setSelectedJob(row);
+              setIsJobModalOpen(true);
             }}
             className="text-blue-600 hover:text-blue-900"
             title="View Job Details"
@@ -175,7 +180,7 @@ const CustomerPurchasesPage: React.FC = () => {
             </div>
             <div className="flex items-center text-sm text-gray-500">
               <DocumentTextIcon className="h-5 w-5 mr-2" />
-              {purchasesData?.data?.pagination?.total || 0} total purchases
+              {purchasesData?.data?.data?.pagination?.total || 0} total purchases
             </div>
           </div>
         </div>
@@ -189,16 +194,16 @@ const CustomerPurchasesPage: React.FC = () => {
                 <h3 className="text-lg font-medium text-gray-900">Purchase History</h3>
               </div>
               <div className="text-sm text-gray-500">
-                {purchasesData?.data?.pagination?.total || 0} total purchases
+                {purchasesData?.data?.data?.pagination?.total || 0} total purchases
               </div>
             </div>
           </div>
           <div className="p-6">
             <DataTable
               columns={invoiceColumns}
-              data={purchasesData?.data?.data || []}
+              data={purchasesData?.data?.data?.data || []}
               loading={purchasesLoading}
-              pagination={purchasesData?.data?.pagination}
+              pagination={purchasesData?.data?.data?.pagination}
               onPageChange={setCurrentPage}
               emptyMessage="No purchases found. Your purchases will appear here when linked to your phone number."
             />
@@ -248,6 +253,177 @@ const CustomerPurchasesPage: React.FC = () => {
             </div>
           </div>
         )}
+
+        {/* Invoice Details Modal */}
+        <Modal
+          isOpen={isInvoiceModalOpen}
+          onClose={() => {
+            setIsInvoiceModalOpen(false);
+            setSelectedInvoice(null);
+          }}
+          title="Invoice Details"
+        >
+          {selectedInvoice && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Invoice Number</label>
+                  <p className="text-sm text-gray-900">{selectedInvoice.invoiceNumber}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Date</label>
+                  <p className="text-sm text-gray-900">{formatDate(selectedInvoice.invoiceDate)}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Total Amount</label>
+                  <p className="text-sm text-gray-900">{formatCurrency(selectedInvoice.total)}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Status</label>
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                    selectedInvoice.status === 'paid' ? 'bg-green-100 text-green-800' :
+                    selectedInvoice.status === 'partial' ? 'bg-yellow-100 text-yellow-800' :
+                    selectedInvoice.status === 'overdue' ? 'bg-red-100 text-red-800' :
+                    'bg-gray-100 text-gray-800'
+                  }`}>
+                    {selectedInvoice.status.charAt(0).toUpperCase() + selectedInvoice.status.slice(1)}
+                  </span>
+                </div>
+              </div>
+              
+              {selectedInvoice.items && selectedInvoice.items.length > 0 && (
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Items</label>
+                  <div className="mt-2 space-y-2">
+                    {selectedInvoice.items.map((item: any, index: number) => {
+                      const unitPrice = item.unitPrice || item.price || 0;
+                      const quantity = item.quantity || 0;
+                      const discount = item.discount || 0;
+                      const taxRate = item.taxRate || 0;
+                      
+                      // Calculate breakdown
+                      const subtotal = unitPrice * quantity;
+                      const discountAmount = (subtotal * discount) / 100;
+                      const afterDiscount = subtotal - discountAmount;
+                      const taxAmount = (afterDiscount * taxRate) / 100;
+                      const itemTotal = afterDiscount + taxAmount;
+                      
+                      return (
+                        <div key={index} className="p-2 bg-gray-50 rounded">
+                          <div className="flex justify-between items-start mb-1">
+                            <div className="flex-1">
+                              <p className="text-sm font-medium">{item.name}</p>
+                              <p className="text-xs text-gray-500">
+                                Qty: {quantity} × {formatCurrency(unitPrice)}
+                              </p>
+                              {item.sku && (
+                                <p className="text-xs text-gray-400">SKU: {item.sku}</p>
+                              )}
+                            </div>
+                            <p className="text-sm font-medium">{formatCurrency(itemTotal)}</p>
+                          </div>
+                          
+                          {/* Tax and Discount Breakdown */}
+                          <div className="text-xs text-gray-500 space-y-0.5">
+                            <div className="flex justify-between">
+                              <span>Subtotal:</span>
+                              <span>{formatCurrency(subtotal)}</span>
+                            </div>
+                            {discount > 0 && (
+                              <div className="flex justify-between text-green-600">
+                                <span>Discount ({discount}%):</span>
+                                <span>-{formatCurrency(discountAmount)}</span>
+                              </div>
+                            )}
+                            {taxRate > 0 && (
+                              <div className="flex justify-between text-blue-600">
+                                <span>Tax ({taxRate}%):</span>
+                                <span>+{formatCurrency(taxAmount)}</span>
+                              </div>
+                            )}
+                            <div className="flex justify-between font-medium text-gray-700 border-t pt-0.5">
+                              <span>Total:</span>
+                              <span>{formatCurrency(itemTotal)}</span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {selectedInvoice.customerPhone && (
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Phone Number</label>
+                  <p className="text-sm text-gray-900">{selectedInvoice.customerPhone}</p>
+                </div>
+              )}
+            </div>
+          )}
+        </Modal>
+
+        {/* Workshop Job Details Modal */}
+        <Modal
+          isOpen={isJobModalOpen}
+          onClose={() => {
+            setIsJobModalOpen(false);
+            setSelectedJob(null);
+          }}
+          title="Workshop Job Details"
+        >
+          {selectedJob && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Job Title</label>
+                  <p className="text-sm text-gray-900">{selectedJob.title}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Priority</label>
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                    selectedJob.priority === 'urgent' ? 'bg-red-100 text-red-800' :
+                    selectedJob.priority === 'high' ? 'bg-orange-100 text-orange-800' :
+                    selectedJob.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                    'bg-gray-100 text-gray-800'
+                  }`}>
+                    {selectedJob.priority.charAt(0).toUpperCase() + selectedJob.priority.slice(1)}
+                  </span>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Status</label>
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                    selectedJob.status === 'completed' ? 'bg-green-100 text-green-800' :
+                    selectedJob.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
+                    selectedJob.status === 'on_hold' ? 'bg-yellow-100 text-yellow-800' :
+                    selectedJob.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                    'bg-gray-100 text-gray-800'
+                  }`}>
+                    {selectedJob.status.charAt(0).toUpperCase() + selectedJob.status.slice(1).replace('_', ' ')}
+                  </span>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Created</label>
+                  <p className="text-sm text-gray-900">{formatDate(selectedJob.createdAt)}</p>
+                </div>
+              </div>
+              
+              {selectedJob.description && (
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Description</label>
+                  <p className="text-sm text-gray-900 mt-1">{selectedJob.description}</p>
+                </div>
+              )}
+
+              {selectedJob.customerPhone && (
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Phone Number</label>
+                  <p className="text-sm text-gray-900">{selectedJob.customerPhone}</p>
+                </div>
+              )}
+            </div>
+          )}
+        </Modal>
       </div>
     </Layout>
   );

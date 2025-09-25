@@ -178,13 +178,13 @@ const InvoicesPage: React.FC = () => {
       render: (value: any, row: Invoice) => (
         <div>
           <div className="text-sm font-medium text-gray-900">
-            {typeof row.customer === 'object' 
+            {row.customer && typeof row.customer === 'object' 
               ? `${row.customer.firstName} ${row.customer.lastName}`
               : 'Unknown Customer'
             }
           </div>
           <div className="text-sm text-gray-500">
-            {typeof row.customer === 'object' ? row.customer.email : ''}
+            {row.customer && typeof row.customer === 'object' ? row.customer.email : ''}
           </div>
         </div>
       ),
@@ -297,7 +297,7 @@ const InvoicesPage: React.FC = () => {
       render: (value: string, row: Invoice) => (
         <div>
           <div className="text-sm text-gray-900">
-            {value ? formatDate(value) : 'No due date'}
+            {value ? formatDate(value) : 'N/A'}
           </div>
           {(row as any).isOverdue && (
             <div className="text-xs text-red-600">
@@ -376,12 +376,17 @@ const InvoicesPage: React.FC = () => {
         <div className="bg-white p-4 rounded-lg shadow">
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="flex-1">
-              <Input
-                placeholder="Search invoices by number, customer, or amount..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                fullWidth
-              />
+              <div className="relative">
+                <Input
+                  placeholder="Search invoices by number, customer, phone, or amount..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  fullWidth
+                />
+                <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-xs text-gray-400">
+                  📞 Phone search supported
+                </div>
+              </div>
             </div>
             <div className="w-full sm:w-48">
               <Select
@@ -405,9 +410,9 @@ const InvoicesPage: React.FC = () => {
         {/* Invoices Table */}
         <DataTable
           columns={columns}
-          data={invoicesData?.data?.data || []}
+          data={Array.isArray(invoicesData?.data?.data?.data) ? invoicesData.data.data.data : []}
           loading={isLoading}
-          pagination={invoicesData?.data?.pagination}
+          pagination={invoicesData?.data?.data?.pagination}
           onPageChange={setCurrentPage}
           emptyMessage="No invoices found"
         />
@@ -572,11 +577,9 @@ const InvoicesPage: React.FC = () => {
                   <p className="text-sm text-gray-500">
                     Date: {formatDate(selectedInvoice.invoiceDate)}
                   </p>
-                  {selectedInvoice.dueDate && (
-                    <p className="text-sm text-gray-500">
-                      Due: {formatDate(selectedInvoice.dueDate)}
-                    </p>
-                  )}
+                  <p className="text-sm text-gray-500">
+                    Due: {selectedInvoice.dueDate ? formatDate(selectedInvoice.dueDate) : 'N/A'}
+                  </p>
                 </div>
                 <div className="text-right">
                   <InvoiceHeaderRight invoice={selectedInvoice as any} />
@@ -587,7 +590,7 @@ const InvoicesPage: React.FC = () => {
               {/* Customer Info */}
               <div className="bg-gray-50 p-4 rounded-lg">
                 <h4 className="font-medium text-gray-900 mb-2">Bill To:</h4>
-                {typeof selectedInvoice.customer === 'object' ? (
+                {selectedInvoice.customer && typeof selectedInvoice.customer === 'object' ? (
                   <div>
                     <p className="font-medium">
                       {selectedInvoice.customer.firstName} {selectedInvoice.customer.lastName}
@@ -613,59 +616,69 @@ const InvoicesPage: React.FC = () => {
               {/* Invoice Items */}
               <div>
                 <h4 className="font-medium text-gray-900 mb-3">Items</h4>
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Item
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Quantity
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Price
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Total
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {selectedInvoice.items.map((item: any, index: number) => (
-                        <tr key={index}>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {typeof item.product === 'object' && item.product?.name
-                              ? item.product.name
-                              : (item.name || 'Unknown Product')}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {item.quantity}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {formatCurrency(item.unitPrice)}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {(() => {
-                              const toNumber = (v: any, fb = 0) => {
-                                const n = typeof v === 'string' ? Number(v) : v;
-                                return Number.isFinite(n) ? n : fb;
-                              };
-                              const qty = toNumber(item.quantity, 0);
-                              const unit = toNumber(item.unitPrice, 0);
-                              const discountPct = toNumber(item.discount, 0);
-                              const taxRate = toNumber(item.taxRate, 0);
-                              const base = qty * unit;
-                              const afterDiscount = base - (base * discountPct) / 100;
-                              const tax = (afterDiscount * taxRate) / 100;
-                              const total = afterDiscount + tax;
-                              return formatCurrency(total);
-                            })()}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                <div className="space-y-3">
+                  {selectedInvoice.items.map((item: any, index: number) => {
+                    const toNumber = (v: any, fb = 0) => {
+                      const n = typeof v === 'string' ? Number(v) : v;
+                      return Number.isFinite(n) ? n : fb;
+                    };
+                    const unitPrice = toNumber(item.unitPrice, 0);
+                    const quantity = toNumber(item.quantity, 0);
+                    const discount = toNumber(item.discount, 0);
+                    const taxRate = toNumber(item.taxRate, 0);
+                    
+                    // Calculate breakdown
+                    const subtotal = unitPrice * quantity;
+                    const discountAmount = (subtotal * discount) / 100;
+                    const afterDiscount = subtotal - discountAmount;
+                    const taxAmount = (afterDiscount * taxRate) / 100;
+                    const itemTotal = afterDiscount + taxAmount;
+                    
+                    return (
+                      <div key={index} className="p-4 bg-gray-50 rounded-lg">
+                        <div className="flex justify-between items-start mb-3">
+                          <div className="flex-1">
+                            <p className="font-medium text-gray-900">
+                              {typeof item.product === 'object' && item.product?.name
+                                ? item.product.name
+                                : (item.name || 'Unknown Product')}
+                            </p>
+                            <p className="text-sm text-gray-600">
+                              Qty: {quantity} × {formatCurrency(unitPrice)}
+                            </p>
+                            {item.sku && (
+                              <p className="text-xs text-gray-500">SKU: {item.sku}</p>
+                            )}
+                          </div>
+                          <p className="font-medium text-gray-900 text-lg">{formatCurrency(itemTotal)}</p>
+                        </div>
+                        
+                        {/* Tax and Discount Breakdown */}
+                        <div className="text-sm text-gray-600 space-y-1">
+                          <div className="flex justify-between">
+                            <span>Subtotal:</span>
+                            <span>{formatCurrency(subtotal)}</span>
+                          </div>
+                          {discount > 0 && (
+                            <div className="flex justify-between text-green-600">
+                              <span>Discount ({discount}%):</span>
+                              <span>-{formatCurrency(discountAmount)}</span>
+                            </div>
+                          )}
+                          {taxRate > 0 && (
+                            <div className="flex justify-between text-blue-600">
+                              <span>Tax ({taxRate}%):</span>
+                              <span>+{formatCurrency(taxAmount)}</span>
+                            </div>
+                          )}
+                          <div className="flex justify-between font-medium text-gray-800 border-t pt-1">
+                            <span>Total:</span>
+                            <span>{formatCurrency(itemTotal)}</span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -699,13 +712,19 @@ const InvoicesPage: React.FC = () => {
                         <span>{formatCurrency(subtotal)}</span>
                       </div>
                       <div className="flex justify-between text-sm text-gray-600 mb-2">
-                        <span>Discount:</span>
+                        <span>Total Discount:</span>
                         <span>-{formatCurrency(totalDiscount)}</span>
                       </div>
                       <div className="flex justify-between text-sm text-gray-600 mb-2">
-                        <span>Tax:</span>
+                        <span>Total Tax:</span>
                         <span>{formatCurrency(totalTax)}</span>
                       </div>
+                      {shippingCost > 0 && (
+                        <div className="flex justify-between text-sm text-gray-600 mb-2">
+                          <span>Shipping:</span>
+                          <span>{formatCurrency(shippingCost)}</span>
+                        </div>
+                      )}
                       <div className="flex justify-between text-lg font-semibold text-gray-900 border-t border-gray-200 pt-2">
                         <span>Total:</span>
                         <span>{formatCurrency(totalAmount)}</span>

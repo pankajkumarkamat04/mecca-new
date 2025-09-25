@@ -44,6 +44,7 @@ const CustomerInvoicesPage: React.FC = () => {
     }
   );
 
+
   const handleViewInvoice = (invoice: any) => {
     setSelectedInvoice(invoice);
     setShowInvoiceModal(true);
@@ -81,11 +82,11 @@ const CustomerInvoicesPage: React.FC = () => {
       label: 'Due Date',
       sortable: true,
       render: (value: string) => (
-        <span className="text-sm text-gray-900">{formatDate(value)}</span>
+        <span className="text-sm text-gray-900">{value ? formatDate(value) : 'N/A'}</span>
       ),
     },
     {
-      key: 'totalAmount',
+      key: 'total',
       label: 'Total',
       sortable: true,
       render: (value: number) => (
@@ -93,7 +94,7 @@ const CustomerInvoicesPage: React.FC = () => {
       ),
     },
     {
-      key: 'paidAmount',
+      key: 'paid',
       label: 'Paid',
       sortable: true,
       render: (value: number) => (
@@ -147,9 +148,16 @@ const CustomerInvoicesPage: React.FC = () => {
   ];
 
   const getStatusCounts = () => {
-    if (!invoicesData?.data?.data) return {};
+    if (isLoading || !invoicesData?.data?.data?.data || !Array.isArray(invoicesData.data.data.data)) {
+      return {
+        total: 0,
+        paid: 0,
+        partial: 0,
+        overdue: 0,
+      };
+    }
     
-    const invoices = invoicesData.data.data;
+    const invoices = invoicesData.data.data.data;
     return {
       total: invoices.length,
       paid: invoices.filter((inv: any) => inv.status === 'paid').length,
@@ -279,16 +287,16 @@ const CustomerInvoicesPage: React.FC = () => {
                 <h3 className="text-lg font-medium text-gray-900">Invoice History</h3>
               </div>
               <div className="text-sm text-gray-500">
-                {invoicesData?.data?.pagination?.total || 0} total invoices
+                {invoicesData?.data?.data?.pagination?.total || 0} total invoices
               </div>
             </div>
           </div>
           <div className="p-6">
             <DataTable
               columns={invoiceColumns}
-              data={invoicesData?.data?.data || []}
+              data={Array.isArray(invoicesData?.data?.data?.data) ? invoicesData.data.data.data : []}
               loading={isLoading}
-              pagination={invoicesData?.data?.pagination}
+              pagination={invoicesData?.data?.data?.pagination}
               onPageChange={setCurrentPage}
               emptyMessage="No invoices found. Your invoices will appear here when available."
             />
@@ -332,7 +340,7 @@ const CustomerInvoicesPage: React.FC = () => {
                   <h4 className="font-medium text-gray-900">Invoice Details</h4>
                   <p className="text-sm text-gray-600">Invoice #: {selectedInvoice.invoiceNumber}</p>
                   <p className="text-sm text-gray-600">Date: {formatDate(selectedInvoice.invoiceDate)}</p>
-                  <p className="text-sm text-gray-600">Due Date: {formatDate(selectedInvoice.dueDate)}</p>
+                  <p className="text-sm text-gray-600">Due Date: {selectedInvoice.dueDate ? formatDate(selectedInvoice.dueDate) : 'N/A'}</p>
                   {(selectedInvoice as any).customerPhone && (
                     <p className="text-sm text-gray-600">Phone: {(selectedInvoice as any).customerPhone}</p>
                   )}
@@ -354,15 +362,60 @@ const CustomerInvoicesPage: React.FC = () => {
               <div>
                 <h4 className="font-medium text-gray-900 mb-3">Items</h4>
                 <div className="space-y-2">
-                  {selectedInvoice.items?.map((item: any, index: number) => (
-                    <div key={index} className="flex justify-between items-center p-3 bg-gray-50 rounded">
-                      <div>
-                        <p className="font-medium text-gray-900">{item.name}</p>
-                        <p className="text-sm text-gray-600">Qty: {item.quantity} × {formatCurrency(item.price)}</p>
+                  {selectedInvoice.items?.map((item: any, index: number) => {
+                    const unitPrice = item.unitPrice || item.price || 0;
+                    const quantity = item.quantity || 0;
+                    const discount = item.discount || 0;
+                    const taxRate = item.taxRate || 0;
+                    
+                    // Calculate breakdown
+                    const subtotal = unitPrice * quantity;
+                    const discountAmount = (subtotal * discount) / 100;
+                    const afterDiscount = subtotal - discountAmount;
+                    const taxAmount = (afterDiscount * taxRate) / 100;
+                    const itemTotal = afterDiscount + taxAmount;
+                    
+                    return (
+                      <div key={index} className="p-3 bg-gray-50 rounded">
+                        <div className="flex justify-between items-start mb-2">
+                          <div className="flex-1">
+                            <p className="font-medium text-gray-900">{item.name}</p>
+                            <p className="text-sm text-gray-600">
+                              Qty: {quantity} × {formatCurrency(unitPrice)}
+                            </p>
+                            {item.sku && (
+                              <p className="text-xs text-gray-500">SKU: {item.sku}</p>
+                            )}
+                          </div>
+                          <p className="font-medium text-gray-900">{formatCurrency(itemTotal)}</p>
+                        </div>
+                        
+                        {/* Tax and Discount Breakdown */}
+                        <div className="text-xs text-gray-500 space-y-1">
+                          <div className="flex justify-between">
+                            <span>Subtotal:</span>
+                            <span>{formatCurrency(subtotal)}</span>
+                          </div>
+                          {discount > 0 && (
+                            <div className="flex justify-between text-green-600">
+                              <span>Discount ({discount}%):</span>
+                              <span>-{formatCurrency(discountAmount)}</span>
+                            </div>
+                          )}
+                          {taxRate > 0 && (
+                            <div className="flex justify-between text-blue-600">
+                              <span>Tax ({taxRate}%):</span>
+                              <span>+{formatCurrency(taxAmount)}</span>
+                            </div>
+                          )}
+                          <div className="flex justify-between font-medium text-gray-700 border-t pt-1">
+                            <span>Total:</span>
+                            <span>{formatCurrency(itemTotal)}</span>
+                          </div>
+                        </div>
                       </div>
-                      <p className="font-medium text-gray-900">{formatCurrency(item.total)}</p>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
 
@@ -374,24 +427,30 @@ const CustomerInvoicesPage: React.FC = () => {
                     <span className="font-medium">{formatCurrency(selectedInvoice.subtotal || 0)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Tax:</span>
-                    <span className="font-medium">{formatCurrency(selectedInvoice.tax || 0)}</span>
+                    <span className="text-gray-600">Total Tax:</span>
+                    <span className="font-medium">{formatCurrency(selectedInvoice.totalTax || 0)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Discount:</span>
-                    <span className="font-medium">-{formatCurrency(selectedInvoice.discount || 0)}</span>
+                    <span className="text-gray-600">Total Discount:</span>
+                    <span className="font-medium">-{formatCurrency(selectedInvoice.totalDiscount || 0)}</span>
                   </div>
+                  {(selectedInvoice.shipping?.cost || 0) > 0 && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Shipping:</span>
+                      <span className="font-medium">{formatCurrency(selectedInvoice.shipping?.cost || 0)}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between text-lg font-bold border-t pt-2">
                     <span>Total:</span>
-                    <span>{formatCurrency(selectedInvoice.totalAmount)}</span>
+                    <span>{formatCurrency(selectedInvoice.total)}</span>
                   </div>
                   <div className="flex justify-between text-green-600">
                     <span>Paid:</span>
-                    <span>{formatCurrency(selectedInvoice.paidAmount || 0)}</span>
+                    <span>{formatCurrency(selectedInvoice.paid || 0)}</span>
                   </div>
                   <div className="flex justify-between text-red-600">
                     <span>Balance:</span>
-                    <span>{formatCurrency(selectedInvoice.totalAmount - (selectedInvoice.paidAmount || 0))}</span>
+                    <span>{formatCurrency(selectedInvoice.total - (selectedInvoice.paid || 0))}</span>
                   </div>
                 </div>
               </div>

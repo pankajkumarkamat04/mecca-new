@@ -29,14 +29,14 @@ const registerValidation = [
   
   body('role')
     .optional()
-    .isIn(['admin', 'manager', 'employee'])
+    .isIn(['admin', 'manager', 'employee', 'customer'])
     .withMessage('Invalid role'),
   
   body('phone')
     .notEmpty()
     .withMessage('Phone number is required')
-    .isMobilePhone()
-    .withMessage('Invalid phone number'),
+    .matches(/^\+?[\d\s\-\(\)]+$/)
+    .withMessage('Invalid phone number format'),
   
   body('brandName')
     .optional()

@@ -12,8 +12,7 @@ const accountSchema = new mongoose.Schema({
     unique: true,
     uppercase: true,
     trim: true,
-    maxlength: [20, 'Account code cannot exceed 20 characters'],
-    index: true
+    maxlength: [20, 'Account code cannot exceed 20 characters']
   },
   type: {
     type: String,

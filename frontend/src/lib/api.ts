@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { formatValidationErrors } from './utils';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
@@ -48,6 +49,12 @@ api.interceptors.response.use(
         }
       }
     }
+    
+    // Enhance error with formatted validation messages
+    if (error.response?.data) {
+      error.formattedMessage = formatValidationErrors(error);
+    }
+    
     return Promise.reject(error);
   }
 );

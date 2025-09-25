@@ -32,13 +32,25 @@ app.use(helmet());
 // Rate limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
+  max: process.env.NODE_ENV === 'development' ? 1000 : 100, // More lenient for development
   message: {
     success: false,
     message: 'Too many requests from this IP, please try again later.'
   }
 });
+// Apply general rate limiting to all API routes
 app.use('/api/', limiter);
+
+// Stricter rate limiting for auth endpoints
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: process.env.NODE_ENV === 'development' ? 50 : 10, // Stricter for auth
+  message: {
+    success: false,
+    message: 'Too many authentication attempts, please try again later.'
+  }
+});
+app.use('/api/auth/', authLimiter);
 
 // CORS configuration
 app.use(cors({

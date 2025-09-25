@@ -9,10 +9,22 @@ const handleValidationErrors = (req, res, next) => {
   const errors = validationResult(req);
   
   if (!errors.isEmpty()) {
+    // Format errors for better readability
+    const formattedErrors = errors.array().map(error => ({
+      field: error.path || error.param,
+      message: error.msg,
+      value: error.value,
+      location: error.location
+    }));
+
+    // Create a more descriptive message
+    const errorMessages = formattedErrors.map(err => `${err.field}: ${err.message}`).join(', ');
+    
     return res.status(400).json({
       success: false,
-      message: 'Validation failed',
-      errors: errors.array()
+      message: `Validation failed: ${errorMessages}`,
+      errors: formattedErrors,
+      details: errors.array()
     });
   }
   
@@ -45,8 +57,9 @@ const asyncValidate = (validationFn) => {
     } catch (error) {
       return res.status(400).json({
         success: false,
-        message: 'Validation failed',
-        error: error.message
+        message: `Validation failed: ${error.message}`,
+        error: error.message,
+        details: error
       });
     }
   };

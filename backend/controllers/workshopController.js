@@ -100,6 +100,7 @@ async function processJobCompletion(jobId, userId) {
         balance: 0,
         paid: 0,
         notes: `Workshop Job ${job._id} - ${job.title || ''}`.trim(),
+        isWorkshopTransaction: true, // Mark as workshop transaction
         createdBy: userId,
       });
       await invoice.save();

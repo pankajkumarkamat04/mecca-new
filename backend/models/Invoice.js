@@ -209,6 +209,14 @@ const invoiceSchema = new mongoose.Schema({
   updatedBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
+  },
+  isPosTransaction: {
+    type: Boolean,
+    default: false
+  },
+  isWorkshopTransaction: {
+    type: Boolean,
+    default: false
   }
 }, {
   timestamps: true,
@@ -258,7 +266,7 @@ invoiceSchema.pre('save', function(next) {
   });
 
   // Calculate subtotal
-  this.subtotal = this.items.reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0);
+  this.subtotal = this.items.reduce((sum, item) => sum + item.total, 0);
 
   // Calculate total discount
   this.totalDiscount = this.discounts.reduce((sum, discount) => {
@@ -269,11 +277,18 @@ invoiceSchema.pre('save', function(next) {
     }
   }, 0);
 
-  // Calculate total tax
-  this.totalTax = this.taxes.reduce((sum, tax) => sum + tax.amount, 0);
+  // Calculate total tax from both taxes array and individual item taxes
+  const taxesArrayTotal = this.taxes.reduce((sum, tax) => sum + tax.amount, 0);
+  const itemTaxesTotal = this.items.reduce((sum, item) => {
+    const discountAmount = (item.unitPrice * item.quantity * item.discount) / 100;
+    const afterDiscount = (item.unitPrice * item.quantity) - discountAmount;
+    const taxAmount = (afterDiscount * item.taxRate) / 100;
+    return sum + taxAmount;
+  }, 0);
+  this.totalTax = taxesArrayTotal + itemTaxesTotal;
 
   // Calculate final total
-  this.total = this.subtotal - this.totalDiscount + this.totalTax + this.shipping.cost;
+  this.total = this.subtotal - this.totalDiscount + this.totalTax + (this.shipping?.cost || 0);
 
   // Calculate balance
   this.balance = this.total - this.paid;

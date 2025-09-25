@@ -42,8 +42,6 @@ const CustomerDashboardPage: React.FC = () => {
       page: 1,
       limit: 5,
       customerPhone: user?.phone,
-      sortBy: 'invoiceDate',
-      sortOrder: 'desc',
     }),
     {
       enabled: !!user?.phone,
@@ -57,13 +55,12 @@ const CustomerDashboardPage: React.FC = () => {
       page: 1,
       limit: 3,
       customerId: user?._id,
-      sortBy: 'createdAt',
-      sortOrder: 'desc',
     }),
     {
       enabled: !!user?._id,
     }
   );
+
 
   // Fetch recent workshop jobs
   const { data: recentJobs, isLoading: jobsLoading } = useQuery(
@@ -71,8 +68,6 @@ const CustomerDashboardPage: React.FC = () => {
     () => workshopAPI.getJobs({
       customerPhone: user?.phone,
       limit: 3,
-      sortBy: 'createdAt',
-      sortOrder: 'desc',
     }),
     {
       enabled: !!user?.phone,
@@ -109,8 +104,8 @@ const CustomerDashboardPage: React.FC = () => {
   }
 
   const walletBalance = customerData?.data?.wallet?.balance || user?.wallet?.balance || 0;
-  const totalSpent = customerData?.data?.totalSpent || 0;
-  const visitCount = customerData?.data?.visitCount || 0;
+  const totalSpent = customerData?.data?.totalPurchases?.amount || 0;
+  const visitCount = customerData?.data?.totalPurchases?.count || 0;
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -239,7 +234,7 @@ const CustomerDashboardPage: React.FC = () => {
               <div className="ml-4">
                 <h3 className="text-sm font-medium text-gray-500">Open Tickets</h3>
                 <p className="mt-2 text-3xl font-bold text-orange-600">
-                  {recentTickets?.data?.data ? recentTickets.data.data.filter((t: any) => t.status !== 'closed' && t.status !== 'resolved').length : 0}
+                  {recentTickets?.data?.data?.data ? recentTickets.data.data.data.filter((t: any) => t.status !== 'closed' && t.status !== 'resolved').length : 0}
                 </p>
                 <div className="mt-4">
                   <Link href="/customer/support" className="text-sm text-orange-600 hover:text-orange-800 flex items-center">
@@ -277,16 +272,16 @@ const CustomerDashboardPage: React.FC = () => {
                     </div>
                   ))}
                 </div>
-              ) : recentInvoices?.data?.data && recentInvoices.data.data.length > 0 ? (
+              ) : recentInvoices?.data?.data?.data && recentInvoices.data.data.data.length > 0 ? (
                 <div className="space-y-3">
-                  {recentInvoices.data.data.slice(0, 3).map((invoice: any) => (
+                  {recentInvoices.data.data.data.slice(0, 3).map((invoice: any) => (
                     <div key={invoice._id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                       <div>
                         <p className="text-sm font-medium text-gray-900">#{invoice.invoiceNumber}</p>
                         <p className="text-xs text-gray-500">{formatDate(invoice.invoiceDate)}</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-sm font-medium text-gray-900">{formatCurrency(invoice.totalAmount)}</p>
+                        <p className="text-sm font-medium text-gray-900">{formatCurrency(invoice.total)}</p>
                         <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(invoice.status)}`}>
                           {invoice.status}
                         </span>
@@ -297,9 +292,11 @@ const CustomerDashboardPage: React.FC = () => {
               ) : (
                 <div className="text-center py-6">
                   <DocumentTextIcon className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-                  <p className="text-gray-500 text-sm">No recent invoices</p>
-                  {!user?.phone && (
+                  <p className="text-gray-500 text-sm">No recent invoices found</p>
+                  {!user?.phone ? (
                     <p className="text-gray-400 text-xs mt-1">Add phone number to view invoices</p>
+                  ) : (
+                    <p className="text-gray-400 text-xs mt-1">Your invoices will appear here when available</p>
                   )}
                 </div>
               )}
@@ -329,9 +326,9 @@ const CustomerDashboardPage: React.FC = () => {
                     </div>
                   ))}
                 </div>
-              ) : recentTickets?.data?.data && recentTickets.data.data.length > 0 ? (
+              ) : recentTickets?.data?.data?.data && recentTickets.data.data.data.length > 0 ? (
                 <div className="space-y-3">
-                  {recentTickets.data.data.slice(0, 3).map((ticket: any) => (
+                  {recentTickets.data.data.data.slice(0, 3).map((ticket: any) => (
                     <div key={ticket._id} className="p-3 bg-gray-50 rounded-lg">
                       <div className="flex items-center justify-between">
                         <div>
@@ -348,8 +345,9 @@ const CustomerDashboardPage: React.FC = () => {
               ) : (
                 <div className="text-center py-6">
                   <TicketIcon className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-                  <p className="text-gray-500 text-sm">No support tickets</p>
-                  <Link href="/customer/support" className="text-blue-600 text-xs hover:text-blue-800">
+                  <p className="text-gray-500 text-sm">No support tickets found</p>
+                  <p className="text-gray-400 text-xs mt-1">You haven't created any support tickets yet</p>
+                  <Link href="/customer/support" className="text-blue-600 text-xs hover:text-blue-800 mt-2 inline-block">
                     Create your first ticket
                   </Link>
                 </div>

@@ -18,20 +18,38 @@ const getInvoices = async (req, res) => {
     // Build filter object
     const filter = {};
     if (search) {
+      // Try multiple phone number formats for search
+      const phoneVariations = [
+        search,
+        search.replace(/\D/g, ''), // Remove all non-digits
+        `+${search.replace(/\D/g, '')}`, // Add + prefix
+        search.replace(/\D/g, '').replace(/^(\d{3})(\d{3})(\d{4})$/, '($1) $2-$3'), // Format as (123) 456-7890
+      ];
+      
       filter.$or = [
         { invoiceNumber: { $regex: search, $options: 'i' } },
         { 'customer.firstName': { $regex: search, $options: 'i' } },
         { 'customer.lastName': { $regex: search, $options: 'i' } },
         { 'customer.email': { $regex: search, $options: 'i' } },
-        { customerPhone: { $regex: search, $options: 'i' } }
+        { customerPhone: { $regex: search, $options: 'i' } },
+        { 'customer.phone': { $in: phoneVariations } },
+        { customerPhone: { $in: phoneVariations } }
       ];
     }
     if (status) filter.status = status;
     if (type) filter.type = type;
     if (customerPhone) {
+      // Try multiple phone number formats
+      const phoneVariations = [
+        customerPhone,
+        customerPhone.replace(/\D/g, ''), // Remove all non-digits
+        `+${customerPhone.replace(/\D/g, '')}`, // Add + prefix
+        customerPhone.replace(/\D/g, '').replace(/^(\d{3})(\d{3})(\d{4})$/, '($1) $2-$3'), // Format as (123) 456-7890
+      ];
+      
       filter.$or = [
-        { 'customer.phone': { $regex: customerPhone, $options: 'i' } },
-        { customerPhone: { $regex: customerPhone, $options: 'i' } }
+        { 'customer.phone': { $in: phoneVariations } },
+        { customerPhone: { $in: phoneVariations } }
       ];
     }
 
@@ -43,15 +61,18 @@ const getInvoices = async (req, res) => {
       .limit(limit);
 
     const total = await Invoice.countDocuments(filter);
+    
 
     res.json({
       success: true,
-      data: invoices,
-      pagination: {
-        page,
-        limit,
-        total,
-        pages: Math.ceil(total / limit)
+      data: {
+        data: invoices,
+        pagination: {
+          page,
+          limit,
+          total,
+          pages: Math.ceil(total / limit)
+        }
       }
     });
   } catch (error) {
@@ -120,7 +141,21 @@ const createInvoice = async (req, res) => {
       const customer = await Customer.findOne({ phone: invoiceData.customerPhone });
       if (customer) {
         invoiceData.customer = customer._id;
+        // Set due date based on customer's payment terms (only for non-POS/workshop invoices)
+        if (!invoiceData.dueDate && customer.paymentTerms > 0 && !invoiceData.isPosTransaction && !invoiceData.isWorkshopTransaction) {
+          const dueDate = new Date();
+          dueDate.setDate(dueDate.getDate() + customer.paymentTerms);
+          invoiceData.dueDate = dueDate;
+        }
       }
+    }
+
+    // Set default due date if not provided (30 days from invoice date)
+    // Skip due date for POS and workshop transactions
+    if (!invoiceData.dueDate && !invoiceData.isPosTransaction && !invoiceData.isWorkshopTransaction) {
+      const dueDate = new Date(invoiceData.invoiceDate || new Date());
+      dueDate.setDate(dueDate.getDate() + 30);
+      invoiceData.dueDate = dueDate;
     }
 
     // Validate items and calculate totals
