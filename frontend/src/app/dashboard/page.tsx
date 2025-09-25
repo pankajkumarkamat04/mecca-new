@@ -2,10 +2,14 @@
 
 import React, { useEffect, useState } from 'react';
 import { useQuery } from 'react-query';
+import { useRouter } from 'next/navigation';
 import Layout from '@/components/layout/Layout';
 import DashboardStats from '@/components/dashboard/DashboardStats';
 import { reportsAPI } from '@/lib/api';
+import SalesChart from '@/components/charts/SalesChart';
+import BarChart from '@/components/charts/BarChart';
 import { DashboardStats as DashboardStatsType } from '@/types';
+import { useAuth } from '@/contexts/AuthContext';
 import toast from 'react-hot-toast';
 import {
   ChartBarIcon,
@@ -14,6 +18,8 @@ import {
 } from '@heroicons/react/24/outline';
 
 const DashboardPage: React.FC = () => {
+  const { hasRole } = useAuth();
+  const router = useRouter();
   const [stats, setStats] = useState<DashboardStatsType>({
     sales: { monthlyTotal: 0, monthlyInvoices: 0 },
     customers: { total: 0, newThisMonth: 0 },
@@ -22,6 +28,13 @@ const DashboardPage: React.FC = () => {
     support: { openTickets: 0, overdueTickets: 0 },
     employees: { total: 0, presentToday: 0 },
   });
+
+  // Redirect customers to their dashboard
+  useEffect(() => {
+    if (hasRole('customer')) {
+      router.push('/customer');
+    }
+  }, [hasRole, router]);
 
   const { data: dashboardData, isLoading, error } = useQuery(
     'dashboard-stats',
@@ -40,6 +53,18 @@ const DashboardPage: React.FC = () => {
       setStats(dashboardData.data.data);
     }
   }, [dashboardData]);
+
+  // Don't render dashboard content for customers (they'll be redirected)
+  if (hasRole('customer')) {
+    return (
+      <Layout title="Dashboard">
+        <div className="text-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Redirecting to your dashboard...</p>
+        </div>
+      </Layout>
+    );
+  }
 
   if (error) {
     return (
@@ -113,68 +138,7 @@ const DashboardPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Recent Activity */}
-        <div className="bg-white shadow rounded-lg">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h3 className="text-lg font-medium text-gray-900">Recent Activity</h3>
-          </div>
-          <div className="p-6">
-            <div className="space-y-4">
-              <div className="flex items-center space-x-4">
-                <div className="flex-shrink-0">
-                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                </div>
-                <div className="flex-1">
-                  <p className="text-sm text-gray-900">New invoice #INV-001 created</p>
-                  <p className="text-xs text-gray-500">2 minutes ago</p>
-                </div>
-                <div className="text-sm font-medium text-gray-900">$1,250.00</div>
-              </div>
-              
-              <div className="flex items-center space-x-4">
-                <div className="flex-shrink-0">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                </div>
-                <div className="flex-1">
-                  <p className="text-sm text-gray-900">Customer John Doe registered</p>
-                  <p className="text-xs text-gray-500">15 minutes ago</p>
-                </div>
-                <div className="text-sm font-medium text-gray-900">New</div>
-              </div>
-              
-              <div className="flex items-center space-x-4">
-                <div className="flex-shrink-0">
-                  <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-                </div>
-                <div className="flex-1">
-                  <p className="text-sm text-gray-900">Low stock alert for Product A</p>
-                  <p className="text-xs text-gray-500">1 hour ago</p>
-                </div>
-                <div className="text-sm font-medium text-gray-900">5 items</div>
-              </div>
-              
-              <div className="flex items-center space-x-4">
-                <div className="flex-shrink-0">
-                  <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-                </div>
-                <div className="flex-1">
-                  <p className="text-sm text-gray-900">Payment received for Invoice #INV-002</p>
-                  <p className="text-xs text-gray-500">3 hours ago</p>
-                </div>
-                <div className="text-sm font-medium text-gray-900">$850.00</div>
-              </div>
-            </div>
-            
-            <div className="mt-4 pt-4 border-t border-gray-200">
-              <a
-                href="/activity"
-                className="text-sm text-blue-600 hover:text-blue-800"
-              >
-                View all activity →
-              </a>
-            </div>
-          </div>
-        </div>
+        {/* Removed Recent Activity */}
 
         {/* Charts Section */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -183,9 +147,16 @@ const DashboardPage: React.FC = () => {
               <h3 className="text-lg font-medium text-gray-900">Sales Trend</h3>
               <ChartBarIcon className="h-5 w-5 text-gray-400" />
             </div>
-            <div className="h-64 flex items-center justify-center bg-gray-50 rounded-lg">
-              <p className="text-gray-500">Chart will be implemented with Recharts</p>
-            </div>
+            <SalesChart
+              type="area"
+              height={260}
+              data={(dashboardData?.data?.salesTrend || []).map((d: any) => ({
+                date: d._id,
+                sales: d.totalInvoices || d.totalSales,
+                revenue: d.totalSales,
+                orders: d.totalInvoices,
+              }))}
+            />
           </div>
           
           <div className="bg-white shadow rounded-lg p-6">
@@ -193,9 +164,13 @@ const DashboardPage: React.FC = () => {
               <h3 className="text-lg font-medium text-gray-900">Top Products</h3>
               <ChartBarIcon className="h-5 w-5 text-gray-400" />
             </div>
-            <div className="h-64 flex items-center justify-center bg-gray-50 rounded-lg">
-              <p className="text-gray-500">Chart will be implemented with Recharts</p>
-            </div>
+            <BarChart
+              height={260}
+              data={(dashboardData?.data?.topProducts || []).map((p: any) => ({
+                name: p.name || 'Unknown',
+                value: p.totalQuantity,
+              }))}
+            />
           </div>
         </div>
       </div>

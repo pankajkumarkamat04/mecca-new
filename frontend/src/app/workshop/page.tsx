@@ -65,8 +65,7 @@ const WorkshopPage: React.FC = () => {
   const [newJobTitle, setNewJobTitle] = useState('');
   const [newJobPriority, setNewJobPriority] = useState('medium');
   const [newJobCustomer, setNewJobCustomer] = useState('');
-  const [isCreateCustomerOpen, setIsCreateCustomerOpen] = useState(false);
-  const [newCustomer, setNewCustomer] = useState({ firstName: '', lastName: '', email: '', phone: '' });
+  const [newJobCustomerPhone, setNewJobCustomerPhone] = useState('');
   const [newJobParts, setNewJobParts] = useState<{ product: string; quantityRequired: number }[]>([]);
   const [newJobVehicle, setNewJobVehicle] = useState({
     make: '',
@@ -147,6 +146,7 @@ const WorkshopPage: React.FC = () => {
       setNewJobTitle('');
       setNewJobPriority('medium');
       setNewJobCustomer('');
+      setNewJobCustomerPhone('');
       setNewJobParts([]);
       setNewJobVehicle({
         make: '', model: '', odometer: '', regNumber: '', vinNumber: '',
@@ -178,10 +178,6 @@ const WorkshopPage: React.FC = () => {
       setCreateError('Job title is required.');
       return;
     }
-    if (!newJobCustomer) {
-      setCreateError('Please select a customer.');
-      return;
-    }
     
     // Client-side validate for stock where possible
     const productMap: Record<string, number> = {};
@@ -195,7 +191,8 @@ const WorkshopPage: React.FC = () => {
     createMutation.mutate({ 
       title: newJobTitle.trim(), 
       priority: newJobPriority,
-      customer: newJobCustomer,
+      customer: newJobCustomer || undefined,
+      customerPhone: newJobCustomerPhone || undefined,
       parts: newJobParts,
       vehicle: newJobVehicle,
       repairRequest: newJobRepairRequest,
@@ -232,24 +229,10 @@ const WorkshopPage: React.FC = () => {
   };
 
   // Customers for job assignment
-  const { data: customersData } = useQuery(['customers-basic'], () => customersAPI.getCustomers({ limit: 100 }), {
-    keepPreviousData: true,
-  });
-  const customerOptions = (customersData?.data?.data || []).map((c: any) => ({ value: c._id, label: `${c.firstName} ${c.lastName} (${c.email})` }));
+  // Removed customer dropdown data for phone-based flow
+  const customerOptions: any[] = [];
 
-  const createCustomerMutation = useMutation((payload: any) => customersAPI.createCustomer(payload), {
-    onSuccess: (res: any) => {
-      queryClient.invalidateQueries(['customers-basic']);
-      const created = res?.data?.data || res?.data;
-      const id = created?._id;
-      if (id) setNewJobCustomer(id);
-      setIsCreateCustomerOpen(false);
-      setNewCustomer({ firstName: '', lastName: '', email: '', phone: '' });
-    },
-    onError: (error: any) => {
-      console.error('Create customer error:', error);
-    }
-  });
+  // Removed inline customer creation for workshop jobs (phone-based linking only)
 
   const addPartRow = () => setNewJobParts(prev => [...prev, { product: productOptions[0]?.value || '', quantityRequired: 1 }]);
   const updatePartRow = (idx: number, field: 'product' | 'quantityRequired', value: any) => {
@@ -516,9 +499,7 @@ const WorkshopPage: React.FC = () => {
                             fullWidth 
                           />
                         </div>
-                        <div className="lg:col-span-1 flex justify-end">
-                          <Button variant="outline" size="sm" onClick={() => setIsCreateCustomerOpen(true)}>New</Button>
-                        </div>
+                        {/* New customer button removed in phone-based flow */}
                       </div>
                     </div>
                   </div>
@@ -860,7 +841,7 @@ const WorkshopPage: React.FC = () => {
                           const wasCompleted = editingJob?.status !== 'completed' && editForm.status === 'completed';
                           await updateMutation.mutateAsync({ id: editingJob._id, payload });
                           if (wasCompleted) {
-                            const customerObj = (customersData?.data?.data || []).find((c: any) => c._id === editCustomer);
+                            const customerObj = null;
                             const items = editParts
                               .map((p) => {
                                 const prod = (productsData?.data?.data || []).find((x: any) => x._id === p.product);
@@ -892,7 +873,7 @@ const WorkshopPage: React.FC = () => {
                             setCompletionInfo({
                               jobId: editingJob._id,
                               title: editForm.title,
-                              customer: customerObj ? `${customerObj.firstName} ${customerObj.lastName}` : 'N/A',
+                              customer: 'N/A',
                               items,
                               subtotal,
                               totalTax,
@@ -943,7 +924,7 @@ const WorkshopPage: React.FC = () => {
                       await updateMutation.mutateAsync({ id: editingJob._id, payload });
                       if (wasCompleted) {
                         // Build a POS-like receipt from current selections
-                        const customerObj = (customersData?.data?.data || []).find((c: any) => c._id === editCustomer);
+                        const customerObj = null;
                         const items = editParts
                           .map((p) => {
                             const prod = (productsData?.data?.data || []).find((x: any) => x._id === p.product);
@@ -975,7 +956,7 @@ const WorkshopPage: React.FC = () => {
                         setCompletionInfo({
                           jobId: editingJob._id,
                           title: editForm.title,
-                          customer: customerObj ? `${customerObj.firstName} ${customerObj.lastName}` : 'N/A',
+                          customer: 'N/A',
                           items,
                           subtotal,
                           totalTax,
@@ -1094,19 +1075,17 @@ const WorkshopPage: React.FC = () => {
                       <Select options={priorityOptions.filter(o => o.value)} value={newJobPriority} onChange={(e) => setNewJobPriority(e.target.value)} fullWidth />
                     </div>
                     <div className="lg:col-span-2">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Customer *</label>
-                      <div className="grid grid-cols-1 lg:grid-cols-6 gap-3 items-center">
-                        <div className="lg:col-span-5">
-                          <Select 
-                            options={[{ value: '', label: 'Select a customer...' }, ...customerOptions]} 
-                            value={newJobCustomer} 
-                            onChange={(e) => setNewJobCustomer(e.target.value)} 
-                            fullWidth 
-                          />
-                        </div>
-                        <div className="lg:col-span-1 flex justify-end">
-                          <Button variant="outline" size="sm" onClick={() => setIsCreateCustomerOpen(true)}>New</Button>
-                        </div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Customer Phone</label>
+                      <div>
+                        <Input
+                          placeholder="Enter phone number (used for linking)"
+                          value={newJobCustomerPhone}
+                          onChange={(e) => setNewJobCustomerPhone(e.target.value)}
+                          fullWidth
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                          Jobs will be linked to any customer account using this phone number.
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -1454,35 +1433,7 @@ const WorkshopPage: React.FC = () => {
           </div>
         </Modal>
 
-        {/* Create Customer Inline Modal */}
-        <Modal isOpen={isCreateCustomerOpen} onClose={() => setIsCreateCustomerOpen(false)} title="Create Customer" size="lg">
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">First Name</label>
-                <Input value={newCustomer.firstName} onChange={(e) => setNewCustomer(prev => ({ ...prev, firstName: e.target.value }))} fullWidth />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Last Name</label>
-                <Input value={newCustomer.lastName} onChange={(e) => setNewCustomer(prev => ({ ...prev, lastName: e.target.value }))} fullWidth />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
-                <Input type="email" value={newCustomer.email} onChange={(e) => setNewCustomer(prev => ({ ...prev, email: e.target.value }))} fullWidth />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Phone</label>
-                <Input value={newCustomer.phone} onChange={(e) => setNewCustomer(prev => ({ ...prev, phone: e.target.value }))} fullWidth />
-              </div>
-            </div>
-            <div className="flex justify-end gap-3">
-              <Button variant="outline" onClick={() => setIsCreateCustomerOpen(false)}>Cancel</Button>
-              <Button onClick={() => createCustomerMutation.mutate(newCustomer)} disabled={createCustomerMutation.isLoading}>
-                {createCustomerMutation.isLoading ? 'Creating...' : 'Create'}
-              </Button>
-            </div>
-          </div>
-        </Modal>
+        {/* Removed inline customer creation modal for phone-based flow */}
       </div>
     </Layout>
   );

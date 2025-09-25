@@ -134,6 +134,11 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const { user, hasPermission, logout } = useAuth();
   const { company } = useSettings();
 
+  const handleLogout = async () => {
+    await logout();
+    // Layout component will handle redirect when isAuthenticated becomes false
+  };
+
   const filteredItems = sidebarItems.filter((item) => {
     if (!item.permission) return true;
     return hasPermission(item.permission.module, item.permission.action);
@@ -240,15 +245,15 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
           </nav>
 
           {/* Logout */}
-          <div className="p-4 border-t border-gray-200">
-            <button
-              onClick={logout}
-              className="group flex items-center w-full px-2 py-2 text-sm font-medium text-gray-600 rounded-md hover:bg-gray-50 hover:text-gray-900"
-            >
-              <ArrowRightOnRectangleIcon className="mr-3 h-5 w-5 text-gray-400 group-hover:text-gray-500" />
-              Logout
-            </button>
-          </div>
+                <div className="p-4 border-t border-gray-200">
+                  <button
+                    onClick={handleLogout}
+                    className="group flex items-center w-full px-2 py-2 text-sm font-medium text-gray-600 rounded-md hover:bg-gray-50 hover:text-gray-900"
+                  >
+                    <ArrowRightOnRectangleIcon className="mr-3 h-5 w-5 text-gray-400 group-hover:text-gray-500" />
+                    Logout
+                  </button>
+                </div>
         </div>
       </div>
     </>

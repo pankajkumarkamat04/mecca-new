@@ -11,7 +11,6 @@ import toast from 'react-hot-toast';
 import {
   UserIcon,
   ShieldCheckIcon,
-  BellIcon,
   PaintBrushIcon,
   KeyIcon,
   PhotoIcon,
@@ -28,7 +27,6 @@ const ProfilePage: React.FC = () => {
   const tabs = [
     { id: 'profile', name: 'Profile', icon: UserIcon },
     { id: 'security', name: 'Security', icon: ShieldCheckIcon },
-    { id: 'notifications', name: 'Notifications', icon: BellIcon },
     { id: 'appearance', name: 'Appearance', icon: PaintBrushIcon },
   ];
 
@@ -290,77 +288,6 @@ const ProfilePage: React.FC = () => {
     </div>
   );
 
-  const renderNotificationsTab = () => (
-    <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-medium text-gray-900">Notification Preferences</h3>
-        <p className="text-sm text-gray-600">Choose how you want to be notified about updates and activities.</p>
-      </div>
-
-      <div className="space-y-6">
-        <div>
-          <h4 className="text-md font-medium text-gray-900 mb-4">Email Notifications</h4>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <label className="text-sm font-medium text-gray-700">Account Updates</label>
-                <p className="text-sm text-gray-500">Get notified about account changes</p>
-              </div>
-              <input
-                type="checkbox"
-                defaultChecked={user?.preferences?.notifications?.email !== false}
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-              />
-            </div>
-            <div className="flex items-center justify-between">
-              <div>
-                <label className="text-sm font-medium text-gray-700">Security Alerts</label>
-                <p className="text-sm text-gray-500">Get notified about security events</p>
-              </div>
-              <input
-                type="checkbox"
-                defaultChecked={user?.preferences?.notifications?.email !== false}
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-              />
-            </div>
-            <div className="flex items-center justify-between">
-              <div>
-                <label className="text-sm font-medium text-gray-700">Marketing Emails</label>
-                <p className="text-sm text-gray-500">Receive updates about new features</p>
-              </div>
-              <input
-                type="checkbox"
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className="border-t border-gray-200 pt-6">
-          <h4 className="text-md font-medium text-gray-900 mb-4">Push Notifications</h4>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <label className="text-sm font-medium text-gray-700">Enable Push Notifications</label>
-                <p className="text-sm text-gray-500">Receive notifications in your browser</p>
-              </div>
-              <input
-                type="checkbox"
-                defaultChecked={user?.preferences?.notifications?.push !== false}
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="flex justify-end">
-        <Button onClick={() => {}} loading={loading}>
-          Save Preferences
-              </Button>
-      </div>
-    </div>
-  );
 
   const renderAppearanceTab = () => (
     <div className="space-y-6">
@@ -461,8 +388,6 @@ const ProfilePage: React.FC = () => {
         return renderProfileTab();
       case 'security':
         return renderSecurityTab();
-      case 'notifications':
-        return renderNotificationsTab();
       case 'appearance':
         return renderAppearanceTab();
       default:

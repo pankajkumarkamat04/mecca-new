@@ -84,6 +84,31 @@ const getUserById = async (req, res) => {
 // @access  Private (Admin/Manager)
 const createUser = async (req, res) => {
   try {
+    const { role } = req.body;
+    const currentUserRole = req.user.role;
+
+    // Role-based permission checks
+    if (currentUserRole === 'employee') {
+      return res.status(403).json({
+        success: false,
+        message: 'Employees cannot create users'
+      });
+    }
+
+    if (currentUserRole === 'manager' && (role === 'admin' || role === 'super_admin')) {
+      return res.status(403).json({
+        success: false,
+        message: 'Managers can only create employees and customers'
+      });
+    }
+
+    if (currentUserRole === 'admin' && role === 'super_admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Admins cannot create super admins'
+      });
+    }
+
     const userData = req.body;
     userData.createdBy = req.user._id;
 

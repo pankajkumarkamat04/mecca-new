@@ -9,6 +9,7 @@ import Modal from '@/components/ui/Modal';
 import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
 import { usersAPI } from '@/lib/api';
+import { useAuth } from '@/contexts/AuthContext';
 import { formatDate } from '@/lib/utils';
 import { z } from 'zod';
 import { Form, FormActions, FormField, FormSection } from '@/components/ui/Form';
@@ -23,6 +24,7 @@ import {
 } from '@heroicons/react/24/outline';
 
 const UsersPage: React.FC = () => {
+  const { user: currentUser, hasRole } = useAuth();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
@@ -167,6 +169,18 @@ const UsersPage: React.FC = () => {
     },
   ];
 
+  // Check if user has permission to access this page
+  if (!hasRole('admin') && !hasRole('manager')) {
+    return (
+      <Layout title="Users">
+        <div className="text-center py-12">
+          <h3 className="text-lg font-medium text-gray-900">Access Denied</h3>
+          <p className="text-gray-600">You don't have permission to view this page.</p>
+        </div>
+      </Layout>
+    );
+  }
+
   return (
     <Layout title="Users">
       <div className="space-y-6">
@@ -176,12 +190,14 @@ const UsersPage: React.FC = () => {
             <h1 className="text-2xl font-bold text-gray-900">Users</h1>
             <p className="text-gray-600">Manage system users and their permissions</p>
           </div>
-          <Button
-            onClick={() => setIsCreateModalOpen(true)}
-            leftIcon={<UserPlusIcon className="h-4 w-4" />}
-          >
-            Add User
-          </Button>
+          {(hasRole('admin') || hasRole('manager')) && (
+            <Button
+              onClick={() => setIsCreateModalOpen(true)}
+              leftIcon={<UserPlusIcon className="h-4 w-4" />}
+            >
+              Add User
+            </Button>
+          )}
         </div>
 
         {/* Search and Filters */}
@@ -217,14 +233,16 @@ const UsersPage: React.FC = () => {
         />
 
         {/* Create User Modal */}
-        <Modal
-          isOpen={isCreateModalOpen}
-          onClose={() => setIsCreateModalOpen(false)}
-          title="Create New User"
-          size="lg"
-        >
-          <UserCreateForm onSuccess={() => setIsCreateModalOpen(false)} />
-        </Modal>
+        {(hasRole('admin') || hasRole('manager')) && (
+          <Modal
+            isOpen={isCreateModalOpen}
+            onClose={() => setIsCreateModalOpen(false)}
+            title="Create New User"
+            size="lg"
+          >
+            <UserCreateForm onSuccess={() => setIsCreateModalOpen(false)} />
+          </Modal>
+        )}
 
         {/* Edit User Modal */}
         <Modal
@@ -302,6 +320,7 @@ export default UsersPage;
 
 // Create User Form Component
 const UserCreateForm: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => {
+  const { user: currentUser, hasRole } = useAuth();
   const queryClient = useQueryClient();
   const createUserSchema = useMemo(() => z.object({
     firstName: z.string().min(2, 'First name is required'),
@@ -324,18 +343,29 @@ const UserCreateForm: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => {
     }
   });
 
-  const roleOptions = [
-    { value: 'employee', label: 'Employee' },
-    { value: 'manager', label: 'Manager' },
-    { value: 'admin', label: 'Admin' },
-    { value: 'super_admin', label: 'Super Admin' },
-    { value: 'customer', label: 'Customer' },
-  ];
+  // Role options based on current user's permissions
+  const getRoleOptions = () => {
+    if (hasRole('admin')) {
+      return [
+        { value: 'manager', label: 'Manager' },
+        { value: 'employee', label: 'Employee' },
+        { value: 'customer', label: 'Customer' },
+      ];
+    } else if (hasRole('manager')) {
+      return [
+        { value: 'employee', label: 'Employee' },
+        { value: 'customer', label: 'Customer' },
+      ];
+    }
+    return [];
+  };
+
+  const roleOptions = getRoleOptions();
 
   return (
     <Form
       schema={createUserSchema}
-      defaultValues={{ firstName: '', lastName: '', email: '', password: '', role: 'employee', phone: '', isActive: true }}
+      defaultValues={{ firstName: '', lastName: '', email: '', password: '', role: (roleOptions[0]?.value as any) || 'employee', phone: '', isActive: true }}
       onSubmit={async (values) => {
         const payload = { ...values } as any;
         if (!payload.phone) delete payload.phone;
@@ -365,7 +395,7 @@ const UserCreateForm: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => {
               <Select
                 options={roleOptions}
                 value={methods.watch('role')}
-                onChange={(e) => methods.setValue('role', e.target.value)}
+                onChange={(e) => methods.setValue('role', e.target.value as any)}
                 fullWidth
               />
             </FormField>

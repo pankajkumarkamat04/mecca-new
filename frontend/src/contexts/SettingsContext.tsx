@@ -46,14 +46,6 @@ interface AppearanceSettings {
   dateFormat: string;
 }
 
-interface NotificationSettings {
-  email: boolean;
-  sms: boolean;
-  push: boolean;
-  lowStockAlert: boolean;
-  newOrderAlert: boolean;
-  paymentReminder: boolean;
-}
 
 interface SystemSettings {
   maintenanceMode: boolean;
@@ -77,7 +69,6 @@ interface SystemSettings {
 interface Settings {
   company: CompanySettings;
   appearance: AppearanceSettings;
-  notifications: NotificationSettings;
   system: SystemSettings;
 }
 
@@ -86,7 +77,6 @@ interface SettingsContextType {
   isLoading: boolean;
   company: CompanySettings | null;
   appearance: AppearanceSettings | null;
-  notifications: NotificationSettings | null;
   system: SystemSettings | null;
 }
 
@@ -117,7 +107,6 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
   const settings = settingsData?.data?.data || null;
   const company = settings?.company || null;
   const appearance = settings?.appearance || null;
-  const notifications = settings?.notifications || null;
   const system = settings?.system || null;
 
   const value: SettingsContextType = {
@@ -125,7 +114,6 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children }) 
     isLoading,
     company,
     appearance,
-    notifications,
     system,
   };
 

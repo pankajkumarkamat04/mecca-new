@@ -5,7 +5,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import {
   Bars3Icon,
-  BellIcon,
   MagnifyingGlassIcon,
   UserCircleIcon,
   CogIcon,
@@ -17,9 +16,14 @@ interface HeaderProps {
 }
 
 const Header: React.FC<HeaderProps> = ({ onMenuClick, title }) => {
-  const { user } = useAuth();
-  const [showNotifications, setShowNotifications] = useState(false);
+  const { user, logout } = useAuth();
   const [showUserMenu, setShowUserMenu] = useState(false);
+
+  const handleLogout = async () => {
+    setShowUserMenu(false);
+    await logout();
+    // Layout component will handle redirect when isAuthenticated becomes false
+  };
 
   return (
     <header className="bg-white shadow-sm border-b border-gray-200">
@@ -56,63 +60,6 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, title }) => {
             </div>
           </div>
 
-          {/* Notifications */}
-          <div className="relative">
-            <button
-              onClick={() => setShowNotifications(!showNotifications)}
-              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md"
-            >
-              <BellIcon className="h-6 w-6" />
-              {/* Notification badge */}
-              <span className="absolute top-1 right-1 h-2 w-2 bg-red-500 rounded-full"></span>
-            </button>
-
-            {/* Notifications dropdown */}
-            {showNotifications && (
-              <div className="absolute right-0 mt-2 w-80 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-50">
-                <div className="p-4">
-                  <h3 className="text-lg font-medium text-gray-900 mb-3">Notifications</h3>
-                  <div className="space-y-3">
-                    <div className="flex items-start space-x-3">
-                      <div className="flex-shrink-0">
-                        <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-sm text-gray-900">New invoice #INV-001 created</p>
-                        <p className="text-xs text-gray-500">2 minutes ago</p>
-                      </div>
-                    </div>
-                    <div className="flex items-start space-x-3">
-                      <div className="flex-shrink-0">
-                        <div className="w-2 h-2 bg-yellow-500 rounded-full mt-2"></div>
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-sm text-gray-900">Low stock alert for Product A</p>
-                        <p className="text-xs text-gray-500">1 hour ago</p>
-                      </div>
-                    </div>
-                    <div className="flex items-start space-x-3">
-                      <div className="flex-shrink-0">
-                        <div className="w-2 h-2 bg-green-500 rounded-full mt-2"></div>
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-sm text-gray-900">Payment received for Invoice #INV-002</p>
-                        <p className="text-xs text-gray-500">3 hours ago</p>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="mt-4 pt-3 border-t border-gray-200">
-                    <a
-                      href="/notifications"
-                      className="text-sm text-blue-600 hover:text-blue-800"
-                    >
-                      View all notifications
-                    </a>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
 
           {/* User menu */}
           <div className="relative">
@@ -154,10 +101,7 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, title }) => {
                   </a>
                   <div className="border-t border-gray-100"></div>
                   <button
-                    onClick={() => {
-                      // Handle logout
-                      setShowUserMenu(false);
-                    }}
+                    onClick={handleLogout}
                     className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                   >
                     <span className="mr-3">🚪</span>

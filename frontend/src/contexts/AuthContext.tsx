@@ -9,6 +9,7 @@ interface User {
   firstName: string;
   lastName: string;
   email: string;
+  phone?: string;
   role: 'super_admin' | 'admin' | 'manager' | 'employee' | 'customer';
   avatar?: string;
   isActive: boolean;
@@ -23,11 +24,6 @@ interface User {
   preferences?: {
     language: string;
     timezone: string;
-    notifications: {
-      email: boolean;
-      sms: boolean;
-      push: boolean;
-    };
   };
 }
 
@@ -140,12 +136,34 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const logout = () => {
-    setUser(null);
-    setToken(null);
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    toast.success('Logged out successfully');
+  const logout = async () => {
+    try {
+      // Call backend logout API if token exists
+      if (token) {
+        try {
+          await authAPI.logout();
+        } catch (error) {
+          // Continue with logout even if API call fails
+          console.warn('Logout API call failed:', error);
+        }
+      }
+      
+      // Clear local state and storage
+      setUser(null);
+      setToken(null);
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      
+      toast.success('Logged out successfully');
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Still clear local state even if there's an error
+      setUser(null);
+      setToken(null);
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      toast.success('Logged out successfully');
+    }
   };
 
   const updateUser = (userData: Partial<User>) => {

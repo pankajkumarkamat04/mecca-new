@@ -25,6 +25,8 @@ const customerSchema = new mongoose.Schema({
   phone: {
     type: String,
     trim: true,
+    unique: true,
+    sparse: true,
     match: [/^\+?[\d\s\-\(\)]+$/, 'Please enter a valid phone number']
   },
   dateOfBirth: Date,

@@ -96,18 +96,6 @@ const SettingsPage: React.FC = () => {
   };
 
 
-  const handleSaveNotifications = async (data: any) => {
-    setLoading(true);
-    try {
-      // TODO: Implement notification settings API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      toast.success('Notification settings saved');
-    } catch (error) {
-      toast.error('Failed to save notification settings');
-    } finally {
-      setLoading(false);
-    }
-  };
 
 
 

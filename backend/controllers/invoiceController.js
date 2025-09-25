@@ -13,6 +13,7 @@ const getInvoices = async (req, res) => {
     const search = req.query.search || '';
     const status = req.query.status || '';
     const type = req.query.type || '';
+    const customerPhone = req.query.customerPhone || '';
 
     // Build filter object
     const filter = {};
@@ -26,6 +27,7 @@ const getInvoices = async (req, res) => {
     }
     if (status) filter.status = status;
     if (type) filter.type = type;
+    if (customerPhone) filter['customer.phone'] = { $regex: customerPhone, $options: 'i' };
 
     const invoices = await Invoice.find(filter)
       .populate('customer', 'firstName lastName email phone')

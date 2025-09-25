@@ -17,8 +17,8 @@ import {
   CurrencyDollarIcon,
   ShoppingCartIcon,
   UsersIcon,
-  TrendingUpIcon,
-  TrendingDownIcon,
+  ArrowTrendingUpIcon,
+  ArrowTrendingDownIcon,
   CalendarIcon,
   FunnelIcon,
 } from '@heroicons/react/24/outline';
@@ -254,7 +254,7 @@ const AnalyticsPage: React.FC = () => {
           <div className="bg-white p-6 rounded-lg shadow">
             <div className="flex items-center">
               <div className="p-2 bg-orange-100 rounded-lg">
-                <TrendingUpIcon className="h-6 w-6 text-orange-600" />
+                <ArrowTrendingUpIcon className="h-6 w-6 text-orange-600" />
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Avg Order Value</p>
@@ -368,7 +368,7 @@ const AnalyticsPage: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <div className="bg-blue-50 p-4 rounded-lg">
               <div className="flex items-center">
-                <TrendingUpIcon className="h-5 w-5 text-blue-600 mr-2" />
+                <ArrowTrendingUpIcon className="h-5 w-5 text-blue-600 mr-2" />
                 <span className="text-sm font-medium text-blue-900">Revenue Growth</span>
               </div>
               <p className="text-sm text-blue-700 mt-1">

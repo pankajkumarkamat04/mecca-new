@@ -10,6 +10,7 @@ const getCustomers = async (req, res) => {
     const skip = (page - 1) * limit;
     const search = req.query.search || '';
     const tier = req.query.tier || '';
+    const phone = req.query.phone || '';
 
     // Build filter object
     const filter = { isActive: true };
@@ -23,6 +24,7 @@ const getCustomers = async (req, res) => {
       ];
     }
     if (tier) filter['loyalty.tier'] = tier;
+    if (phone) filter.phone = { $regex: phone, $options: 'i' };
 
     const customers = await Customer.find(filter)
       .sort({ createdAt: -1 })

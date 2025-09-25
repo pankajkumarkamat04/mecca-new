@@ -162,11 +162,20 @@ const createTransaction = async (req, res) => {
     await invoice.save();
 
     // Update register session
-    // Update customer stats if customer exists
+    // Update customer stats if customer exists or if phone number is provided
     if (transactionData.customer) {
       const customer = await Customer.findById(transactionData.customer);
       if (customer) {
-        await customer.updatePurchaseStats(transactionData.total);
+        await customer.updatePurchaseStats(total);
+      }
+    } else if (transactionData.customerPhone) {
+      // Try to find customer by phone number
+      const customer = await Customer.findOne({ phone: transactionData.customerPhone });
+      if (customer) {
+        // Update the invoice with the found customer
+        invoice.customer = customer._id;
+        await invoice.save();
+        await customer.updatePurchaseStats(total);
       }
     }
 

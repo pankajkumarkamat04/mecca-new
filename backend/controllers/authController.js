@@ -7,7 +7,7 @@ const User = require('../models/User');
 // @access  Public
 const register = async (req, res) => {
   try {
-    const { firstName, lastName, email, password, role = 'employee' } = req.body;
+    const { firstName, lastName, email, password, role = 'customer' } = req.body;
 
     // Check if user already exists
     const existingUser = await User.findOne({ email });

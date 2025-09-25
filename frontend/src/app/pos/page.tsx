@@ -31,6 +31,8 @@ const POSPage: React.FC = () => {
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [customerName, setCustomerName] = useState('');
+  const [customerPhone, setCustomerPhone] = useState('');
+  const [linkedCustomer, setLinkedCustomer] = useState<any | null>(null);
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [tenderedAmount, setTenderedAmount] = useState(0);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -52,6 +54,8 @@ const POSPage: React.FC = () => {
     }
   );
 
+  // Removed customer lookup; POS proceeds without pre-checking customer existence
+
   // Process sale mutation
   const processSaleMutation = useMutation(
     (saleData: any) => posAPI.createTransaction(saleData),
@@ -64,6 +68,8 @@ const POSPage: React.FC = () => {
         // Reset cart after showing receipt
         setCart([]);
         setCustomerName('');
+        setCustomerPhone('');
+        setLinkedCustomer(null);
         setTenderedAmount(0);
       },
       onError: (error: any) => {
@@ -127,6 +133,8 @@ const POSPage: React.FC = () => {
     return Math.max(0, tenderedAmount - getTotal());
   };
 
+  // Removed customer lookup action
+
   const handleProcessSale = async () => {
     if (cart.length === 0) {
       toast.error('Cart is empty');
@@ -147,7 +155,9 @@ const POSPage: React.FC = () => {
           quantity: item.quantity,
           price: item.price,
         })),
-        customer: customerName || undefined,
+        customer: undefined,
+        customerName: customerName || undefined,
+        customerPhone: customerPhone || undefined,
         paymentMethod,
         tenderedAmount: paymentMethod === 'cash' ? tenderedAmount : getTotal(),
         total: getTotal(),
@@ -157,6 +167,12 @@ const POSPage: React.FC = () => {
     } finally {
       setIsProcessing(false);
     }
+  };
+
+  const clearCustomer = () => {
+    setCustomerPhone('');
+    setCustomerName('');
+    setLinkedCustomer(null);
   };
 
   // Quick add products removed in favor of using real products from the catalog
@@ -232,7 +248,20 @@ const POSPage: React.FC = () => {
           <h2 className="text-xl font-semibold text-gray-900 mb-6">Checkout</h2>
 
           {/* Customer Info */}
-          <div className="mb-6">
+          <div className="mb-6 space-y-4">
+            <div>
+              <Input
+                label="Phone Number"
+                placeholder="Enter customer phone number"
+                value={customerPhone}
+                onChange={(e) => setCustomerPhone(e.target.value)}
+                fullWidth
+              />
+            {/* Customer lookup removed - phone is used directly for linking on backend */}
+            </div>
+            
+          {/* Linked customer preview removed */}
+            
             <Input
               label="Customer Name"
               placeholder="Enter customer name (optional)"
@@ -332,6 +361,8 @@ const POSPage: React.FC = () => {
               onClick={() => {
                 setCart([]);
                 setCustomerName('');
+                setCustomerPhone('');
+                setLinkedCustomer(null);
                 setTenderedAmount(0);
               }}
             >

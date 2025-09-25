@@ -1,4 +1,21 @@
 /* eslint-disable no-console */
+/**
+ * Database Seed File
+ * 
+ * Role-based User Management:
+ * - All registrations default to 'customer' role
+ * - Only admins and managers can create other users
+ * - Admin: Can create Manager, Employee, Customer
+ * - Manager: Can create Employee, Customer
+ * - Employee: Cannot create any users
+ * - Customer: Cannot access user management
+ * 
+ * Phone-based Linking:
+ * - Customer users have matching phone numbers with customer records
+ * - POS and Workshop jobs can be created with phone numbers
+ * - Automatic linking when customer registers with existing phone
+ */
+
 const mongoose = require('mongoose');
 require('dotenv').config();
 
@@ -83,14 +100,6 @@ async function seed() {
       language: 'en',
       timezone: 'America/New_York',
       dateFormat: 'MM/DD/YYYY'
-    },
-    notifications: {
-      email: true,
-      sms: false,
-      push: true,
-      lowStockAlert: true,
-      newOrderAlert: true,
-      paymentReminder: true
     },
     system: {
       maintenanceMode: false,
@@ -183,6 +192,76 @@ async function seed() {
         zipCode: '10003',
         country: 'USA'
       },
+    },
+    // Customer users (created via registration, now default to customer role)
+    {
+      firstName: 'Alice',
+      lastName: 'Customer',
+      email: 'alice.customer@example.com',
+      password: 'password123',
+      role: 'customer',
+      phone: '+1-555-2000', // Same phone as customer record
+      address: {
+        street: '123 Main St',
+        city: 'New York',
+        state: 'NY',
+        zipCode: '10001',
+        country: 'USA'
+      },
+      wallet: {
+        balance: 50.00,
+        currency: 'USD'
+      },
+      preferences: {
+        language: 'en',
+        timezone: 'America/New_York'
+      }
+    },
+    {
+      firstName: 'Bob',
+      lastName: 'Customer',
+      email: 'bob.customer@example.com',
+      password: 'password123',
+      role: 'customer',
+      phone: '+1-555-2002', // Same phone as customer record
+      address: {
+        street: '789 Customer Rd',
+        city: 'Miami',
+        state: 'FL',
+        zipCode: '33101',
+        country: 'USA'
+      },
+      wallet: {
+        balance: 25.00,
+        currency: 'USD'
+      },
+      preferences: {
+        language: 'en',
+        timezone: 'America/New_York'
+      }
+    },
+    {
+      firstName: 'Maria',
+      lastName: 'Customer',
+      email: 'maria.customer@example.com',
+      password: 'password123',
+      role: 'customer',
+      phone: '+1-555-2004', // Same phone as customer record
+      address: {
+        street: '654 Oak Street',
+        city: 'Austin',
+        state: 'TX',
+        zipCode: '73301',
+        country: 'USA'
+      },
+      wallet: {
+        balance: 100.00,
+        currency: 'USD'
+      },
+      preferences: {
+        language: 'en',
+        timezone: 'America/Chicago'
+      }
     }
   ];
 
@@ -810,7 +889,7 @@ async function seed() {
     }
   ]);
 
-  // Invoices
+  // Invoices (including phone-based linking examples)
   const invoices = await Invoice.insertMany([
     {
       invoiceNumber: 'INV-2024-01-0001',
@@ -865,6 +944,58 @@ async function seed() {
       shipping: { cost: 0 },
       dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
       createdBy: users[1]._id
+    },
+    // Phone-based invoice (no customer object, just phone number)
+    {
+      invoiceNumber: 'INV-2024-01-0003',
+      customer: null, // No customer object
+      customerPhone: '+1-555-2000', // Phone-based linking
+      customerName: 'Alice Customer',
+      items: [
+        {
+          product: products[0]._id,
+          name: products[0].name,
+          sku: 'MOU-001',
+          quantity: 1,
+          unitPrice: 19.99,
+          total: 19.99
+        }
+      ],
+      subtotal: 19.99,
+      taxRate: 10,
+      taxAmount: 1.999,
+      total: 21.989,
+      status: 'paid',
+      paymentMethod: 'cash',
+      shipping: { cost: 0 },
+      dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      createdBy: users[2]._id
+    },
+    // Another phone-based invoice
+    {
+      invoiceNumber: 'INV-2024-01-0004',
+      customer: null, // No customer object
+      customerPhone: '+1-555-2002', // Phone-based linking
+      customerName: 'Bob Customer',
+      items: [
+        {
+          product: products[3]._id,
+          name: products[3].name,
+          sku: 'BAT-001',
+          quantity: 1,
+          unitPrice: 129.99,
+          total: 129.99
+        }
+      ],
+      subtotal: 129.99,
+      taxRate: 12,
+      taxAmount: 15.599,
+      total: 145.589,
+      status: 'paid',
+      paymentMethod: 'credit_card',
+      shipping: { cost: 0 },
+      dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      createdBy: users[2]._id
     }
   ]);
 
@@ -926,7 +1057,7 @@ async function seed() {
     }
   ]);
 
-  // Workshop Jobs
+  // Workshop Jobs (including phone-based linking examples)
   const workshopJobs = await WorkshopJob.insertMany([
     {
       title: 'Car Battery Replacement',
@@ -1011,11 +1142,59 @@ async function seed() {
         { product: products[0]._id, quantityRequired: 1, quantityUsed: 0 }
       ],
       createdBy: users[2]._id
+    },
+    // Phone-based workshop jobs (no customer object, just phone number)
+    {
+      title: 'Laptop Screen Repair',
+      description: 'Replace cracked laptop screen',
+      customer: null, // No customer object
+      customerPhone: '+1-555-2000', // Phone-based linking
+      priority: 'high',
+      status: 'in_progress',
+      vehicle: {
+        make: 'Dell',
+        model: 'Inspiron 15',
+        year: 2022,
+        odometer: 0,
+        regNumber: 'N/A',
+        vinNumber: 'N/A'
+      },
+      repairRequest: 'Screen cracked after accidental drop',
+      parts: [
+        { product: products[1]._id, quantityRequired: 1, quantityUsed: 0 }
+      ],
+      createdBy: users[1]._id
+    },
+    {
+      title: 'Desktop Setup',
+      description: 'Setup new desktop computer for customer',
+      customer: null, // No customer object
+      customerPhone: '+1-555-2004', // Phone-based linking
+      priority: 'medium',
+      status: 'scheduled',
+      vehicle: {
+        make: 'N/A',
+        model: 'Desktop PC',
+        year: 2024,
+        odometer: 0,
+        regNumber: 'N/A',
+        vinNumber: 'N/A'
+      },
+      repairRequest: 'Need help setting up new desktop computer',
+      scheduled: {
+        start: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
+        end: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000 + 3 * 60 * 60 * 1000)
+      },
+      parts: [
+        { product: products[0]._id, quantityRequired: 1, quantityUsed: 0 },
+        { product: products[1]._id, quantityRequired: 1, quantityUsed: 0 }
+      ],
+      createdBy: users[2]._id
     }
   ]);
 
   console.log('✅ Settings created');
-  console.log(`👥 Seeded ${users.length} users`);
+  console.log(`👥 Seeded ${users.length} users (3 staff + 3 customers)`);
   console.log(`📦 Seeded ${[catElectronics, catOffice, catAutomotive, catMice, catKeyboards, catChairs, catBatteries].length} categories`);
   console.log(`🏢 Seeded ${suppliers.length} suppliers`);
   console.log(`👤 Seeded ${customers.length} customers`);
@@ -1026,6 +1205,55 @@ async function seed() {
   console.log(`💳 Seeded ${transactions.length} transactions`);
   console.log(`🎫 Seeded ${supportTickets.length} support tickets`);
   console.log(`🔧 Seeded ${workshopJobs.length} workshop jobs`);
+
+  // Display login information
+  console.log('\n🔐 LOGIN CREDENTIALS:');
+  console.log('═'.repeat(50));
+  
+  // Staff users
+  console.log('\n👨‍💼 STAFF ACCOUNTS:');
+  console.log('─'.repeat(30));
+  users.slice(0, 3).forEach((user, index) => {
+    const roleNames = ['Super Admin', 'Manager', 'Employee'];
+    console.log(`${roleNames[index]}:`);
+    console.log(`  Email: ${user.email}`);
+    console.log(`  Password: password123`);
+    console.log(`  Role: ${user.role}`);
+    console.log(`  Phone: ${user.phone || 'N/A'}`);
+    console.log('');
+  });
+
+  // Customer users
+  console.log('👤 CUSTOMER ACCOUNTS:');
+  console.log('─'.repeat(30));
+  users.slice(3).forEach((user, index) => {
+    const customerNames = ['Alice Customer', 'Bob Customer', 'Maria Customer'];
+    console.log(`${customerNames[index]}:`);
+    console.log(`  Email: ${user.email}`);
+    console.log(`  Password: password123`);
+    console.log(`  Role: ${user.role}`);
+    console.log(`  Phone: ${user.phone || 'N/A'}`);
+    console.log(`  Wallet: $${user.wallet?.balance || 0} ${user.wallet?.currency || 'USD'}`);
+    console.log('');
+  });
+
+  console.log('═'.repeat(50));
+  console.log('💡 TIP: All users use the same password: "password123"');
+  console.log('🌐 Access the application at: http://localhost:3000');
+  console.log('');
+  console.log('📋 ROLE PERMISSIONS:');
+  console.log('─'.repeat(30));
+  console.log('Super Admin: Full access to all features');
+  console.log('Manager: Can create employees and customers, manage most features');
+  console.log('Employee: Can use POS, manage customers, view reports');
+  console.log('Customer: Access to customer dashboard, purchases, wallet, support');
+  console.log('');
+  console.log('🔗 PHONE-BASED LINKING:');
+  console.log('─'.repeat(30));
+  console.log('• Customer phone numbers match between user accounts and customer records');
+  console.log('• POS and Workshop jobs can be created with phone numbers only');
+  console.log('• Automatic linking when customers register with existing phone numbers');
+  console.log('═'.repeat(50));
 
   await mongoose.connection.close();
   console.log('✅ Seed complete. Connection closed.');

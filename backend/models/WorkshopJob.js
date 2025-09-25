@@ -23,7 +23,8 @@ const jobToolSchema = new mongoose.Schema({
 const workshopJobSchema = new mongoose.Schema({
   title: { type: String, required: true, trim: true },
   description: { type: String, trim: true },
-  customer: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer', required: true },
+  customer: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer' },
+  customerPhone: { type: String, trim: true },
   priority: { type: String, enum: ['low', 'medium', 'high', 'urgent'], default: 'medium' },
   status: { type: String, enum: ['draft', 'scheduled', 'in_progress', 'on_hold', 'completed', 'cancelled'], default: 'draft', index: true },
   deadline: Date,

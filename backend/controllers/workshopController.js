@@ -110,6 +110,16 @@ const createJob = async (req, res) => {
   try {
     const data = req.body;
     data.createdBy = req.user._id;
+    
+    // Handle phone-based customer linking
+    if (data.customerPhone && !data.customer) {
+      const Customer = require('../models/Customer');
+      const existingCustomer = await Customer.findOne({ phone: data.customerPhone });
+      if (existingCustomer) {
+        data.customer = existingCustomer._id;
+      }
+    }
+    
     // Validate parts availability
     if (Array.isArray(data.parts) && data.parts.length > 0) {
       const shortages = [];
@@ -146,12 +156,13 @@ const getJobs = async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
-    const { search = '', status = '', priority = '', customer = '' } = req.query;
+    const { search = '', status = '', priority = '', customer = '', customerPhone = '' } = req.query;
 
     const filter = { isActive: true };
     if (status) filter.status = status;
     if (priority) filter.priority = priority;
     if (customer) filter.customer = customer;
+    if (customerPhone) filter.customerPhone = { $regex: customerPhone, $options: 'i' };
     if (search) filter.title = { $regex: search, $options: 'i' };
 
     const jobs = await WorkshopJob.find(filter)

@@ -15,7 +15,6 @@ const registerSchema = z.object({
   password: z.string().min(6, 'Password must be at least 6 characters'),
   confirmPassword: z.string(),
   phone: z.string().optional(),
-  role: z.enum(['admin', 'manager', 'employee', 'customer']).default('employee'),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"],
@@ -49,7 +48,7 @@ export default function RegisterPage() {
         email: data.email,
         password: data.password,
         phone: data.phone,
-        role: data.role,
+        role: 'customer', // Default to customer role
       })
 
       // Registration successful, redirect to login
@@ -172,28 +171,7 @@ export default function RegisterPage() {
               )}
             </div>
 
-            <div>
-              <label htmlFor="role" className="block text-sm font-medium text-gray-700">
-                Role
-              </label>
-              <div className="mt-1 relative">
-                <select
-                  {...register('role')}
-                  className="appearance-none relative block w-full px-3 py-2 pl-10 border border-gray-300 text-gray-900 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm"
-                >
-                  <option value="employee">Employee</option>
-                  <option value="manager">Manager</option>
-                  <option value="admin">Admin</option>
-                  <option value="customer">Customer</option>
-                </select>
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <BuildingOfficeIcon className="h-5 w-5 text-gray-400" />
-                </div>
-              </div>
-              {errors.role && (
-                <p className="mt-1 text-sm text-red-600">{errors.role.message}</p>
-              )}
-            </div>
+            {/* Role selection removed - all registrations default to customer */}
 
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-gray-700">

@@ -53,6 +53,39 @@ const getSalesReport = async (req, res) => {
       { $sort: { _id: 1 } }
     ]);
 
+    // Top products by quantity sold in the period
+    const topProducts = await Invoice.aggregate([
+      { $match: matchStage },
+      { $unwind: '$items' },
+      {
+        $group: {
+          _id: '$items.product',
+          totalQuantity: { $sum: '$items.quantity' },
+          totalRevenue: { $sum: '$items.total' }
+        }
+      },
+      { $sort: { totalQuantity: -1 } },
+      { $limit: 10 },
+      {
+        $lookup: {
+          from: 'products',
+          localField: '_id',
+          foreignField: '_id',
+          as: 'productInfo'
+        }
+      },
+      { $unwind: { path: '$productInfo', preserveNullAndEmptyArrays: true } },
+      {
+        $project: {
+          productId: '$_id',
+          name: { $ifNull: ['$productInfo.name', 'Unknown'] },
+          sku: '$productInfo.sku',
+          totalQuantity: 1,
+          totalRevenue: 1
+        }
+      }
+    ]);
+
     const customerStats = await Invoice.aggregate([
       { $match: matchStage },
       {
@@ -95,7 +128,9 @@ const getSalesReport = async (req, res) => {
           averageInvoice: totalInvoices > 0 ? totalSales / totalInvoices : 0
         },
         salesData,
-        topCustomers: customerStats
+        salesTrend: salesData,
+        topCustomers: customerStats,
+        topProducts
       }
     });
   } catch (error) {

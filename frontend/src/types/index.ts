@@ -34,11 +34,6 @@ export interface Wallet {
 export interface UserPreferences {
   language: string;
   timezone: string;
-  notifications: {
-    email: boolean;
-    sms: boolean;
-    push: boolean;
-  };
 }
 
 export interface Salary {
@@ -140,10 +135,6 @@ export interface LoyaltyProgram {
 export interface CustomerPreferences {
   language: string;
   currency: string;
-  notifications: {
-    email: boolean;
-    sms: boolean;
-  };
 }
 
 // Supplier Types
