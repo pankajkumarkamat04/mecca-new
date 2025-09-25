@@ -1,18 +1,104 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import Layout from '@/components/layout/Layout';
 import Link from 'next/link';
+import { useQuery } from 'react-query';
+import { invoicesAPI, customersAPI, supportAPI, workshopAPI } from '@/lib/api';
+import { formatCurrency, formatDate } from '@/lib/utils';
+import { 
+  WalletIcon, 
+  DocumentTextIcon, 
+  TicketIcon, 
+  WrenchScrewdriverIcon,
+  ShoppingBagIcon,
+  ArrowTrendingUpIcon,
+  ClockIcon,
+  ExclamationTriangleIcon,
+  CheckCircleIcon,
+  ArrowRightIcon,
+  EyeIcon
+} from '@heroicons/react/24/outline';
 
 const CustomerDashboardPage: React.FC = () => {
-  const { user, isLoading, isAuthenticated, hasRole } = useAuth();
+  const { user, isLoading, isAuthenticated } = useAuth();
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize] = useState(5);
+
+  // Fetch customer data
+  const { data: customerData, isLoading: customerLoading } = useQuery(
+    ['customer-details', user?._id],
+    () => customersAPI.getCustomerById(user?._id || ''),
+    {
+      enabled: !!user?._id,
+    }
+  );
+
+  // Fetch recent invoices
+  const { data: recentInvoices, isLoading: invoicesLoading } = useQuery(
+    ['customer-recent-invoices', user?.phone],
+    () => invoicesAPI.getInvoices({
+      page: 1,
+      limit: 5,
+      customerPhone: user?.phone,
+      sortBy: 'invoiceDate',
+      sortOrder: 'desc',
+    }),
+    {
+      enabled: !!user?.phone,
+    }
+  );
+
+  // Fetch recent support tickets
+  const { data: recentTickets, isLoading: ticketsLoading } = useQuery(
+    ['customer-recent-tickets', user?._id],
+    () => supportAPI.getSupportTickets({
+      page: 1,
+      limit: 3,
+      customerId: user?._id,
+      sortBy: 'createdAt',
+      sortOrder: 'desc',
+    }),
+    {
+      enabled: !!user?._id,
+    }
+  );
+
+  // Fetch recent workshop jobs
+  const { data: recentJobs, isLoading: jobsLoading } = useQuery(
+    ['customer-recent-jobs', user?.phone],
+    () => workshopAPI.getJobs({
+      customerPhone: user?.phone,
+      limit: 3,
+      sortBy: 'createdAt',
+      sortOrder: 'desc',
+    }),
+    {
+      enabled: !!user?.phone,
+    }
+  );
+
+  // Fetch wallet transactions
+  const { data: walletTransactions, isLoading: walletLoading } = useQuery(
+    ['customer-wallet-transactions', user?._id],
+    () => customersAPI.getWalletTransactions(user?._id || '', {
+      page: 1,
+      limit: 5,
+    }),
+    {
+      enabled: !!user?._id,
+    }
+  );
 
   if (isLoading) {
     return (
       <Layout title="My Dashboard">
         <div className="bg-white shadow rounded-lg p-6">
-          <div className="animate-pulse h-6 w-40 bg-gray-200 rounded" />
+          <div className="animate-pulse space-y-4">
+            <div className="h-6 w-40 bg-gray-200 rounded" />
+            <div className="h-4 w-60 bg-gray-200 rounded" />
+          </div>
         </div>
       </Layout>
     );
@@ -22,51 +108,295 @@ const CustomerDashboardPage: React.FC = () => {
     return null; // Layout will handle redirect to login
   }
 
-  if (!hasRole('customer')) {
-    if (typeof window !== 'undefined') {
-      window.location.href = '/dashboard';
+  const walletBalance = customerData?.data?.wallet?.balance || user?.wallet?.balance || 0;
+  const totalSpent = customerData?.data?.totalSpent || 0;
+  const visitCount = customerData?.data?.visitCount || 0;
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'paid':
+        return 'text-green-600 bg-green-100';
+      case 'partial':
+        return 'text-yellow-600 bg-yellow-100';
+      case 'overdue':
+        return 'text-red-600 bg-red-100';
+      default:
+        return 'text-gray-600 bg-gray-100';
     }
-    return null;
-  }
+  };
+
+  const getTicketStatusColor = (status: string) => {
+    switch (status) {
+      case 'open':
+        return 'text-blue-600 bg-blue-100';
+      case 'in_progress':
+        return 'text-yellow-600 bg-yellow-100';
+      case 'resolved':
+        return 'text-green-600 bg-green-100';
+      case 'closed':
+        return 'text-gray-600 bg-gray-100';
+      default:
+        return 'text-gray-600 bg-gray-100';
+    }
+  };
+
+  const getJobStatusColor = (status: string) => {
+    switch (status) {
+      case 'completed':
+        return 'text-green-600 bg-green-100';
+      case 'in_progress':
+        return 'text-blue-600 bg-blue-100';
+      case 'on_hold':
+        return 'text-yellow-600 bg-yellow-100';
+      case 'cancelled':
+        return 'text-red-600 bg-red-100';
+      default:
+        return 'text-gray-600 bg-gray-100';
+    }
+  };
 
   return (
     <Layout title="My Dashboard">
       <div className="space-y-6">
-        <div className="bg-white shadow rounded-lg p-6">
-          <h1 className="text-2xl font-bold text-gray-900">Welcome, {user?.firstName}</h1>
-          <p className="text-gray-600">Here is a quick overview of your account.</p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white shadow rounded-lg p-6">
-            <h3 className="text-sm font-medium text-gray-500">Wallet Balance</h3>
-            <p className="mt-2 text-3xl font-bold text-blue-600">
-              {new Intl.NumberFormat(undefined, { style: 'currency', currency: user?.wallet?.currency || 'USD' }).format(user?.wallet?.balance || 0)}
-            </p>
-            <div className="mt-4">
-              <Link href="/support" className="text-sm text-blue-600 hover:text-blue-800">View transactions →</Link>
+        {/* Welcome Header */}
+        <div className="bg-gradient-to-r from-blue-600 to-blue-700 shadow-lg rounded-lg p-6 text-white">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold">Welcome back, {user?.firstName}!</h1>
+              <p className="text-blue-100 mt-1">Here's what's happening with your account</p>
             </div>
-          </div>
-
-          <div className="bg-white shadow rounded-lg p-6">
-            <h3 className="text-sm font-medium text-gray-500">Loyalty Points</h3>
-            <p className="mt-2 text-3xl font-bold text-green-600">{user?.preferences ? (user as any).loyalty?.points ?? 0 : 0}</p>
-            <div className="mt-4 text-sm text-gray-500">Tier: {(user as any).loyalty?.tier || 'bronze'}</div>
-          </div>
-
-          <div className="bg-white shadow rounded-lg p-6">
-            <h3 className="text-sm font-medium text-gray-500">Support</h3>
-            <p className="mt-2 text-gray-900">Open and track your support tickets.</p>
-            <div className="mt-4">
-              <Link href="/support" className="text-sm text-blue-600 hover:text-blue-800">Go to Support →</Link>
+            <div className="text-right">
+              <p className="text-blue-100 text-sm">Member since</p>
+                <p className="text-lg font-semibold">
+                  {formatDate(customerData?.data?.createdAt || new Date().toISOString())}
+                </p>
             </div>
           </div>
         </div>
 
+        {/* Key Metrics */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <div className="bg-white shadow rounded-lg p-6">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <WalletIcon className="h-8 w-8 text-blue-600" />
+              </div>
+              <div className="ml-4">
+                <h3 className="text-sm font-medium text-gray-500">Wallet Balance</h3>
+                <p className="mt-2 text-3xl font-bold text-blue-600">
+                  {formatCurrency(walletBalance)}
+                </p>
+                <div className="mt-4">
+                  <Link href="/customer/wallet" className="text-sm text-blue-600 hover:text-blue-800 flex items-center">
+                    Manage wallet <ArrowRightIcon className="h-4 w-4 ml-1" />
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white shadow rounded-lg p-6">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <ArrowTrendingUpIcon className="h-8 w-8 text-green-600" />
+              </div>
+              <div className="ml-4">
+                <h3 className="text-sm font-medium text-gray-500">Total Spent</h3>
+                <p className="mt-2 text-3xl font-bold text-green-600">
+                  {formatCurrency(totalSpent)}
+                </p>
+                <div className="mt-4">
+                  <Link href="/customer/invoices" className="text-sm text-green-600 hover:text-green-800 flex items-center">
+                    View invoices <ArrowRightIcon className="h-4 w-4 ml-1" />
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white shadow rounded-lg p-6">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <ShoppingBagIcon className="h-8 w-8 text-purple-600" />
+              </div>
+              <div className="ml-4">
+                <h3 className="text-sm font-medium text-gray-500">Total Visits</h3>
+                <p className="mt-2 text-3xl font-bold text-purple-600">{visitCount}</p>
+                <div className="mt-4">
+                  <Link href="/customer/purchases" className="text-sm text-purple-600 hover:text-purple-800 flex items-center">
+                    View purchases <ArrowRightIcon className="h-4 w-4 ml-1" />
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white shadow rounded-lg p-6">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <TicketIcon className="h-8 w-8 text-orange-600" />
+              </div>
+              <div className="ml-4">
+                <h3 className="text-sm font-medium text-gray-500">Open Tickets</h3>
+                <p className="mt-2 text-3xl font-bold text-orange-600">
+                  {recentTickets?.data?.data ? recentTickets.data.data.filter((t: any) => t.status !== 'closed' && t.status !== 'resolved').length : 0}
+                </p>
+                <div className="mt-4">
+                  <Link href="/customer/support" className="text-sm text-orange-600 hover:text-orange-800 flex items-center">
+                    View support <ArrowRightIcon className="h-4 w-4 ml-1" />
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Recent Activity Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Recent Invoices */}
+          <div className="bg-white shadow rounded-lg">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <DocumentTextIcon className="h-5 w-5 text-gray-400 mr-2" />
+                  <h3 className="text-lg font-medium text-gray-900">Recent Invoices</h3>
+                </div>
+                <Link href="/customer/invoices" className="text-sm text-blue-600 hover:text-blue-800">
+                  View all
+                </Link>
+              </div>
+            </div>
+            <div className="p-6">
+              {invoicesLoading ? (
+                <div className="space-y-3">
+                  {[...Array(3)].map((_, i) => (
+                    <div key={i} className="animate-pulse flex space-x-4">
+                      <div className="h-4 bg-gray-200 rounded w-1/4"></div>
+                      <div className="h-4 bg-gray-200 rounded w-1/3"></div>
+                      <div className="h-4 bg-gray-200 rounded w-1/4"></div>
+                    </div>
+                  ))}
+                </div>
+              ) : recentInvoices?.data?.data && recentInvoices.data.data.length > 0 ? (
+                <div className="space-y-3">
+                  {recentInvoices.data.data.slice(0, 3).map((invoice: any) => (
+                    <div key={invoice._id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">#{invoice.invoiceNumber}</p>
+                        <p className="text-xs text-gray-500">{formatDate(invoice.invoiceDate)}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-medium text-gray-900">{formatCurrency(invoice.totalAmount)}</p>
+                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(invoice.status)}`}>
+                          {invoice.status}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-6">
+                  <DocumentTextIcon className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+                  <p className="text-gray-500 text-sm">No recent invoices</p>
+                  {!user?.phone && (
+                    <p className="text-gray-400 text-xs mt-1">Add phone number to view invoices</p>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Recent Support Tickets */}
+          <div className="bg-white shadow rounded-lg">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <TicketIcon className="h-5 w-5 text-gray-400 mr-2" />
+                  <h3 className="text-lg font-medium text-gray-900">Recent Support Tickets</h3>
+                </div>
+                <Link href="/customer/support" className="text-sm text-blue-600 hover:text-blue-800">
+                  View all
+                </Link>
+              </div>
+            </div>
+            <div className="p-6">
+              {ticketsLoading ? (
+                <div className="space-y-3">
+                  {[...Array(3)].map((_, i) => (
+                    <div key={i} className="animate-pulse flex space-x-4">
+                      <div className="h-4 bg-gray-200 rounded w-1/3"></div>
+                      <div className="h-4 bg-gray-200 rounded w-1/4"></div>
+                    </div>
+                  ))}
+                </div>
+              ) : recentTickets?.data?.data && recentTickets.data.data.length > 0 ? (
+                <div className="space-y-3">
+                  {recentTickets.data.data.slice(0, 3).map((ticket: any) => (
+                    <div key={ticket._id} className="p-3 bg-gray-50 rounded-lg">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-gray-900 truncate">{ticket.subject}</p>
+                          <p className="text-xs text-gray-500">{formatDate(ticket.createdAt)}</p>
+                        </div>
+                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getTicketStatusColor(ticket.status)}`}>
+                          {ticket.status.replace('_', ' ')}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-6">
+                  <TicketIcon className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+                  <p className="text-gray-500 text-sm">No support tickets</p>
+                  <Link href="/customer/support" className="text-blue-600 text-xs hover:text-blue-800">
+                    Create your first ticket
+                  </Link>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Workshop Jobs */}
+        {recentJobs?.data?.data && recentJobs.data.data.length > 0 && (
+          <div className="bg-white shadow rounded-lg">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <WrenchScrewdriverIcon className="h-5 w-5 text-gray-400 mr-2" />
+                  <h3 className="text-lg font-medium text-gray-900">Recent Workshop Jobs</h3>
+                </div>
+                <Link href="/customer/purchases" className="text-sm text-blue-600 hover:text-blue-800">
+                  View all
+                </Link>
+              </div>
+            </div>
+            <div className="p-6">
+              <div className="space-y-3">
+                {recentJobs.data.data.slice(0, 3).map((job: any) => (
+                  <div key={job._id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">{job.title}</p>
+                      <p className="text-xs text-gray-500">
+                        Priority: {job.priority} • {formatDate(job.createdAt)}
+                      </p>
+                    </div>
+                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getJobStatusColor(job.status)}`}>
+                      {job.status.replace('_', ' ')}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Quick Actions */}
         <div className="bg-white shadow rounded-lg p-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Quick Links</h3>
+          <h3 className="text-lg font-medium text-gray-900 mb-4">Quick Actions</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Link href="/invoices" className="p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors">
+            <Link href="/customer/invoices" className="p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors">
               <div className="text-center">
                 <div className="text-2xl mb-2">📄</div>
                 <div className="text-sm font-medium text-gray-900">My Invoices</div>
@@ -74,36 +404,57 @@ const CustomerDashboardPage: React.FC = () => {
               </div>
             </Link>
 
-            <Link href="/profile" className="p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-green-500 hover:bg-green-50 transition-colors">
+            <Link href="/customer/wallet" className="p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-green-500 hover:bg-green-50 transition-colors">
               <div className="text-center">
-                <div className="text-2xl mb-2">👤</div>
-                <div className="text-sm font-medium text-gray-900">My Profile</div>
-                <div className="text-xs text-gray-500">Update your details</div>
+                <div className="text-2xl mb-2">💳</div>
+                <div className="text-sm font-medium text-gray-900">My Wallet</div>
+                <div className="text-xs text-gray-500">Manage balance</div>
               </div>
             </Link>
 
-            <Link href="/support" className="p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-purple-500 hover:bg-purple-50 transition-colors">
+            <Link href="/customer/support" className="p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-purple-500 hover:bg-purple-50 transition-colors">
               <div className="text-center">
                 <div className="text-2xl mb-2">🛟</div>
                 <div className="text-sm font-medium text-gray-900">Support Tickets</div>
-                <div className="text-xs text-gray-500">Create or view tickets</div>
+                <div className="text-xs text-gray-500">Get help</div>
               </div>
             </Link>
 
-            <Link href="/products" className="p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-yellow-500 hover:bg-yellow-50 transition-colors">
+            <Link href="/profile" className="p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-yellow-500 hover:bg-yellow-50 transition-colors">
               <div className="text-center">
-                <div className="text-2xl mb-2">🛍️</div>
-                <div className="text-sm font-medium text-gray-900">Browse Products</div>
-                <div className="text-xs text-gray-500">Explore catalog</div>
+                <div className="text-2xl mb-2">👤</div>
+                <div className="text-sm font-medium text-gray-900">My Profile</div>
+                <div className="text-xs text-gray-500">Update details</div>
               </div>
             </Link>
           </div>
         </div>
+
+        {/* Phone Number Warning */}
+        {!user?.phone && (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <ExclamationTriangleIcon className="h-5 w-5 text-yellow-400" />
+              </div>
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-yellow-800">
+                  Phone Number Required
+                </h3>
+                <div className="mt-2 text-sm text-yellow-700">
+                  <p>To view your purchase history and invoices, please add a phone number to your profile. 
+                  Your purchases will be automatically linked when you provide your phone number at checkout.</p>
+                  <Link href="/profile" className="font-medium underline hover:text-yellow-800">
+                    Update your profile now →
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </Layout>
   );
 };
 
 export default CustomerDashboardPage;
-
-

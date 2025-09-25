@@ -19,7 +19,7 @@ type LoginForm = z.infer<typeof loginSchema>
 
 function LoginForm() {
   const [showPassword, setShowPassword] = useState(false)
-  const { login, isLoading, isAuthenticated } = useAuth()
+  const { login, isLoading, isAuthenticated, getRedirectPath } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -33,9 +33,16 @@ function LoginForm() {
 
   useEffect(() => {
     if (isAuthenticated) {
-      router.push('/dashboard')
+      // Get intended path from localStorage or use default redirect
+      const intendedPath = localStorage.getItem('intendedPath')
+      const redirectPath = getRedirectPath(intendedPath || undefined)
+      
+      // Clear intended path
+      localStorage.removeItem('intendedPath')
+      
+      router.push(redirectPath)
     }
-  }, [isAuthenticated, router])
+  }, [isAuthenticated, router, getRedirectPath])
 
   useEffect(() => {
     const reason = searchParams?.get('reason')
@@ -46,8 +53,12 @@ function LoginForm() {
 
   const onSubmit = async (data: LoginForm) => {
     try {
-      await login(data.email, data.password)
-      router.push('/dashboard')
+      // Get intended path from URL params or localStorage
+      const intendedPath = searchParams?.get('redirect') || localStorage.getItem('intendedPath')
+      
+      await login(data.email, data.password, intendedPath || undefined)
+      
+      // The useEffect will handle the redirect after successful login
     } catch (error) {
       // Error is handled by the auth context
     }

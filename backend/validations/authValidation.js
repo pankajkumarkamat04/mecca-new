@@ -29,11 +29,12 @@ const registerValidation = [
   
   body('role')
     .optional()
-    .isIn(['super_admin', 'admin', 'manager', 'employee'])
+    .isIn(['admin', 'manager', 'employee'])
     .withMessage('Invalid role'),
   
   body('phone')
-    .optional()
+    .notEmpty()
+    .withMessage('Phone number is required')
     .isMobilePhone()
     .withMessage('Invalid phone number'),
   

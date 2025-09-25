@@ -19,8 +19,7 @@ const customerSchema = new mongoose.Schema({
     unique: true,
     lowercase: true,
     trim: true,
-    match: [/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/, 'Please enter a valid email'],
-    index: true
+    match: [/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/, 'Please enter a valid email']
   },
   phone: {
     type: String,
@@ -43,8 +42,7 @@ const customerSchema = new mongoose.Schema({
     type: String,
     unique: true,
     uppercase: true,
-    trim: true,
-    index: true
+    trim: true
   },
   type: {
     type: String,
@@ -124,22 +122,6 @@ const customerSchema = new mongoose.Schema({
       sms: { type: Boolean, default: false }
     }
   },
-  loyalty: {
-    points: {
-      type: Number,
-      default: 0,
-      min: [0, 'Loyalty points cannot be negative']
-    },
-    tier: {
-      type: String,
-      enum: ['bronze', 'silver', 'gold', 'platinum'],
-      default: 'bronze'
-    },
-    joinDate: {
-      type: Date,
-      default: Date.now
-    }
-  },
   creditLimit: {
     type: Number,
     default: 0,
@@ -191,8 +173,6 @@ customerSchema.virtual('lifetimeValue').get(function() {
 });
 
 // Indexes
-customerSchema.index({ phone: 1 });
-customerSchema.index({ 'loyalty.tier': 1 });
 customerSchema.index({ isActive: 1 });
 customerSchema.index({ lastName: 1, firstName: 1 });
 
@@ -230,17 +210,6 @@ customerSchema.methods.updatePurchaseStats = function(amount) {
   this.totalPurchases.amount += amount;
   this.lastPurchase = new Date();
   
-  // Update loyalty points (example: 1 point per dollar spent)
-  this.loyalty.points += Math.floor(amount);
-  
-  // Update tier based on total purchases
-  if (this.totalPurchases.amount >= 10000) {
-    this.loyalty.tier = 'platinum';
-  } else if (this.totalPurchases.amount >= 5000) {
-    this.loyalty.tier = 'gold';
-  } else if (this.totalPurchases.amount >= 1000) {
-    this.loyalty.tier = 'silver';
-  }
   
   return this.save();
 };

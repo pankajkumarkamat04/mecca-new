@@ -20,8 +20,7 @@ const userSchema = new mongoose.Schema({
     unique: true,
     lowercase: true,
     trim: true,
-    match: [/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/, 'Please enter a valid email'],
-    index: true
+    match: [/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/, 'Please enter a valid email']
   },
   password: {
     type: String,
@@ -31,14 +30,14 @@ const userSchema = new mongoose.Schema({
   },
   phone: {
     type: String,
+    required: [true, 'Phone number is required'],
     trim: true,
     unique: true,
-    sparse: true,
     match: [/^\+?[\d\s\-\(\)]+$/, 'Please enter a valid phone number']
   },
   role: {
     type: String,
-    enum: ['super_admin', 'admin', 'manager', 'employee', 'customer'],
+    enum: ['admin', 'manager', 'employee', 'customer'],
     default: 'employee'
   },
   avatar: {

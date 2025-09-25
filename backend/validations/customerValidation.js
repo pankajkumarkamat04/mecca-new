@@ -22,7 +22,8 @@ const createCustomerValidation = [
     .withMessage('Valid email is required'),
   
   body('phone')
-    .optional()
+    .notEmpty()
+    .withMessage('Phone number is required')
     .isMobilePhone()
     .withMessage('Invalid phone number'),
   
@@ -134,7 +135,8 @@ const updateCustomerValidation = [
     .withMessage('Valid email is required'),
   
   body('phone')
-    .optional()
+    .notEmpty()
+    .withMessage('Phone number is required')
     .isMobilePhone()
     .withMessage('Invalid phone number'),
   
@@ -171,26 +173,6 @@ const walletTransactionValidation = [
     .withMessage('Reference cannot exceed 100 characters')
 ];
 
-// Loyalty points validation
-const loyaltyPointsValidation = [
-  param('id')
-    .isMongoId()
-    .withMessage('Invalid customer ID'),
-  
-  body('points')
-    .isFloat({ min: 0 })
-    .withMessage('Points must be a non-negative number'),
-  
-  body('operation')
-    .isIn(['add', 'subtract', 'set'])
-    .withMessage('Operation must be add, subtract, or set'),
-  
-  body('reason')
-    .optional()
-    .trim()
-    .isLength({ max: 200 })
-    .withMessage('Reason cannot exceed 200 characters')
-];
 
 // Get customer by ID validation
 const getCustomerByIdValidation = [
@@ -203,6 +185,5 @@ module.exports = {
   createCustomerValidation,
   updateCustomerValidation,
   walletTransactionValidation,
-  loyaltyPointsValidation,
   getCustomerByIdValidation
 };

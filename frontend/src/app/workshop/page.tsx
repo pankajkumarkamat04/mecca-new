@@ -179,6 +179,11 @@ const WorkshopPage: React.FC = () => {
       return;
     }
     
+    if (!newJobCustomerPhone.trim()) {
+      setCreateError('Customer phone number is required.');
+      return;
+    }
+    
     // Client-side validate for stock where possible
     const productMap: Record<string, number> = {};
     (productsData?.data?.data || []).forEach((p: any) => { productMap[p._id] = p.inventory?.currentStock ?? 0; });
@@ -192,7 +197,7 @@ const WorkshopPage: React.FC = () => {
       title: newJobTitle.trim(), 
       priority: newJobPriority,
       customer: newJobCustomer || undefined,
-      customerPhone: newJobCustomerPhone || undefined,
+      customerPhone: newJobCustomerPhone,
       parts: newJobParts,
       vehicle: newJobVehicle,
       repairRequest: newJobRepairRequest,
@@ -1075,13 +1080,14 @@ const WorkshopPage: React.FC = () => {
                       <Select options={priorityOptions.filter(o => o.value)} value={newJobPriority} onChange={(e) => setNewJobPriority(e.target.value)} fullWidth />
                     </div>
                     <div className="lg:col-span-2">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Customer Phone</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Customer Phone <span className="text-red-500">*</span></label>
                       <div>
                         <Input
                           placeholder="Enter phone number (used for linking)"
                           value={newJobCustomerPhone}
                           onChange={(e) => setNewJobCustomerPhone(e.target.value)}
                           fullWidth
+                          required
                         />
                         <p className="text-xs text-gray-500 mt-1">
                           Jobs will be linked to any customer account using this phone number.

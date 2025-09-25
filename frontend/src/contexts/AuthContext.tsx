@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { authAPI } from '@/lib/api';
+import { getRedirectPath, UserRole } from '@/lib/roleRouting';
 import toast from 'react-hot-toast';
 
 interface User {
@@ -9,8 +10,8 @@ interface User {
   firstName: string;
   lastName: string;
   email: string;
-  phone?: string;
-  role: 'super_admin' | 'admin' | 'manager' | 'employee' | 'customer';
+  phone: string;
+  role: UserRole;
   avatar?: string;
   isActive: boolean;
   permissions?: Array<{
@@ -32,12 +33,13 @@ interface AuthContextType {
   token: string | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string, intendedPath?: string) => Promise<void>;
   register: (userData: any) => Promise<void>;
   logout: () => void;
   updateUser: (userData: Partial<User>) => void;
   hasPermission: (module: string, action: string) => boolean;
   hasRole: (roles: string | string[]) => boolean;
+  getRedirectPath: (intendedPath?: string) => string;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -94,7 +96,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     initAuth();
   }, []);
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string, intendedPath?: string) => {
     try {
       setIsLoading(true);
       const response = await authAPI.login({ email, password });
@@ -106,6 +108,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       localStorage.setItem('user', JSON.stringify(userData));
 
       toast.success('Login successful!');
+      
+      // Store intended path for redirection after login
+      if (intendedPath) {
+        localStorage.setItem('intendedPath', intendedPath);
+      }
     } catch (error: any) {
       const message = error.response?.data?.message || 'Login failed';
       toast.error(message);
@@ -178,7 +185,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     if (!user) return false;
     
     // Super admin has all permissions
-    if (user.role === 'super_admin') return true;
+    if (user.role === 'admin') return true;
     
     // Check user permissions
     if (user.permissions) {
@@ -260,6 +267,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return roleArray.includes(user.role);
   };
 
+  const getRedirectPathForUser = (intendedPath?: string): string => {
+    if (!user) return '/auth/login';
+    return getRedirectPath(user.role, intendedPath);
+  };
+
   const value: AuthContextType = {
     user,
     token,
@@ -271,6 +283,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     updateUser,
     hasPermission,
     hasRole,
+    getRedirectPath: getRedirectPathForUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

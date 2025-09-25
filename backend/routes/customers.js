@@ -9,7 +9,6 @@ const {
   deleteCustomer,
   addWalletTransaction,
   getWalletTransactions,
-  updateLoyaltyPoints,
   getCustomerStats,
   getTopCustomers
 } = require('../controllers/customerController');
@@ -61,9 +60,5 @@ router.post('/:id/wallet', auth, validateObjectId(), addWalletTransaction);
 // @access  Private
 router.get('/:id/wallet/transactions', auth, validateObjectId(), validatePagination(), getWalletTransactions);
 
-// @route   PUT /api/customers/:id/loyalty
-// @desc    Update loyalty points
-// @access  Private
-router.put('/:id/loyalty', auth, validateObjectId(), updateLoyaltyPoints);
 
 module.exports = router;

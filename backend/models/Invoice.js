@@ -5,8 +5,7 @@ const invoiceSchema = new mongoose.Schema({
     type: String,
     required: [true, 'Invoice number is required'],
     unique: true,
-    trim: true,
-    index: true
+    trim: true
   },
   type: {
     type: String,
@@ -21,6 +20,12 @@ const invoiceSchema = new mongoose.Schema({
   customer: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Customer'
+  },
+  customerPhone: {
+    type: String,
+    required: [true, 'Customer phone number is required'],
+    trim: true,
+    match: [/^\+?[\d\s\-\(\)]+$/, 'Please enter a valid phone number']
   },
   location: {
     type: String,
@@ -235,6 +240,7 @@ invoiceSchema.virtual('daysOverdue').get(function() {
 
 // Indexes
 invoiceSchema.index({ customer: 1 });
+invoiceSchema.index({ customerPhone: 1 });
 invoiceSchema.index({ location: 1 });
 invoiceSchema.index({ status: 1 });
 invoiceSchema.index({ invoiceDate: -1 });

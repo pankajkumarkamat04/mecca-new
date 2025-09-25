@@ -45,8 +45,8 @@ const checkPermission = (module, action) => {
       return res.status(401).json({ message: 'Access denied. No user found.' });
     }
 
-    // Super admin has all permissions
-    if (req.user.role === 'super_admin') {
+    // Admin has all permissions
+    if (req.user.role === 'admin') {
       return next();
     }
 

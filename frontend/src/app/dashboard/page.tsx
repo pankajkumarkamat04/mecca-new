@@ -18,7 +18,6 @@ import {
 } from '@heroicons/react/24/outline';
 
 const DashboardPage: React.FC = () => {
-  const { hasRole } = useAuth();
   const router = useRouter();
   const [stats, setStats] = useState<DashboardStatsType>({
     sales: { monthlyTotal: 0, monthlyInvoices: 0 },
@@ -29,12 +28,6 @@ const DashboardPage: React.FC = () => {
     employees: { total: 0, presentToday: 0 },
   });
 
-  // Redirect customers to their dashboard
-  useEffect(() => {
-    if (hasRole('customer')) {
-      router.push('/customer');
-    }
-  }, [hasRole, router]);
 
   const { data: dashboardData, isLoading, error } = useQuery(
     'dashboard-stats',
@@ -54,17 +47,6 @@ const DashboardPage: React.FC = () => {
     }
   }, [dashboardData]);
 
-  // Don't render dashboard content for customers (they'll be redirected)
-  if (hasRole('customer')) {
-    return (
-      <Layout title="Dashboard">
-        <div className="text-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Redirecting to your dashboard...</p>
-        </div>
-      </Layout>
-    );
-  }
 
   if (error) {
     return (

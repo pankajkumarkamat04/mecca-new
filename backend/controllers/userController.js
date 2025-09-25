@@ -95,17 +95,10 @@ const createUser = async (req, res) => {
       });
     }
 
-    if (currentUserRole === 'manager' && (role === 'admin' || role === 'super_admin')) {
+    if (currentUserRole === 'manager' && role === 'admin') {
       return res.status(403).json({
         success: false,
         message: 'Managers can only create employees and customers'
-      });
-    }
-
-    if (currentUserRole === 'admin' && role === 'super_admin') {
-      return res.status(403).json({
-        success: false,
-        message: 'Admins cannot create super admins'
       });
     }
 

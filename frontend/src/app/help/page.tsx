@@ -80,8 +80,8 @@ const HelpPage: React.FC = () => {
       id: 'customers-1',
       title: 'Customer Management Basics',
       category: 'customers',
-      content: 'Create customer profiles, manage loyalty programs, and track customer history.',
-      tags: ['customers', 'profiles', 'loyalty'],
+      content: 'Create customer profiles, manage customer accounts, and track customer history.',
+      tags: ['customers', 'profiles', 'accounts'],
       updatedAt: new Date('2024-12-09'),
     },
     {

@@ -128,7 +128,7 @@ async function seed() {
       lastName: 'Admin',
       email: 'admin@meccapos.com',
       password: 'password123',
-      role: 'super_admin',
+      role: 'admin',
       phone: '+1-555-0001',
       department: 'IT',
       position: 'System Administrator',
@@ -421,11 +421,6 @@ async function seed() {
       type: 'individual',
       dateOfBirth: new Date('1985-03-15'),
       gender: 'male',
-      loyalty: {
-        points: 1250,
-        tier: 'silver',
-        joinDate: new Date('2023-01-15')
-      },
       totalPurchases: {
         count: 15,
         amount: 1250.00
@@ -456,11 +451,6 @@ async function seed() {
         taxId: '12-3456789',
         website: 'https://smithenterprises.com'
       },
-      loyalty: {
-        points: 5000,
-        tier: 'gold',
-        joinDate: new Date('2022-08-20')
-      },
       totalPurchases: {
         count: 45,
         amount: 8750.00
@@ -490,11 +480,6 @@ async function seed() {
       type: 'individual',
       dateOfBirth: new Date('1978-11-22'),
       gender: 'male',
-      loyalty: {
-        points: 250,
-        tier: 'bronze',
-        joinDate: new Date('2023-12-01')
-      },
       totalPurchases: {
         count: 3,
         amount: 250.00
@@ -525,11 +510,6 @@ async function seed() {
         taxId: '98-7654321',
         website: 'https://techcorpsolutions.com'
       },
-      loyalty: {
-        points: 15000,
-        tier: 'platinum',
-        joinDate: new Date('2021-05-10')
-      },
       totalPurchases: {
         count: 120,
         amount: 25000.00
@@ -559,11 +539,6 @@ async function seed() {
       type: 'individual',
       dateOfBirth: new Date('1990-07-08'),
       gender: 'female',
-      loyalty: {
-        points: 750,
-        tier: 'bronze',
-        joinDate: new Date('2023-09-15')
-      },
       totalPurchases: {
         count: 8,
         amount: 750.00
@@ -594,11 +569,6 @@ async function seed() {
         taxId: '55-1234567',
         website: 'https://startuptech.io'
       },
-      loyalty: {
-        points: 3200,
-        tier: 'silver',
-        joinDate: new Date('2023-03-20')
-      },
       totalPurchases: {
         count: 25,
         amount: 3200.00
@@ -628,11 +598,6 @@ async function seed() {
       type: 'individual',
       dateOfBirth: new Date('1992-12-03'),
       gender: 'female',
-      loyalty: {
-        points: 450,
-        tier: 'bronze',
-        joinDate: new Date('2023-11-10')
-      },
       totalPurchases: {
         count: 5,
         amount: 450.00
@@ -662,11 +627,6 @@ async function seed() {
         companyName: 'Davis Retail Group',
         taxId: '77-9876543',
         website: 'https://davisretail.com'
-      },
-      loyalty: {
-        points: 8500,
-        tier: 'gold',
-        joinDate: new Date('2022-11-05')
       },
       totalPurchases: {
         count: 85,

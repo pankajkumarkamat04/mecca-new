@@ -178,7 +178,7 @@ const canCreateUser = hasPermission('users', 'create');
 
 // Check user role
 const { hasRole } = useAuth();
-const isAdmin = hasRole(['admin', 'super_admin']);
+const isAdmin = hasRole(['admin']);
 ```
 
 ## 📊 State Management

@@ -139,12 +139,21 @@ const createTransaction = async (req, res) => {
       }
     }
 
+    // Validate that customerPhone is provided
+    if (!transactionData.customerPhone) {
+      return res.status(400).json({
+        success: false,
+        message: 'Customer phone number is required for POS transactions'
+      });
+    }
+
     // Create invoice with computed totals
     const invoice = new Invoice({
       invoiceNumber,
       type: 'sale',
       status: transactionData.paymentMethod === 'cash' ? 'paid' : 'pending',
       customer: transactionData.customer || undefined,
+      customerPhone: transactionData.customerPhone,
       items,
       discounts: [],
       taxes: [],

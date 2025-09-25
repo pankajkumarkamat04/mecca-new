@@ -14,7 +14,7 @@ const registerSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
   confirmPassword: z.string(),
-  phone: z.string().optional(),
+  phone: z.string().min(1, 'Phone number is required'),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"],
@@ -153,7 +153,7 @@ export default function RegisterPage() {
 
             <div>
               <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
-                Phone Number (Optional)
+                Phone Number <span className="text-red-500">*</span>
               </label>
               <div className="mt-1 relative">
                 <input

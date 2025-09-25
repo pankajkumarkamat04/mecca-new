@@ -141,6 +141,11 @@ const POSPage: React.FC = () => {
       return;
     }
 
+    if (!customerPhone.trim()) {
+      toast.error('Customer phone number is required');
+      return;
+    }
+
     if (paymentMethod === 'cash' && tenderedAmount < getTotal()) {
       toast.error('Insufficient amount tendered');
       return;
@@ -157,7 +162,7 @@ const POSPage: React.FC = () => {
         })),
         customer: undefined,
         customerName: customerName || undefined,
-        customerPhone: customerPhone || undefined,
+        customerPhone: customerPhone,
         paymentMethod,
         tenderedAmount: paymentMethod === 'cash' ? tenderedAmount : getTotal(),
         total: getTotal(),
@@ -256,6 +261,7 @@ const POSPage: React.FC = () => {
                 value={customerPhone}
                 onChange={(e) => setCustomerPhone(e.target.value)}
                 fullWidth
+                required
               />
             {/* Customer lookup removed - phone is used directly for linking on backend */}
             </div>

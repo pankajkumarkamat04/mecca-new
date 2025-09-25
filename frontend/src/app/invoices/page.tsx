@@ -104,6 +104,7 @@ const InvoicesPage: React.FC = () => {
   // Form schema
   const invoiceSchema = useMemo(() => z.object({
     customer: z.string().min(1, 'Customer is required'),
+    customerPhone: z.string().min(1, 'Customer phone number is required'),
     invoiceDate: z.string().min(1),
     dueDate: z.string().optional().or(z.literal('')),
     items: z.array(z.object({
@@ -422,6 +423,7 @@ const InvoicesPage: React.FC = () => {
             schema={invoiceSchema}
             defaultValues={{
               customer: '',
+              customerPhone: '',
               invoiceDate: new Date().toISOString().slice(0, 10),
               dueDate: '',
               items: [{ product: '', quantity: 1, unitPrice: 0 }],
@@ -431,6 +433,7 @@ const InvoicesPage: React.FC = () => {
               const payload: any = { ...values };
               if (!payload.dueDate) delete payload.dueDate;
               if (!payload.notes) delete payload.notes;
+              // customerPhone is now required, so we don't delete it
               // Compute totals on backend; only send raw fields
               await createInvoiceMutation.mutateAsync(payload);
             }}
@@ -438,7 +441,7 @@ const InvoicesPage: React.FC = () => {
           >{(methods) => (
             <div className="space-y-6">
               <FormSection title="Invoice Details">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField label="Customer" required error={methods.formState.errors.customer?.message as string}>
                     <Select
                       options={[{ value: '', label: 'Select customer', disabled: true }, ...customerOptions]}
@@ -447,6 +450,16 @@ const InvoicesPage: React.FC = () => {
                       fullWidth
                     />
                   </FormField>
+                  <FormField label="Customer Phone" required error={methods.formState.errors.customerPhone?.message as string}>
+                    <Input 
+                      type="tel" 
+                      placeholder="Enter customer phone number"
+                      {...methods.register('customerPhone')} 
+                      fullWidth 
+                    />
+                  </FormField>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField label="Invoice Date" required error={methods.formState.errors.invoiceDate?.message as string}>
                     <Input type="date" {...methods.register('invoiceDate')} fullWidth />
                   </FormField>
@@ -585,7 +598,15 @@ const InvoicesPage: React.FC = () => {
                     )}
                   </div>
                 ) : (
-                  <p className="text-gray-500">No customer information</p>
+                  <div>
+                    <p className="text-gray-500">No customer information</p>
+                    {(selectedInvoice as any).customerPhone && (
+                      <p className="text-sm text-gray-600">Phone: {(selectedInvoice as any).customerPhone}</p>
+                    )}
+                  </div>
+                )}
+                {(selectedInvoice as any).customerPhone && typeof selectedInvoice.customer === 'object' && (
+                  <p className="text-sm text-gray-600 mt-1">Invoice Phone: {(selectedInvoice as any).customerPhone}</p>
                 )}
               </div>
 

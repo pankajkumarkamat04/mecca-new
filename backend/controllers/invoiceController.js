@@ -22,12 +22,18 @@ const getInvoices = async (req, res) => {
         { invoiceNumber: { $regex: search, $options: 'i' } },
         { 'customer.firstName': { $regex: search, $options: 'i' } },
         { 'customer.lastName': { $regex: search, $options: 'i' } },
-        { 'customer.email': { $regex: search, $options: 'i' } }
+        { 'customer.email': { $regex: search, $options: 'i' } },
+        { customerPhone: { $regex: search, $options: 'i' } }
       ];
     }
     if (status) filter.status = status;
     if (type) filter.type = type;
-    if (customerPhone) filter['customer.phone'] = { $regex: customerPhone, $options: 'i' };
+    if (customerPhone) {
+      filter.$or = [
+        { 'customer.phone': { $regex: customerPhone, $options: 'i' } },
+        { customerPhone: { $regex: customerPhone, $options: 'i' } }
+      ];
+    }
 
     const invoices = await Invoice.find(filter)
       .populate('customer', 'firstName lastName email phone')
@@ -99,6 +105,22 @@ const createInvoice = async (req, res) => {
     // Generate invoice number if not provided
     if (!invoiceData.invoiceNumber) {
       invoiceData.invoiceNumber = await Invoice.generateInvoiceNumber(invoiceData.type);
+    }
+
+    // Validate that customerPhone is provided
+    if (!invoiceData.customerPhone) {
+      return res.status(400).json({
+        success: false,
+        message: 'Customer phone number is required'
+      });
+    }
+
+    // If customerPhone is provided but no customer ID, try to find customer by phone
+    if (invoiceData.customerPhone && !invoiceData.customer) {
+      const customer = await Customer.findOne({ phone: invoiceData.customerPhone });
+      if (customer) {
+        invoiceData.customer = customer._id;
+      }
     }
 
     // Validate items and calculate totals

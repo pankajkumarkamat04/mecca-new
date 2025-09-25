@@ -23,7 +23,6 @@ const getCustomers = async (req, res) => {
         { phone: { $regex: search, $options: 'i' } }
       ];
     }
-    if (tier) filter['loyalty.tier'] = tier;
     if (phone) filter.phone = { $regex: phone, $options: 'i' };
 
     const customers = await Customer.find(filter)
@@ -252,64 +251,6 @@ const getWalletTransactions = async (req, res) => {
   }
 };
 
-// @desc    Update customer loyalty points
-// @route   PUT /api/customers/:id/loyalty
-// @access  Private
-const updateLoyaltyPoints = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { points, operation, reason } = req.body;
-
-    const customer = await Customer.findById(id);
-    if (!customer) {
-      return res.status(404).json({
-        success: false,
-        message: 'Customer not found'
-      });
-    }
-
-    if (operation === 'add') {
-      customer.loyalty.points += points;
-    } else if (operation === 'subtract') {
-      customer.loyalty.points = Math.max(0, customer.loyalty.points - points);
-    } else if (operation === 'set') {
-      customer.loyalty.points = Math.max(0, points);
-    } else {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid operation'
-      });
-    }
-
-    // Update tier based on points
-    if (customer.loyalty.points >= 10000) {
-      customer.loyalty.tier = 'platinum';
-    } else if (customer.loyalty.points >= 5000) {
-      customer.loyalty.tier = 'gold';
-    } else if (customer.loyalty.points >= 1000) {
-      customer.loyalty.tier = 'silver';
-    } else {
-      customer.loyalty.tier = 'bronze';
-    }
-
-    await customer.save();
-
-    res.json({
-      success: true,
-      message: 'Loyalty points updated successfully',
-      data: {
-        newPoints: customer.loyalty.points,
-        newTier: customer.loyalty.tier
-      }
-    });
-  } catch (error) {
-    console.error('Update loyalty points error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error'
-    });
-  }
-};
 
 // @desc    Get customer statistics
 // @route   GET /api/customers/:id/stats
@@ -324,12 +265,10 @@ const getCustomerStats = async (req, res) => {
       averageOrderValue: 0,
       lastPurchase: null,
       walletBalance: 0,
-      loyaltyPoints: 0,
-      loyaltyTier: 'bronze'
     };
 
     const customer = await Customer.findById(customerId)
-      .select('totalPurchases lastPurchase wallet loyalty');
+      .select('totalPurchases lastPurchase wallet');
 
     if (customer) {
       stats.totalInvoices = customer.totalPurchases.count;
@@ -339,8 +278,6 @@ const getCustomerStats = async (req, res) => {
         : 0;
       stats.lastPurchase = customer.lastPurchase;
       stats.walletBalance = customer.wallet.balance;
-      stats.loyaltyPoints = customer.loyalty.points;
-      stats.loyaltyTier = customer.loyalty.tier;
     }
 
     res.json({
@@ -368,7 +305,7 @@ const getTopCustomers = async (req, res) => {
     const customers = await Customer.find(filter)
       .sort({ 'totalPurchases.amount': -1 })
       .limit(limit)
-      .select('firstName lastName email totalPurchases loyalty');
+      .select('firstName lastName email totalPurchases');
 
     res.json({
       success: true,
@@ -391,7 +328,6 @@ module.exports = {
   deleteCustomer,
   addWalletTransaction,
   getWalletTransactions,
-  updateLoyaltyPoints,
   getCustomerStats,
   getTopCustomers
 };

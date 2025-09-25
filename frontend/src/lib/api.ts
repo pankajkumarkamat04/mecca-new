@@ -113,8 +113,6 @@ export const customersAPI = {
     api.post(`/customers/${id}/wallet`, transactionData),
   getWalletTransactions: (id: string, params?: any) =>
     api.get(`/customers/${id}/wallet/transactions`, { params }),
-  updateLoyaltyPoints: (id: string, points: number) =>
-    api.put(`/customers/${id}/loyalty`, { points }),
 };
 
 // Suppliers API

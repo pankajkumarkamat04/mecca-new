@@ -4,8 +4,8 @@ export interface User {
   firstName: string;
   lastName: string;
   email: string;
-  phone?: string;
-  role: 'super_admin' | 'admin' | 'manager' | 'employee' | 'customer';
+  phone: string;
+  role: 'admin' | 'manager' | 'employee' | 'customer';
   avatar?: string;
   isActive: boolean;
   lastLogin?: string;
@@ -111,12 +111,11 @@ export interface Customer {
   firstName: string;
   lastName: string;
   email: string;
-  phone?: string;
+  phone: string;
   customerCode: string;
   type: 'individual' | 'business';
   address?: Address;
   wallet: Wallet;
-  loyalty: LoyaltyProgram;
   preferences?: CustomerPreferences;
   totalPurchases: number;
   isActive: boolean;
@@ -125,12 +124,6 @@ export interface Customer {
   updatedAt: string;
 }
 
-export interface LoyaltyProgram {
-  points: number;
-  tier: string;
-  totalSpent: number;
-  joinDate: string;
-}
 
 export interface CustomerPreferences {
   language: string;
@@ -162,6 +155,7 @@ export interface Invoice {
   _id: string;
   invoiceNumber: string;
   customer: string | Customer;
+  customerPhone: string;
   items: InvoiceItem[];
   subTotal: number;
   discount: Discount;
@@ -491,7 +485,7 @@ export interface RegisterForm {
   email: string;
   password: string;
   confirmPassword: string;
-  phone?: string;
+  phone: string;
   role?: string;
 }
 

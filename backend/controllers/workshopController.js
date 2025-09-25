@@ -76,12 +76,19 @@ async function processJobCompletion(jobId, userId) {
 
   if (items.length > 0) {
     try {
+      // Validate that customerPhone is provided
+      if (!job.customerPhone) {
+        console.error('Workshop job completion failed: Customer phone number is required');
+        return { job: null };
+      }
+
       const invoiceNumber = await Invoice.generateInvoiceNumber('sale');
       const invoice = new Invoice({
         invoiceNumber,
         type: 'sale',
         status: 'pending',
         customer: job.customer || undefined,
+        customerPhone: job.customerPhone,
         items,
         discounts: [],
         taxes: [],

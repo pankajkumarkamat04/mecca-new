@@ -86,11 +86,6 @@ const CustomersPage: React.FC = () => {
     setIsWalletModalOpen(true);
   };
 
-  const getLoyaltyTier = (points: number) => {
-    if (points >= 1000) return { tier: 'Gold', color: 'bg-yellow-100 text-yellow-800' };
-    if (points >= 500) return { tier: 'Silver', color: 'bg-gray-100 text-gray-800' };
-    return { tier: 'Bronze', color: 'bg-orange-100 text-orange-800' };
-  };
 
   const columns = [
     {
@@ -140,23 +135,6 @@ const CustomersPage: React.FC = () => {
           {formatCurrency(row.wallet.balance, row.wallet.currency)}
         </div>
       ),
-    },
-    {
-      key: 'loyalty.points',
-      label: 'Loyalty',
-      sortable: true,
-      render: (value: number, row: Customer) => {
-        const loyalty = getLoyaltyTier(row.loyalty.points);
-        return (
-          <div>
-            <div className="text-sm font-medium text-gray-900">{row.loyalty.points} pts</div>
-            <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${loyalty.color}`}>
-              <StarIcon className="h-3 w-3 mr-1" />
-              {loyalty.tier}
-            </span>
-          </div>
-        );
-      },
     },
     {
       key: 'totalPurchases',
@@ -253,7 +231,7 @@ const CustomersPage: React.FC = () => {
         <div className="flex justify-between items-center">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Customers</h1>
-            <p className="text-gray-600">Manage customer relationships and loyalty programs</p>
+            <p className="text-gray-600">Manage customer relationships and accounts</p>
           </div>
           <Button
             onClick={() => setIsCreateModalOpen(true)}
@@ -423,16 +401,12 @@ const CustomersPage: React.FC = () => {
                   </p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Loyalty Points</label>
-                  <p className="text-sm text-gray-900">{selectedCustomer.loyalty.points} points</p>
-                </div>
-                <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Total Spent</label>
                   <p className="text-sm text-gray-900">{formatCurrency(selectedCustomer.totalPurchases)}</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Member Since</label>
-                  <p className="text-sm text-gray-900">{formatDate(selectedCustomer.loyalty.joinDate)}</p>
+                  <p className="text-sm text-gray-900">{formatDate(selectedCustomer.createdAt)}</p>
                 </div>
               </div>
               <div className="flex justify-end">

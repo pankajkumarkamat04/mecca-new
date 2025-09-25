@@ -327,7 +327,7 @@ const UserCreateForm: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => {
     lastName: z.string().min(2, 'Last name is required'),
     email: z.string().email('Valid email is required'),
     password: z.string().min(6, 'Min 6 characters'),
-    role: z.enum(['super_admin','admin','manager','employee','customer']).default('employee'),
+    role: z.enum(['admin','manager','employee','customer']).default('employee'),
     phone: z.string().optional().or(z.literal('')),
     isActive: z.boolean().default(true),
   }), []);
