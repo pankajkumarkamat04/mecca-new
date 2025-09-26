@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { useQuery } from 'react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import Layout from '@/components/layout/Layout';
 import DashboardStats from '@/components/dashboard/DashboardStats';
@@ -29,17 +29,19 @@ const DashboardPage: React.FC = () => {
   });
 
 
-  const { data: dashboardData, isLoading, error } = useQuery(
-    'dashboard-stats',
-    () => reportsAPI.getDashboardStats(),
-    {
-      refetchInterval: 30000, // Refetch every 30 seconds
-      onError: (error: any) => {
-        toast.error('Failed to load dashboard data');
-        console.error('Dashboard error:', error);
-      },
+  const { data: dashboardData, isLoading, error } = useQuery({
+    queryKey: ['dashboard-stats'],
+    queryFn: () => reportsAPI.getDashboardStats(),
+    refetchInterval: 30000, // Refetch every 30 seconds
+  });
+
+  // Handle error separately
+  useEffect(() => {
+    if (error) {
+      toast.error('Failed to load dashboard data');
+      console.error('Dashboard error:', error);
     }
-  );
+  }, [error]);
 
   useEffect(() => {
     if (dashboardData?.data?.data) {

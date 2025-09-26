@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from 'react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Layout from '@/components/layout/Layout';
 import Button from '@/components/ui/Button';
 import DataTable from '@/components/ui/DataTable';
@@ -40,64 +40,61 @@ const InvoicesPage: React.FC = () => {
   const queryClient = useQueryClient();
 
   // Fetch invoices
-  const { data: invoicesData, isLoading } = useQuery(
-    ['invoices', currentPage, pageSize, searchTerm, filterStatus],
-    () => invoicesAPI.getInvoices({
+  const { data: invoicesData, isPending } = useQuery({
+    queryKey: ['invoices', currentPage, pageSize, searchTerm, filterStatus],
+    queryFn: () => invoicesAPI.getInvoices({
       page: currentPage,
       limit: pageSize,
       search: searchTerm,
       status: filterStatus === 'all' ? undefined : filterStatus,
     }),
-    {
-      keepPreviousData: true,
-      staleTime: 0,
-      refetchOnMount: 'always',
-      refetchOnWindowFocus: true,
-      refetchOnReconnect: true,
-    }
-  );
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true
+  });
 
   // Create invoice
-  const createInvoiceMutation = useMutation(
-    (data: any) => invoicesAPI.createInvoice(data),
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries(['invoices']);
-        setIsCreateModalOpen(false);
-        toast.success('Invoice created successfully');
-      },
-      onError: (error: any) => {
-        toast.error(error.response?.data?.message || 'Failed to create invoice');
-      },
+  const createInvoiceMutation = useMutation({
+    mutationFn: (data: any) => invoicesAPI.createInvoice(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      setIsCreateModalOpen(false);
+      toast.success('Invoice created successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to create invoice');
     }
-  );
+  });
 
-  const updateStatusMutation = useMutation(
-    ({ id, status }: { id: string; status: string }) => invoicesAPI.updateInvoice(id, { status }),
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries(['invoices']);
-        toast.success('Invoice status updated');
-      },
-      onError: (error: any) => { toast.error(error.response?.data?.message || 'Failed to update status'); },
-    }
-  );
+  const updateStatusMutation = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: string }) => invoicesAPI.updateInvoice(id, { status }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      toast.success('Invoice status updated');
+    },
+    onError: (error: any) => { toast.error(error.response?.data?.message || 'Failed to update status'); }
+  });
 
-  const addPaymentMutation = useMutation(
-    ({ id, payload }: { id: string; payload: any }) => invoicesAPI.addPayment(id, payload),
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries(['invoices']);
-        setIsPayModalOpen(false);
-        toast.success('Payment recorded');
-      },
-      onError: (error: any) => { toast.error(error.response?.data?.message || 'Failed to record payment'); },
-    }
-  );
+  const addPaymentMutation = useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: any }) => invoicesAPI.addPayment(id, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      setIsPayModalOpen(false);
+      toast.success('Payment recorded');
+    },
+    onError: (error: any) => { toast.error(error.response?.data?.message || 'Failed to record payment'); },
+  });
 
   // Supporting data
-  const { data: customersList } = useQuery(['customers-list'], () => customersAPI.getCustomers({ limit: 100, page: 1 }));
-  const { data: productsList } = useQuery(['products-list'], () => productsAPI.getProducts({ limit: 100, page: 1 }));
+  const { data: customersList } = useQuery({
+    queryKey: ['customers-list'],
+    queryFn: () => customersAPI.getCustomers({ limit: 100, page: 1 })
+  });
+  const { data: productsList } = useQuery({
+    queryKey: ['products-list'],
+    queryFn: () => productsAPI.getProducts({ limit: 100, page: 1 })
+  });
   const customerOptions = (customersList?.data?.data || []).map((c: any) => ({ value: c._id, label: `${c.firstName} ${c.lastName}` }));
   const productOptions = (productsList?.data?.data || []).map((p: any) => ({ value: p._id, label: `${p.name} (${p.sku})` }));
 
@@ -411,7 +408,7 @@ const InvoicesPage: React.FC = () => {
         <DataTable
           columns={columns}
           data={Array.isArray(invoicesData?.data?.data?.data) ? invoicesData.data.data.data : []}
-          loading={isLoading}
+          loading={isPending}
           pagination={invoicesData?.data?.data?.pagination}
           onPageChange={setCurrentPage}
           emptyMessage="No invoices found"
@@ -442,7 +439,7 @@ const InvoicesPage: React.FC = () => {
               // Compute totals on backend; only send raw fields
               await createInvoiceMutation.mutateAsync(payload);
             }}
-            loading={createInvoiceMutation.isLoading}
+            loading={createInvoiceMutation.isPending}
           >{(methods) => (
             <div className="space-y-6">
               <FormSection title="Invoice Details">
@@ -525,8 +522,8 @@ const InvoicesPage: React.FC = () => {
 
               <FormActions
                 onCancel={() => setIsCreateModalOpen(false)}
-                submitText={createInvoiceMutation.isLoading ? 'Creating...' : 'Create Invoice'}
-                loading={createInvoiceMutation.isLoading}
+                submitText={createInvoiceMutation.isPending ? 'Creating...' : 'Create Invoice'}
+                loading={createInvoiceMutation.isPending}
               />
             </div>
           )}</Form>
@@ -867,8 +864,8 @@ const InvoicesPage: React.FC = () => {
                   reference: paymentForm.reference || undefined,
                   date: paymentForm.date,
                 } });
-              }} disabled={addPaymentMutation.isLoading}>
-                {addPaymentMutation.isLoading ? 'Saving...' : 'Record Payment'}
+              }} disabled={addPaymentMutation.isPending}>
+                {addPaymentMutation.isPending ? 'Saving...' : 'Record Payment'}
               </Button>
             </div>
           </div>

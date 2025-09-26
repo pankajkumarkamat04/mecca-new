@@ -28,6 +28,8 @@ const orderRoutes = require('./routes/orders');
 const warehouseRoutes = require('./routes/warehouses');
 const purchaseOrderRoutes = require('./routes/purchaseOrders');
 const stockAlertRoutes = require('./routes/stockAlerts');
+const customerInquiryRoutes = require('./routes/customerInquiries');
+const deliveryRoutes = require('./routes/deliveries');
 
 const app = express();
 
@@ -111,6 +113,8 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/warehouses', warehouseRoutes);
 app.use('/api/purchase-orders', purchaseOrderRoutes);
 app.use('/api/stock-alerts', stockAlertRoutes);
+app.use('/api/customer-inquiries', customerInquiryRoutes);
+app.use('/api/deliveries', deliveryRoutes);
 
 // API documentation endpoint
 app.get('/api', (req, res) => {

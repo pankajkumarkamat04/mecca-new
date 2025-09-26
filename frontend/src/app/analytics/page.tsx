@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useQuery } from 'react-query';
+import { useQuery } from '@tanstack/react-query';
 import Layout from '@/components/layout/Layout';
 import Button from '@/components/ui/Button';
 import Select from '@/components/ui/Select';
@@ -78,9 +78,9 @@ const AnalyticsPage: React.FC = () => {
   ];
 
   // Fetch analytics data
-  const { data: analyticsData, isLoading } = useQuery(
-    ['analytics', dateRange],
-    () => {
+  const { data: analyticsData, isLoading } = useQuery({
+    queryKey: ['analytics', dateRange],
+    queryFn: () => {
       // Mock API call
       return Promise.resolve({
         data: {
@@ -95,10 +95,8 @@ const AnalyticsPage: React.FC = () => {
         }
       });
     },
-    {
-      refetchInterval: 30000,
-    }
-  );
+    refetchInterval: 30000
+  });
 
   const dateRangeOptions = [
     { value: '7d', label: 'Last 7 days' },

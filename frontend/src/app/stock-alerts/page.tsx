@@ -1,13 +1,14 @@
 'use client';
 
 import React, { useState } from 'react';
+import Layout from '@/components/layout/Layout';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { stockAlertAPI } from '@/lib/api';
-import { Button } from '@/components/ui/Button';
-import { DataTable } from '@/components/ui/DataTable';
-import { Modal } from '@/components/ui/Modal';
-import { Input } from '@/components/ui/Input';
-import { Select } from '@/components/ui/Select';
+import Button from '@/components/ui/Button';
+import DataTable from '@/components/ui/DataTable';
+import Modal from '@/components/ui/Modal';
+import Input from '@/components/ui/Input';
+import Select from '@/components/ui/Select';
 import {
   ExclamationTriangleIcon,
   EyeIcon,
@@ -131,8 +132,8 @@ const StockAlertsPage: React.FC = () => {
     },
   });
 
-  const alerts = alertsData?.data || [];
-  const pagination = alertsData?.pagination;
+  const alerts = alertsData?.data?.data || alertsData?.data || [];
+  const pagination = alertsData?.data?.pagination || alertsData?.data?.pagination || {};
   const stats = statsData?.data;
 
   const getSeverityColor = (severity: string) => {
@@ -160,7 +161,7 @@ const StockAlertsPage: React.FC = () => {
   const columns = [
     {
       key: 'product',
-      header: 'Product',
+      label: 'Product',
       render: (value: any, row: StockAlert) => (
         <div className="flex items-center">
           <ExclamationTriangleIcon className="h-5 w-5 text-gray-400 mr-2" />
@@ -173,7 +174,7 @@ const StockAlertsPage: React.FC = () => {
     },
     {
       key: 'alertType',
-      header: 'Alert Type',
+      label: 'Alert Type',
       render: (value: string, row: StockAlert) => (
         <div className="flex flex-col space-y-1">
           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getAlertTypeColor(value)}`}>
@@ -187,7 +188,7 @@ const StockAlertsPage: React.FC = () => {
     },
     {
       key: 'currentStock',
-      header: 'Stock Level',
+      label: 'Stock Level',
       render: (value: number, row: StockAlert) => (
         <div className="text-sm">
           <div className="text-gray-900">{value} units</div>
@@ -197,7 +198,7 @@ const StockAlertsPage: React.FC = () => {
     },
     {
       key: 'warehouse',
-      header: 'Warehouse',
+      label: 'Warehouse',
       render: (value: any, row: StockAlert) => (
         <div className="text-sm text-gray-900">
           {row.warehouse?.name || 'No warehouse'}
@@ -206,7 +207,7 @@ const StockAlertsPage: React.FC = () => {
     },
     {
       key: 'message',
-      header: 'Message',
+      label: 'Message',
       render: (value: string) => (
         <div className="text-sm text-gray-900 max-w-xs truncate">
           {value}
@@ -215,7 +216,7 @@ const StockAlertsPage: React.FC = () => {
     },
     {
       key: 'status',
-      header: 'Status',
+      label: 'Status',
       render: (value: any, row: StockAlert) => (
         <div className="flex items-center space-x-2">
           {!row.isRead && (
@@ -237,7 +238,7 @@ const StockAlertsPage: React.FC = () => {
     },
     {
       key: 'createdAt',
-      header: 'Created',
+      label: 'Created',
       render: (value: string) => (
         <div className="text-sm text-gray-900">
           {new Date(value).toLocaleDateString()}
@@ -246,7 +247,7 @@ const StockAlertsPage: React.FC = () => {
     },
     {
       key: 'actions',
-      header: 'Actions',
+      label: 'Actions',
       render: (value: any, row: StockAlert) => (
         <div className="flex items-center space-x-2">
           <button
@@ -320,7 +321,8 @@ const StockAlertsPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <Layout title="Stock Alerts">
+      <div className="space-y-6">
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
@@ -455,14 +457,14 @@ const StockAlertsPage: React.FC = () => {
         <DataTable
           data={alerts}
           columns={columns}
-          isLoading={isLoading}
+          loading={isLoading}
           pagination={{
             page: currentPage,
             limit: pageSize,
             total: pagination?.total || 0,
             pages: pagination?.pages || 0,
-            onPageChange: setCurrentPage,
           }}
+          onPageChange={setCurrentPage}
         />
       </div>
 
@@ -495,7 +497,8 @@ const StockAlertsPage: React.FC = () => {
           />
         )}
       </Modal>
-    </div>
+      </div>
+    </Layout>
   );
 };
 

@@ -7,7 +7,7 @@ import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
 import { useAuth } from '@/contexts/AuthContext';
 import { settingsAPI } from '@/lib/api';
-import { useQuery, useMutation, useQueryClient } from 'react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { formatDate } from '@/lib/utils';
 import toast from 'react-hot-toast';
 import {
@@ -32,37 +32,43 @@ const SettingsPage: React.FC = () => {
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
 
   const queryClient = useQueryClient();
-  const { data: settingsData } = useQuery(['app-settings'], () => settingsAPI.getSettings());
-  const updateSettings = useMutation((data: any) => settingsAPI.updateSettings(data), {
+  const { data: settingsData } = useQuery({
+    queryKey: ['app-settings'],
+    queryFn: () => settingsAPI.getSettings()
+  });
+  const updateSettings = useMutation({
+    mutationFn: (data: any) => settingsAPI.updateSettings(data),
     onSuccess: () => {
-      queryClient.invalidateQueries(['app-settings']);
+      queryClient.invalidateQueries({ queryKey: ['app-settings'] });
       toast.success('Settings saved');
     },
     onError: () => {
       toast.error('Failed to save settings');
-    },
+    }
   });
 
-  const uploadLogoMutation = useMutation((formData: FormData) => settingsAPI.uploadLogo(formData), {
+  const uploadLogoMutation = useMutation({
+    mutationFn: (formData: FormData) => settingsAPI.uploadLogo(formData),
     onSuccess: () => {
-      queryClient.invalidateQueries(['app-settings']);
+      queryClient.invalidateQueries({ queryKey: ['app-settings'] });
       toast.success('Logo uploaded successfully');
       setLogoFile(null);
       setLogoPreview(null);
     },
     onError: () => {
       toast.error('Failed to upload logo');
-    },
+    }
   });
 
-  const deleteLogoMutation = useMutation(() => settingsAPI.deleteLogo(), {
+  const deleteLogoMutation = useMutation({
+    mutationFn: () => settingsAPI.deleteLogo(),
     onSuccess: () => {
-      queryClient.invalidateQueries(['app-settings']);
+      queryClient.invalidateQueries({ queryKey: ['app-settings'] });
       toast.success('Logo deleted successfully');
     },
     onError: () => {
       toast.error('Failed to delete logo');
-    },
+    }
   });
 
   const tabs = [
@@ -143,7 +149,7 @@ const SettingsPage: React.FC = () => {
                     </Button>
                   </label>
                   {logoFile && (
-                    <Button onClick={handleUploadLogo} loading={uploadLogoMutation.isLoading}>
+                    <Button onClick={handleUploadLogo} loading={uploadLogoMutation.isPending}>
                       Upload
                     </Button>
                   )}
@@ -152,7 +158,7 @@ const SettingsPage: React.FC = () => {
                       variant="outline" 
                       onClick={handleDeleteLogo} 
                       leftIcon={<TrashIcon className="h-4 w-4" />}
-                      loading={deleteLogoMutation.isLoading}
+                      loading={deleteLogoMutation.isPending}
                     >
                       Delete
                     </Button>

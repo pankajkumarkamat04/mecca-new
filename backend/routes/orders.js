@@ -11,7 +11,9 @@ const {
   assignOrder,
   convertToInvoice,
   getOrderStats,
-  getOrdersByCustomer
+  getOrdersByCustomer,
+  generatePickingList,
+  checkInventoryAvailability
 } = require('../controllers/orderController');
 const {
   createOrderValidation,
@@ -38,5 +40,7 @@ router.put('/:id/status', auth.auth, ...validate(updateOrderStatusValidation), u
 router.put('/:id/payment', auth.auth, ...validate(updatePaymentStatusValidation), updatePaymentStatus);
 router.put('/:id/assign', auth.auth, ...validate(assignOrderValidation), assignOrder);
 router.post('/:id/convert-to-invoice', auth.auth, ...validate(orderIdValidation), convertToInvoice);
+router.post('/check-inventory', auth.auth, checkInventoryAvailability);
+router.post('/:id/generate-picking-list', auth.auth, ...validate(orderIdValidation), generatePickingList);
 
 module.exports = router;

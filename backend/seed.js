@@ -32,6 +32,11 @@ const Account = require('./models/Account');
 const Support = require('./models/Support');
 const WorkshopJob = require('./models/WorkshopJob');
 const Setting = require('./models/Setting');
+const CustomerInquiry = require('./models/CustomerInquiry');
+const Quotation = require('./models/Quotation');
+const Order = require('./models/Order');
+const Delivery = require('./models/Delivery');
+const StockAlert = require('./models/StockAlert');
 
 async function connectDB() {
   const uri = process.env.MONGODB_URI || 'mongodb://localhost:27017/pos-system';
@@ -53,6 +58,11 @@ async function clearCollections() {
     Support.deleteMany({}),
     WorkshopJob.deleteMany({}),
     Setting.deleteMany({}),
+    CustomerInquiry.deleteMany({}),
+    Quotation.deleteMany({}),
+    Order.deleteMany({}),
+    Delivery.deleteMany({}),
+    StockAlert.deleteMany({}),
   ]);
   console.log('🧹 Cleared existing data');
 }
@@ -190,6 +200,26 @@ async function seed() {
         city: 'New York',
         state: 'NY',
         zipCode: '10003',
+        country: 'USA'
+      },
+    },
+    // Warehouse Manager user
+    {
+      firstName: 'John',
+      lastName: 'Warehouse',
+      email: 'warehouse@meccapos.com',
+      password: 'password123',
+      role: 'warehouse_manager',
+      phone: '+1-555-0004',
+      department: 'Warehouse',
+      position: 'Warehouse Manager',
+      salary: { amount: 55000, currency: 'USD', paymentType: 'monthly' },
+      hireDate: new Date('2023-05-01'),
+      address: {
+        street: '456 Warehouse Ave',
+        city: 'New York',
+        state: 'NY',
+        zipCode: '10004',
         country: 'USA'
       },
     },
@@ -660,7 +690,13 @@ async function seed() {
         minStock: 20,
         maxStock: 500,
         unit: 'pcs',
-        reorderLevel: 25
+        reorderLevel: 25,
+        warehouseLocation: {
+          zone: 'A',
+          aisle: '01',
+          shelf: '01',
+          bin: '001'
+        }
       },
       supplier: suppliers[0]._id,
       isActive: true,
@@ -683,7 +719,13 @@ async function seed() {
         minStock: 10,
         maxStock: 200,
         unit: 'pcs',
-        reorderLevel: 15
+        reorderLevel: 15,
+        warehouseLocation: {
+          zone: 'A',
+          aisle: '02',
+          shelf: '01',
+          bin: '001'
+        }
       },
       supplier: suppliers[0]._id,
       isActive: true,
@@ -706,7 +748,13 @@ async function seed() {
         minStock: 5,
         maxStock: 100,
         unit: 'pcs',
-        reorderLevel: 8
+        reorderLevel: 8,
+        warehouseLocation: {
+          zone: 'B',
+          aisle: '01',
+          shelf: '01',
+          bin: '001'
+        }
       },
       supplier: suppliers[1]._id,
       isActive: true,
@@ -729,7 +777,13 @@ async function seed() {
         minStock: 10,
         maxStock: 150,
         unit: 'pcs',
-        reorderLevel: 15
+        reorderLevel: 15,
+        warehouseLocation: {
+          zone: 'C',
+          aisle: '01',
+          shelf: '01',
+          bin: '001'
+        }
       },
       supplier: suppliers[2]._id,
       isActive: true,
@@ -1155,8 +1209,485 @@ async function seed() {
     }
   ]);
 
+  // Customer Inquiries
+  const customerInquiries = await CustomerInquiry.insertMany([
+    {
+      inquiryNumber: 'INQ-2024-001',
+      customer: customers[0]._id,
+      customerName: `${customers[0].firstName} ${customers[0].lastName}`,
+      customerEmail: customers[0].email,
+      customerPhone: customers[0].phone,
+      subject: 'Wireless Mouse Inquiry',
+      description: 'I need information about wireless mice for my office setup. Looking for ergonomic options with good battery life.',
+      priority: 'normal',
+      status: 'new',
+      productsOfInterest: [
+        { product: products[0]._id, quantity: 5 }
+      ],
+      notes: 'Customer is setting up new office',
+      createdBy: users[1]._id, // Manager
+      assignedTo: users[2]._id  // Employee
+    },
+    {
+      inquiryNumber: 'INQ-2024-002',
+      customer: customers[1]._id,
+      customerName: `${customers[1].firstName} ${customers[1].lastName}`,
+      customerEmail: customers[1].email,
+      customerPhone: customers[1].phone,
+      subject: 'Bulk Order for Office Equipment',
+      description: 'We need to equip our new office with chairs, keyboards, and mice. Looking for volume discounts.',
+      priority: 'high',
+      status: 'under_review',
+      productsOfInterest: [
+        { product: products[2]._id, quantity: 20 },
+        { product: products[1]._id, quantity: 20 },
+        { product: products[0]._id, quantity: 20 }
+      ],
+      notes: 'Large corporate order - follow up for pricing',
+      assignedTo: users[1]._id,
+      createdBy: users[0]._id
+    },
+    {
+      inquiryNumber: 'INQ-2024-003',
+      customer: customers[2]._id,
+      customerName: `${customers[2].firstName} ${customers[2].lastName}`,
+      customerEmail: customers[2].email,
+      customerPhone: customers[2].phone,
+      subject: 'Car Battery Replacement',
+      description: 'My car battery died and I need a replacement. What options do you have available?',
+      priority: 'urgent',
+      status: 'converted_to_order',
+      productsOfInterest: [
+        { product: products[3]._id, quantity: 1 }
+      ],
+      notes: 'Customer needs immediate replacement',
+      createdBy: users[2]._id,
+      assignedTo: users[4]._id // Warehouse Manager
+    },
+    {
+      inquiryNumber: 'INQ-2024-004',
+      customer: customers[0]._id,
+      customerName: `${customers[0].firstName} ${customers[0].lastName}`,
+      customerEmail: customers[0].email,
+      customerPhone: customers[0].phone,
+      subject: 'Gaming Setup Consultation',
+      description: 'I want to build a gaming setup and need advice on monitors, keyboards, and mice.',
+      priority: 'normal',
+      status: 'closed',
+      productsOfInterest: [
+        { product: products[3]._id, quantity: 1 },
+        { product: products[0]._id, quantity: 1 }
+      ],
+      notes: 'Customer converted to quotation',
+      createdBy: users[1]._id,
+      assignedTo: users[2]._id,
+      resolutionDate: new Date()
+    },
+    {
+      inquiryNumber: 'INQ-2024-005',
+      customer: customers[1]._id,
+      customerName: `${customers[1].firstName} ${customers[1].lastName}`,
+      customerEmail: customers[1].email,
+      customerPhone: customers[1].phone,
+      subject: 'Office Chair Warranty Claim',
+      description: 'My office chair broke after 6 months. What is the warranty process?',
+      priority: 'high',
+      status: 'closed',
+      productsOfInterest: [
+        { product: products[2]._id, quantity: 1 }
+      ],
+      notes: 'Warranty claim processed - replacement sent',
+      createdBy: users[2]._id,
+      assignedTo: users[1]._id,
+      resolutionDate: new Date()
+    }
+  ]);
+
+  // Quotations
+  const quotations = await Quotation.insertMany([
+    {
+      quotationNumber: 'QUO-2024-001',
+      customer: customers[0]._id,
+      customerName: `${customers[0].firstName} ${customers[0].lastName}`,
+      customerEmail: customers[0].email,
+      customerPhone: customers[0].phone,
+      quotationDate: new Date(),
+      validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      items: [
+        {
+          product: products[0]._id,
+          name: products[0].name,
+          sku: products[0].sku,
+          quantity: 5,
+          unitPrice: products[0].pricing.sellingPrice,
+          total: products[0].pricing.sellingPrice * 5
+        }
+      ],
+      subtotal: products[0].pricing.sellingPrice * 5,
+      taxRate: 10,
+      taxAmount: (products[0].pricing.sellingPrice * 5) * 0.1,
+      total: (products[0].pricing.sellingPrice * 5) * 1.1,
+      status: 'accepted',
+      notes: 'Volume discount applied',
+      createdBy: users[1]._id, // Manager
+      assignedTo: users[2]._id  // Employee
+    },
+    {
+      quotationNumber: 'QUO-2024-002',
+      customer: customers[1]._id,
+      customerName: `${customers[1].firstName} ${customers[1].lastName}`,
+      customerEmail: customers[1].email,
+      customerPhone: customers[1].phone,
+      quotationDate: new Date(),
+      validUntil: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000),
+      items: [
+        {
+          product: products[2]._id,
+          name: products[2].name,
+          sku: products[2].sku,
+          quantity: 20,
+          unitPrice: products[2].pricing.sellingPrice * 0.9, // 10% discount
+          total: products[2].pricing.sellingPrice * 0.9 * 20
+        },
+        {
+          product: products[1]._id,
+          name: products[1].name,
+          sku: products[1].sku,
+          quantity: 20,
+          unitPrice: products[1].pricing.sellingPrice * 0.9, // 10% discount
+          total: products[1].pricing.sellingPrice * 0.9 * 20
+        },
+        {
+          product: products[0]._id,
+          name: products[0].name,
+          sku: products[0].sku,
+          quantity: 20,
+          unitPrice: products[0].pricing.sellingPrice * 0.9, // 10% discount
+          total: products[0].pricing.sellingPrice * 0.9 * 20
+        }
+      ],
+      subtotal: (products[2].pricing.sellingPrice * 0.9 * 20) + (products[1].pricing.sellingPrice * 0.9 * 20) + (products[0].pricing.sellingPrice * 0.9 * 20),
+      taxRate: 10,
+      taxAmount: ((products[2].pricing.sellingPrice * 0.9 * 20) + (products[1].pricing.sellingPrice * 0.9 * 20) + (products[0].pricing.sellingPrice * 0.9 * 20)) * 0.1,
+      total: ((products[2].pricing.sellingPrice * 0.9 * 20) + (products[1].pricing.sellingPrice * 0.9 * 20) + (products[0].pricing.sellingPrice * 0.9 * 20)) * 1.1,
+      status: 'sent',
+      notes: 'Corporate bulk order - awaiting approval',
+      createdBy: users[1]._id,
+      assignedTo: users[1]._id // Manager
+    },
+    {
+      quotationNumber: 'QUO-2024-003',
+      customer: customers[2]._id,
+      customerName: `${customers[2].firstName} ${customers[2].lastName}`,
+      customerEmail: customers[2].email,
+      customerPhone: customers[2].phone,
+      quotationDate: new Date(),
+      validUntil: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000),
+      items: [
+        {
+          product: products[3]._id,
+          name: products[3].name,
+          sku: products[3].sku,
+          quantity: 1,
+          unitPrice: products[3].pricing.sellingPrice,
+          total: products[3].pricing.sellingPrice
+        }
+      ],
+      subtotal: products[3].pricing.sellingPrice,
+      taxRate: 10,
+      taxAmount: products[3].pricing.sellingPrice * 0.1,
+      total: products[3].pricing.sellingPrice * 1.1,
+      status: 'rejected',
+      notes: 'Customer found better price elsewhere',
+      createdBy: users[2]._id,
+      assignedTo: users[2]._id
+    },
+    {
+      quotationNumber: 'QUO-2024-004',
+      customer: customers[0]._id,
+      customerName: `${customers[0].firstName} ${customers[0].lastName}`,
+      customerEmail: customers[0].email,
+      customerPhone: customers[0].phone,
+      quotationDate: new Date(),
+      validUntil: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      items: [
+        {
+          product: products[3]._id,
+          name: products[3].name,
+          sku: products[3].sku,
+          quantity: 2,
+          unitPrice: products[3].pricing.sellingPrice,
+          total: products[3].pricing.sellingPrice * 2
+        }
+      ],
+      subtotal: products[3].pricing.sellingPrice * 2,
+      taxRate: 10,
+      taxAmount: (products[3].pricing.sellingPrice * 2) * 0.1,
+      total: (products[3].pricing.sellingPrice * 2) * 1.1,
+      status: 'expired',
+      notes: 'Quote expired - customer did not respond',
+      createdBy: users[1]._id,
+      assignedTo: users[2]._id
+    }
+  ]);
+
+  // Orders
+  const orders = await Order.insertMany([
+    {
+      orderNumber: 'ORD-2024-001',
+      customer: customers[0]._id,
+      customerName: `${customers[0].firstName} ${customers[0].lastName}`,
+      customerEmail: customers[0].email,
+      customerPhone: customers[0].phone,
+      orderDate: new Date(),
+      expectedDeliveryDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      items: [
+        {
+          product: products[0]._id,
+          name: products[0].name,
+          sku: products[0].sku,
+          quantity: 5,
+          unitPrice: products[0].pricing.sellingPrice,
+          total: products[0].pricing.sellingPrice * 5
+        }
+      ],
+      subtotal: products[0].pricing.sellingPrice * 5,
+      taxRate: 10,
+      taxAmount: (products[0].pricing.sellingPrice * 5) * 0.1,
+      total: (products[0].pricing.sellingPrice * 5) * 1.1,
+      status: 'confirmed',
+      paymentStatus: 'pending',
+      shippingAddress: customers[0].address.billing,
+      notes: 'Order confirmed from quotation',
+      createdBy: users[1]._id,
+      assignedTo: users[4]._id // Warehouse Manager
+    },
+    {
+      orderNumber: 'ORD-2024-002',
+      customer: customers[1]._id,
+      customerName: `${customers[1].firstName} ${customers[1].lastName}`,
+      customerEmail: customers[1].email,
+      customerPhone: customers[1].phone,
+      orderDate: new Date(),
+      expectedDeliveryDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000),
+      items: [
+        {
+          product: products[2]._id,
+          name: products[2].name,
+          sku: products[2].sku,
+          quantity: 10,
+          unitPrice: products[2].pricing.sellingPrice,
+          total: products[2].pricing.sellingPrice * 10
+        }
+      ],
+      subtotal: products[2].pricing.sellingPrice * 10,
+      taxRate: 10,
+      taxAmount: (products[2].pricing.sellingPrice * 10) * 0.1,
+      total: (products[2].pricing.sellingPrice * 10) * 1.1,
+      status: 'processing',
+      paymentStatus: 'paid',
+      shippingAddress: customers[1].address.billing,
+      notes: 'Corporate order - priority shipping',
+      createdBy: users[1]._id,
+      assignedTo: users[4]._id
+    },
+    {
+      orderNumber: 'ORD-2024-003',
+      customer: customers[2]._id,
+      customerName: `${customers[2].firstName} ${customers[2].lastName}`,
+      customerEmail: customers[2].email,
+      customerPhone: customers[2].phone,
+      orderDate: new Date(),
+      expectedDeliveryDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
+      items: [
+        {
+          product: products[3]._id,
+          name: products[3].name,
+          sku: products[3].sku,
+          quantity: 1,
+          unitPrice: products[3].pricing.sellingPrice,
+          total: products[3].pricing.sellingPrice
+        }
+      ],
+      subtotal: products[3].pricing.sellingPrice,
+      taxRate: 10,
+      taxAmount: products[3].pricing.sellingPrice * 0.1,
+      total: products[3].pricing.sellingPrice * 1.1,
+      status: 'shipped',
+      paymentStatus: 'paid',
+      shippingAddress: customers[2].address.billing,
+      notes: 'Express delivery requested',
+      createdBy: users[2]._id,
+      assignedTo: users[4]._id
+    }
+  ]);
+
+  // Deliveries
+  const deliveries = await Delivery.insertMany([
+    {
+      deliveryNumber: 'DEL-2024-001',
+      order: orders[0]._id,
+      orderNumber: orders[0].orderNumber,
+      customer: customers[0]._id,
+      customerName: `${customers[0].firstName} ${customers[0].lastName}`,
+      customerPhone: customers[0].phone,
+      scheduledDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
+      items: [
+        {
+          product: products[0]._id,
+          name: products[0].name,
+          sku: products[0].sku,
+          quantity: 5,
+          unitPrice: products[0].pricing.sellingPrice,
+          total: products[0].pricing.sellingPrice * 5
+        }
+      ],
+      subtotal: products[0].pricing.sellingPrice * 5,
+      taxAmount: (products[0].pricing.sellingPrice * 5) * 0.1,
+      totalAmount: (products[0].pricing.sellingPrice * 5) * 1.1,
+      status: 'preparing',
+      assignedTo: users[2]._id,
+      deliveryAddress: customers[0].address.billing,
+      notes: 'Standard delivery',
+      createdBy: users[1]._id,
+      assignedTo: users[4]._id // Warehouse Manager
+    },
+    {
+      deliveryNumber: 'DEL-2024-002',
+      order: orders[1]._id,
+      orderNumber: orders[1].orderNumber,
+      customer: customers[1]._id,
+      customerName: `${customers[1].firstName} ${customers[1].lastName}`,
+      customerPhone: customers[1].phone,
+      scheduledDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
+      items: [
+        {
+          product: products[2]._id,
+          name: products[2].name,
+          sku: products[2].sku,
+          quantity: 10,
+          unitPrice: products[2].pricing.sellingPrice,
+          total: products[2].pricing.sellingPrice * 10
+        }
+      ],
+      subtotal: products[2].pricing.sellingPrice * 10,
+      taxAmount: (products[2].pricing.sellingPrice * 10) * 0.1,
+      totalAmount: (products[2].pricing.sellingPrice * 10) * 1.1,
+      status: 'in_transit',
+      assignedTo: users[4]._id,
+      deliveryAddress: customers[1].address.billing,
+      notes: 'Priority delivery - corporate client',
+      createdBy: users[1]._id,
+      trackingNumber: 'TRK123456789'
+    },
+    {
+      deliveryNumber: 'DEL-2024-003',
+      order: orders[2]._id,
+      orderNumber: orders[2].orderNumber,
+      customer: customers[2]._id,
+      customerName: `${customers[2].firstName} ${customers[2].lastName}`,
+      customerPhone: customers[2].phone,
+      scheduledDate: new Date(),
+      items: [
+        {
+          product: products[3]._id,
+          name: products[3].name,
+          sku: products[3].sku,
+          quantity: 1,
+          unitPrice: products[3].pricing.sellingPrice,
+          total: products[3].pricing.sellingPrice
+        }
+      ],
+      subtotal: products[3].pricing.sellingPrice,
+      taxAmount: products[3].pricing.sellingPrice * 0.1,
+      totalAmount: products[3].pricing.sellingPrice * 1.1,
+      status: 'delivered',
+      assignedTo: users[4]._id,
+      deliveryAddress: customers[2].address.billing,
+      notes: 'Express delivery completed',
+      createdBy: users[2]._id,
+      trackingNumber: 'TRK987654321',
+      deliveredAt: new Date()
+    }
+  ]);
+
+  // Stock Alerts
+  const stockAlerts = await StockAlert.insertMany([
+    {
+      product: products[0]._id,
+      productName: products[0].name,
+      sku: products[0].sku,
+      alertType: 'low_stock',
+      severity: 'high',
+      currentStock: products[0].inventory.currentStock,
+      threshold: 20,
+      message: `${products[0].name} (${products[0].sku}) is running low (${products[0].inventory.currentStock} units remaining)`,
+      isResolved: false,
+      autoGenerated: true,
+      createdBy: users[0]._id
+    },
+    {
+      product: products[1]._id,
+      productName: products[1].name,
+      sku: products[1].sku,
+      alertType: 'reorder_point',
+      severity: 'medium',
+      currentStock: products[1].inventory.currentStock,
+      threshold: 15,
+      message: `${products[1].name} (${products[1].sku}) has reached reorder point`,
+      isResolved: false,
+      autoGenerated: true,
+      createdBy: users[0]._id,
+      assignedTo: users[4]._id // Warehouse Manager
+    },
+    {
+      product: products[2]._id,
+      productName: products[2].name,
+      sku: products[2].sku,
+      alertType: 'out_of_stock',
+      severity: 'critical',
+      currentStock: 0,
+      threshold: 5,
+      message: `${products[2].name} (${products[2].sku}) is out of stock`,
+      isResolved: false,
+      autoGenerated: true,
+      createdBy: users[0]._id,
+      assignedTo: users[4]._id
+    },
+    {
+      product: products[3]._id,
+      productName: products[3].name,
+      sku: products[3].sku,
+      alertType: 'expiring_soon',
+      severity: 'medium',
+      currentStock: products[3].inventory.currentStock,
+      threshold: 30,
+      message: `${products[3].name} (${products[3].sku}) expires in 30 days`,
+      isResolved: false,
+      autoGenerated: true,
+      createdBy: users[0]._id,
+      assignedTo: users[4]._id
+    },
+    {
+      product: products[3]._id,
+      productName: products[3].name,
+      sku: products[3].sku,
+      alertType: 'overstock',
+      severity: 'low',
+      currentStock: products[3].inventory.currentStock,
+      threshold: 200,
+      message: `${products[3].name} (${products[3].sku}) has excess inventory`,
+      isResolved: true,
+      autoGenerated: true,
+      createdBy: users[0]._id,
+      assignedTo: users[4]._id,
+      resolvedAt: new Date(),
+      resolvedBy: users[4]._id
+    }
+  ]);
+
   console.log('✅ Settings created');
-  console.log(`👥 Seeded ${users.length} users (3 staff + 3 customers)`);
+  console.log(`👥 Seeded ${users.length} users (4 staff + 3 customers)`);
   console.log(`📦 Seeded ${[catElectronics, catOffice, catAutomotive, catMice, catKeyboards, catChairs, catBatteries].length} categories`);
   console.log(`🏢 Seeded ${suppliers.length} suppliers`);
   console.log(`👤 Seeded ${customers.length} customers`);
@@ -1167,6 +1698,11 @@ async function seed() {
   console.log(`💳 Seeded ${transactions.length} transactions`);
   console.log(`🎫 Seeded ${supportTickets.length} support tickets`);
   console.log(`🔧 Seeded ${workshopJobs.length} workshop jobs`);
+  console.log(`📋 Seeded ${customerInquiries.length} customer inquiries`);
+  console.log(`📄 Seeded ${quotations.length} quotations`);
+  console.log(`📦 Seeded ${orders.length} orders`);
+  console.log(`🚚 Seeded ${deliveries.length} deliveries`);
+  console.log(`⚠️ Seeded ${stockAlerts.length} stock alerts`);
 
   // Display login information
   console.log('\n🔐 LOGIN CREDENTIALS:');
@@ -1175,8 +1711,8 @@ async function seed() {
   // Staff users
   console.log('\n👨‍💼 STAFF ACCOUNTS:');
   console.log('─'.repeat(30));
-  users.slice(0, 3).forEach((user, index) => {
-    const roleNames = ['Super Admin', 'Manager', 'Employee'];
+  users.slice(0, 4).forEach((user, index) => {
+    const roleNames = ['Super Admin', 'Manager', 'Employee', 'Warehouse Manager'];
     console.log(`${roleNames[index]}:`);
     console.log(`  Email: ${user.email}`);
     console.log(`  Password: password123`);
@@ -1188,7 +1724,7 @@ async function seed() {
   // Customer users
   console.log('👤 CUSTOMER ACCOUNTS:');
   console.log('─'.repeat(30));
-  users.slice(3).forEach((user, index) => {
+  users.slice(4).forEach((user, index) => {
     const customerNames = ['Alice Customer', 'Bob Customer', 'Maria Customer'];
     console.log(`${customerNames[index]}:`);
     console.log(`  Email: ${user.email}`);
@@ -1215,6 +1751,15 @@ async function seed() {
   console.log('• Customer phone numbers match between user accounts and customer records');
   console.log('• POS and Workshop jobs can be created with phone numbers only');
   console.log('• Automatic linking when customers register with existing phone numbers');
+  console.log('');
+  console.log('📈 SALES & WAREHOUSE PROCESS FLOW:');
+  console.log('─'.repeat(30));
+  console.log('• Customer Inquiries: Track customer requests and convert to quotations');
+  console.log('• Quotations: Generate quotes with inventory checking and approval workflow');
+  console.log('• Orders: Convert approved quotations to confirmed orders');
+  console.log('• Deliveries: Track order fulfillment and delivery status');
+  console.log('• Stock Alerts: Monitor inventory levels and generate replenishment suggestions');
+  console.log('• Warehouse Dashboard: Monitor operations, alerts, and delivery statistics');
   console.log('═'.repeat(50));
 
   await mongoose.connection.close();

@@ -1,6 +1,8 @@
 const StockAlert = require('../models/StockAlert');
 const Product = require('../models/Product');
 const Warehouse = require('../models/Warehouse');
+const Supplier = require('../models/Supplier');
+const PurchaseOrder = require('../models/PurchaseOrder');
 
 // @desc    Get all stock alerts
 // @route   GET /api/stock-alerts
@@ -390,6 +392,273 @@ const checkLowStock = async (req, res) => {
   }
 };
 
+// @desc    Generate replenishment suggestions
+// @route   GET /api/stock-alerts/replenishment-suggestions
+// @access  Private
+const getReplenishmentSuggestions = async (req, res) => {
+  try {
+    const { warehouseId } = req.query;
+    
+    // Build filter for products
+    const productFilter = { 
+      isActive: true,
+      'inventory.alertOnLowStock': true
+    };
+    
+    if (warehouseId) {
+      productFilter['inventory.warehouse'] = warehouseId;
+    }
+
+    const products = await Product.find(productFilter)
+      .populate('supplier', 'name email phone')
+      .populate('inventory.warehouse', 'name code');
+
+    const suggestions = [];
+    const currentDate = new Date();
+
+    for (const product of products) {
+      const currentStock = product.inventory.currentStock;
+      const minStock = product.inventory.minStock;
+      const maxStock = product.inventory.maxStock;
+      const reorderPoint = product.inventory.reorderPoint;
+      const leadTimeDays = product.inventory.leadTimeDays || 7;
+      const averageDailyUsage = product.inventory.averageDailyUsage || 1;
+
+      // Check if product needs replenishment
+      if (currentStock <= reorderPoint) {
+        // Calculate suggested order quantity
+        const safetyStock = Math.max(minStock, Math.ceil(averageDailyUsage * leadTimeDays));
+        const suggestedQuantity = maxStock - currentStock;
+        const orderQuantity = Math.max(suggestedQuantity, safetyStock);
+
+        // Check for existing purchase orders
+        const existingPO = await PurchaseOrder.findOne({
+          'items.product': product._id,
+          status: { $in: ['pending', 'approved', 'ordered'] }
+        });
+
+        const suggestion = {
+          product: {
+            id: product._id,
+            name: product.name,
+            sku: product.sku,
+            description: product.description
+          },
+          supplier: product.supplier,
+          warehouse: product.inventory.warehouse,
+          inventory: {
+            currentStock,
+            minStock,
+            maxStock,
+            reorderPoint,
+            leadTimeDays,
+            averageDailyUsage
+          },
+          suggestion: {
+            suggestedQuantity: orderQuantity,
+            urgency: currentStock <= minStock ? 'critical' : 'high',
+            reason: currentStock <= minStock ? 'Below minimum stock' : 'At reorder point',
+            estimatedDeliveryDate: new Date(currentDate.getTime() + (leadTimeDays * 24 * 60 * 60 * 1000)),
+            hasExistingPO: !!existingPO
+          },
+          cost: {
+            unitCost: product.pricing?.costPrice || 0,
+            totalCost: orderQuantity * (product.pricing?.costPrice || 0)
+          }
+        };
+
+        suggestions.push(suggestion);
+      }
+    }
+
+    // Sort by urgency and total cost
+    suggestions.sort((a, b) => {
+      const urgencyOrder = { critical: 4, high: 3, medium: 2, low: 1 };
+      if (urgencyOrder[a.suggestion.urgency] !== urgencyOrder[b.suggestion.urgency]) {
+        return urgencyOrder[b.suggestion.urgency] - urgencyOrder[a.suggestion.urgency];
+      }
+      return b.cost.totalCost - a.cost.totalCost;
+    });
+
+    const totalValue = suggestions.reduce((sum, s) => sum + s.cost.totalCost, 0);
+    const criticalCount = suggestions.filter(s => s.suggestion.urgency === 'critical').length;
+
+    res.json({
+      success: true,
+      data: {
+        suggestions,
+        summary: {
+          totalSuggestions: suggestions.length,
+          criticalCount,
+          totalValue,
+          averageValue: suggestions.length > 0 ? totalValue / suggestions.length : 0
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Get replenishment suggestions error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+};
+
+// @desc    Create purchase order from replenishment suggestions
+// @route   POST /api/stock-alerts/create-purchase-orders
+// @access  Private
+const createPurchaseOrdersFromSuggestions = async (req, res) => {
+  try {
+    const { suggestions } = req.body;
+    const createdBy = req.user._id;
+
+    if (!suggestions || !Array.isArray(suggestions) || suggestions.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Suggestions are required'
+      });
+    }
+
+    const purchaseOrders = [];
+    const errors = [];
+
+    for (const suggestion of suggestions) {
+      try {
+        const product = await Product.findById(suggestion.product.id);
+        if (!product) {
+          errors.push(`Product ${suggestion.product.name} not found`);
+          continue;
+        }
+
+        const supplier = await Supplier.findById(suggestion.supplier._id);
+        if (!supplier) {
+          errors.push(`Supplier for product ${suggestion.product.name} not found`);
+          continue;
+        }
+
+        // Check if purchase order already exists for this supplier
+        let purchaseOrder = await PurchaseOrder.findOne({
+          supplier: supplier._id,
+          status: { $in: ['pending', 'approved'] },
+          createdBy: createdBy
+        });
+
+        if (!purchaseOrder) {
+          // Create new purchase order
+          purchaseOrder = new PurchaseOrder({
+            supplier: supplier._id,
+            supplierName: supplier.name,
+            orderDate: new Date(),
+            expectedDeliveryDate: suggestion.suggestion.estimatedDeliveryDate,
+            status: 'pending',
+            items: [],
+            createdBy: createdBy
+          });
+        }
+
+        // Add item to purchase order
+        purchaseOrder.items.push({
+          product: product._id,
+          productName: product.name,
+          sku: product.sku,
+          quantity: suggestion.suggestion.suggestedQuantity,
+          unitPrice: suggestion.cost.unitCost,
+          totalPrice: suggestion.cost.totalCost
+        });
+
+        purchaseOrder.totalAmount += suggestion.cost.totalCost;
+        purchaseOrder.totalItems += suggestion.suggestion.suggestedQuantity;
+
+        await purchaseOrder.save();
+        purchaseOrders.push(purchaseOrder._id);
+      } catch (error) {
+        errors.push(`Error creating purchase order for ${suggestion.product.name}: ${error.message}`);
+      }
+    }
+
+    res.json({
+      success: true,
+      message: `Created ${purchaseOrders.length} purchase orders`,
+      data: {
+        purchaseOrders,
+        errors
+      }
+    });
+  } catch (error) {
+    console.error('Create purchase orders from suggestions error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+};
+
+// @desc    Update inventory levels and generate alerts
+// @route   POST /api/stock-alerts/update-inventory-levels
+// @access  Private
+const updateInventoryLevels = async (req, res) => {
+  try {
+    const { productId, newStockLevel } = req.body;
+
+    if (!productId || newStockLevel === undefined) {
+      return res.status(400).json({
+        success: false,
+        message: 'Product ID and new stock level are required'
+      });
+    }
+
+    const product = await Product.findById(productId);
+    if (!product) {
+      return res.status(404).json({
+        success: false,
+        message: 'Product not found'
+      });
+    }
+
+    const oldStockLevel = product.inventory.currentStock;
+    product.inventory.currentStock = newStockLevel;
+    product.inventory.lastMovement = new Date();
+
+    await product.save();
+
+    // Check if we need to create alerts
+    const alertsCreated = [];
+    
+    if (newStockLevel <= product.inventory.minStock) {
+      // Create low stock alert
+      const alert = await StockAlert.createLowStockAlert(product, product.inventory.warehouse);
+      alertsCreated.push(alert._id);
+    }
+
+    if (newStockLevel > product.inventory.maxStock) {
+      // Create overstock alert
+      const alert = await StockAlert.createOverstockAlert(product, product.inventory.warehouse);
+      alertsCreated.push(alert._id);
+    }
+
+    res.json({
+      success: true,
+      message: 'Inventory level updated successfully',
+      data: {
+        product: {
+          id: product._id,
+          name: product.name,
+          sku: product.sku,
+          oldStockLevel,
+          newStockLevel
+        },
+        alertsCreated
+      }
+    });
+  } catch (error) {
+    console.error('Update inventory levels error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+};
+
 module.exports = {
   getStockAlerts,
   getUnresolvedAlerts,
@@ -399,5 +668,8 @@ module.exports = {
   createStockAlert,
   getStockAlertStats,
   bulkResolveAlerts,
-  checkLowStock
+  checkLowStock,
+  getReplenishmentSuggestions,
+  createPurchaseOrdersFromSuggestions,
+  updateInventoryLevels
 };

@@ -13,6 +13,9 @@ import {
   DocumentTextIcon,
   UserIcon,
   ArrowRightOnRectangleIcon,
+  ShoppingBagIcon,
+  ChatBubbleLeftRightIcon,
+  ClipboardDocumentListIcon,
 } from '@heroicons/react/24/outline';
 
 interface SidebarItem {
@@ -28,6 +31,9 @@ interface CustomerSidebarProps {
 
 const items: SidebarItem[] = [
   { name: 'My Dashboard', href: '/customer', icon: HomeIcon },
+  { name: 'My Inquiries', href: '/customer/inquiries', icon: ChatBubbleLeftRightIcon },
+  { name: 'My Quotations', href: '/customer/quotations', icon: ClipboardDocumentListIcon },
+  { name: 'My Orders', href: '/customer/orders', icon: ShoppingBagIcon },
   { name: 'My Purchases', href: '/customer/purchases', icon: DocumentTextIcon },
   { name: 'My Invoices', href: '/customer/invoices', icon: DocumentTextIcon },
   { name: 'My Wallet', href: '/customer/wallet', icon: WalletOutline },

@@ -265,6 +265,8 @@ export const quotationsAPI = {
   convertToOrder: (id: string) => api.post(`/quotations/${id}/convert-to-order`),
   convertToInvoice: (id: string) => api.post(`/quotations/${id}/convert`),
   getQuotationStats: () => api.get('/quotations/stats'),
+  checkInventoryAvailability: (data: any) => api.post('/quotations/check-inventory', data),
+  generatePickingList: (id: string) => api.post(`/quotations/${id}/generate-picking-list`),
 };
 
 // Orders API
@@ -356,6 +358,9 @@ export const stockAlertAPI = {
   bulkResolveAlerts: (data: any) => api.put('/stock-alerts/bulk-resolve', data),
   checkLowStock: (data: any) => api.post('/stock-alerts/check-low-stock', data),
   getStockAlertStats: () => api.get('/stock-alerts/stats'),
+  getReplenishmentSuggestions: (params?: any) => api.get('/stock-alerts/replenishment-suggestions', { params }),
+  createPurchaseOrdersFromSuggestions: (data: any) => api.post('/stock-alerts/create-purchase-orders', data),
+  updateInventoryLevels: (data: any) => api.post('/stock-alerts/update-inventory-levels', data),
 };
 
 // Enhanced Inventory API
@@ -365,6 +370,32 @@ export const enhancedInventoryAPI = {
   performStockTaking: (data: any) => api.post('/inventory/stock-taking', data),
   processReceiving: (data: any) => api.post('/inventory/receiving', data),
   processPicking: (data: any) => api.post('/inventory/picking', data),
+};
+
+// Customer Inquiries API
+export const customerInquiriesAPI = {
+  getCustomerInquiries: (params?: any) => api.get('/customer-inquiries', { params }),
+  getCustomerInquiryById: (id: string) => api.get(`/customer-inquiries/${id}`),
+  createCustomerInquiry: (data: any) => api.post('/customer-inquiries', data),
+  updateCustomerInquiry: (id: string, data: any) => api.put(`/customer-inquiries/${id}`, data),
+  updateCustomerInquiryStatus: (id: string, data: any) => api.put(`/customer-inquiries/${id}/status`, data),
+  assignCustomerInquiry: (id: string, data: any) => api.put(`/customer-inquiries/${id}/assign`, data),
+  convertInquiryToQuotation: (id: string) => api.post(`/customer-inquiries/${id}/convert-to-quotation`),
+  convertInquiryToOrder: (id: string) => api.post(`/customer-inquiries/${id}/convert-to-order`),
+  getCustomerInquiryStats: () => api.get('/customer-inquiries/stats'),
+};
+
+// Deliveries API
+export const deliveriesAPI = {
+  getDeliveries: (params?: any) => api.get('/deliveries', { params }),
+  getDeliveryById: (id: string) => api.get(`/deliveries/${id}`),
+  createDelivery: (data: any) => api.post('/deliveries', data),
+  updateDelivery: (id: string, data: any) => api.put(`/deliveries/${id}`, data),
+  updateDeliveryStatus: (id: string, data: any) => api.put(`/deliveries/${id}/status`, data),
+  assignDelivery: (id: string, data: any) => api.put(`/deliveries/${id}/assign`, data),
+  markAsDelivered: (id: string, data: any) => api.post(`/deliveries/${id}/deliver`, data),
+  markAsFailed: (id: string, data: any) => api.post(`/deliveries/${id}/fail`, data),
+  getDeliveryStats: () => api.get('/deliveries/stats'),
 };
 
 export default api;

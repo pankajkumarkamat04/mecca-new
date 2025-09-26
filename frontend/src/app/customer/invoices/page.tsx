@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Layout from '@/components/layout/Layout';
-import { useQuery } from 'react-query';
+import { useQuery } from '@tanstack/react-query';
 import { invoicesAPI } from '@/lib/api';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import DataTable from '@/components/ui/DataTable';
@@ -30,19 +30,17 @@ const CustomerInvoicesPage: React.FC = () => {
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
 
   // Fetch customer's invoices
-  const { data: invoicesData, isLoading, refetch } = useQuery(
-    ['customer-invoices', currentPage, pageSize, searchTerm, statusFilter],
-    () => invoicesAPI.getInvoices({
+  const { data: invoicesData, isLoading, refetch } = useQuery({
+    queryKey: ['customer-invoices', currentPage, pageSize, searchTerm, statusFilter],
+    queryFn: () => invoicesAPI.getInvoices({
       page: currentPage,
       limit: pageSize,
       customerPhone: user?.phone,
       search: searchTerm || undefined,
       status: statusFilter !== 'all' ? statusFilter : undefined,
     }),
-    {
-      enabled: !!user?.phone,
-    }
-  );
+    enabled: !!user?.phone
+  });
 
 
   const handleViewInvoice = (invoice: any) => {

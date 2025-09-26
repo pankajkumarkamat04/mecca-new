@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Layout from '@/components/layout/Layout';
-import { useQuery } from 'react-query';
+import { useQuery } from '@tanstack/react-query';
 import { invoicesAPI, workshopAPI } from '@/lib/api';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import DataTable from '@/components/ui/DataTable';
@@ -20,26 +20,22 @@ const CustomerPurchasesPage: React.FC = () => {
   const [isJobModalOpen, setIsJobModalOpen] = useState(false);
 
   // Fetch customer's invoices/purchases
-  const { data: purchasesData, isLoading: purchasesLoading } = useQuery(
-    ['customer-purchases', currentPage, pageSize],
-    () => invoicesAPI.getInvoices({
+  const { data: purchasesData, isLoading: purchasesLoading } = useQuery({
+    queryKey: ['customer-purchases', currentPage, pageSize],
+    queryFn: () => invoicesAPI.getInvoices({
       page: currentPage,
       limit: pageSize,
       customerPhone: user?.phone, // Filter by customer's phone
     }),
-    {
-      enabled: !!user?.phone,
-    }
-  );
+    enabled: !!user?.phone
+  });
 
   // Fetch customer's workshop jobs
-  const { data: workshopData, isLoading: workshopLoading } = useQuery(
-    ['customer-workshop', user?.phone],
-    () => workshopAPI.getJobs({ customerPhone: user?.phone }),
-    {
-      enabled: !!user?.phone,
-    }
-  );
+  const { data: workshopData, isLoading: workshopLoading } = useQuery({
+    queryKey: ['customer-workshop', user?.phone],
+    queryFn: () => workshopAPI.getJobs({ customerPhone: user?.phone }),
+    enabled: !!user?.phone
+  });
 
   const invoiceColumns = [
     {

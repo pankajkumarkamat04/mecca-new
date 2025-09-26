@@ -1,13 +1,14 @@
 'use client';
 
 import React, { useState } from 'react';
+import Layout from '@/components/layout/Layout';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { warehouseAPI } from '@/lib/api';
-import { Button } from '@/components/ui/Button';
-import { DataTable } from '@/components/ui/DataTable';
-import { Modal } from '@/components/ui/Modal';
-import { Input } from '@/components/ui/Input';
-import { Select } from '@/components/ui/Select';
+import Button from '@/components/ui/Button';
+import DataTable from '@/components/ui/DataTable';
+import Modal from '@/components/ui/Modal';
+import Input from '@/components/ui/Input';
+import Select from '@/components/ui/Select';
 import {
   PlusIcon,
   EyeIcon,
@@ -84,14 +85,14 @@ const WarehousesPage: React.FC = () => {
     },
   });
 
-  const warehouses = warehousesData?.data || [];
-  const pagination = warehousesData?.pagination;
+  const warehouses = warehousesData?.data?.data || warehousesData?.data || [];
+  const pagination = warehousesData?.data?.pagination || warehousesData?.data?.pagination || {};
   const stats = statsData?.data;
 
   const columns = [
     {
       key: 'name',
-      header: 'Name',
+      label: 'Name',
       render: (value: string, row: Warehouse) => (
         <div className="flex items-center">
           <BuildingOfficeIcon className="h-5 w-5 text-gray-400 mr-2" />
@@ -104,7 +105,7 @@ const WarehousesPage: React.FC = () => {
     },
     {
       key: 'address',
-      header: 'Location',
+      label: 'Location',
       render: (value: any, row: Warehouse) => (
         <div className="text-sm text-gray-900">
           {row.address?.city && row.address?.state 
@@ -116,7 +117,7 @@ const WarehousesPage: React.FC = () => {
     },
     {
       key: 'capacity',
-      header: 'Capacity',
+      label: 'Capacity',
       render: (value: any, row: Warehouse) => (
         <div className="text-sm">
           <div className="text-gray-900">
@@ -130,7 +131,7 @@ const WarehousesPage: React.FC = () => {
     },
     {
       key: 'locationCount',
-      header: 'Locations',
+      label: 'Locations',
       render: (value: number) => (
         <div className="flex items-center text-sm text-gray-900">
           <MapPinIcon className="h-4 w-4 mr-1" />
@@ -140,7 +141,7 @@ const WarehousesPage: React.FC = () => {
     },
     {
       key: 'status',
-      header: 'Status',
+      label: 'Status',
       render: (value: any, row: Warehouse) => (
         <div className="flex items-center">
           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
@@ -160,7 +161,7 @@ const WarehousesPage: React.FC = () => {
     },
     {
       key: 'actions',
-      header: 'Actions',
+      label: 'Actions',
       render: (value: any, row: Warehouse) => (
         <div className="flex items-center space-x-2">
           <button
@@ -221,7 +222,8 @@ const WarehousesPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <Layout title="Warehouses">
+      <div className="space-y-6">
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
@@ -314,14 +316,14 @@ const WarehousesPage: React.FC = () => {
         <DataTable
           data={warehouses}
           columns={columns}
-          isLoading={isLoading}
+          loading={isLoading}
           pagination={{
             page: currentPage,
             limit: pageSize,
             total: pagination?.total || 0,
             pages: pagination?.pages || 0,
-            onPageChange: setCurrentPage,
           }}
+          onPageChange={setCurrentPage}
         />
       </div>
 
@@ -388,7 +390,8 @@ const WarehousesPage: React.FC = () => {
           />
         )}
       </Modal>
-    </div>
+      </div>
+    </Layout>
   );
 };
 

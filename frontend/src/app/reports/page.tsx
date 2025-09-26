@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useQuery } from 'react-query';
+import { useQuery } from '@tanstack/react-query';
 import Layout from '@/components/layout/Layout';
 import Button from '@/components/ui/Button';
 import Modal from '@/components/ui/Modal';
@@ -32,26 +32,22 @@ const ReportsPage: React.FC = () => {
   });
 
   // Fetch dashboard stats
-  const { data: dashboardStats, isLoading: statsLoading } = useQuery(
-    'dashboard-stats',
-    () => reportsAPI.getDashboardStats(),
-    {
-      refetchInterval: 30000,
-    }
-  );
+  const { data: dashboardStats, isLoading: statsLoading } = useQuery({
+    queryKey: ['dashboard-stats'],
+    queryFn: () => reportsAPI.getDashboardStats(),
+    refetchInterval: 30000,
+  });
 
   // Fetch sales report
-  const { data: salesReport, isLoading: salesLoading } = useQuery(
-    ['sales-report', dateRange, filters],
-    () => reportsAPI.getSalesReport({
+  const { data: salesReport, isLoading: salesLoading } = useQuery({
+    queryKey: ['sales-report', dateRange, filters],
+    queryFn: () => reportsAPI.getSalesReport({
       startDate: dateRange.startDate,
       endDate: dateRange.endDate,
       category: filters.category === 'all' ? undefined : filters.category,
     }),
-    {
-      enabled: selectedReport === 'sales' && !!dateRange.startDate && !!dateRange.endDate,
-    }
-  );
+    enabled: selectedReport === 'sales' && !!dateRange.startDate && !!dateRange.endDate,
+  });
 
   const handleGenerateReport = (reportType: string) => {
     setSelectedReport(reportType);

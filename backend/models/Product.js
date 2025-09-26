@@ -89,11 +89,42 @@ const productSchema = new mongoose.Schema({
       ref: 'Warehouse'
     },
     warehouseLocation: {
-      zone: String,
-      aisle: String,
-      shelf: String,
-      bin: String,
-      locationCode: String
+      zone: {
+        type: String,
+        required: true
+      },
+      aisle: {
+        type: String,
+        required: true
+      },
+      shelf: {
+        type: String,
+        required: true
+      },
+      bin: {
+        type: String,
+        required: true
+      },
+      locationCode: {
+        type: String,
+        unique: true,
+        sparse: true
+      },
+      floor: String,
+      section: String,
+      coordinates: {
+        x: Number,
+        y: Number,
+        z: Number
+      },
+      capacity: {
+        type: Number,
+        default: 0
+      },
+      currentOccupancy: {
+        type: Number,
+        default: 0
+      }
     },
     serialNumbers: [String],
     trackSerial: {

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useQuery } from 'react-query';
+import { useQuery } from '@tanstack/react-query';
 import { customersAPI, productsAPI } from '@/lib/api';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
@@ -39,16 +39,16 @@ const CreateOrderForm: React.FC<CreateOrderFormProps> = ({ onClose, onSuccess, i
   });
 
   // Fetch customers
-  const { data: customersData } = useQuery(
-    ['customers-for-order'],
-    () => customersAPI.getCustomers({ page: 1, limit: 100 })
-  );
+  const { data: customersData } = useQuery({
+    queryKey: ['customers-for-order'],
+    queryFn: () => customersAPI.getCustomers({ page: 1, limit: 100 })
+  });
 
   // Fetch products
-  const { data: productsData } = useQuery(
-    ['products-for-order'],
-    () => productsAPI.getProducts({ page: 1, limit: 100 })
-  );
+  const { data: productsData } = useQuery({
+    queryKey: ['products-for-order'],
+    queryFn: () => productsAPI.getProducts({ page: 1, limit: 100 })
+  });
 
   const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({

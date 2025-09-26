@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Layout from '@/components/layout/Layout';
-import { useQuery, useMutation, useQueryClient } from 'react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supportAPI, customersAPI } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
 import DataTable from '@/components/ui/DataTable';
@@ -41,9 +41,9 @@ const CustomerSupportPage: React.FC = () => {
   const [newMessage, setNewMessage] = useState('');
 
   // Fetch customer record by email
-  const { data: customerData, isLoading: customerLoading, error: customerError } = useQuery(
-    ['customer-by-email', user?.email],
-    async () => {
+  const { data: customerData, isLoading: customerLoading, error: customerError } = useQuery({
+    queryKey: ['customer-by-email', user?.email],
+    queryFn: async () => {
       try {
         // Try to get customer by searching
         const response = await customersAPI.getCustomers({ 
@@ -60,51 +60,43 @@ const CustomerSupportPage: React.FC = () => {
         return null;
       }
     },
-    {
-      enabled: !!user?.email,
-      retry: 2,
-      staleTime: 5 * 60 * 1000, // 5 minutes
-    }
-  );
+    enabled: !!user?.email,
+    retry: 2,
+    staleTime: 5 * 60 * 1000 // 5 minutes
+  });
 
   // Fetch customer's support tickets
-  const { data: ticketsData, isLoading } = useQuery(
-    ['customer-support-tickets', currentPage, pageSize, statusFilter, priorityFilter],
-    () => supportAPI.getSupportTickets({
+  const { data: ticketsData, isLoading } = useQuery({
+    queryKey: ['customer-support-tickets', currentPage, pageSize, statusFilter, priorityFilter],
+    queryFn: () => supportAPI.getSupportTickets({
       page: currentPage,
       limit: pageSize,
       customerId: customerData?._id,
       status: statusFilter !== 'all' ? statusFilter : undefined,
       priority: priorityFilter !== 'all' ? priorityFilter : undefined,
     }),
-    {
-      enabled: !!customerData?._id,
-    }
-  );
+    enabled: !!customerData?._id
+  });
 
   // Create new ticket mutation
-  const createTicketMutation = useMutation(
-    (ticketData: any) => supportAPI.createSupportTicket(ticketData),
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries('customer-support-tickets');
-        setShowCreateModal(false);
-        setNewTicket({ subject: '', description: '', priority: 'medium', category: 'general' });
-      },
+  const createTicketMutation = useMutation({
+    mutationFn: (ticketData: any) => supportAPI.createSupportTicket(ticketData),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['customer-support-tickets'] });
+      setShowCreateModal(false);
+      setNewTicket({ subject: '', description: '', priority: 'medium', category: 'general' });
     }
-  );
+  });
 
   // Add conversation mutation
-  const addConversationMutation = useMutation(
-    ({ ticketId, message }: { ticketId: string; message: string }) => 
+  const addConversationMutation = useMutation({
+    mutationFn: ({ ticketId, message }: { ticketId: string; message: string }) => 
       supportAPI.addConversation(ticketId, { message, isInternal: false }),
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries('customer-support-tickets');
-        setNewMessage('');
-      },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['customer-support-tickets'] });
+      setNewMessage('');
     }
-  );
+  });
 
   const handleCreateTicket = async () => {
     if (!newTicket.subject || !newTicket.description) return;
@@ -485,12 +477,12 @@ const CustomerSupportPage: React.FC = () => {
                 disabled={
                   !newTicket.subject || 
                   !newTicket.description || 
-                  createTicketMutation.isLoading || 
+                  createTicketMutation.isPending || 
                   customerLoading ||
                   !customerData?._id
                 }
               >
-                {createTicketMutation.isLoading 
+                {createTicketMutation.isPending 
                   ? 'Creating...' 
                   : customerLoading 
                   ? 'Loading...' 
@@ -585,11 +577,11 @@ const CustomerSupportPage: React.FC = () => {
                   <div className="flex justify-end">
                     <Button
                       onClick={handleAddMessage}
-                      disabled={!newMessage || addConversationMutation.isLoading}
+                      disabled={!newMessage || addConversationMutation.isPending}
                       className="flex items-center gap-2"
                     >
                       <ChatBubbleLeftRightIcon className="h-4 w-4" />
-                      {addConversationMutation.isLoading ? 'Sending...' : 'Send Message'}
+                      {addConversationMutation.isPending ? 'Sending...' : 'Send Message'}
                     </Button>
                   </div>
                 </div>

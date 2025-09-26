@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from 'react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Layout from '@/components/layout/Layout';
 import Button from '@/components/ui/Button';
 import DataTable from '@/components/ui/DataTable';
@@ -36,31 +36,26 @@ const UsersPage: React.FC = () => {
   const queryClient = useQueryClient();
 
   // Fetch users
-  const { data: usersData, isLoading } = useQuery(
-    ['users', currentPage, pageSize, searchTerm],
-    () => usersAPI.getUsers({
+  const { data: usersData, isPending } = useQuery({
+    queryKey: ['users', currentPage, pageSize, searchTerm],
+    queryFn: () => usersAPI.getUsers({
       page: currentPage,
       limit: pageSize,
       search: searchTerm,
-    }),
-    {
-      keepPreviousData: true,
-    }
-  );
+    })
+  });
 
   // Delete user mutation
-  const deleteUserMutation = useMutation(
-    (userId: string) => usersAPI.deleteUser(userId),
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries(['users']);
-        toast.success('User deleted successfully');
-      },
-      onError: (error: any) => {
-        toast.error(error.response?.data?.message || 'Failed to delete user');
-      },
+  const deleteUserMutation = useMutation({
+    mutationFn: (userId: string) => usersAPI.deleteUser(userId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      toast.success('User deleted successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to delete user');
     }
-  );
+  });
 
   const handleDeleteUser = (user: User) => {
     if (window.confirm(`Are you sure you want to delete ${user.firstName} ${user.lastName}?`)) {
@@ -226,7 +221,7 @@ const UsersPage: React.FC = () => {
         <DataTable
           columns={columns}
           data={usersData?.data?.data || []}
-          loading={isLoading}
+          loading={isPending}
           pagination={usersData?.data?.pagination}
           onPageChange={setCurrentPage}
           emptyMessage="No users found"
@@ -332,9 +327,10 @@ const UserCreateForm: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => {
     isActive: z.boolean().default(true),
   }), []);
 
-  const createUserMutation = useMutation((data: any) => usersAPI.createUser(data), {
+  const createUserMutation = useMutation({
+    mutationFn: (data: any) => usersAPI.createUser(data),
     onSuccess: () => {
-      queryClient.invalidateQueries(['users']);
+      queryClient.invalidateQueries({ queryKey: ['users'] });
       toast.success('User created successfully');
       onSuccess();
     },
@@ -371,7 +367,7 @@ const UserCreateForm: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => {
         if (!payload.phone) delete payload.phone;
         await createUserMutation.mutateAsync(payload);
       }}
-      loading={createUserMutation.isLoading}
+      loading={createUserMutation.isPending}
     >{(methods) => (
       <div className="space-y-6">
         <FormSection title="User Details">
@@ -419,8 +415,8 @@ const UserCreateForm: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => {
 
         <FormActions
           onCancel={onSuccess}
-          submitText={createUserMutation.isLoading ? 'Creating...' : 'Create User'}
-          loading={createUserMutation.isLoading}
+          submitText={createUserMutation.isPending ? 'Creating...' : 'Create User'}
+          loading={createUserMutation.isPending}
         />
       </div>
     )}</Form>

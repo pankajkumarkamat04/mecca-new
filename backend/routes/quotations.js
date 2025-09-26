@@ -12,7 +12,9 @@ const {
   rejectQuotation,
   convertQuotationToOrder,
   convertQuotationToInvoice,
-  getQuotationStats
+  getQuotationStats,
+  checkInventoryAvailability,
+  generatePickingList
 } = require('../controllers/quotationController');
 const {
   createQuotationValidation,
@@ -38,5 +40,7 @@ router.delete('/:id', auth.auth, ...validate(quotationIdValidation), deleteQuota
 router.post('/:id/send', auth.auth, ...validate(quotationIdValidation), sendQuotation);
 router.post('/:id/convert-to-order', auth.auth, ...validate(quotationIdValidation), convertQuotationToOrder);
 router.post('/:id/convert', auth.auth, ...validate(quotationIdValidation), convertQuotationToInvoice);
+router.post('/check-inventory', auth.auth, checkInventoryAvailability);
+router.post('/:id/generate-picking-list', auth.auth, ...validate(quotationIdValidation), generatePickingList);
 
 module.exports = router;

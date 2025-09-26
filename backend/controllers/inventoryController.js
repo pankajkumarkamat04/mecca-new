@@ -751,6 +751,180 @@ const getWarehouseDashboard = async (req, res) => {
   }
 };
 
+// @desc    Process goods receiving with receiving note
+// @route   POST /api/inventory/receiving
+// @access  Private
+const processGoodsReceiving = async (req, res) => {
+  try {
+    const { receivingData, items } = req.body;
+    const createdBy = req.user._id;
+
+    // Generate receiving note number
+    const receivingNoteNumber = `RN-${Date.now()}`;
+
+    const receivingNote = {
+      receivingNumber: receivingNoteNumber,
+      supplier: receivingData.supplier,
+      purchaseOrder: receivingData.purchaseOrder,
+      receivedDate: new Date(),
+      receivedBy: createdBy,
+      warehouse: receivingData.warehouse,
+      deliveryNote: receivingData.deliveryNote,
+      carrier: receivingData.carrier,
+      vehicleNumber: receivingData.vehicleNumber,
+      driverName: receivingData.driverName,
+      driverPhone: receivingData.driverPhone,
+      notes: receivingData.notes,
+      items: [],
+      totalItems: 0,
+      totalValue: 0,
+      status: 'received'
+    };
+
+    const stockMovements = [];
+    const updatedProducts = [];
+
+    for (let item of items) {
+      const product = await Product.findById(item.product);
+      if (!product) {
+        return res.status(404).json({
+          success: false,
+          message: `Product not found: ${item.product}`
+        });
+      }
+
+      // Create stock movement
+      const movement = new StockMovement({
+        product: item.product,
+        movementType: 'in',
+        quantity: item.receivedQuantity,
+        unitCost: item.unitCost,
+        totalCost: item.receivedQuantity * item.unitCost,
+        reference: receivingNoteNumber,
+        referenceType: 'purchase_order',
+        reason: 'Goods receiving',
+        supplier: receivingData.supplier,
+        notes: `Received ${item.receivedQuantity} units`,
+        createdBy: createdBy
+      });
+
+      stockMovements.push(movement);
+
+      // Update product stock
+      product.inventory.currentStock += item.receivedQuantity;
+      product.inventory.lastMovement = new Date();
+      updatedProducts.push(product);
+
+      // Add to receiving note
+      receivingNote.items.push({
+        product: item.product,
+        productName: product.name,
+        sku: product.sku,
+        orderedQuantity: item.orderedQuantity,
+        receivedQuantity: item.receivedQuantity,
+        damagedQuantity: item.damagedQuantity || 0,
+        missingQuantity: item.missingQuantity || 0,
+        unitCost: item.unitCost,
+        totalValue: item.receivedQuantity * item.unitCost,
+        batchNumber: item.batchNumber,
+        expiryDate: item.expiryDate,
+        condition: item.condition || 'good',
+        notes: item.notes
+      });
+
+      receivingNote.totalItems += item.receivedQuantity;
+      receivingNote.totalValue += item.receivedQuantity * item.unitCost;
+    }
+
+    // Save all stock movements
+    await StockMovement.insertMany(stockMovements);
+
+    // Update all products
+    for (let product of updatedProducts) {
+      await product.save();
+    }
+
+    // Update purchase order status if provided
+    if (receivingData.purchaseOrder) {
+      const purchaseOrder = await PurchaseOrder.findById(receivingData.purchaseOrder);
+      if (purchaseOrder) {
+        purchaseOrder.status = 'received';
+        purchaseOrder.receivedDate = new Date();
+        await purchaseOrder.save();
+      }
+    }
+
+    res.status(201).json({
+      success: true,
+      message: 'Goods receiving processed successfully',
+      data: {
+        receivingNote,
+        stockMovements: stockMovements.length,
+        updatedProducts: updatedProducts.length
+      }
+    });
+  } catch (error) {
+    console.error('Process goods receiving error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+};
+
+// @desc    Get receiving notes
+// @route   GET /api/inventory/receiving-notes
+// @access  Private
+const getReceivingNotes = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+    const supplier = req.query.supplier || '';
+    const purchaseOrder = req.query.purchaseOrder || '';
+    const startDate = req.query.startDate || '';
+    const endDate = req.query.endDate || '';
+
+    // Build filter object
+    const filter = {};
+    if (supplier) filter.supplier = supplier;
+    if (purchaseOrder) filter.purchaseOrder = purchaseOrder;
+    
+    if (startDate || endDate) {
+      filter.receivedDate = {};
+      if (startDate) filter.receivedDate.$gte = new Date(startDate);
+      if (endDate) filter.receivedDate.$lte = new Date(endDate);
+    }
+
+    const receivingNotes = await mongoose.connection.db.collection('receiving_notes')
+      .find(filter)
+      .sort({ receivedDate: -1 })
+      .skip(skip)
+      .limit(limit)
+      .toArray();
+
+    const total = await mongoose.connection.db.collection('receiving_notes')
+      .countDocuments(filter);
+
+    res.json({
+      success: true,
+      data: receivingNotes,
+      pagination: {
+        page,
+        limit,
+        total,
+        pages: Math.ceil(total / limit)
+      }
+    });
+  } catch (error) {
+    console.error('Get receiving notes error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+};
+
 module.exports = {
   getStockMovements,
   createStockMovement,
@@ -763,5 +937,7 @@ module.exports = {
   performStockTaking,
   processReceiving,
   processPicking,
-  getWarehouseDashboard
+  getWarehouseDashboard,
+  processGoodsReceiving,
+  getReceivingNotes
 };

@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Layout from '@/components/layout/Layout';
-import { useQuery, useMutation, useQueryClient } from 'react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ordersAPI, customersAPI, productsAPI, usersAPI } from '@/lib/api';
 import { formatDate, formatCurrency, getStatusColor } from '@/lib/utils';
 import DataTable from '@/components/ui/DataTable';
@@ -44,9 +44,9 @@ const OrdersPage: React.FC = () => {
   const [showConvertModal, setShowConvertModal] = useState(false);
 
   // Fetch orders
-  const { data: ordersData, isLoading } = useQuery(
-    ['orders', currentPage, pageSize, searchTerm, statusFilter, paymentStatusFilter, fulfillmentStatusFilter],
-    () => ordersAPI.getOrders({
+  const { data: ordersData, isLoading } = useQuery({
+    queryKey: ['orders', currentPage, pageSize, searchTerm, statusFilter, paymentStatusFilter, fulfillmentStatusFilter],
+    queryFn: () => ordersAPI.getOrders({
       page: currentPage,
       limit: pageSize,
       search: searchTerm,
@@ -54,132 +54,118 @@ const OrdersPage: React.FC = () => {
       paymentStatus: paymentStatusFilter !== 'all' ? paymentStatusFilter : undefined,
       fulfillmentStatus: fulfillmentStatusFilter !== 'all' ? fulfillmentStatusFilter : undefined,
     })
-  );
+  });
 
   // Fetch customers for create modal
-  const { data: customersData } = useQuery(
-    ['customers-for-order'],
-    () => customersAPI.getCustomers({ page: 1, limit: 100 })
-  );
+  const { data: customersData } = useQuery({
+    queryKey: ['customers-for-order'],
+    queryFn: () => customersAPI.getCustomers({ page: 1, limit: 100 })
+  });
 
   // Fetch products for create modal
-  const { data: productsData } = useQuery(
-    ['products-for-order'],
-    () => productsAPI.getProducts({ page: 1, limit: 100 })
-  );
+  const { data: productsData } = useQuery({
+    queryKey: ['products-for-order'],
+    queryFn: () => productsAPI.getProducts({ page: 1, limit: 100 })
+  });
 
   // Fetch users for assignment
-  const { data: usersData } = useQuery(
-    ['users-for-assignment'],
-    () => usersAPI.getUsers({ page: 1, limit: 100 })
-  );
+  const { data: usersData } = useQuery({
+    queryKey: ['users-for-assignment'],
+    queryFn: () => usersAPI.getUsers({ page: 1, limit: 100 })
+  });
 
   // Create order mutation
-  const createOrderMutation = useMutation(
-    (orderData: any) => ordersAPI.createOrder(orderData),
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries('orders');
-        setShowCreateModal(false);
-        toast.success('Order created successfully');
-      },
-      onError: (error: any) => {
-        toast.error(error?.response?.data?.message || 'Failed to create order');
-      },
+  const createOrderMutation = useMutation({
+    mutationFn: (orderData: any) => ordersAPI.createOrder(orderData),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+      setShowCreateModal(false);
+      toast.success('Order created successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.message || 'Failed to create order');
     }
-  );
+  });
 
   // Update order mutation
-  const updateOrderMutation = useMutation(
-    ({ id, data }: { id: string; data: any }) => ordersAPI.updateOrder(id, data),
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries('orders');
-        setShowOrderModal(false);
-        toast.success('Order updated successfully');
-      },
-      onError: (error: any) => {
-        toast.error(error?.response?.data?.message || 'Failed to update order');
-      },
+  const updateOrderMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => ordersAPI.updateOrder(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+      setShowOrderModal(false);
+      toast.success('Order updated successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.message || 'Failed to update order');
     }
-  );
+  });
 
   // Delete order mutation
-  const deleteOrderMutation = useMutation(
-    (id: string) => ordersAPI.deleteOrder(id),
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries('orders');
-        toast.success('Order deleted successfully');
-      },
-      onError: (error: any) => {
-        toast.error(error?.response?.data?.message || 'Failed to delete order');
-      },
+  const deleteOrderMutation = useMutation({
+    mutationFn: (id: string) => ordersAPI.deleteOrder(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+      toast.success('Order deleted successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.message || 'Failed to delete order');
     }
-  );
+  });
 
   // Update status mutation
-  const updateStatusMutation = useMutation(
-    ({ id, status, notes }: { id: string; status: string; notes?: string }) => 
+  const updateStatusMutation = useMutation({
+    mutationFn: ({ id, status, notes }: { id: string; status: string; notes?: string }) => 
       ordersAPI.updateOrderStatus(id, status, notes),
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries('orders');
-        setShowStatusModal(false);
-        toast.success('Order status updated successfully');
-      },
-      onError: (error: any) => {
-        toast.error(error?.response?.data?.message || 'Failed to update status');
-      },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+      setShowStatusModal(false);
+      toast.success('Order status updated successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.message || 'Failed to update status');
     }
-  );
+  });
 
   // Update payment mutation
-  const updatePaymentMutation = useMutation(
-    ({ id, paymentData }: { id: string; paymentData: any }) => 
+  const updatePaymentMutation = useMutation({
+    mutationFn: ({ id, paymentData }: { id: string; paymentData: any }) => 
       ordersAPI.updatePaymentStatus(id, paymentData),
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries('orders');
-        setShowPaymentModal(false);
-        toast.success('Payment status updated successfully');
-      },
-      onError: (error: any) => {
-        toast.error(error?.response?.data?.message || 'Failed to update payment');
-      },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+      setShowPaymentModal(false);
+      toast.success('Payment status updated successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.message || 'Failed to update payment');
     }
-  );
+  });
 
   // Assign order mutation
-  const assignOrderMutation = useMutation(
-    ({ id, assignedTo }: { id: string; assignedTo: string }) => 
+  const assignOrderMutation = useMutation({
+    mutationFn: ({ id, assignedTo }: { id: string; assignedTo: string }) => 
       ordersAPI.assignOrder(id, assignedTo),
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries('orders');
-        setShowAssignModal(false);
-        toast.success('Order assigned successfully');
-      },
-      onError: (error: any) => {
-        toast.error(error?.response?.data?.message || 'Failed to assign order');
-      },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+      setShowAssignModal(false);
+      toast.success('Order assigned successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.message || 'Failed to assign order');
     }
-  );
+  });
 
   // Convert to invoice mutation
-  const convertToInvoiceMutation = useMutation(
-    (id: string) => ordersAPI.convertToInvoice(id),
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries('orders');
-        setShowConvertModal(false);
-        toast.success('Order converted to invoice successfully');
-      },
-      onError: (error: any) => {
-        toast.error(error?.response?.data?.message || 'Failed to convert order');
-      },
+  const convertToInvoiceMutation = useMutation({
+    mutationFn: (id: string) => ordersAPI.convertToInvoice(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+      setShowConvertModal(false);
+      toast.success('Order converted to invoice successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.message || 'Failed to convert order');
     }
-  );
+  });
 
   const handleDelete = (id: string) => {
     if (window.confirm('Are you sure you want to delete this order?')) {
@@ -783,9 +769,9 @@ const OrdersPage: React.FC = () => {
                 </Button>
                 <Button
                   onClick={() => handleConvert(selectedOrder._id)}
-                  disabled={convertToInvoiceMutation.isLoading}
+                  disabled={convertToInvoiceMutation.isPending}
                 >
-                  {convertToInvoiceMutation.isLoading ? 'Converting...' : 'Convert to Invoice'}
+                  {convertToInvoiceMutation.isPending ? 'Converting...' : 'Convert to Invoice'}
                 </Button>
               </div>
             </div>

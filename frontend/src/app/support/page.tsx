@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from 'react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Layout from '@/components/layout/Layout';
 import Button from '@/components/ui/Button';
 import DataTable from '@/components/ui/DataTable';
@@ -38,55 +38,49 @@ const SupportPage: React.FC = () => {
   const queryClient = useQueryClient();
 
   // Fetch support tickets
-  const { data: ticketsData, isLoading } = useQuery(
-    ['support-tickets', currentPage, pageSize, searchTerm, filterStatus, filterPriority],
-    () => supportAPI.getSupportTickets({
+  const { data: ticketsData, isPending } = useQuery({
+    queryKey: ['support-tickets', currentPage, pageSize, searchTerm, filterStatus, filterPriority],
+    queryFn: () => supportAPI.getSupportTickets({
       page: currentPage,
       limit: pageSize,
       search: searchTerm,
       status: filterStatus === 'all' ? undefined : filterStatus,
       priority: filterPriority === 'all' ? undefined : filterPriority,
     }),
-    {
-      keepPreviousData: true,
-    }
-  );
+    placeholderData: (previousData) => previousData,
+  });
 
   // Fetch overdue tickets
-  const { data: overdueTickets } = useQuery(
-    'overdue-tickets',
-    () => supportAPI.getOverdueTickets(),
-  );
+  const { data: overdueTickets } = useQuery({
+    queryKey: ['overdue-tickets'],
+    queryFn: () => supportAPI.getOverdueTickets(),
+  });
 
   // Update ticket status mutation
-  const updateStatusMutation = useMutation(
-    ({ ticketId, status }: { ticketId: string; status: string }) =>
+  const updateStatusMutation = useMutation({
+    mutationFn: ({ ticketId, status }: { ticketId: string; status: string }) =>
       supportAPI.updateTicketStatus(ticketId, status),
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries(['support-tickets']);
-        toast.success('Ticket status updated successfully');
-      },
-      onError: (error: any) => {
-        toast.error(error.response?.data?.message || 'Failed to update ticket status');
-      },
-    }
-  );
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['support-tickets'] });
+      toast.success('Ticket status updated successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to update ticket status');
+    },
+  });
 
   // Assign ticket mutation
-  const assignTicketMutation = useMutation(
-    ({ ticketId, assignedTo }: { ticketId: string; assignedTo: string }) =>
+  const assignTicketMutation = useMutation({
+    mutationFn: ({ ticketId, assignedTo }: { ticketId: string; assignedTo: string }) =>
       supportAPI.assignTicket(ticketId, assignedTo),
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries(['support-tickets']);
-        toast.success('Ticket assigned successfully');
-      },
-      onError: (error: any) => {
-        toast.error(error.response?.data?.message || 'Failed to assign ticket');
-      },
-    }
-  );
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['support-tickets'] });
+      toast.success('Ticket assigned successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to assign ticket');
+    },
+  });
 
   const handleViewTicket = (ticket: SupportTicket) => {
     setSelectedTicket(ticket);
@@ -413,7 +407,7 @@ const SupportPage: React.FC = () => {
         <DataTable
           columns={columns}
           data={ticketsData?.data?.data || []}
-          loading={isLoading}
+          loading={isPending}
           pagination={ticketsData?.data?.pagination}
           onPageChange={setCurrentPage}
           emptyMessage="No support tickets found"
@@ -429,7 +423,7 @@ const SupportPage: React.FC = () => {
           <CreateTicketForm
             onClose={() => setIsCreateModalOpen(false)}
             onSuccess={() => {
-              queryClient.invalidateQueries(['support-tickets']);
+              queryClient.invalidateQueries({ queryKey: ['support-tickets'] });
               setIsCreateModalOpen(false);
             }}
           />
@@ -606,31 +600,29 @@ const CreateTicketForm: React.FC<{ onClose: () => void; onSuccess: () => void }>
   const [newTag, setNewTag] = useState('');
 
   // Fetch customers for dropdown
-  const { data: customersData } = useQuery(
-    'customers-list',
-    () => customersAPI.getCustomers({ limit: 100, page: 1 }),
-    { staleTime: 5 * 60 * 1000 } // Cache for 5 minutes
-  );
+  const { data: customersData } = useQuery({
+    queryKey: ['customers-list'],
+    queryFn: () => customersAPI.getCustomers({ limit: 100, page: 1 }),
+    staleTime: 5 * 60 * 1000 // Cache for 5 minutes
+  });
 
   // Fetch users for assignment dropdown
-  const { data: usersData } = useQuery(
-    'users-list',
-    () => api.get('/users', { params: { limit: 100, page: 1 } }),
-    { staleTime: 5 * 60 * 1000 }
-  );
+  const { data: usersData } = useQuery({
+    queryKey: ['users-list'],
+    queryFn: () => api.get('/users', { params: { limit: 100, page: 1 } }),
+    staleTime: 5 * 60 * 1000
+  });
 
-  const createTicketMutation = useMutation(
-    (ticketData: any) => supportAPI.createSupportTicket(ticketData),
-    {
-      onSuccess: () => {
-        toast.success('Support ticket created successfully');
-        onSuccess();
-      },
-      onError: (error: any) => {
-        toast.error(error.response?.data?.message || 'Failed to create support ticket');
-      },
-    }
-  );
+  const createTicketMutation = useMutation({
+    mutationFn: (ticketData: any) => supportAPI.createSupportTicket(ticketData),
+    onSuccess: () => {
+      toast.success('Support ticket created successfully');
+      onSuccess();
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to create support ticket');
+    },
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -838,9 +830,9 @@ const CreateTicketForm: React.FC<{ onClose: () => void; onSuccess: () => void }>
         </Button>
         <Button
           type="submit"
-          disabled={createTicketMutation.isLoading}
+          disabled={createTicketMutation.isPending}
         >
-          {createTicketMutation.isLoading ? 'Creating...' : 'Create Ticket'}
+          {createTicketMutation.isPending ? 'Creating...' : 'Create Ticket'}
         </Button>
       </div>
     </form>

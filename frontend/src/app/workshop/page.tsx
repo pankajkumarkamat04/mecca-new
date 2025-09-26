@@ -8,7 +8,7 @@ import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
 import DataTable from '@/components/ui/DataTable';
 import Modal from '@/components/ui/Modal';
-import { useQuery, useMutation, useQueryClient } from 'react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { workshopAPI, productsAPI, customersAPI } from '@/lib/api';
 import { formatDate, formatCurrency } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
@@ -115,33 +115,31 @@ const WorkshopPage: React.FC = () => {
   const [completionInfo, setCompletionInfo] = useState<any | null>(null);
   const isCompletedFromApi = editingJob?.status === 'completed';
 
-  const { data, isLoading } = useQuery(['workshop', { search, status, priority }], () =>
-    workshopAPI.getJobs({ search, status, priority })
-  );
+  const { data, isPending } = useQuery({
+    queryKey: ['workshop', { search, status, priority }],
+    queryFn: () => workshopAPI.getJobs({ search, status, priority })
+  });
 
   // Update/Delete mutations
-  const updateMutation = useMutation(
-    ({ id, payload }: { id: string; payload: any }) => workshopAPI.updateJob(id, payload),
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries(['workshop']);
-        setIsEditOpen(false);
-        toast.success('Workshop job updated');
-      },
-    }
-  );
-  const cancelMutation = useMutation(
-    (id: string) => workshopAPI.cancelJob(id),
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries(['workshop']);
-      },
-    }
-  );
-
-  const createMutation = useMutation((payload: any) => workshopAPI.createJob(payload), {
+  const updateMutation = useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: any }) => workshopAPI.updateJob(id, payload),
     onSuccess: () => {
-      queryClient.invalidateQueries(['workshop']);
+      queryClient.invalidateQueries({ queryKey: ['workshop'] });
+      setIsEditOpen(false);
+      toast.success('Workshop job updated');
+    }
+  });
+  const cancelMutation = useMutation({
+    mutationFn: (id: string) => workshopAPI.cancelJob(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['workshop'] });
+    }
+  });
+
+  const createMutation = useMutation({
+    mutationFn: (payload: any) => workshopAPI.createJob(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['workshop'] });
       setIsCreateOpen(false);
       setNewJobTitle('');
       setNewJobPriority('medium');
@@ -207,8 +205,9 @@ const WorkshopPage: React.FC = () => {
   };
 
   // Inventory (products) for parts selection
-  const { data: productsData } = useQuery(['products-basic'], () => productsAPI.getProducts({ limit: 100 }), {
-    keepPreviousData: true,
+  const { data: productsData } = useQuery({
+    queryKey: ['products-basic'],
+    queryFn: () => productsAPI.getProducts({ limit: 100 })
   });
   const productList: any[] = productsData?.data?.data || [];
   const productOptions = productList.map((p: any) => ({ value: p._id, label: `${p.name} (${p.sku}) - Stock: ${p.inventory?.currentStock ?? 0}` }));
@@ -335,7 +334,7 @@ const WorkshopPage: React.FC = () => {
               toast.error('Failed to update status');
             }
           }}
-          disabled={row.status === 'completed' || updateMutation.isLoading}
+          disabled={row.status === 'completed' || updateMutation.isPending}
         />
       );
     } },
@@ -467,7 +466,7 @@ const WorkshopPage: React.FC = () => {
         <DataTable
           columns={columns}
           data={data?.data?.data || []}
-          loading={isLoading}
+          loading={isPending}
           pagination={data?.data?.pagination}
         />
 
@@ -889,10 +888,10 @@ const WorkshopPage: React.FC = () => {
                             toast.success('Job completed. Invoice created and inventory updated.');
                           }
                         }}
-                        disabled={updateMutation.isLoading || isCompletedFromApi}
+                        disabled={updateMutation.isPending || isCompletedFromApi}
                         className="px-8 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        {updateMutation.isLoading ? 'Saving...' : 'Save Changes'}
+                        {updateMutation.isPending ? 'Saving...' : 'Save Changes'}
                       </Button>
                     </div>
                   </div>
@@ -972,10 +971,10 @@ const WorkshopPage: React.FC = () => {
                         toast.success('Job completed. Invoice created and inventory updated.');
                       }
                     }}
-                    disabled={updateMutation.isLoading || isCompletedFromApi}
+                    disabled={updateMutation.isPending || isCompletedFromApi}
                     className="px-8 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {updateMutation.isLoading ? 'Saving...' : 'Save Changes'}
+                    {updateMutation.isPending ? 'Saving...' : 'Save Changes'}
                   </Button>
                 </div>
               </div>
@@ -1402,10 +1401,10 @@ const WorkshopPage: React.FC = () => {
                       </Button>
                       <Button 
                         onClick={handleCreate} 
-                        disabled={createMutation.isLoading}
+                        disabled={createMutation.isPending}
                         className="px-8 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        {createMutation.isLoading ? 'Creating...' : 'Create Workshop Job'}
+                        {createMutation.isPending ? 'Creating...' : 'Create Workshop Job'}
                       </Button>
                     </div>
                   </div>
@@ -1428,10 +1427,10 @@ const WorkshopPage: React.FC = () => {
                   </Button>
                   <Button 
                     onClick={handleCreate} 
-                    disabled={createMutation.isLoading}
+                    disabled={createMutation.isPending}
                     className="px-8 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {createMutation.isLoading ? 'Creating...' : 'Create Workshop Job'}
+                    {createMutation.isPending ? 'Creating...' : 'Create Workshop Job'}
                   </Button>
                 </div>
               </div>

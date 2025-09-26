@@ -7,7 +7,7 @@ import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
 import Button from '@/components/ui/Button';
 import { transactionsAPI } from '@/lib/api';
-import { useQuery } from 'react-query';
+import { useQuery } from '@tanstack/react-query';
 
 const TransactionsPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -15,17 +15,16 @@ const TransactionsPage: React.FC = () => {
   const [pageSize] = useState(10);
   const [filterType, setFilterType] = useState('all');
 
-  const { data, isLoading } = useQuery(
-    ['transactions', currentPage, pageSize, searchTerm, filterType],
-    () =>
+  const { data, isLoading } = useQuery({
+    queryKey: ['transactions', currentPage, pageSize, searchTerm, filterType],
+    queryFn: () =>
       transactionsAPI.getTransactions({
         page: currentPage,
         limit: pageSize,
         search: searchTerm || undefined,
         type: filterType === 'all' ? undefined : filterType,
-      }),
-    { keepPreviousData: true }
-  );
+      })
+  });
 
   const columns = [
     { key: 'transactionNumber', label: 'Transaction', sortable: true },

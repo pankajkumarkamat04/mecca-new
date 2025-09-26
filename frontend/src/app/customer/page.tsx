@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import Layout from '@/components/layout/Layout';
 import Link from 'next/link';
-import { useQuery } from 'react-query';
+import { useQuery } from '@tanstack/react-query';
 import { invoicesAPI, customersAPI, supportAPI, workshopAPI } from '@/lib/api';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { 
@@ -27,64 +27,53 @@ const CustomerDashboardPage: React.FC = () => {
   const [pageSize] = useState(5);
 
   // Fetch customer data
-  const { data: customerData, isLoading: customerLoading } = useQuery(
-    ['customer-details', user?._id],
-    () => customersAPI.getCustomerById(user?._id || ''),
-    {
-      enabled: !!user?._id,
-    }
-  );
+  const { data: customerData, isLoading: customerLoading } = useQuery({
+    queryKey: ['customer-details', user?._id],
+    queryFn: () => customersAPI.getCustomerById(user?._id || ''),
+    enabled: !!user?._id,
+  });
 
   // Fetch recent invoices
-  const { data: recentInvoices, isLoading: invoicesLoading } = useQuery(
-    ['customer-recent-invoices', user?.phone],
-    () => invoicesAPI.getInvoices({
+  const { data: recentInvoices, isLoading: invoicesLoading } = useQuery({
+    queryKey: ['customer-recent-invoices', user?.phone],
+    queryFn: () => invoicesAPI.getInvoices({
       page: 1,
       limit: 5,
       customerPhone: user?.phone,
     }),
-    {
-      enabled: !!user?.phone,
-    }
-  );
+    enabled: !!user?.phone,
+  });
 
   // Fetch recent support tickets
-  const { data: recentTickets, isLoading: ticketsLoading } = useQuery(
-    ['customer-recent-tickets', user?._id],
-    () => supportAPI.getSupportTickets({
+  const { data: recentTickets, isLoading: ticketsLoading } = useQuery({
+    queryKey: ['customer-recent-tickets', user?._id],
+    queryFn: () => supportAPI.getSupportTickets({
       page: 1,
       limit: 3,
       customerId: user?._id,
     }),
-    {
-      enabled: !!user?._id,
-    }
-  );
-
+    enabled: !!user?._id,
+  });
 
   // Fetch recent workshop jobs
-  const { data: recentJobs, isLoading: jobsLoading } = useQuery(
-    ['customer-recent-jobs', user?.phone],
-    () => workshopAPI.getJobs({
+  const { data: recentJobs, isLoading: jobsLoading } = useQuery({
+    queryKey: ['customer-recent-jobs', user?.phone],
+    queryFn: () => workshopAPI.getJobs({
       customerPhone: user?.phone,
       limit: 3,
     }),
-    {
-      enabled: !!user?.phone,
-    }
-  );
+    enabled: !!user?.phone,
+  });
 
   // Fetch wallet transactions
-  const { data: walletTransactions, isLoading: walletLoading } = useQuery(
-    ['customer-wallet-transactions', user?._id],
-    () => customersAPI.getWalletTransactions(user?._id || '', {
+  const { data: walletTransactions, isLoading: walletLoading } = useQuery({
+    queryKey: ['customer-wallet-transactions', user?._id],
+    queryFn: () => customersAPI.getWalletTransactions(user?._id || '', {
       page: 1,
       limit: 5,
     }),
-    {
-      enabled: !!user?._id,
-    }
-  );
+    enabled: !!user?._id,
+  });
 
   if (isLoading) {
     return (
@@ -394,7 +383,31 @@ const CustomerDashboardPage: React.FC = () => {
         <div className="bg-white shadow rounded-lg p-6">
           <h3 className="text-lg font-medium text-gray-900 mb-4">Quick Actions</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Link href="/customer/invoices" className="p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors">
+            <Link href="/customer/inquiries" className="p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors">
+              <div className="text-center">
+                <div className="text-2xl mb-2">💬</div>
+                <div className="text-sm font-medium text-gray-900">My Inquiries</div>
+                <div className="text-xs text-gray-500">Track requests</div>
+              </div>
+            </Link>
+
+            <Link href="/customer/quotations" className="p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-green-500 hover:bg-green-50 transition-colors">
+              <div className="text-center">
+                <div className="text-2xl mb-2">📋</div>
+                <div className="text-sm font-medium text-gray-900">My Quotations</div>
+                <div className="text-xs text-gray-500">View quotes</div>
+              </div>
+            </Link>
+
+            <Link href="/customer/orders" className="p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-purple-500 hover:bg-purple-50 transition-colors">
+              <div className="text-center">
+                <div className="text-2xl mb-2">🛍️</div>
+                <div className="text-sm font-medium text-gray-900">My Orders</div>
+                <div className="text-xs text-gray-500">Track orders</div>
+              </div>
+            </Link>
+
+            <Link href="/customer/invoices" className="p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-orange-500 hover:bg-orange-50 transition-colors">
               <div className="text-center">
                 <div className="text-2xl mb-2">📄</div>
                 <div className="text-sm font-medium text-gray-900">My Invoices</div>
@@ -410,11 +423,19 @@ const CustomerDashboardPage: React.FC = () => {
               </div>
             </Link>
 
-            <Link href="/customer/support" className="p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-purple-500 hover:bg-purple-50 transition-colors">
+            <Link href="/customer/support" className="p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-red-500 hover:bg-red-50 transition-colors">
               <div className="text-center">
                 <div className="text-2xl mb-2">🛟</div>
                 <div className="text-sm font-medium text-gray-900">Support Tickets</div>
                 <div className="text-xs text-gray-500">Get help</div>
+              </div>
+            </Link>
+
+            <Link href="/customer/purchases" className="p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-indigo-500 hover:bg-indigo-50 transition-colors">
+              <div className="text-center">
+                <div className="text-2xl mb-2">🛒</div>
+                <div className="text-sm font-medium text-gray-900">My Purchases</div>
+                <div className="text-xs text-gray-500">Purchase history</div>
               </div>
             </Link>
 

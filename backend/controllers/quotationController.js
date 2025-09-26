@@ -115,6 +115,7 @@ const createQuotation = async (req, res) => {
     }
 
     // Validate products exist and populate item details
+    const inventoryStatus = [];
     for (let item of quotationData.items) {
       if (item.product) {
         const product = await Product.findById(item.product);
@@ -129,6 +130,21 @@ const createQuotation = async (req, res) => {
         if (!item.unitPrice) {
           item.unitPrice = product.pricing.salePrice;
         }
+        
+        // Check inventory availability
+        const currentStock = product.inventory?.currentStock || 0;
+        const minStock = product.inventory?.minStock || 0;
+        const available = Math.max(0, currentStock - minStock);
+        
+        inventoryStatus.push({
+          productId: item.product,
+          productName: product.name,
+          requestedQuantity: item.quantity,
+          availableQuantity: available,
+          currentStock: currentStock,
+          isAvailable: available >= item.quantity,
+          needsReorder: currentStock <= minStock
+        });
       }
     }
 
@@ -142,7 +158,8 @@ const createQuotation = async (req, res) => {
 
     res.status(201).json({
       success: true,
-      data: populatedQuotation
+      data: populatedQuotation,
+      inventoryStatus: inventoryStatus
     });
   } catch (error) {
     console.error('Create quotation error:', error);
@@ -642,6 +659,180 @@ const getQuotationStats = async (req, res) => {
   }
 };
 
+// @desc    Check inventory availability for quotation items
+// @route   POST /api/quotations/check-inventory
+// @access  Private
+const checkInventoryAvailability = async (req, res) => {
+  try {
+    const { items } = req.body;
+    
+    if (!items || !Array.isArray(items)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Items array is required'
+      });
+    }
+
+    const inventoryStatus = [];
+    const unavailableItems = [];
+    const lowStockItems = [];
+
+    for (let item of items) {
+      if (item.product && item.quantity) {
+        const product = await Product.findById(item.product);
+        if (!product) {
+          return res.status(404).json({
+            success: false,
+            message: `Product not found: ${item.product}`
+          });
+        }
+
+        const currentStock = product.inventory?.currentStock || 0;
+        const minStock = product.inventory?.minStock || 0;
+        const maxStock = product.inventory?.maxStock || 0;
+        const reorderPoint = product.inventory?.reorderPoint || 0;
+        const available = Math.max(0, currentStock - minStock);
+        
+        const itemStatus = {
+          productId: item.product,
+          productName: product.name,
+          sku: product.sku,
+          requestedQuantity: item.quantity,
+          availableQuantity: available,
+          currentStock: currentStock,
+          minStock: minStock,
+          maxStock: maxStock,
+          reorderPoint: reorderPoint,
+          isAvailable: available >= item.quantity,
+          needsReorder: currentStock <= reorderPoint,
+          isLowStock: currentStock <= minStock,
+          stockValue: currentStock * (product.pricing?.costPrice || 0)
+        };
+
+        inventoryStatus.push(itemStatus);
+
+        if (!itemStatus.isAvailable) {
+          unavailableItems.push(itemStatus);
+        }
+
+        if (itemStatus.isLowStock) {
+          lowStockItems.push(itemStatus);
+        }
+      }
+    }
+
+    // Calculate summary
+    const summary = {
+      totalItems: items.length,
+      availableItems: inventoryStatus.filter(item => item.isAvailable).length,
+      unavailableItems: unavailableItems.length,
+      lowStockItems: lowStockItems.length,
+      totalStockValue: inventoryStatus.reduce((sum, item) => sum + item.stockValue, 0),
+      canFulfillOrder: unavailableItems.length === 0
+    };
+
+    res.json({
+      success: true,
+      data: {
+        inventoryStatus,
+        summary,
+        unavailableItems,
+        lowStockItems
+      }
+    });
+  } catch (error) {
+    console.error('Check inventory availability error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+};
+
+// @desc    Generate picking list for quotation
+// @route   POST /api/quotations/:id/generate-picking-list
+// @access  Private
+const generatePickingList = async (req, res) => {
+  try {
+    const quotation = await Quotation.findById(req.params.id)
+      .populate('items.product', 'name sku inventory warehouseLocation');
+    
+    if (!quotation) {
+      return res.status(404).json({
+        success: false,
+        message: 'Quotation not found'
+      });
+    }
+
+    if (quotation.status !== 'accepted') {
+      return res.status(400).json({
+        success: false,
+        message: 'Only accepted quotations can generate picking lists'
+      });
+    }
+
+    const pickingList = {
+      quotationId: quotation._id,
+      quotationNumber: quotation.quotationNumber,
+      customerName: quotation.customerName,
+      generatedDate: new Date(),
+      items: [],
+      totalItems: 0,
+      estimatedPickTime: 0
+    };
+
+    for (let item of quotation.items) {
+      if (item.product) {
+        const product = item.product;
+        const location = product.inventory?.warehouseLocation;
+        
+        pickingList.items.push({
+          productId: product._id,
+          productName: product.name,
+          sku: product.sku,
+          quantity: item.quantity,
+          location: location ? {
+            zone: location.zone || 'N/A',
+            aisle: location.aisle || 'N/A',
+            shelf: location.shelf || 'N/A',
+            bin: location.bin || 'N/A',
+            locationCode: location.locationCode || 'N/A'
+          } : null,
+          priority: product.inventory?.currentStock <= product.inventory?.minStock ? 'high' : 'normal'
+        });
+
+        pickingList.totalItems += item.quantity;
+        pickingList.estimatedPickTime += item.quantity * 0.5; // 30 seconds per item
+      }
+    }
+
+    // Sort by location for efficient picking
+    pickingList.items.sort((a, b) => {
+      if (a.location && b.location) {
+        if (a.location.zone !== b.location.zone) {
+          return a.location.zone.localeCompare(b.location.zone);
+        }
+        if (a.location.aisle !== b.location.aisle) {
+          return a.location.aisle.localeCompare(b.location.aisle);
+        }
+        return a.location.shelf.localeCompare(b.location.shelf);
+      }
+      return 0;
+    });
+
+    res.json({
+      success: true,
+      data: pickingList
+    });
+  } catch (error) {
+    console.error('Generate picking list error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+};
+
 module.exports = {
   getQuotations,
   getQuotationById,
@@ -654,5 +845,7 @@ module.exports = {
   rejectQuotation,
   convertQuotationToOrder,
   convertQuotationToInvoice,
-  getQuotationStats
+  getQuotationStats,
+  checkInventoryAvailability,
+  generatePickingList
 };

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from 'react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Layout from '@/components/layout/Layout';
 import Button from '@/components/ui/Button';
 import DataTable from '@/components/ui/DataTable';
@@ -37,70 +37,61 @@ const ProductsPage: React.FC = () => {
   const queryClient = useQueryClient();
 
   // Fetch products
-  const { data: productsData, isLoading } = useQuery(
-    ['products', currentPage, pageSize, searchTerm, filterStatus],
-    () => productsAPI.getProducts({
+  const { data: productsData, isPending } = useQuery({
+    queryKey: ['products', currentPage, pageSize, searchTerm, filterStatus],
+    queryFn: () => productsAPI.getProducts({
       page: currentPage,
       limit: pageSize,
       search: searchTerm,
       status: filterStatus === 'all' ? undefined : filterStatus,
-    }),
-    {
-      keepPreviousData: true,
-    }
-  );
+    })
+  });
 
   // Fetch categories for selection
-  const { data: categoriesData } = useQuery(
-    ['categories'],
-    () => categoriesAPI.getCategories({ isActive: true }),
-    { staleTime: 5 * 60 * 1000 }
-  );
+  const { data: categoriesData } = useQuery({
+    queryKey: ['categories'],
+    queryFn: () => categoriesAPI.getCategories({ isActive: true }),
+    staleTime: 5 * 60 * 1000
+  });
 
   // Create product mutation
-  const createProductMutation = useMutation(
-    (data: any) => productsAPI.createProduct(data),
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries(['products']);
-        setIsCreateModalOpen(false);
-        toast.success('Product created successfully');
-      },
-      onError: (error: any) => {
-        toast.error(error.response?.data?.message || 'Failed to create product');
-      },
+  const createProductMutation = useMutation({
+    mutationFn: (data: any) => productsAPI.createProduct(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+      setIsCreateModalOpen(false);
+      toast.success('Product created successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to create product');
     }
-  );
+  });
 
   // Update product mutation
-  const updateProductMutation = useMutation(
-    ({ id, data }: { id: string; data: any }) => productsAPI.updateProduct(id, data),
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries(['products']);
-        setIsEditModalOpen(false);
-        setSelectedProduct(null);
-        toast.success('Product updated successfully');
-      },
-      onError: (error: any) => {
-        toast.error(error.response?.data?.message || 'Failed to update product');
-      },
+  const updateProductMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => productsAPI.updateProduct(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+      setIsEditModalOpen(false);
+      setSelectedProduct(null);
+      toast.success('Product updated successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to update product');
     }
-  );
+  });
 
   // Delete product mutation
-  const deleteProductMutation = useMutation(
-    (productId: string) => productsAPI.deleteProduct(productId),
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries(['products']);
-        toast.success('Product deleted successfully');
-      },
-      onError: (error: any) => {
-        toast.error(error.response?.data?.message || 'Failed to delete product');
-      },
+  const deleteProductMutation = useMutation({
+    mutationFn: (productId: string) => productsAPI.deleteProduct(productId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+      toast.success('Product deleted successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to delete product');
     }
-  );
+  });
 
   const handleDeleteProduct = (product: Product) => {
     if (window.confirm(`Are you sure you want to delete ${product.name}?`)) {
@@ -353,7 +344,7 @@ const ProductsPage: React.FC = () => {
         <DataTable
           columns={columns}
           data={productsData?.data?.data || []}
-          loading={isLoading}
+          loading={isPending}
           pagination={productsData?.data?.pagination}
           onPageChange={setCurrentPage}
           emptyMessage="No products found"
@@ -391,7 +382,7 @@ const ProductsPage: React.FC = () => {
               };
               await createProductMutation.mutateAsync(payload);
             }}
-            loading={createProductMutation.isLoading}
+            loading={createProductMutation.isPending}
           >{(methods) => (
             <div className="space-y-6">
               <FormSection title="Basic Information">
@@ -474,8 +465,8 @@ const ProductsPage: React.FC = () => {
 
               <FormActions
                 onCancel={() => setIsCreateModalOpen(false)}
-                submitText={createProductMutation.isLoading ? 'Creating...' : 'Create Product'}
-                loading={createProductMutation.isLoading}
+                submitText={createProductMutation.isPending ? 'Creating...' : 'Create Product'}
+                loading={createProductMutation.isPending}
               />
             </div>
           )}</Form>
@@ -496,7 +487,7 @@ const ProductsPage: React.FC = () => {
                   name: values.name,
                   description: values.description || undefined,
                 });
-                await queryClient.invalidateQueries(['categories']);
+                await queryClient.invalidateQueries({ queryKey: ['categories'] });
               }}
             >{(methods) => (
               <div className="space-y-3">
@@ -532,7 +523,7 @@ const ProductsPage: React.FC = () => {
                             const newName = e.target.value.trim();
                             if (newName && newName !== c.name) {
                               await categoriesAPI.updateCategory(c._id, { name: newName });
-                              await queryClient.invalidateQueries(['categories']);
+                              await queryClient.invalidateQueries({ queryKey: ['categories'] });
                               toast.success('Category updated');
                             }
                           }}
@@ -546,7 +537,7 @@ const ProductsPage: React.FC = () => {
                             const newDesc = e.target.value.trim();
                             if ((newDesc || c.description) && newDesc !== (c.description || '')) {
                               await categoriesAPI.updateCategory(c._id, { description: newDesc || undefined });
-                              await queryClient.invalidateQueries(['categories']);
+                              await queryClient.invalidateQueries({ queryKey: ['categories'] });
                               toast.success('Category updated');
                             }
                           }}
@@ -558,7 +549,7 @@ const ProductsPage: React.FC = () => {
                           onClick={async () => {
                             if (window.confirm(`Delete category "${c.name}"?`)) {
                               await categoriesAPI.deleteCategory(c._id);
-                              await queryClient.invalidateQueries(['categories']);
+                              await queryClient.invalidateQueries({ queryKey: ['categories'] });
                               toast.success('Category deleted');
                             }
                           }}
@@ -618,7 +609,7 @@ const ProductsPage: React.FC = () => {
                 };
                 await updateProductMutation.mutateAsync({ id: selectedProduct._id, data: payload });
               }}
-              loading={updateProductMutation.isLoading}
+              loading={updateProductMutation.isPending}
             >{(methods) => (
               <div className="space-y-6">
                 <FormSection title="Basic Information">
@@ -701,8 +692,8 @@ const ProductsPage: React.FC = () => {
 
                 <FormActions
                   onCancel={() => setIsEditModalOpen(false)}
-                  submitText={updateProductMutation.isLoading ? 'Saving...' : 'Save Changes'}
-                  loading={updateProductMutation.isLoading}
+                  submitText={updateProductMutation.isPending ? 'Saving...' : 'Save Changes'}
+                  loading={updateProductMutation.isPending}
                 />
               </div>
             )}</Form>

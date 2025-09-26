@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from 'react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Layout from '@/components/layout/Layout';
 import Button from '@/components/ui/Button';
 import DataTable from '@/components/ui/DataTable';
@@ -37,48 +37,41 @@ const SuppliersPage: React.FC = () => {
   const queryClient = useQueryClient();
 
   // Fetch suppliers
-  const { data: suppliersData, isLoading } = useQuery(
-    ['suppliers', currentPage, pageSize, searchTerm, filterStatus],
-    () => suppliersAPI.getSuppliers({
+  const { data: suppliersData, isPending } = useQuery({
+    queryKey: ['suppliers', currentPage, pageSize, searchTerm, filterStatus],
+    queryFn: () => suppliersAPI.getSuppliers({
       page: currentPage,
       limit: pageSize,
       search: searchTerm,
       isActive: filterStatus === 'all' ? undefined : filterStatus === 'active',
-    }),
-    {
-      keepPreviousData: true,
-    }
-  );
+    })
+  });
 
   // Delete supplier mutation
-  const deleteSupplierMutation = useMutation(
-    (supplierId: string) => suppliersAPI.deleteSupplier(supplierId),
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries(['suppliers']);
-        toast.success('Supplier deleted successfully');
-      },
-      onError: (error: any) => {
-        toast.error(error.response?.data?.message || 'Failed to delete supplier');
-      },
+  const deleteSupplierMutation = useMutation({
+    mutationFn: (supplierId: string) => suppliersAPI.deleteSupplier(supplierId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['suppliers'] });
+      toast.success('Supplier deleted successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to delete supplier');
     }
-  );
+  });
 
   // Update supplier mutation
-  const updateSupplierMutation = useMutation(
-    ({ id, data }: { id: string; data: any }) => suppliersAPI.updateSupplier(id, data),
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries(['suppliers']);
-        setIsEditModalOpen(false);
-        setSelectedSupplier(null);
-        toast.success('Supplier updated successfully');
-      },
-      onError: (error: any) => {
-        toast.error(error.response?.data?.message || 'Failed to update supplier');
-      },
+  const updateSupplierMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => suppliersAPI.updateSupplier(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['suppliers'] });
+      setIsEditModalOpen(false);
+      setSelectedSupplier(null);
+      toast.success('Supplier updated successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to update supplier');
     }
-  );
+  });
 
   const handleDeleteSupplier = (supplier: Supplier) => {
     if (window.confirm(`Are you sure you want to delete ${supplier.name}?`)) {
@@ -237,19 +230,17 @@ const SuppliersPage: React.FC = () => {
   ];
 
   // Create supplier mutation
-  const createSupplierMutation = useMutation(
-    (data: any) => suppliersAPI.createSupplier(data),
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries(['suppliers']);
-        setIsCreateModalOpen(false);
-        toast.success('Supplier created successfully');
-      },
-      onError: (error: any) => {
-        toast.error(error.response?.data?.message || 'Failed to create supplier');
-      },
-    }
-  );
+  const createSupplierMutation = useMutation({
+    mutationFn: (data: any) => suppliersAPI.createSupplier(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['suppliers'] });
+      setIsCreateModalOpen(false);
+      toast.success('Supplier created successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to create supplier');
+    },
+  });
 
   const supplierSchema = useMemo(() => z.object({
     name: z.string().min(2),
@@ -313,7 +304,7 @@ const SuppliersPage: React.FC = () => {
         <DataTable
           columns={columns}
           data={suppliersData?.data?.data || []}
-          loading={isLoading}
+          loading={isPending}
           pagination={suppliersData?.data?.pagination}
           onPageChange={setCurrentPage}
           emptyMessage="No suppliers found"
@@ -337,7 +328,7 @@ const SuppliersPage: React.FC = () => {
               if (!payload.phone) delete payload.phone;
               await createSupplierMutation.mutateAsync(payload);
             }}
-            loading={createSupplierMutation.isLoading}
+            loading={createSupplierMutation.isPending}
           >{(methods) => (
             <div className="space-y-6">
               <FormSection title="Supplier Details">
@@ -368,8 +359,8 @@ const SuppliersPage: React.FC = () => {
 
               <FormActions
                 onCancel={() => setIsCreateModalOpen(false)}
-                submitText={createSupplierMutation.isLoading ? 'Creating...' : 'Create Supplier'}
-                loading={createSupplierMutation.isLoading}
+                submitText={createSupplierMutation.isPending ? 'Creating...' : 'Create Supplier'}
+                loading={createSupplierMutation.isPending}
               />
             </div>
           )}</Form>
@@ -429,7 +420,7 @@ const SuppliersPage: React.FC = () => {
 
                 await updateSupplierMutation.mutateAsync({ id: (selectedSupplier as any)._id, data: payload });
               }}
-              loading={updateSupplierMutation.isLoading}
+              loading={updateSupplierMutation.isPending}
             >{(methods) => (
               <div className="space-y-6">
                 <FormSection title="Supplier Details">
@@ -470,8 +461,8 @@ const SuppliersPage: React.FC = () => {
 
                 <FormActions
                   onCancel={() => setIsEditModalOpen(false)}
-                  submitText={updateSupplierMutation.isLoading ? 'Saving...' : 'Save Changes'}
-                  loading={updateSupplierMutation.isLoading}
+                  submitText={updateSupplierMutation.isPending ? 'Saving...' : 'Save Changes'}
+                  loading={updateSupplierMutation.isPending}
                 />
               </div>
             )}</Form>

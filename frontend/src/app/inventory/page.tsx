@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from 'react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Layout from '@/components/layout/Layout';
 import Button from '@/components/ui/Button';
 import DataTable from '@/components/ui/DataTable';
@@ -46,75 +46,62 @@ const InventoryPage: React.FC = () => {
   const queryClient = useQueryClient();
 
   // Fetch inventory levels
-  const { data: inventoryLevels, isLoading: levelsLoading } = useQuery(
-    ['inventory-levels', searchTerm],
-    () => inventoryAPI.getInventoryLevels(),
-    {
-      enabled: activeTab === 'levels',
-    }
-  );
+  const { data: inventoryLevels, isPending: levelsLoading } = useQuery({
+    queryKey: ['inventory-levels', searchTerm],
+    queryFn: () => inventoryAPI.getInventoryLevels(),
+    enabled: activeTab === 'levels'
+  });
 
   // Fetch stock movements
-  const { data: movementsData, isLoading: movementsLoading } = useQuery(
-    ['stock-movements', currentPage, pageSize, movementType],
-    () => inventoryAPI.getStockMovements({
+  const { data: movementsData, isPending: movementsLoading } = useQuery({
+    queryKey: ['stock-movements', currentPage, pageSize, movementType],
+    queryFn: () => inventoryAPI.getStockMovements({
       page: currentPage,
       limit: pageSize,
       type: movementType === 'all' ? undefined : movementType,
     }),
-    {
-      enabled: activeTab === 'movements',
-      keepPreviousData: true,
-    }
-  );
+    enabled: activeTab === 'movements'
+  });
 
   // Fetch low stock products
-  const { data: lowStockData } = useQuery(
-    'low-stock-products',
-    () => productsAPI.getLowStockProducts(),
-    {
-      enabled: activeTab === 'alerts',
-    }
-  );
+  const { data: lowStockData } = useQuery({
+    queryKey: ['low-stock-products'],
+    queryFn: () => productsAPI.getLowStockProducts(),
+    enabled: activeTab === 'alerts'
+  });
 
   // Fetch warehouse dashboard
-  const { data: warehouseDashboard, isLoading: dashboardLoading } = useQuery(
-    ['warehouse-dashboard'],
-    () => enhancedInventoryAPI.getWarehouseDashboard(),
-    {
-      enabled: activeTab === 'warehouse',
-    }
-  );
+  const { data: warehouseDashboard, isPending: dashboardLoading } = useQuery({
+    queryKey: ['warehouse-dashboard'],
+    queryFn: () => enhancedInventoryAPI.getWarehouseDashboard(),
+    enabled: activeTab === 'warehouse'
+  });
 
   // Create stock movement mutation
-  const createMovementMutation = useMutation(
-    (movementData: any) => inventoryAPI.createStockMovement(movementData),
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries(['inventory-levels']);
-        queryClient.invalidateQueries(['stock-movements']);
-        toast.success('Stock movement recorded successfully');
-      },
-      onError: (error: any) => {
-        toast.error(error.response?.data?.message || 'Failed to record movement');
-      },
+  const createMovementMutation = useMutation({
+    mutationFn: (movementData: any) => inventoryAPI.createStockMovement(movementData),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['inventory-levels'] });
+      queryClient.invalidateQueries({ queryKey: ['stock-movements'] });
+      toast.success('Stock movement recorded successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to record movement');
     }
-  );
+  });
 
   // Stock adjustment mutation
-  const adjustmentMutation = useMutation(
-    (adjustmentData: any) => inventoryAPI.performStockAdjustment(adjustmentData),
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries(['inventory-levels']);
-        queryClient.invalidateQueries(['stock-movements']);
-        toast.success('Stock adjustment completed successfully');
-      },
-      onError: (error: any) => {
-        toast.error(error.response?.data?.message || 'Failed to adjust stock');
-      },
+  const adjustmentMutation = useMutation({
+    mutationFn: (adjustmentData: any) => inventoryAPI.performStockAdjustment(adjustmentData),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['inventory-levels'] });
+      queryClient.invalidateQueries({ queryKey: ['stock-movements'] });
+      toast.success('Stock adjustment completed successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to adjust stock');
     }
-  );
+  });
 
   // Form schemas
   const movementSchema = useMemo(() => z.object({
@@ -137,11 +124,11 @@ const InventoryPage: React.FC = () => {
   }), []);
 
   // Products for selects (basic fetch without pagination for simplicity)
-  const { data: productsList } = useQuery(
-    ['products-list'],
-    () => productsAPI.getProducts({ limit: 100, page: 1 }),
-    { staleTime: 60_000 }
-  );
+  const { data: productsList } = useQuery({
+    queryKey: ['products-list'],
+    queryFn: () => productsAPI.getProducts({ limit: 100, page: 1 }),
+    staleTime: 60_000
+  });
 
   const productOptions = (productsList?.data?.data || []).map((p: any) => ({ value: p._id, label: `${p.name} (${p.sku})` }));
   const movementTypeOptionsForForm = [
@@ -711,7 +698,7 @@ const InventoryPage: React.FC = () => {
               await createMovementMutation.mutateAsync(payload);
               setIsMovementModalOpen(false);
             }}
-            loading={createMovementMutation.isLoading}
+            loading={createMovementMutation.isPending}
           >{(methods) => (
             <div className="space-y-6">
               <FormSection title="Movement Details">
@@ -755,8 +742,8 @@ const InventoryPage: React.FC = () => {
 
               <FormActions
                 onCancel={() => setIsMovementModalOpen(false)}
-                submitText={createMovementMutation.isLoading ? 'Recording...' : 'Record Movement'}
-                loading={createMovementMutation.isLoading}
+                submitText={createMovementMutation.isPending ? 'Recording...' : 'Record Movement'}
+                loading={createMovementMutation.isPending}
               />
             </div>
           )}</Form>
@@ -784,7 +771,7 @@ const InventoryPage: React.FC = () => {
               await adjustmentMutation.mutateAsync(payload);
               setIsAdjustmentModalOpen(false);
             }}
-            loading={adjustmentMutation.isLoading}
+            loading={adjustmentMutation.isPending}
           >{(methods) => (
             <div className="space-y-6">
               <FormSection title="Adjustment Details">
@@ -811,8 +798,8 @@ const InventoryPage: React.FC = () => {
 
               <FormActions
                 onCancel={() => setIsAdjustmentModalOpen(false)}
-                submitText={adjustmentMutation.isLoading ? 'Adjusting...' : 'Adjust Stock'}
-                loading={adjustmentMutation.isLoading}
+                submitText={adjustmentMutation.isPending ? 'Adjusting...' : 'Adjust Stock'}
+                loading={adjustmentMutation.isPending}
               />
             </div>
           )}</Form>

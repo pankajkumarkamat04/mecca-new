@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Layout from '@/components/layout/Layout';
-import { useQuery } from 'react-query';
+import { useQuery } from '@tanstack/react-query';
 import { customersAPI } from '@/lib/api';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import DataTable from '@/components/ui/DataTable';
@@ -32,25 +32,21 @@ const CustomerWalletPage: React.FC = () => {
   const [pageSize] = useState(10);
 
   // Fetch wallet transactions
-  const { data: walletData, isLoading: walletLoading, refetch: refetchWallet } = useQuery(
-    ['customer-wallet', user?._id, currentPage, pageSize],
-    () => customersAPI.getWalletTransactions(user?._id || '', {
+  const { data: walletData, isLoading: walletLoading, refetch: refetchWallet } = useQuery({
+    queryKey: ['customer-wallet', user?._id, currentPage, pageSize],
+    queryFn: () => customersAPI.getWalletTransactions(user?._id || '', {
       page: currentPage,
       limit: pageSize,
     }),
-    {
-      enabled: !!user?._id,
-    }
-  );
+    enabled: !!user?._id
+  });
 
   // Fetch customer details for wallet balance
-  const { data: customerData, isLoading: customerLoading } = useQuery(
-    ['customer-details', user?._id],
-    () => customersAPI.getCustomerById(user?._id || ''),
-    {
-      enabled: !!user?._id,
-    }
-  );
+  const { data: customerData, isLoading: customerLoading } = useQuery({
+    queryKey: ['customer-details', user?._id],
+    queryFn: () => customersAPI.getCustomerById(user?._id || ''),
+    enabled: !!user?._id
+  });
 
   const handleAddTransaction = async () => {
     if (!transactionAmount || !transactionDescription) return;

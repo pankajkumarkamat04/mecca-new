@@ -18,6 +18,7 @@ import {
   CreditCardIcon,
   ChartBarIcon,
   FolderIcon,
+  ChatBubbleLeftRightIcon,
   LifebuoyIcon,
   CalculatorIcon,
   BanknotesIcon,
@@ -91,6 +92,12 @@ const sidebarItems: SidebarItem[] = [
     permission: { module: 'invoices', action: 'read' },
   },
   {
+    name: 'Customer Inquiries',
+    href: '/customer-inquiries',
+    icon: ChatBubbleLeftRightIcon,
+    permission: { module: 'customerInquiries', action: 'read' },
+  },
+  {
     name: 'Quotations',
     href: '/quotations',
     icon: DocumentTextIcon,
@@ -113,6 +120,12 @@ const sidebarItems: SidebarItem[] = [
     href: '/warehouses',
     icon: BuildingOfficeIcon,
     permission: { module: 'warehouses', action: 'read' },
+  },
+  {
+    name: 'Warehouse Dashboard',
+    href: '/warehouse',
+    icon: ChartBarIcon,
+    permission: { module: 'warehouse', action: 'read' },
   },
   {
     name: 'Purchase Orders',

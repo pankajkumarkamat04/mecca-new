@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from 'react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Layout from '@/components/layout/Layout';
 import Button from '@/components/ui/Button';
 import Modal from '@/components/ui/Modal';
@@ -42,41 +42,37 @@ const POSPage: React.FC = () => {
   const queryClient = useQueryClient();
 
   // Fetch products for POS
-  const { data: productsData } = useQuery(
-    ['pos-products', searchTerm],
-    () => productsAPI.getProducts({
+  const { data: productsData } = useQuery({
+    queryKey: ['pos-products', searchTerm],
+    queryFn: () => productsAPI.getProducts({
       search: searchTerm,
       isActive: true,
       limit: 50,
     }),
-    {
-      enabled: isProductModalOpen,
-    }
-  );
+    enabled: isProductModalOpen,
+  });
 
   // Removed customer lookup; POS proceeds without pre-checking customer existence
 
   // Process sale mutation
-  const processSaleMutation = useMutation(
-    (saleData: any) => posAPI.createTransaction(saleData),
-    {
-      onSuccess: (res: any) => {
-        const inv = res?.data?.data || res?.data;
-        setReceipt(inv || null);
-        setIsReceiptOpen(true);
-        queryClient.invalidateQueries(['pos-dashboard']);
-        // Reset cart after showing receipt
-        setCart([]);
-        setCustomerName('');
-        setCustomerPhone('');
-        setLinkedCustomer(null);
-        setTenderedAmount(0);
-      },
-      onError: (error: any) => {
-        toast.error(error.response?.data?.message || 'Failed to process sale');
-      },
-    }
-  );
+  const processSaleMutation = useMutation({
+    mutationFn: (saleData: any) => posAPI.createTransaction(saleData),
+    onSuccess: (res: any) => {
+      const inv = res?.data?.data || res?.data;
+      setReceipt(inv || null);
+      setIsReceiptOpen(true);
+      queryClient.invalidateQueries({ queryKey: ['pos-dashboard'] });
+      // Reset cart after showing receipt
+      setCart([]);
+      setCustomerName('');
+      setCustomerPhone('');
+      setLinkedCustomer(null);
+      setTenderedAmount(0);
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to process sale');
+    },
+  });
 
   const addToCart = (product: any) => {
     const existingItem = cart.find(item => item.product._id === product._id);

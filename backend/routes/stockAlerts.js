@@ -9,7 +9,10 @@ const {
   createStockAlert,
   getStockAlertStats,
   bulkResolveAlerts,
-  checkLowStock
+  checkLowStock,
+  getReplenishmentSuggestions,
+  createPurchaseOrdersFromSuggestions,
+  updateInventoryLevels
 } = require('../controllers/stockAlertController');
 const {
   createStockAlertValidation,
@@ -31,5 +34,8 @@ router.put('/:id/read', auth.auth, ...validate(stockAlertIdValidation), markAler
 router.put('/:id/resolve', auth.auth, ...validate(resolveAlertValidation), resolveAlert);
 router.put('/bulk-resolve', auth.auth, ...validate(bulkResolveValidation), bulkResolveAlerts);
 router.post('/check-low-stock', auth.auth, checkLowStock);
+router.get('/replenishment-suggestions', auth.auth, getReplenishmentSuggestions);
+router.post('/create-purchase-orders', auth.auth, createPurchaseOrdersFromSuggestions);
+router.post('/update-inventory-levels', auth.auth, updateInventoryLevels);
 
 module.exports = router;

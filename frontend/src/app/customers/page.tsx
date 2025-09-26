@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from 'react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Layout from '@/components/layout/Layout';
 import Button from '@/components/ui/Button';
 import DataTable from '@/components/ui/DataTable';
@@ -38,32 +38,27 @@ const CustomersPage: React.FC = () => {
   const queryClient = useQueryClient();
 
   // Fetch customers
-  const { data: customersData, isLoading } = useQuery(
-    ['customers', currentPage, pageSize, searchTerm, filterType],
-    () => customersAPI.getCustomers({
+  const { data: customersData, isPending } = useQuery({
+    queryKey: ['customers', currentPage, pageSize, searchTerm, filterType],
+    queryFn: () => customersAPI.getCustomers({
       page: currentPage,
       limit: pageSize,
       search: searchTerm,
       type: filterType === 'all' ? undefined : filterType,
-    }),
-    {
-      keepPreviousData: true,
-    }
-  );
+    })
+  });
 
   // Delete customer mutation
-  const deleteCustomerMutation = useMutation(
-    (customerId: string) => customersAPI.deleteCustomer(customerId),
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries(['customers']);
-        toast.success('Customer deleted successfully');
-      },
-      onError: (error: any) => {
-        toast.error(error.response?.data?.message || 'Failed to delete customer');
-      },
+  const deleteCustomerMutation = useMutation({
+    mutationFn: (customerId: string) => customersAPI.deleteCustomer(customerId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['customers'] });
+      toast.success('Customer deleted successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to delete customer');
     }
-  );
+  });
 
   const handleDeleteCustomer = (customer: Customer) => {
     if (window.confirm(`Are you sure you want to delete ${customer.firstName} ${customer.lastName}?`)) {
@@ -201,19 +196,17 @@ const CustomersPage: React.FC = () => {
   ];
 
   // Create customer mutation
-  const createCustomerMutation = useMutation(
-    (data: any) => customersAPI.createCustomer(data),
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries(['customers']);
-        setIsCreateModalOpen(false);
-        toast.success('Customer created successfully');
-      },
-      onError: (error: any) => {
-        toast.error(error.response?.data?.message || 'Failed to create customer');
-      },
+  const createCustomerMutation = useMutation({
+    mutationFn: (data: any) => customersAPI.createCustomer(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['customers'] });
+      setIsCreateModalOpen(false);
+      toast.success('Customer created successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to create customer');
     }
-  );
+  });
 
   const customerSchema = useMemo(() => z.object({
     firstName: z.string().min(1),
@@ -275,7 +268,7 @@ const CustomersPage: React.FC = () => {
         <DataTable
           columns={columns}
           data={customersData?.data?.data || []}
-          loading={isLoading}
+          loading={isPending}
           pagination={customersData?.data?.pagination}
           onPageChange={setCurrentPage}
           emptyMessage="No customers found"
@@ -296,7 +289,7 @@ const CustomersPage: React.FC = () => {
               if (!payload.phone) delete payload.phone;
               await createCustomerMutation.mutateAsync(payload);
             }}
-            loading={createCustomerMutation.isLoading}
+            loading={createCustomerMutation.isPending}
           >{(methods) => (
             <div className="space-y-6">
               <FormSection title="Customer Details">
@@ -326,8 +319,8 @@ const CustomersPage: React.FC = () => {
 
               <FormActions
                 onCancel={() => setIsCreateModalOpen(false)}
-                submitText={createCustomerMutation.isLoading ? 'Creating...' : 'Create Customer'}
-                loading={createCustomerMutation.isLoading}
+                submitText={createCustomerMutation.isPending ? 'Creating...' : 'Create Customer'}
+                loading={createCustomerMutation.isPending}
               />
             </div>
           )}</Form>

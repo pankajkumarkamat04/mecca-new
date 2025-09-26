@@ -1,13 +1,14 @@
 'use client';
 
 import React, { useState } from 'react';
+import Layout from '@/components/layout/Layout';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { purchaseOrderAPI } from '@/lib/api';
-import { Button } from '@/components/ui/Button';
-import { DataTable } from '@/components/ui/DataTable';
-import { Modal } from '@/components/ui/Modal';
-import { Input } from '@/components/ui/Input';
-import { Select } from '@/components/ui/Select';
+import Button from '@/components/ui/Button';
+import DataTable from '@/components/ui/DataTable';
+import Modal from '@/components/ui/Modal';
+import Input from '@/components/ui/Input';
+import Select from '@/components/ui/Select';
 import {
   PlusIcon,
   EyeIcon,
@@ -98,8 +99,8 @@ const PurchaseOrdersPage: React.FC = () => {
     },
   });
 
-  const orders = ordersData?.data || [];
-  const pagination = ordersData?.pagination;
+  const orders = ordersData?.data?.data || ordersData?.data || [];
+  const pagination = ordersData?.data?.pagination || ordersData?.data?.pagination || {};
   const stats = statsData?.data;
 
   const getStatusColor = (status: string) => {
@@ -128,7 +129,7 @@ const PurchaseOrdersPage: React.FC = () => {
   const columns = [
     {
       key: 'orderNumber',
-      header: 'Order Number',
+      label: 'Order Number',
       render: (value: string, row: PurchaseOrder) => (
         <div className="flex items-center">
           <ShoppingCartIcon className="h-5 w-5 text-gray-400 mr-2" />
@@ -141,7 +142,7 @@ const PurchaseOrdersPage: React.FC = () => {
     },
     {
       key: 'orderDate',
-      header: 'Order Date',
+      label: 'Order Date',
       render: (value: string) => (
         <div className="text-sm text-gray-900">
           {new Date(value).toLocaleDateString()}
@@ -150,7 +151,7 @@ const PurchaseOrdersPage: React.FC = () => {
     },
     {
       key: 'expectedDeliveryDate',
-      header: 'Expected Delivery',
+      label: 'Expected Delivery',
       render: (value: string, row: PurchaseOrder) => (
         <div className="text-sm">
           <div className={`${row.isOverdue ? 'text-red-600' : 'text-gray-900'}`}>
@@ -166,7 +167,7 @@ const PurchaseOrdersPage: React.FC = () => {
     },
     {
       key: 'status',
-      header: 'Status',
+      label: 'Status',
       render: (value: string, row: PurchaseOrder) => (
         <div className="flex flex-col space-y-1">
           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(value)}`}>
@@ -180,7 +181,7 @@ const PurchaseOrdersPage: React.FC = () => {
     },
     {
       key: 'totalAmount',
-      header: 'Total Amount',
+      label: 'Total Amount',
       render: (value: number) => (
         <div className="text-sm font-medium text-gray-900">
           ${value.toLocaleString()}
@@ -189,7 +190,7 @@ const PurchaseOrdersPage: React.FC = () => {
     },
     {
       key: 'completionPercentage',
-      header: 'Progress',
+      label: 'Progress',
       render: (value: number) => (
         <div className="flex items-center">
           <div className="flex-1 bg-gray-200 rounded-full h-2 mr-2">
@@ -204,7 +205,7 @@ const PurchaseOrdersPage: React.FC = () => {
     },
     {
       key: 'actions',
-      header: 'Actions',
+      label: 'Actions',
       render: (value: any, row: PurchaseOrder) => (
         <div className="flex items-center space-x-2">
           <button
@@ -296,7 +297,8 @@ const PurchaseOrdersPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <Layout title="Purchase Orders">
+      <div className="space-y-6">
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
@@ -393,14 +395,14 @@ const PurchaseOrdersPage: React.FC = () => {
         <DataTable
           data={orders}
           columns={columns}
-          isLoading={isLoading}
+          loading={isLoading}
           pagination={{
             page: currentPage,
             limit: pageSize,
             total: pagination?.total || 0,
             pages: pagination?.pages || 0,
-            onPageChange: setCurrentPage,
           }}
+          onPageChange={setCurrentPage}
         />
       </div>
 
@@ -466,7 +468,8 @@ const PurchaseOrdersPage: React.FC = () => {
           />
         )}
       </Modal>
-    </div>
+      </div>
+    </Layout>
   );
 };
 
@@ -543,7 +546,7 @@ const CreatePurchaseOrderForm: React.FC<{
           </label>
           <Select
             value={formData.priority}
-            onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
+            onChange={(e) => setFormData({ ...formData, priority: e.target.value as 'low' | 'normal' | 'high' | 'urgent' })}
             options={[
               { value: 'low', label: 'Low' },
               { value: 'normal', label: 'Normal' },
@@ -699,7 +702,7 @@ const EditPurchaseOrderForm: React.FC<{
           </label>
           <Select
             value={formData.priority}
-            onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
+            onChange={(e) => setFormData({ ...formData, priority: e.target.value as 'low' | 'normal' | 'high' | 'urgent' })}
             options={[
               { value: 'low', label: 'Low' },
               { value: 'normal', label: 'Normal' },

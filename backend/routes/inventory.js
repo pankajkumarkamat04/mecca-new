@@ -13,7 +13,9 @@ const {
   performStockTaking,
   processReceiving,
   processPicking,
-  getWarehouseDashboard
+  getWarehouseDashboard,
+  processGoodsReceiving,
+  getReceivingNotes
 } = require('../controllers/inventoryController');
 
 const router = express.Router();
@@ -77,5 +79,15 @@ router.post('/receiving', auth, checkPermission('inventory', 'create'), processR
 // @desc    Process picking for orders
 // @access  Private
 router.post('/picking', auth, checkPermission('inventory', 'update'), processPicking);
+
+// @route   GET /api/inventory/receiving-notes
+// @desc    Get receiving notes
+// @access  Private
+router.get('/receiving-notes', auth, getReceivingNotes);
+
+// @route   POST /api/inventory/goods-receiving
+// @desc    Process goods receiving with receiving note
+// @access  Private
+router.post('/goods-receiving', auth, checkPermission('inventory', 'create'), processGoodsReceiving);
 
 module.exports = router;

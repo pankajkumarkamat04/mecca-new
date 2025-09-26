@@ -3,7 +3,7 @@
  * Handles redirection based on user roles
  */
 
-export type UserRole = 'admin' | 'manager' | 'employee' | 'customer';
+export type UserRole = 'admin' | 'manager' | 'employee' | 'customer' | 'warehouse_manager';
 
 export interface RoleRoute {
   role: UserRole;
@@ -15,22 +15,27 @@ export const ROLE_ROUTES: Record<UserRole, RoleRoute> = {
   admin: {
     role: 'admin',
     defaultPath: '/dashboard',
-    allowedPaths: ['/dashboard', '/users', '/products', '/customers', '/suppliers', '/invoices', '/inventory', '/pos', '/support', '/accounts', '/transactions', '/workshop', '/reports', '/settings', '/analytics']
+    allowedPaths: ['/dashboard', '/users', '/products', '/customers', '/suppliers', '/invoices', '/inventory', '/pos', '/support', '/accounts', '/transactions', '/workshop', '/reports', '/settings', '/analytics', '/customer-inquiries', '/quotations', '/orders', '/deliveries', '/warehouses', '/warehouse', '/stock-alerts', '/purchase-orders']
   },
   manager: {
     role: 'manager',
     defaultPath: '/dashboard',
-    allowedPaths: ['/dashboard', '/users', '/products', '/customers', '/suppliers', '/invoices', '/inventory', '/pos', '/support', '/accounts', '/transactions', '/workshop', '/reports', '/settings']
+    allowedPaths: ['/dashboard', '/users', '/products', '/customers', '/suppliers', '/invoices', '/inventory', '/pos', '/support', '/accounts', '/transactions', '/workshop', '/reports', '/settings', '/customer-inquiries', '/quotations', '/orders', '/deliveries', '/warehouses', '/warehouse', '/stock-alerts', '/purchase-orders']
   },
   employee: {
     role: 'employee',
     defaultPath: '/dashboard',
-    allowedPaths: ['/dashboard', '/products', '/customers', '/invoices', '/inventory', '/pos', '/support', '/accounts', '/transactions', '/workshop', '/reports']
+    allowedPaths: ['/dashboard', '/products', '/customers', '/invoices', '/inventory', '/pos', '/support', '/accounts', '/transactions', '/workshop', '/reports', '/customer-inquiries', '/quotations', '/orders', '/deliveries', '/warehouse']
   },
   customer: {
     role: 'customer',
     defaultPath: '/customer',
-    allowedPaths: ['/customer', '/customer/invoices', '/customer/purchases', '/customer/wallet', '/customer/support', '/profile']
+    allowedPaths: ['/customer', '/customer/invoices', '/customer/purchases', '/customer/wallet', '/customer/support', '/customer/inquiries', '/customer/quotations', '/customer/orders', '/profile']
+  },
+  warehouse_manager: {
+    role: 'warehouse_manager',
+    defaultPath: '/warehouse',
+    allowedPaths: ['/warehouse', '/warehouses', '/inventory', '/stock-alerts', '/deliveries', '/purchase-orders', '/products', '/reports']
   }
 };
 
@@ -94,6 +99,8 @@ export const getDashboardTitle = (role: UserRole): string => {
       return 'Employee Dashboard';
     case 'customer':
       return 'Customer Dashboard';
+    case 'warehouse_manager':
+      return 'Warehouse Manager Dashboard';
     default:
       return 'Dashboard';
   }
