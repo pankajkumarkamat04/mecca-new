@@ -1,7 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
+import toast from 'react-hot-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Quotation } from '@/types';
 import { 
   PlusIcon, 
   MagnifyingGlassIcon,
@@ -30,8 +32,9 @@ import PickingListModal from '@/components/quotations/PickingListModal';
 const QuotationsPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [selectedQuotation, setSelectedQuotation] = useState<any>(null);
+  const [selectedQuotation, setSelectedQuotation] = useState<Quotation | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showInventoryModal, setShowInventoryModal] = useState(false);
   const [showPickingListModal, setShowPickingListModal] = useState(false);
@@ -57,8 +60,14 @@ const QuotationsPage: React.FC = () => {
   const checkInventoryMutation = useMutation({
     mutationFn: (items: any[]) => quotationsAPI.checkInventoryAvailability({ items }),
     onSuccess: (data: any) => {
-      setSelectedQuotation({ ...selectedQuotation, inventoryCheck: data.data });
-      setShowInventoryModal(true);
+      if (selectedQuotation) {
+        setSelectedQuotation({ ...selectedQuotation, inventoryCheck: data.data });
+        setShowInventoryModal(true);
+        toast.success('Inventory check completed');
+      }
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to check inventory');
     },
   });
 
@@ -66,8 +75,27 @@ const QuotationsPage: React.FC = () => {
   const generatePickingListMutation = useMutation({
     mutationFn: (quotationId: string) => quotationsAPI.generatePickingList(quotationId),
     onSuccess: (data: any) => {
-      setSelectedQuotation({ ...selectedQuotation, pickingList: data.data });
-      setShowPickingListModal(true);
+      if (selectedQuotation) {
+        setSelectedQuotation({ ...selectedQuotation, pickingList: data.data });
+        setShowPickingListModal(true);
+        toast.success('Picking list generated successfully');
+      }
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to generate picking list');
+    },
+  });
+
+  // Convert to order mutation
+  const convertToOrderMutation = useMutation({
+    mutationFn: (quotationId: string) => quotationsAPI.convertToOrder(quotationId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['quotations'] });
+      queryClient.invalidateQueries({ queryKey: ['quotationStats'] });
+      toast.success('Quotation converted to order successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to convert quotation to order');
     },
   });
 
@@ -77,6 +105,11 @@ const QuotationsPage: React.FC = () => {
   const handleViewDetails = (quotation: any) => {
     setSelectedQuotation(quotation);
     setShowDetailsModal(true);
+  };
+
+  const handleEditQuotation = (quotation: any) => {
+    setSelectedQuotation(quotation);
+    setShowEditModal(true);
   };
 
   const handleCheckInventory = (quotation: any) => {
@@ -91,6 +124,12 @@ const QuotationsPage: React.FC = () => {
   const handleGeneratePickingList = (quotation: any) => {
     setSelectedQuotation(quotation);
     generatePickingListMutation.mutate(quotation._id);
+  };
+
+  const handleConvertToOrder = (quotation: any) => {
+    if (window.confirm(`Are you sure you want to convert quotation ${quotation.quotationNumber} to an order?`)) {
+      convertToOrderMutation.mutate(quotation._id);
+    }
   };
 
   const getStatusBadge = (status: string) => {
@@ -176,6 +215,14 @@ const QuotationsPage: React.FC = () => {
           >
             <EyeIcon className="h-4 w-4" />
           </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleEditQuotation(quotation)}
+            title="Edit Quotation"
+          >
+            <PencilIcon className="h-4 w-4" />
+          </Button>
           {quotation.status === 'approved' && (
             <Button
               variant="ghost"
@@ -194,6 +241,16 @@ const QuotationsPage: React.FC = () => {
               title="Generate Picking List"
             >
               <DocumentTextIcon className="h-4 w-4" />
+            </Button>
+          )}
+          {quotation.status === 'approved' && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleConvertToOrder(quotation)}
+              title="Convert to Order"
+            >
+              <ShoppingCartIcon className="h-4 w-4" />
             </Button>
           )}
         </div>
@@ -303,6 +360,24 @@ const QuotationsPage: React.FC = () => {
               queryClient.invalidateQueries({ queryKey: ['quotationStats'] });
               setShowCreateModal(false);
             }}
+          />
+        </Modal>
+
+        {/* Edit Quotation Modal */}
+        <Modal
+          isOpen={showEditModal}
+          onClose={() => setShowEditModal(false)}
+          title="Edit Quotation"
+          size="lg"
+        >
+          <CreateQuotationForm
+            onClose={() => setShowEditModal(false)}
+            onSuccess={() => {
+              queryClient.invalidateQueries({ queryKey: ['quotations'] });
+              queryClient.invalidateQueries({ queryKey: ['quotationStats'] });
+              setShowEditModal(false);
+            }}
+            initialData={selectedQuotation}
           />
         </Modal>
 

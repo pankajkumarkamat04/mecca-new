@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import toast from 'react-hot-toast';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { Form, FormActions, FormSection } from '@/components/ui/Form';
@@ -55,16 +56,26 @@ const CreateCustomerInquiryForm: React.FC<CreateCustomerInquiryFormProps> = ({
     queryFn: () => productsAPI.getProducts({ limit: 100 }),
   });
 
-  const customers = customersData?.data || [];
-  const products = productsData?.data || [];
+  const customers = Array.isArray(customersData?.data?.data) 
+    ? customersData.data.data 
+    : Array.isArray(customersData?.data) 
+    ? customersData.data 
+    : [];
+  const products = Array.isArray(productsData?.data?.data) 
+    ? productsData.data.data 
+    : Array.isArray(productsData?.data) 
+    ? productsData.data 
+    : [];
 
   const createMutation = useMutation({
     mutationFn: (data: any) => customerInquiriesAPI.createCustomerInquiry(data),
     onSuccess: () => {
       onSuccess();
+      toast.success('Customer inquiry created successfully');
     },
-    onError: (error) => {
+    onError: (error: any) => {
       console.error('Error creating inquiry:', error);
+      toast.error(error.response?.data?.message || 'Failed to create customer inquiry');
     },
   });
 
@@ -73,9 +84,11 @@ const CreateCustomerInquiryForm: React.FC<CreateCustomerInquiryFormProps> = ({
       customerInquiriesAPI.updateCustomerInquiry(id, data),
     onSuccess: () => {
       onSuccess();
+      toast.success('Customer inquiry updated successfully');
     },
-    onError: (error) => {
+    onError: (error: any) => {
       console.error('Error updating inquiry:', error);
+      toast.error(error.response?.data?.message || 'Failed to update customer inquiry');
     },
   });
 
@@ -110,9 +123,9 @@ const CreateCustomerInquiryForm: React.FC<CreateCustomerInquiryFormProps> = ({
   const defaultValues = initialData ? {
     customer: initialData.customer._id || initialData.customer,
     subject: initialData.subject,
-    message: initialData.message,
+    message: initialData.message || initialData.description,
     priority: initialData.priority,
-    notes: initialData.notes,
+    notes: initialData.notes || initialData.internalNotes,
     followUpDate: initialData.followUpDate ? 
       new Date(initialData.followUpDate).toISOString().split('T')[0] : '',
   } : {

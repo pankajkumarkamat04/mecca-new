@@ -102,12 +102,22 @@ const createProduct = async (req, res) => {
     const productData = req.body;
     productData.createdBy = req.user._id;
 
+    // Set default warehouse location if not provided
+    if (!productData.inventory?.warehouseLocation) {
+      productData.inventory = productData.inventory || {};
+      productData.inventory.warehouseLocation = {
+        zone: 'A',
+        aisle: '01',
+        shelf: '01',
+        bin: '01'
+      };
+    }
+
     const product = new Product(productData);
     await product.save();
 
     const populatedProduct = await Product.findById(product._id)
       .populate('category', 'name')
-      .populate('brand', 'name')
       .populate('supplier', 'name');
 
     res.status(201).json({
@@ -138,13 +148,22 @@ const updateProduct = async (req, res) => {
     const { id } = req.params;
     const updateData = req.body;
 
+    // Set default warehouse location if updating inventory but location not provided
+    if (updateData.inventory && !updateData.inventory.warehouseLocation) {
+      updateData.inventory.warehouseLocation = {
+        zone: 'A',
+        aisle: '01',
+        shelf: '01',
+        bin: '01'
+      };
+    }
+
     const product = await Product.findByIdAndUpdate(
       id,
       updateData,
       { new: true, runValidators: true }
     )
     .populate('category', 'name')
-    .populate('brand', 'name')
     .populate('supplier', 'name');
 
     if (!product) {
@@ -238,18 +257,19 @@ const updateProductStock = async (req, res) => {
     product.inventory.currentStock = Math.max(0, newStock);
     await product.save();
 
-    // TODO: Create stock movement record
-    // const stockMovement = new StockMovement({
-    //   product: id,
-    //   quantity: quantity,
-    //   operation: operation,
-    //   reason: reason,
-    //   reference: reference,
-    //   previousStock: product.inventory.currentStock,
-    //   newStock: newStock,
-    //   createdBy: req.user._id
-    // });
-    // await stockMovement.save();
+    // Create stock movement record
+    const StockMovement = require('../models/StockMovement');
+    const stockMovement = new StockMovement({
+      product: id,
+      quantity: quantity,
+      operation: operation,
+      reason: reason,
+      reference: reference,
+      previousStock: product.inventory.currentStock,
+      newStock: newStock,
+      createdBy: req.user._id
+    });
+    await stockMovement.save();
 
     res.json({
       success: true,
@@ -284,7 +304,6 @@ const getLowStockProducts = async (req, res) => {
 
     const products = await Product.find(filter)
       .populate('category', 'name')
-      .populate('brand', 'name')
       .sort({ 'inventory.currentStock': 1 });
 
     res.json({

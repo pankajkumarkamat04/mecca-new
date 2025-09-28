@@ -489,7 +489,11 @@ const SuppliersPage: React.FC = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Contact Person</label>
-                  <p className="text-sm text-gray-900">{selectedSupplier.contactPerson || 'Not specified'}</p>
+                  <p className="text-sm text-gray-900">
+                    {selectedSupplier.contactPerson && typeof selectedSupplier.contactPerson === 'object'
+                      ? `${(selectedSupplier.contactPerson as any).firstName || ''} ${(selectedSupplier.contactPerson as any).lastName || ''}`.trim() || 'Not specified'
+                      : selectedSupplier.contactPerson || 'Not specified'}
+                  </p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>

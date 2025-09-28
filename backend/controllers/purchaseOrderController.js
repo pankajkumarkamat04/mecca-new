@@ -4,6 +4,24 @@ const Supplier = require('../models/Supplier');
 const StockMovement = require('../models/StockMovement');
 const StockAlert = require('../models/StockAlert');
 
+// Email function for purchase orders
+const sendPurchaseOrderEmail = async (purchaseOrder) => {
+  // This would integrate with an email service like SendGrid, Nodemailer, etc.
+  // For now, we'll just log the email content
+  console.log('Sending purchase order email to supplier:', {
+    to: purchaseOrder.supplier.email,
+    subject: `Purchase Order ${purchaseOrder.orderNumber}`,
+    orderNumber: purchaseOrder.orderNumber,
+    total: purchaseOrder.total,
+    items: purchaseOrder.items.length
+  });
+  
+  // In a real implementation, you would:
+  // 1. Generate an HTML email template
+  // 2. Send via email service
+  // 3. Handle delivery status
+};
+
 // @desc    Get all purchase orders
 // @route   GET /api/purchase-orders
 // @access  Private
@@ -274,8 +292,13 @@ const sendPurchaseOrder = async (req, res) => {
     purchaseOrder.lastUpdatedBy = req.user._id;
     await purchaseOrder.save();
 
-    // TODO: Send email to supplier
-    // await sendPurchaseOrderEmail(purchaseOrder);
+    // Send email to supplier
+    try {
+      await sendPurchaseOrderEmail(purchaseOrder);
+    } catch (error) {
+      console.error('Error sending purchase order email:', error);
+      // Don't fail the request if email fails
+    }
 
     res.json({
       success: true,

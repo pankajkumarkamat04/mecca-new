@@ -3,6 +3,8 @@ const Customer = require('../models/Customer');
 const Product = require('../models/Product');
 const Invoice = require('../models/Invoice');
 const Quotation = require('../models/Quotation');
+const Warehouse = require('../models/Warehouse');
+const { notifyWarehouseOfNewOrder, notifyWarehouseOfOrderUpdate } = require('../utils/warehouseNotification');
 
 // @desc    Get all orders
 // @route   GET /api/orders
@@ -20,6 +22,7 @@ const getOrders = async (req, res) => {
     const source = req.query.source || '';
     const priority = req.query.priority || '';
     const assignedTo = req.query.assignedTo || '';
+    const warehouse = req.query.warehouse || '';
 
     // Build filter object
     const filter = { isActive: true };
@@ -38,11 +41,14 @@ const getOrders = async (req, res) => {
     if (source) filter.source = source;
     if (priority) filter.priority = priority;
     if (assignedTo) filter.assignedTo = assignedTo;
+    if (warehouse) filter.warehouse = warehouse;
 
     const orders = await Order.find(filter)
       .populate('customer', 'firstName lastName email phone')
       .populate('createdBy', 'firstName lastName')
       .populate('assignedTo', 'firstName lastName')
+      .populate('warehouse', 'name code')
+      .populate('assignedBy', 'firstName lastName')
       .populate('quotation', 'quotationNumber')
       .populate('invoice', 'invoiceNumber')
       .sort({ createdAt: -1 })
@@ -79,6 +85,8 @@ const getOrderById = async (req, res) => {
       .populate('customer', 'firstName lastName email phone address')
       .populate('createdBy', 'firstName lastName')
       .populate('assignedTo', 'firstName lastName')
+      .populate('warehouse', 'name code')
+      .populate('assignedBy', 'firstName lastName')
       .populate('quotation', 'quotationNumber')
       .populate('invoice', 'invoiceNumber')
       .populate('items.product', 'name sku description pricing inventory');
@@ -174,12 +182,47 @@ const createOrder = async (req, res) => {
       }
     }
 
+    // Assign order to warehouse based on product availability
+    let assignedWarehouse = null;
+    if (orderData.items && orderData.items.length > 0) {
+      // Find warehouse with most products in stock
+      const warehouseCounts = {};
+      for (let item of orderData.items) {
+        if (item.product) {
+          const product = await Product.findById(item.product);
+          if (product && product.inventory && product.inventory.warehouse) {
+            const warehouseId = product.inventory.warehouse.toString();
+            warehouseCounts[warehouseId] = (warehouseCounts[warehouseId] || 0) + 1;
+          }
+        }
+      }
+      
+      // Assign to warehouse with most products
+      if (Object.keys(warehouseCounts).length > 0) {
+        const bestWarehouse = Object.keys(warehouseCounts).reduce((a, b) => 
+          warehouseCounts[a] > warehouseCounts[b] ? a : b
+        );
+        assignedWarehouse = bestWarehouse;
+        orderData.warehouse = bestWarehouse;
+        orderData.assignedAt = new Date();
+        orderData.assignedBy = req.user._id;
+      }
+    }
+
     const order = new Order(orderData);
     await order.save();
+
+    // Notify warehouse of new order
+    const notificationResult = await notifyWarehouseOfNewOrder(order, orderData.source || 'direct');
+    if (!notificationResult.success) {
+      console.error('Failed to notify warehouse:', notificationResult.error);
+    }
 
     const populatedOrder = await Order.findById(order._id)
       .populate('customer', 'firstName lastName email phone')
       .populate('createdBy', 'firstName lastName')
+      .populate('warehouse', 'name code')
+      .populate('assignedBy', 'firstName lastName')
       .populate('items.product', 'name sku description');
 
     res.status(201).json({
@@ -328,6 +371,12 @@ const updateOrderStatus = async (req, res) => {
     }
 
     await order.updateStatus(status, notes);
+
+    // Notify warehouse of order status update
+    const notificationResult = await notifyWarehouseOfOrderUpdate(order, 'status');
+    if (!notificationResult.success) {
+      console.error('Failed to notify warehouse of status update:', notificationResult.error);
+    }
 
     const updatedOrder = await Order.findById(order._id)
       .populate('customer', 'firstName lastName email phone')

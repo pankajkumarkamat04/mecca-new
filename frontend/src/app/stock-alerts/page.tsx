@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import toast from 'react-hot-toast';
 import Layout from '@/components/layout/Layout';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { stockAlertAPI } from '@/lib/api';
@@ -101,6 +102,10 @@ const StockAlertsPage: React.FC = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['stock-alerts'] });
       queryClient.invalidateQueries({ queryKey: ['stock-alert-stats'] });
+      toast.success('Alert marked as read');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to mark alert as read');
     },
   });
 
@@ -110,6 +115,10 @@ const StockAlertsPage: React.FC = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['stock-alerts'] });
       queryClient.invalidateQueries({ queryKey: ['stock-alert-stats'] });
+      toast.success('Alert resolved successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to resolve alert');
     },
   });
 
@@ -120,6 +129,10 @@ const StockAlertsPage: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['stock-alerts'] });
       queryClient.invalidateQueries({ queryKey: ['stock-alert-stats'] });
       setSelectedAlerts([]);
+      toast.success('Alerts resolved successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to resolve alerts');
     },
   });
 
@@ -129,6 +142,10 @@ const StockAlertsPage: React.FC = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['stock-alerts'] });
       queryClient.invalidateQueries({ queryKey: ['stock-alert-stats'] });
+      toast.success('Low stock check completed');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to check low stock');
     },
   });
 
@@ -492,6 +509,7 @@ const StockAlertsPage: React.FC = () => {
               setShowResolveModal(false);
               queryClient.invalidateQueries({ queryKey: ['stock-alerts'] });
               queryClient.invalidateQueries({ queryKey: ['stock-alert-stats'] });
+              toast.success('Alert resolved successfully');
             }}
             onCancel={() => setShowResolveModal(false)}
           />
@@ -589,6 +607,9 @@ const ResolveAlertForm: React.FC<{
   const resolveAlertMutation = useMutation({
     mutationFn: (data: any) => stockAlertAPI.resolveAlert(alert._id, data),
     onSuccess: onSuccess,
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to resolve alert');
+    },
   });
 
   const handleSubmit = (e: React.FormEvent) => {

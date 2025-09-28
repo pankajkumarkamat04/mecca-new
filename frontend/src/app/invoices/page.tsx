@@ -11,6 +11,8 @@ import Select from '@/components/ui/Select';
 import { invoicesAPI, customersAPI, productsAPI } from '@/lib/api';
 import { useSettings } from '@/contexts/SettingsContext';
 import { formatCurrency, formatDate, getStatusColor, buildPrintableInvoiceHTML } from '@/lib/utils';
+import { calculatePrice } from '@/lib/priceCalculator';
+import PriceSummary from '@/components/ui/PriceSummary';
 import { Invoice } from '@/types';
 import toast from 'react-hot-toast';
 import { z } from 'zod';
@@ -128,13 +130,32 @@ const InvoicesPage: React.FC = () => {
   };
 
   const handleShareInvoice = (invoice: Invoice) => {
-    // TODO: Implement share functionality
-    toast.success('Share functionality will be implemented');
+    const shareUrl = `${window.location.origin}/invoice/${invoice.invoiceNumber}`;
+    
+    if (navigator.share) {
+      navigator.share({
+        title: `Invoice ${invoice.invoiceNumber}`,
+        text: `Invoice ${invoice.invoiceNumber} for ${typeof invoice.customer === 'string' ? invoice.customer : (invoice.customer as any)?.name || 'Customer'}`,
+        url: shareUrl
+      }).catch(() => {
+        // Fallback to clipboard
+        navigator.clipboard.writeText(shareUrl);
+        toast.success('Invoice link copied to clipboard');
+      });
+    } else {
+      // Fallback to clipboard
+      navigator.clipboard.writeText(shareUrl);
+      toast.success('Invoice link copied to clipboard');
+    }
   };
 
   const handleGenerateQR = (invoice: Invoice) => {
-    // TODO: Implement QR generation
-    toast.success('QR code generation will be implemented');
+    const invoiceUrl = `${window.location.origin}/invoice/${invoice.invoiceNumber}`;
+    const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(invoiceUrl)}`;
+    
+    // Open QR code in new window
+    window.open(qrCodeUrl, '_blank');
+    toast.success('QR code generated successfully');
   };
 
   const getStatusBadge = (status: string) => {
@@ -518,6 +539,30 @@ const InvoicesPage: React.FC = () => {
                 <FormField label="Notes">
                   <Input {...methods.register('notes')} placeholder="Optional notes" fullWidth />
                 </FormField>
+              </FormSection>
+
+              {/* Price Summary */}
+              <FormSection title="Price Summary">
+                {(() => {
+                  const items = methods.watch('items') || [];
+                  const priceItems = items.filter((item: any) => item.product).map((item: any) => ({
+                    product: productOptions.find((p: any) => p.value === item.product),
+                    quantity: item.quantity || 1,
+                    unitPrice: item.unitPrice || 0,
+                    discount: 0,
+                    taxRate: item.taxRate || 0
+                  }));
+                  
+                  const calculation = calculatePrice(priceItems);
+                  return (
+                    <PriceSummary 
+                      calculation={calculation} 
+                      showBreakdown={true}
+                      showItems={true}
+                      title=""
+                    />
+                  );
+                })()}
               </FormSection>
 
               <FormActions

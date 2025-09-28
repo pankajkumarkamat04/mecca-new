@@ -91,19 +91,19 @@ const productSchema = new mongoose.Schema({
     warehouseLocation: {
       zone: {
         type: String,
-        required: true
+        default: 'A'
       },
       aisle: {
         type: String,
-        required: true
+        default: '01'
       },
       shelf: {
         type: String,
-        required: true
+        default: '01'
       },
       bin: {
         type: String,
-        required: true
+        default: '01'
       },
       locationCode: {
         type: String,

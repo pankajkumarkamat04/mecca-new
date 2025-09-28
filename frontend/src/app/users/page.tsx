@@ -8,7 +8,7 @@ import DataTable from '@/components/ui/DataTable';
 import Modal from '@/components/ui/Modal';
 import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
-import { usersAPI } from '@/lib/api';
+import { usersAPI, warehouseAPI } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatDate } from '@/lib/utils';
 import { z } from 'zod';
@@ -246,20 +246,10 @@ const UsersPage: React.FC = () => {
           title="Edit User"
           size="lg"
         >
-          <div className="space-y-4">
-            <p className="text-gray-600">User edit form will be implemented here.</p>
-            <div className="flex justify-end space-x-3">
-              <Button
-                variant="outline"
-                onClick={() => setIsEditModalOpen(false)}
-              >
-                Cancel
-              </Button>
-              <Button>
-                Save Changes
-              </Button>
-            </div>
-          </div>
+          <UserEditForm 
+            user={selectedUser}
+            onSuccess={() => setIsEditModalOpen(false)}
+          />
         </Modal>
 
         {/* View User Modal */}
@@ -311,20 +301,203 @@ const UsersPage: React.FC = () => {
   );
 };
 
+// Edit User Form Component
+const UserEditForm: React.FC<{ 
+  user: User | null; 
+  onSuccess: () => void; 
+}> = ({ user, onSuccess }) => {
+  const queryClient = useQueryClient();
+  const { hasRole } = useAuth();
+  
+  // Fetch warehouses for warehouse employee assignment
+  const { data: warehousesData } = useQuery({
+    queryKey: ['warehouses'],
+    queryFn: () => warehouseAPI.getWarehouses(),
+    enabled: hasRole('admin') || hasRole('manager')
+  });
+
+  const editUserSchema = useMemo(() => z.object({
+    firstName: z.string().min(2, 'First name is required'),
+    lastName: z.string().min(2, 'Last name is required'),
+    email: z.string().email('Valid email is required'),
+    role: z.enum(['admin','manager','employee','customer','warehouse_manager','warehouse_employee']).default('employee'),
+    phone: z.string().optional().or(z.literal('')),
+    isActive: z.boolean().default(true),
+    warehouse: z.string().optional(),
+  }).refine((data) => {
+    // If role is warehouse_employee, warehouse is required
+    if (data.role === 'warehouse_employee' && !data.warehouse) {
+      return false;
+    }
+    return true;
+  }, {
+    message: "Warehouse is required for warehouse employee role",
+    path: ["warehouse"]
+  }), []);
+
+  const updateUserMutation = useMutation({
+    mutationFn: (data: any) => usersAPI.updateUser(user!._id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      toast.success('User updated successfully');
+      onSuccess();
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to update user');
+    },
+  });
+
+  // Role options based on current user's permissions
+  const getRoleOptions = () => {
+    if (hasRole('admin')) {
+      return [
+        { value: 'manager', label: 'Manager' },
+        { value: 'employee', label: 'Employee' },
+        { value: 'customer', label: 'Customer' },
+        { value: 'warehouse_manager', label: 'Warehouse Manager' },
+        { value: 'warehouse_employee', label: 'Warehouse Employee' },
+      ];
+    } else if (hasRole('manager')) {
+      return [
+        { value: 'employee', label: 'Employee' },
+        { value: 'customer', label: 'Customer' },
+        { value: 'warehouse_employee', label: 'Warehouse Employee' },
+      ];
+    }
+    return [];
+  };
+
+  const roleOptions = getRoleOptions();
+  const warehouses = warehousesData?.data?.data || [];
+
+  if (!user) return null;
+
+  return (
+    <Form
+      schema={editUserSchema}
+      defaultValues={{ 
+        firstName: user.firstName || '', 
+        lastName: user.lastName || '', 
+        email: user.email || '', 
+        role: user.role || 'employee', 
+        phone: user.phone || '', 
+        isActive: user.isActive ?? true,
+        warehouse: (user as any).warehouse?.assignedWarehouse || ''
+      }}
+      onSubmit={async (values) => {
+        const payload = { ...values } as any;
+        if (!payload.phone) delete payload.phone;
+        if (!payload.warehouse) delete payload.warehouse;
+        await updateUserMutation.mutateAsync(payload);
+      }}
+      loading={updateUserMutation.isPending}
+    >{(methods) => (
+      <div className="space-y-6">
+        <FormSection title="User Details">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <FormField label="First Name" required error={methods.formState.errors.firstName?.message as string}>
+              <Input {...methods.register('firstName')} fullWidth />
+            </FormField>
+            <FormField label="Last Name" required error={methods.formState.errors.lastName?.message as string}>
+              <Input {...methods.register('lastName')} fullWidth />
+            </FormField>
+            <FormField label="Email" required error={methods.formState.errors.email?.message as string}>
+              <Input type="email" {...methods.register('email')} fullWidth />
+            </FormField>
+            <FormField label="Phone" error={methods.formState.errors.phone?.message as string}>
+              <Input {...methods.register('phone')} fullWidth />
+            </FormField>
+            <FormField label="Role" required error={(methods.formState.errors as any)?.role?.message as string}>
+              <Select
+                options={roleOptions}
+                value={methods.watch('role')}
+                onChange={(e) => {
+                  methods.setValue('role', e.target.value as any);
+                  // Clear warehouse selection when role changes
+                  if (e.target.value !== 'warehouse_employee') {
+                    methods.setValue('warehouse', '');
+                  }
+                }}
+                fullWidth
+              />
+            </FormField>
+            {/* Warehouse selection - only show for warehouse_employee role */}
+            {methods.watch('role') === 'warehouse_employee' && (
+              <FormField label="Warehouse" required error={methods.formState.errors.warehouse?.message as string}>
+                <Select
+                  options={[
+                    { value: '', label: 'Select a warehouse...' },
+                    ...warehouses.map((warehouse: any) => ({
+                      value: warehouse._id,
+                      label: `${warehouse.name} (${warehouse.code})`
+                    }))
+                  ]}
+                  value={methods.watch('warehouse')}
+                  onChange={(e) => methods.setValue('warehouse', e.target.value)}
+                  fullWidth
+                />
+              </FormField>
+            )}
+          </div>
+        </FormSection>
+
+        <FormSection title="Status">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <FormField label="Active">
+              <select
+                className="input"
+                value={methods.watch('isActive') ? 'true' : 'false'}
+                onChange={(e) => methods.setValue('isActive', e.target.value === 'true')}
+              >
+                <option value="true">Active</option>
+                <option value="false">Inactive</option>
+              </select>
+            </FormField>
+          </div>
+        </FormSection>
+
+        <FormActions
+          onCancel={onSuccess}
+          submitText={updateUserMutation.isPending ? 'Updating...' : 'Update User'}
+          loading={updateUserMutation.isPending}
+        />
+      </div>
+    )}</Form>
+  );
+};
+
 export default UsersPage;
 
 // Create User Form Component
 const UserCreateForm: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => {
   const { user: currentUser, hasRole } = useAuth();
   const queryClient = useQueryClient();
+  
+  // Fetch warehouses for warehouse employee assignment
+  const { data: warehousesData } = useQuery({
+    queryKey: ['warehouses'],
+    queryFn: () => warehouseAPI.getWarehouses(),
+    enabled: hasRole('admin') || hasRole('manager')
+  });
+
   const createUserSchema = useMemo(() => z.object({
     firstName: z.string().min(2, 'First name is required'),
     lastName: z.string().min(2, 'Last name is required'),
     email: z.string().email('Valid email is required'),
     password: z.string().min(6, 'Min 6 characters'),
-    role: z.enum(['admin','manager','employee','customer']).default('employee'),
+    role: z.enum(['admin','manager','employee','customer','warehouse_manager','warehouse_employee']).default('employee'),
     phone: z.string().optional().or(z.literal('')),
     isActive: z.boolean().default(true),
+    warehouse: z.string().optional(),
+  }).refine((data) => {
+    // If role is warehouse_employee, warehouse is required
+    if (data.role === 'warehouse_employee' && !data.warehouse) {
+      return false;
+    }
+    return true;
+  }, {
+    message: "Warehouse is required for warehouse employee role",
+    path: ["warehouse"]
   }), []);
 
   const createUserMutation = useMutation({
@@ -346,25 +519,30 @@ const UserCreateForm: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => {
         { value: 'manager', label: 'Manager' },
         { value: 'employee', label: 'Employee' },
         { value: 'customer', label: 'Customer' },
+        { value: 'warehouse_manager', label: 'Warehouse Manager' },
+        { value: 'warehouse_employee', label: 'Warehouse Employee' },
       ];
     } else if (hasRole('manager')) {
       return [
         { value: 'employee', label: 'Employee' },
         { value: 'customer', label: 'Customer' },
+        { value: 'warehouse_employee', label: 'Warehouse Employee' },
       ];
     }
     return [];
   };
 
   const roleOptions = getRoleOptions();
+  const warehouses = warehousesData?.data?.data || [];
 
   return (
     <Form
       schema={createUserSchema}
-      defaultValues={{ firstName: '', lastName: '', email: '', password: '', role: (roleOptions[0]?.value as any) || 'employee', phone: '', isActive: true }}
+      defaultValues={{ firstName: '', lastName: '', email: '', password: '', role: (roleOptions[0]?.value as any) || 'employee', phone: '', isActive: true, warehouse: '' }}
       onSubmit={async (values) => {
         const payload = { ...values } as any;
         if (!payload.phone) delete payload.phone;
+        if (!payload.warehouse) delete payload.warehouse;
         await createUserMutation.mutateAsync(payload);
       }}
       loading={createUserMutation.isPending}
@@ -391,10 +569,33 @@ const UserCreateForm: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => {
               <Select
                 options={roleOptions}
                 value={methods.watch('role')}
-                onChange={(e) => methods.setValue('role', e.target.value as any)}
+                onChange={(e) => {
+                  methods.setValue('role', e.target.value as any);
+                  // Clear warehouse selection when role changes
+                  if (e.target.value !== 'warehouse_employee') {
+                    methods.setValue('warehouse', '');
+                  }
+                }}
                 fullWidth
               />
             </FormField>
+            {/* Warehouse selection - only show for warehouse_employee role */}
+            {methods.watch('role') === 'warehouse_employee' && (
+              <FormField label="Warehouse" required error={methods.formState.errors.warehouse?.message as string}>
+                <Select
+                  options={[
+                    { value: '', label: 'Select a warehouse...' },
+                    ...warehouses.map((warehouse: any) => ({
+                      value: warehouse._id,
+                      label: `${warehouse.name} (${warehouse.code})`
+                    }))
+                  ]}
+                  value={methods.watch('warehouse')}
+                  onChange={(e) => methods.setValue('warehouse', e.target.value)}
+                  fullWidth
+                />
+              </FormField>
+            )}
           </div>
         </FormSection>
 

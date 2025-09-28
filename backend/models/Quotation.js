@@ -84,6 +84,17 @@ const quotationSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
+  taxes: [{
+    name: String,
+    rate: {
+      type: Number,
+      required: true
+    },
+    amount: {
+      type: Number,
+      required: true
+    }
+  }],
   totalTax: {
     type: Number,
     default: 0
@@ -149,13 +160,15 @@ quotationSchema.pre('save', function(next) {
     return sum + discountAmount;
   }, 0);
 
-  // Calculate total tax
-  this.totalTax = this.items.reduce((sum, item) => {
+  // Calculate total tax from both taxes array and individual item taxes
+  const taxesArrayTotal = this.taxes.reduce((sum, tax) => sum + tax.amount, 0);
+  const itemTaxesTotal = this.items.reduce((sum, item) => {
     const discountAmount = (item.unitPrice * item.quantity * item.discount) / 100;
     const afterDiscount = (item.unitPrice * item.quantity) - discountAmount;
     const taxAmount = (afterDiscount * item.taxRate) / 100;
     return sum + taxAmount;
   }, 0);
+  this.totalTax = taxesArrayTotal + itemTaxesTotal;
 
   // Calculate total amount
   this.totalAmount = this.subtotal + this.totalTax;

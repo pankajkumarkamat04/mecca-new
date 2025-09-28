@@ -3,10 +3,13 @@
 import React, { useState } from 'react';
 import Layout from '@/components/layout/Layout';
 import { useQuery } from '@tanstack/react-query';
-import { invoicesAPI } from '@/lib/api';
+import { Invoice, InvoiceItem } from '@/types';
 import { formatCurrency, formatDate } from '@/lib/utils';
+import { calculatePrice } from '@/lib/priceCalculator';
+import PriceSummary from '@/components/ui/PriceSummary';
 import DataTable from '@/components/ui/DataTable';
 import { useAuth } from '@/contexts/AuthContext';
+import { invoicesAPI } from '@/lib/api';
 import { 
   DocumentTextIcon, 
   EyeIcon, 
@@ -26,7 +29,7 @@ const CustomerInvoicesPage: React.FC = () => {
   const [pageSize] = useState(10);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [selectedInvoice, setSelectedInvoice] = useState<any>(null);
+  const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
 
   // Fetch customer's invoices
@@ -43,17 +46,17 @@ const CustomerInvoicesPage: React.FC = () => {
   });
 
 
-  const handleViewInvoice = (invoice: any) => {
+  const handleViewInvoice = (invoice: Invoice) => {
     setSelectedInvoice(invoice);
     setShowInvoiceModal(true);
   };
 
-  const handlePrintInvoice = (invoice: any) => {
+  const handlePrintInvoice = (invoice: Invoice) => {
     // Implement print functionality
     window.print();
   };
 
-  const handleDownloadInvoice = (invoice: any) => {
+  const handleDownloadInvoice = (invoice: Invoice) => {
     // Implement download functionality
     console.log('Download invoice:', invoice._id);
   };
@@ -117,7 +120,7 @@ const CustomerInvoicesPage: React.FC = () => {
     {
       key: 'actions',
       label: 'Actions',
-      render: (_: any, row: any) => (
+      render: (_: any, row: Invoice) => (
         <div className="flex items-center space-x-2">
           <button
             onClick={() => handleViewInvoice(row)}
@@ -158,9 +161,9 @@ const CustomerInvoicesPage: React.FC = () => {
     const invoices = invoicesData.data.data.data;
     return {
       total: invoices.length,
-      paid: invoices.filter((inv: any) => inv.status === 'paid').length,
-      partial: invoices.filter((inv: any) => inv.status === 'partial').length,
-      overdue: invoices.filter((inv: any) => inv.status === 'overdue').length,
+      paid: invoices.filter((inv: Invoice) => inv.status === 'paid').length,
+      partial: invoices.filter((inv: Invoice) => inv.status === 'partial').length,
+      overdue: invoices.filter((inv: Invoice) => inv.status === 'overdue').length,
     };
   };
 
@@ -360,7 +363,7 @@ const CustomerInvoicesPage: React.FC = () => {
               <div>
                 <h4 className="font-medium text-gray-900 mb-3">Items</h4>
                 <div className="space-y-2">
-                  {selectedInvoice.items?.map((item: any, index: number) => {
+                  {selectedInvoice.items?.map((item: InvoiceItem, index: number) => {
                     const unitPrice = item.unitPrice || item.price || 0;
                     const quantity = item.quantity || 0;
                     const discount = item.discount || 0;
@@ -419,38 +422,43 @@ const CustomerInvoicesPage: React.FC = () => {
 
               {/* Invoice Totals */}
               <div className="border-t pt-4">
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Subtotal:</span>
-                    <span className="font-medium">{formatCurrency(selectedInvoice.subtotal || 0)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Total Tax:</span>
-                    <span className="font-medium">{formatCurrency(selectedInvoice.totalTax || 0)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Total Discount:</span>
-                    <span className="font-medium">-{formatCurrency(selectedInvoice.totalDiscount || 0)}</span>
-                  </div>
-                  {(selectedInvoice.shipping?.cost || 0) > 0 && (
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Shipping:</span>
-                      <span className="font-medium">{formatCurrency(selectedInvoice.shipping?.cost || 0)}</span>
+                {(() => {
+                  const priceItems = selectedInvoice.items?.map((item: InvoiceItem) => ({
+                    name: item.name,
+                    quantity: item.quantity || 1,
+                    unitPrice: item.unitPrice || item.price || 0,
+                    discount: item.discount || 0,
+                    taxRate: item.taxRate || 0
+                  })) || [];
+                  
+                  const calculation = calculatePrice(priceItems, [], [], {
+                    cost: selectedInvoice.shipping?.cost || 0
+                  });
+                  
+                  return (
+                    <div className="space-y-4">
+                      <PriceSummary 
+                        calculation={calculation} 
+                        showBreakdown={true}
+                        showItems={false}
+                        title=""
+                        className="bg-transparent p-0"
+                      />
+                      
+                      {/* Payment Status */}
+                      <div className="space-y-2 pt-2 border-t">
+                        <div className="flex justify-between text-green-600">
+                          <span>Paid:</span>
+                          <span>{formatCurrency(selectedInvoice.paid || 0)}</span>
+                        </div>
+                        <div className="flex justify-between text-red-600">
+                          <span>Balance:</span>
+                          <span>{formatCurrency(selectedInvoice.total - (selectedInvoice.paid || 0))}</span>
+                        </div>
+                      </div>
                     </div>
-                  )}
-                  <div className="flex justify-between text-lg font-bold border-t pt-2">
-                    <span>Total:</span>
-                    <span>{formatCurrency(selectedInvoice.total)}</span>
-                  </div>
-                  <div className="flex justify-between text-green-600">
-                    <span>Paid:</span>
-                    <span>{formatCurrency(selectedInvoice.paid || 0)}</span>
-                  </div>
-                  <div className="flex justify-between text-red-600">
-                    <span>Balance:</span>
-                    <span>{formatCurrency(selectedInvoice.total - (selectedInvoice.paid || 0))}</span>
-                  </div>
-                </div>
+                  );
+                })()}
               </div>
 
               {/* Action Buttons */}

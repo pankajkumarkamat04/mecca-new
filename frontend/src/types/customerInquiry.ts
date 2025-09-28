@@ -14,16 +14,16 @@ export interface CustomerInquiry {
   customerEmail: string;
   customerPhone?: string;
   subject: string;
-  message: string;
+  description: string;
   inquiryDate: string;
-  status: 'new' | 'pending' | 'in_progress' | 'resolved' | 'closed' | 'cancelled';
+  status: 'new' | 'under_review' | 'quoted' | 'converted_to_order' | 'closed' | 'cancelled';
   priority: 'low' | 'normal' | 'high' | 'urgent';
   assignedTo?: string | {
     _id: string;
     firstName: string;
     lastName: string;
   };
-  productsOfInterest: Array<{
+  items: Array<{
     product: string | {
       _id: string;
       name: string;
@@ -35,16 +35,16 @@ export interface CustomerInquiry {
     quantity?: number;
     notes?: string;
   }>;
-  notes?: string;
+  internalNotes?: string;
   followUpDate?: string;
   resolutionDate?: string;
-  convertedToQuotation?: string | {
+  quotation?: string | {
     _id: string;
     quotationNumber: string;
     status: string;
     totalAmount?: number;
   };
-  convertedToOrder?: string | {
+  order?: string | {
     _id: string;
     orderNumber: string;
     orderStatus: string;
@@ -64,9 +64,9 @@ export interface CustomerInquiryStats {
   total: number;
   byStatus: {
     new: number;
-    pending: number;
-    in_progress: number;
-    resolved: number;
+    under_review: number;
+    quoted: number;
+    converted_to_order: number;
     closed: number;
   };
   conversionRate: number;
@@ -80,19 +80,19 @@ export interface CustomerInquiryStats {
 export interface CreateCustomerInquiryData {
   customer: string;
   subject: string;
-  message: string;
+  description: string;
   priority?: 'low' | 'normal' | 'high' | 'urgent';
-  productsOfInterest?: Array<{
+  items?: Array<{
     product: string;
     quantity?: number;
     notes?: string;
   }>;
-  notes?: string;
+  internalNotes?: string;
   followUpDate?: string;
 }
 
 export interface UpdateCustomerInquiryData extends Partial<CreateCustomerInquiryData> {
-  status?: 'new' | 'pending' | 'in_progress' | 'resolved' | 'closed' | 'cancelled';
+  status?: 'new' | 'under_review' | 'quoted' | 'converted_to_order' | 'closed' | 'cancelled';
   assignedTo?: string;
 }
 

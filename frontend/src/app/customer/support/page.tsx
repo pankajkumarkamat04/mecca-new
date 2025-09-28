@@ -2,11 +2,12 @@
 
 import React, { useState } from 'react';
 import Layout from '@/components/layout/Layout';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { SupportTicket } from '@/types';
 import { supportAPI, customersAPI } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
 import DataTable from '@/components/ui/DataTable';
 import { useAuth } from '@/contexts/AuthContext';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
   TicketIcon, 
   PlusIcon, 
@@ -29,7 +30,7 @@ const CustomerSupportPage: React.FC = () => {
   const [pageSize] = useState(10);
   const [statusFilter, setStatusFilter] = useState('all');
   const [priorityFilter, setPriorityFilter] = useState('all');
-  const [selectedTicket, setSelectedTicket] = useState<any>(null);
+  const [selectedTicket, setSelectedTicket] = useState<SupportTicket | null>(null);
   const [showTicketModal, setShowTicketModal] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newTicket, setNewTicket] = useState({

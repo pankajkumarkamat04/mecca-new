@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import toast from 'react-hot-toast';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { Form, FormActions, FormSection } from '@/components/ui/Form';
@@ -11,6 +12,8 @@ import Button from '@/components/ui/Button';
 import { quotationsAPI } from '@/lib/api';
 import { customersAPI } from '@/lib/api';
 import { productsAPI } from '@/lib/api';
+import { calculatePrice } from '@/lib/priceCalculator';
+import PriceSummary from '@/components/ui/PriceSummary';
 import { z } from 'zod';
 
 interface CreateQuotationFormProps {
@@ -22,13 +25,6 @@ interface CreateQuotationFormProps {
 const quotationSchema = z.object({
   customer: z.string().min(1, 'Customer is required'),
   validUntil: z.string().min(1, 'Valid until date is required'),
-  items: z.array(z.object({
-    product: z.string().min(1, 'Product is required'),
-    quantity: z.number().min(1, 'Quantity must be at least 1'),
-    unitPrice: z.number().min(0, 'Unit price must be positive'),
-    discount: z.number().min(0).max(100).optional(),
-    taxRate: z.number().min(0).max(100).optional(),
-  })).min(1, 'At least one item is required'),
   notes: z.string().optional(),
   terms: z.string().optional(),
 });
@@ -42,6 +38,9 @@ const CreateQuotationForm: React.FC<CreateQuotationFormProps> = ({
 }) => {
   const [items, setItems] = useState<any[]>(
     initialData?.items || [{ product: '', quantity: 1, unitPrice: 0, discount: 0, taxRate: 0 }]
+  );
+  const [taxes, setTaxes] = useState<any[]>(
+    initialData?.taxes || []
   );
 
   // Fetch customers and products
@@ -62,9 +61,11 @@ const CreateQuotationForm: React.FC<CreateQuotationFormProps> = ({
     mutationFn: (data: any) => quotationsAPI.createQuotation(data),
     onSuccess: () => {
       onSuccess();
+      toast.success('Quotation created successfully');
     },
-    onError: (error) => {
+    onError: (error: any) => {
       console.error('Error creating quotation:', error);
+      toast.error(error.response?.data?.message || 'Failed to create quotation');
     },
   });
 
@@ -73,9 +74,11 @@ const CreateQuotationForm: React.FC<CreateQuotationFormProps> = ({
       quotationsAPI.updateQuotation(id, data),
     onSuccess: () => {
       onSuccess();
+      toast.success('Quotation updated successfully');
     },
-    onError: (error) => {
+    onError: (error: any) => {
       console.error('Error updating quotation:', error);
+      toast.error(error.response?.data?.message || 'Failed to update quotation');
     },
   });
 
@@ -87,9 +90,38 @@ const CreateQuotationForm: React.FC<CreateQuotationFormProps> = ({
     setItems(items.filter((_, i) => i !== index));
   };
 
+  const addTax = () => {
+    setTaxes([...taxes, { name: '', rate: 0, amount: 0 }]);
+  };
+
+  const removeTax = (index: number) => {
+    setTaxes(taxes.filter((_, i) => i !== index));
+  };
+
+  const updateTax = (index: number, field: string, value: any) => {
+    const updated = [...taxes];
+    updated[index] = { ...updated[index], [field]: value };
+    
+    // Calculate tax amount based on subtotal
+    if (field === 'rate') {
+      const subtotal = calculateTotals().subtotal;
+      updated[index].amount = (subtotal * value) / 100;
+    }
+    
+    setTaxes(updated);
+  };
+
   const updateItem = (index: number, field: string, value: any) => {
     const updated = [...items];
     updated[index] = { ...updated[index], [field]: value };
+    
+    // If product is selected, auto-populate unit price
+    if (field === 'product' && value) {
+      const selectedProduct = products.find((p: any) => p._id === value);
+      if (selectedProduct && selectedProduct.pricing?.sellingPrice) {
+        updated[index].unitPrice = selectedProduct.pricing.sellingPrice;
+      }
+    }
     
     // Auto-calculate total
     const item = updated[index];
@@ -101,9 +133,17 @@ const CreateQuotationForm: React.FC<CreateQuotationFormProps> = ({
   };
 
   const handleSubmit = (data: QuotationFormData) => {
+    // Validate that at least one item is selected
+    const validItems = items.filter(item => item.product);
+    if (validItems.length === 0) {
+      toast.error('Please add at least one item to the quotation');
+      return;
+    }
+
     const submitData = {
       ...data,
-      items: items.filter(item => item.product),
+      items: validItems,
+      taxes: taxes.filter(tax => tax.name && tax.rate > 0),
       validUntil: new Date(data.validUntil).toISOString(),
       quotationDate: new Date().toISOString(),
       status: 'draft',
@@ -117,19 +157,26 @@ const CreateQuotationForm: React.FC<CreateQuotationFormProps> = ({
   };
 
   const calculateTotals = () => {
-    const subtotal = items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
-    const totalDiscount = items.reduce((sum, item) => {
-      const itemSubtotal = item.quantity * item.unitPrice;
-      return sum + (itemSubtotal * (item.discount || 0) / 100);
-    }, 0);
-    const totalTax = items.reduce((sum, item) => {
-      const itemSubtotal = item.quantity * item.unitPrice;
-      const discountedAmount = itemSubtotal * (1 - (item.discount || 0) / 100);
-      return sum + (discountedAmount * (item.taxRate || 0) / 100);
-    }, 0);
-    const total = subtotal - totalDiscount + totalTax;
+    // Convert items to price calculator format
+    const priceItems = items.filter(item => item.product).map(item => ({
+      product: products.find((p: any) => p._id === item.product),
+      quantity: item.quantity,
+      unitPrice: item.unitPrice,
+      discount: item.discount || 0,
+      taxRate: item.taxRate || 0
+    }));
 
-    return { subtotal, totalDiscount, totalTax, total };
+    // Convert additional taxes to price calculator format
+    const additionalTaxes = taxes.filter(tax => tax.name && tax.rate > 0).map(tax => ({
+      name: tax.name,
+      rate: tax.rate,
+      description: `Additional ${tax.name} tax`
+    }));
+
+    // Use universal price calculator
+    const calculation = calculatePrice(priceItems, [], additionalTaxes);
+
+    return calculation;
   };
 
   const totals = calculateTotals();
@@ -314,25 +361,86 @@ const CreateQuotationForm: React.FC<CreateQuotationFormProps> = ({
             </div>
           </FormSection>
 
-          <FormSection title="Totals">
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <div className="flex justify-between text-sm">
-                <span>Subtotal:</span>
-                <span>${totals.subtotal.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span>Discount:</span>
-                <span>-${totals.totalDiscount.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span>Tax:</span>
-                <span>${totals.totalTax.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between text-lg font-semibold border-t pt-2 mt-2">
-                <span>Total:</span>
-                <span>${totals.total.toFixed(2)}</span>
-              </div>
+          <FormSection title="Additional Taxes">
+            <div className="space-y-4">
+              {taxes.map((tax, index) => (
+                <div key={index} className="border rounded-lg p-4">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Tax Name
+                      </label>
+                      <input
+                        type="text"
+                        value={tax.name}
+                        onChange={(e) => updateTax(index, 'name', e.target.value)}
+                        className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                        placeholder="e.g., VAT, Sales Tax"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Rate %
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="0.01"
+                        value={tax.rate}
+                        onChange={(e) => updateTax(index, 'rate', parseFloat(e.target.value) || 0)}
+                        className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Amount
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={tax.amount}
+                        readOnly
+                        className="block w-full rounded-md border-gray-300 bg-gray-50 shadow-sm sm:text-sm"
+                      />
+                    </div>
+
+                    <div className="flex items-end">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeTax(index)}
+                      >
+                        <TrashIcon className="h-4 w-4 text-red-500" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+
+              <Button
+                type="button"
+                variant="outline"
+                onClick={addTax}
+                className="w-full"
+              >
+                <PlusIcon className="h-4 w-4 mr-2" />
+                Add Tax
+              </Button>
             </div>
+          </FormSection>
+
+          <FormSection title="Price Summary">
+            <PriceSummary 
+              calculation={totals} 
+              showBreakdown={true}
+              showItems={true}
+              title=""
+            />
           </FormSection>
 
           <FormActions

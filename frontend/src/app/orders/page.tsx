@@ -2,9 +2,12 @@
 
 import React, { useState } from 'react';
 import Layout from '@/components/layout/Layout';
+import { Order, OrderPayment } from '@/types';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ordersAPI, customersAPI, productsAPI, usersAPI } from '@/lib/api';
 import { formatDate, formatCurrency, getStatusColor } from '@/lib/utils';
+import { calculatePrice } from '@/lib/priceCalculator';
+import PriceSummary from '@/components/ui/PriceSummary';
 import DataTable from '@/components/ui/DataTable';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
@@ -35,7 +38,7 @@ const OrdersPage: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [paymentStatusFilter, setPaymentStatusFilter] = useState('all');
   const [fulfillmentStatusFilter, setFulfillmentStatusFilter] = useState('all');
-  const [selectedOrder, setSelectedOrder] = useState<any>(null);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showStatusModal, setShowStatusModal] = useState(false);
@@ -76,7 +79,7 @@ const OrdersPage: React.FC = () => {
 
   // Create order mutation
   const createOrderMutation = useMutation({
-    mutationFn: (orderData: any) => ordersAPI.createOrder(orderData),
+    mutationFn: (orderData: Partial<Order>) => ordersAPI.createOrder(orderData),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['orders'] });
       setShowCreateModal(false);
@@ -89,7 +92,7 @@ const OrdersPage: React.FC = () => {
 
   // Update order mutation
   const updateOrderMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: any }) => ordersAPI.updateOrder(id, data),
+    mutationFn: ({ id, data }: { id: string; data: Partial<Order> }) => ordersAPI.updateOrder(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['orders'] });
       setShowOrderModal(false);
@@ -128,7 +131,7 @@ const OrdersPage: React.FC = () => {
 
   // Update payment mutation
   const updatePaymentMutation = useMutation({
-    mutationFn: ({ id, paymentData }: { id: string; paymentData: any }) => 
+    mutationFn: ({ id, paymentData }: { id: string; paymentData: OrderPayment }) => 
       ordersAPI.updatePaymentStatus(id, paymentData),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['orders'] });
@@ -558,32 +561,30 @@ const OrdersPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Totals */}
+              {/* Price Summary */}
               <div className="border-t pt-4">
-                <div className="flex justify-end">
-                  <div className="w-64 space-y-2">
-                    <div className="flex justify-between">
-                      <span className="text-sm text-gray-600">Subtotal:</span>
-                      <span className="text-sm font-medium">{formatCurrency(selectedOrder.subtotal)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-sm text-gray-600">Discount:</span>
-                      <span className="text-sm font-medium">-{formatCurrency(selectedOrder.totalDiscount)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-sm text-gray-600">Tax:</span>
-                      <span className="text-sm font-medium">{formatCurrency(selectedOrder.totalTax)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-sm text-gray-600">Shipping:</span>
-                      <span className="text-sm font-medium">{formatCurrency(selectedOrder.shippingCost)}</span>
-                    </div>
-                    <div className="flex justify-between border-t pt-2">
-                      <span className="text-base font-medium">Total:</span>
-                      <span className="text-base font-medium">{formatCurrency(selectedOrder.totalAmount)}</span>
-                    </div>
-                  </div>
-                </div>
+                {(() => {
+                  const priceItems = selectedOrder.items?.map((item: any) => ({
+                    name: item.name,
+                    quantity: item.quantity || 1,
+                    unitPrice: item.unitPrice || 0,
+                    discount: item.discount || 0,
+                    taxRate: item.taxRate || 0
+                  })) || [];
+                  
+                  const calculation = calculatePrice(priceItems, [], [], {
+                    cost: selectedOrder.shippingCost || 0
+                  });
+                  
+                  return (
+                    <PriceSummary 
+                      calculation={calculation} 
+                      showBreakdown={true}
+                      showItems={false}
+                      title="Order Summary"
+                    />
+                  );
+                })()}
               </div>
 
               {/* Notes */}

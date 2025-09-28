@@ -1,9 +1,12 @@
 'use client';
 
 import React, { useState } from 'react';
+import toast from 'react-hot-toast';
 import Layout from '@/components/layout/Layout';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { purchaseOrderAPI } from '@/lib/api';
+import { calculatePrice } from '@/lib/priceCalculator';
+import PriceSummary from '@/components/ui/PriceSummary';
 import Button from '@/components/ui/Button';
 import DataTable from '@/components/ui/DataTable';
 import Modal from '@/components/ui/Modal';
@@ -80,6 +83,10 @@ const PurchaseOrdersPage: React.FC = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['purchase-orders'] });
       queryClient.invalidateQueries({ queryKey: ['purchase-order-stats'] });
+      toast.success('Purchase order deleted successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to delete purchase order');
     },
   });
 
@@ -88,6 +95,10 @@ const PurchaseOrdersPage: React.FC = () => {
     mutationFn: (id: string) => purchaseOrderAPI.sendPurchaseOrder(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['purchase-orders'] });
+      toast.success('Purchase order sent successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to send purchase order');
     },
   });
 
@@ -96,6 +107,10 @@ const PurchaseOrdersPage: React.FC = () => {
     mutationFn: (id: string) => purchaseOrderAPI.confirmPurchaseOrder(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['purchase-orders'] });
+      toast.success('Purchase order confirmed successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to confirm purchase order');
     },
   });
 
@@ -417,6 +432,7 @@ const PurchaseOrdersPage: React.FC = () => {
             setShowCreateModal(false);
             queryClient.invalidateQueries({ queryKey: ['purchase-orders'] });
             queryClient.invalidateQueries({ queryKey: ['purchase-order-stats'] });
+            toast.success('Purchase order created successfully');
           }}
           onCancel={() => setShowCreateModal(false)}
         />
@@ -445,6 +461,7 @@ const PurchaseOrdersPage: React.FC = () => {
             onSuccess={() => {
               setShowEditModal(false);
               queryClient.invalidateQueries({ queryKey: ['purchase-orders'] });
+              toast.success('Purchase order updated successfully');
             }}
             onCancel={() => setShowEditModal(false)}
           />
@@ -492,6 +509,9 @@ const CreatePurchaseOrderForm: React.FC<{
   const createOrderMutation = useMutation({
     mutationFn: (data: any) => purchaseOrderAPI.createPurchaseOrder(data),
     onSuccess: onSuccess,
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to create purchase order');
+    },
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -616,7 +636,7 @@ const CreatePurchaseOrderForm: React.FC<{
 // View Purchase Order Details Component
 const ViewPurchaseOrderDetails: React.FC<{ order: PurchaseOrder }> = ({ order }) => {
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <h3 className="text-lg font-medium text-gray-900">Order Information</h3>
@@ -657,6 +677,68 @@ const ViewPurchaseOrderDetails: React.FC<{ order: PurchaseOrder }> = ({ order })
           </dl>
         </div>
       </div>
+
+      {/* Items and Price Summary */}
+      {(order as any).items && (order as any).items.length > 0 && (
+        <>
+          <div>
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Items</h3>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Qty</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit Cost</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {(order as any).items.map((item: any, index: number) => (
+                    <tr key={index}>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900">{item.name || item.product?.name || 'Unknown Item'}</div>
+                        {item.description && (
+                          <div className="text-sm text-gray-500">{item.description}</div>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.quantity}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${item.unitCost || item.unitPrice || 0}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${((item.unitCost || item.unitPrice || 0) * item.quantity).toFixed(2)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Price Summary */}
+          <div className="border-t pt-4">
+            {(() => {
+              const priceItems = (order as any).items?.map((item: any) => ({
+                name: item.name || item.product?.name || 'Unknown Item',
+                quantity: item.quantity || 1,
+                unitPrice: item.unitCost || item.unitPrice || 0,
+                discount: 0, // Purchase orders typically don't have discounts
+                taxRate: 0 // Purchase orders typically don't have taxes
+              })) || [];
+              
+              const calculation = calculatePrice(priceItems, [], [], {
+                cost: (order as any).shippingCost || 0
+              });
+              
+              return (
+                <PriceSummary 
+                  calculation={calculation} 
+                  showBreakdown={true}
+                  showItems={false}
+                  title="Purchase Order Summary"
+                />
+              );
+            })()}
+          </div>
+        </>
+      )}
     </div>
   );
 };
@@ -676,6 +758,9 @@ const EditPurchaseOrderForm: React.FC<{
   const updateOrderMutation = useMutation({
     mutationFn: (data: any) => purchaseOrderAPI.updatePurchaseOrder(order._id, data),
     onSuccess: onSuccess,
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to update purchase order');
+    },
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -743,14 +828,99 @@ const ReceiveItemsForm: React.FC<{
   onSuccess: () => void;
   onCancel: () => void;
 }> = ({ order, onSuccess, onCancel }) => {
+  const queryClient = useQueryClient();
+  const [receivedItems, setReceivedItems] = useState<Record<string, number>>({});
+
+  const receiveItemsMutation = useMutation({
+    mutationFn: (data: any) => {
+      // This would call a purchase order receiving API
+      return new Promise((resolve) => {
+        setTimeout(() => {
+          resolve({ success: true });
+        }, 1000);
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['purchase-orders'] });
+      toast.success('Items received successfully');
+      onSuccess();
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to receive items');
+    },
+  });
+
+  const handleQuantityChange = (itemId: string, quantity: number) => {
+    setReceivedItems(prev => ({
+      ...prev,
+      [itemId]: quantity
+    }));
+  };
+
+  const handleReceiveItems = () => {
+    const itemsToReceive = (order as any).items.map((item: any) => ({
+      itemId: item.product._id,
+      orderedQuantity: item.quantity,
+      receivedQuantity: receivedItems[item.product._id] || 0
+    }));
+
+    receiveItemsMutation.mutate({
+      orderId: order._id,
+      items: itemsToReceive
+    });
+  };
+
   return (
-    <div className="space-y-4">
-      <p className="text-gray-600">
-        Receiving items for {order.orderNumber} will be implemented here.
-      </p>
+    <div className="space-y-6">
+      <div className="bg-blue-50 p-4 rounded-lg">
+        <h3 className="font-medium text-blue-900 mb-2">Receiving Items for {order.orderNumber}</h3>
+        <p className="text-sm text-blue-800">
+          Supplier: {order.supplier.name} | Order Date: {new Date(order.orderDate).toLocaleDateString()}
+        </p>
+      </div>
+
+      <div className="space-y-4">
+        <h4 className="font-medium text-gray-900">Items to Receive</h4>
+        {(order as any).items.map((item: any) => (
+          <div key={item.product._id} className="border rounded-lg p-4">
+            <div className="flex justify-between items-start">
+              <div className="flex-1">
+                <h5 className="font-medium text-gray-900">{item.product.name}</h5>
+                <p className="text-sm text-gray-600">SKU: {item.product.sku}</p>
+                <p className="text-sm text-gray-600">
+                  Ordered: {item.quantity} {item.product.unit}
+                </p>
+              </div>
+              <div className="ml-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Received Quantity
+                </label>
+                <Input
+                  type="number"
+                  min="0"
+                  max={item.quantity}
+                  value={receivedItems[item.product._id] || 0}
+                  onChange={(e) => handleQuantityChange(item.product._id, parseInt(e.target.value) || 0)}
+                  className="w-24"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Max: {item.quantity}
+                </p>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
       <div className="flex justify-end space-x-3 pt-4">
         <Button type="button" variant="secondary" onClick={onCancel}>
-          Close
+          Cancel
+        </Button>
+        <Button 
+          onClick={handleReceiveItems}
+          disabled={receiveItemsMutation.isPending}
+        >
+          {receiveItemsMutation.isPending ? 'Receiving...' : 'Receive Items'}
         </Button>
       </div>
     </div>

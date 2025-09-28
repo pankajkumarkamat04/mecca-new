@@ -52,7 +52,13 @@ const createWarehouseValidation = [
   body('contact.manager.phone').optional().isString().trim().isLength({ max: 20 }).withMessage('Manager phone cannot exceed 20 characters'),
   body('contact.manager.email').optional().isEmail().withMessage('Valid manager email is required'),
   
-  body('capacity.totalCapacity').optional().isNumeric().withMessage('Total capacity must be a number'),
+  body('capacity.totalCapacity')
+    .notEmpty()
+    .withMessage('Total capacity is required')
+    .isNumeric()
+    .withMessage('Total capacity must be a number')
+    .isFloat({ min: 0 })
+    .withMessage('Total capacity must be greater than or equal to 0'),
   body('capacity.maxWeight').optional().isNumeric().withMessage('Max weight must be a number'),
   
   body('settings.autoAllocateLocation').optional().isBoolean().withMessage('Auto allocate location must be a boolean'),
@@ -167,10 +173,44 @@ const transferProductsValidation = [
     .withMessage('Notes cannot exceed 500 characters')
 ];
 
+// Validation for assigning manager
+const assignManagerValidation = [
+  param('id').isMongoId().withMessage('Valid warehouse ID is required'),
+  body('managerId')
+    .notEmpty()
+    .withMessage('Manager ID is required')
+    .isMongoId()
+    .withMessage('Valid manager ID is required')
+];
+
+// Validation for adding employee
+const addEmployeeValidation = [
+  param('id').isMongoId().withMessage('Valid warehouse ID is required'),
+  body('userId')
+    .notEmpty()
+    .withMessage('User ID is required')
+    .isMongoId()
+    .withMessage('Valid user ID is required'),
+  body('position')
+    .notEmpty()
+    .withMessage('Position is required')
+    .isIn(['warehouse_employee'])
+    .withMessage('Position must be: warehouse_employee')
+];
+
+// Validation for removing employee
+const removeEmployeeValidation = [
+  param('id').isMongoId().withMessage('Valid warehouse ID is required'),
+  param('employeeId').isMongoId().withMessage('Valid employee ID is required')
+];
+
 module.exports = {
   getWarehousesValidation,
   warehouseIdValidation,
   createWarehouseValidation,
   updateWarehouseValidation,
-  transferProductsValidation
+  transferProductsValidation,
+  assignManagerValidation,
+  addEmployeeValidation,
+  removeEmployeeValidation
 };

@@ -239,7 +239,7 @@ const CreateOrderForm: React.FC<CreateOrderFormProps> = ({ onClose, onSuccess, i
         
         {/* Add New Item */}
         <div className="bg-gray-50 p-4 rounded-lg mb-4">
-          <div className="grid grid-cols-6 gap-4 items-end">
+          <div className="grid grid-cols-5 gap-4 mb-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Product</label>
               <Select
@@ -301,16 +301,16 @@ const CreateOrderForm: React.FC<CreateOrderFormProps> = ({ onClose, onSuccess, i
                 onChange={(e) => setNewItem(prev => ({ ...prev, taxRate: parseFloat(e.target.value) || 0 }))}
               />
             </div>
-            <div>
-              <Button
-                type="button"
-                onClick={handleAddItem}
-                className="flex items-center space-x-2"
-              >
-                <PlusIcon className="h-4 w-4" />
-                <span>Add</span>
-              </Button>
-            </div>
+          </div>
+          <div className="flex justify-end">
+            <Button
+              type="button"
+              onClick={handleAddItem}
+              className="flex items-center space-x-2"
+            >
+              <PlusIcon className="h-4 w-4" />
+              <span>Add Item</span>
+            </Button>
           </div>
         </div>
 

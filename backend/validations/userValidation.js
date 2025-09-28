@@ -27,7 +27,7 @@ const createUserValidation = [
     .withMessage('Password must be at least 6 characters'),
   
   body('role')
-    .isIn(['admin', 'manager', 'employee'])
+    .isIn(['admin', 'manager', 'employee', 'customer', 'warehouse_manager', 'warehouse_employee'])
     .withMessage('Invalid role'),
   
   body('phone')
@@ -48,7 +48,12 @@ const createUserValidation = [
   body('salary.paymentType')
     .optional()
     .isIn(['monthly', 'weekly', 'daily', 'hourly'])
-    .withMessage('Invalid payment type')
+    .withMessage('Invalid payment type'),
+  
+  body('warehouse')
+    .optional()
+    .isMongoId()
+    .withMessage('Invalid warehouse ID')
 ];
 
 // Update user validation
@@ -82,7 +87,7 @@ const updateUserValidation = [
   
   body('role')
     .optional()
-    .isIn(['admin', 'manager', 'employee'])
+    .isIn(['admin', 'manager', 'employee', 'customer', 'warehouse_manager', 'warehouse_employee'])
     .withMessage('Invalid role'),
   
   body('isActive')

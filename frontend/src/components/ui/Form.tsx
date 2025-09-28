@@ -145,7 +145,6 @@ function FormActions({
       <Button
         type="submit"
         loading={loading}
-        onClick={onSubmit}
       >
         {submitText}
       </Button>

@@ -95,10 +95,6 @@ interface DashboardStatsProps {
       total: number;
       lowStock: number;
     };
-    projects: {
-      active: number;
-      completedThisMonth: number;
-    };
     support: {
       openTickets: number;
       overdueTickets: number;

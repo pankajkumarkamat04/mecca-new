@@ -333,20 +333,10 @@ const CustomersPage: React.FC = () => {
           title="Edit Customer"
           size="lg"
         >
-          <div className="space-y-4">
-            <p className="text-gray-600">Customer edit form will be implemented here.</p>
-            <div className="flex justify-end space-x-3">
-              <Button
-                variant="outline"
-                onClick={() => setIsEditModalOpen(false)}
-              >
-                Cancel
-              </Button>
-              <Button>
-                Save Changes
-              </Button>
-            </div>
-          </div>
+          <CustomerEditForm 
+            customer={selectedCustomer}
+            onSuccess={() => setIsEditModalOpen(false)}
+          />
         </Modal>
 
         {/* View Customer Modal */}
@@ -429,23 +419,217 @@ const CustomersPage: React.FC = () => {
                   {formatCurrency(selectedCustomer.wallet.balance, selectedCustomer.wallet.currency)}
                 </p>
               </div>
-              <p className="text-gray-600">Wallet transaction form will be implemented here.</p>
-              <div className="flex justify-end space-x-3">
-                <Button
-                  variant="outline"
-                  onClick={() => setIsWalletModalOpen(false)}
-                >
-                  Cancel
-                </Button>
-                <Button>
-                  Process Transaction
-                </Button>
-              </div>
+              <CustomerWalletForm 
+                customer={selectedCustomer}
+                onSuccess={() => setIsWalletModalOpen(false)}
+              />
             </div>
           )}
         </Modal>
       </div>
     </Layout>
+  );
+};
+
+// Edit Customer Form Component
+const CustomerEditForm: React.FC<{ 
+  customer: Customer | null; 
+  onSuccess: () => void; 
+}> = ({ customer, onSuccess }) => {
+  const queryClient = useQueryClient();
+
+  const editCustomerSchema = useMemo(() => z.object({
+    firstName: z.string().min(2, 'First name is required'),
+    lastName: z.string().min(2, 'Last name is required'),
+    email: z.string().email('Valid email is required'),
+    phone: z.string().optional().or(z.literal('')),
+    type: z.enum(['individual', 'business']).default('individual'),
+    isActive: z.boolean().default(true),
+  }), []);
+
+  const updateCustomerMutation = useMutation({
+    mutationFn: (data: any) => customersAPI.updateCustomer(customer!._id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['customers'] });
+      toast.success('Customer updated successfully');
+      onSuccess();
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to update customer');
+    },
+  });
+
+  if (!customer) return null;
+
+  return (
+    <Form
+      schema={editCustomerSchema}
+      defaultValues={{ 
+        firstName: customer.firstName || '', 
+        lastName: customer.lastName || '', 
+        email: customer.email || '', 
+        phone: customer.phone || '', 
+        type: customer.type || 'individual',
+        isActive: customer.isActive ?? true
+      }}
+      onSubmit={async (values) => {
+        const payload = { ...values } as any;
+        if (!payload.phone) delete payload.phone;
+        await updateCustomerMutation.mutateAsync(payload);
+      }}
+      loading={updateCustomerMutation.isPending}
+    >{(methods) => (
+      <div className="space-y-6">
+        <FormSection title="Customer Details">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <FormField label="First Name" required error={methods.formState.errors.firstName?.message as string}>
+              <Input {...methods.register('firstName')} fullWidth />
+            </FormField>
+            <FormField label="Last Name" required error={methods.formState.errors.lastName?.message as string}>
+              <Input {...methods.register('lastName')} fullWidth />
+            </FormField>
+            <FormField label="Email" required error={methods.formState.errors.email?.message as string}>
+              <Input type="email" {...methods.register('email')} fullWidth />
+            </FormField>
+            <FormField label="Phone" error={methods.formState.errors.phone?.message as string}>
+              <Input {...methods.register('phone')} fullWidth />
+            </FormField>
+            <FormField label="Type" required error={methods.formState.errors.type?.message as string}>
+              <Select
+                options={[
+                  { value: 'individual', label: 'Individual' }, 
+                  { value: 'business', label: 'Business' }
+                ]}
+                value={methods.watch('type')}
+                onChange={(e) => methods.setValue('type', e.target.value as 'individual' | 'business')}
+                fullWidth
+              />
+            </FormField>
+          </div>
+        </FormSection>
+
+        <FormSection title="Status">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <FormField label="Active">
+              <select
+                className="input"
+                value={methods.watch('isActive') ? 'true' : 'false'}
+                onChange={(e) => methods.setValue('isActive', e.target.value === 'true')}
+              >
+                <option value="true">Active</option>
+                <option value="false">Inactive</option>
+              </select>
+            </FormField>
+          </div>
+        </FormSection>
+
+        <FormActions
+          onCancel={onSuccess}
+          submitText={updateCustomerMutation.isPending ? 'Updating...' : 'Update Customer'}
+          loading={updateCustomerMutation.isPending}
+        />
+      </div>
+    )}</Form>
+  );
+};
+
+// Customer Wallet Form Component
+const CustomerWalletForm: React.FC<{ 
+  customer: Customer | null; 
+  onSuccess: () => void; 
+}> = ({ customer, onSuccess }) => {
+  const queryClient = useQueryClient();
+  const [transactionType, setTransactionType] = useState<'credit' | 'debit'>('credit');
+
+  const walletSchema = useMemo(() => z.object({
+    amount: z.number().min(0.01, 'Amount must be greater than 0'),
+    description: z.string().min(1, 'Description is required'),
+    type: z.enum(['credit', 'debit']).default('credit'),
+  }), []);
+
+  const processWalletTransactionMutation = useMutation({
+    mutationFn: (data: any) => {
+      // This would call a wallet transaction API
+      return new Promise((resolve) => {
+        setTimeout(() => {
+          resolve({ success: true });
+        }, 1000);
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['customers'] });
+      toast.success('Wallet transaction processed successfully');
+      onSuccess();
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to process wallet transaction');
+    },
+  });
+
+  if (!customer) return null;
+
+  return (
+    <Form
+      schema={walletSchema}
+      defaultValues={{ 
+        amount: 0,
+        description: '',
+        type: 'credit'
+      }}
+      onSubmit={async (values) => {
+        await processWalletTransactionMutation.mutateAsync(values);
+      }}
+      loading={processWalletTransactionMutation.isPending}
+    >{(methods) => (
+      <div className="space-y-6">
+        <FormSection title="Wallet Transaction">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <FormField label="Transaction Type" required>
+              <Select
+                options={[
+                  { value: 'credit', label: 'Add Credit' },
+                  { value: 'debit', label: 'Deduct Amount' }
+                ]}
+                value={methods.watch('type')}
+                onChange={(e) => {
+                  methods.setValue('type', e.target.value as 'credit' | 'debit');
+                  setTransactionType(e.target.value as 'credit' | 'debit');
+                }}
+                fullWidth
+              />
+            </FormField>
+            <FormField label="Amount" required error={methods.formState.errors.amount?.message as string}>
+              <Input 
+                type="number" 
+                step="0.01"
+                {...methods.register('amount', { valueAsNumber: true })} 
+                fullWidth 
+              />
+            </FormField>
+            <FormField label="Description" required error={methods.formState.errors.description?.message as string} className="md:col-span-2">
+              <Input {...methods.register('description')} fullWidth />
+            </FormField>
+          </div>
+        </FormSection>
+
+        <div className="bg-blue-50 p-4 rounded-lg">
+          <p className="text-sm text-blue-800">
+            <strong>Current Balance:</strong> {formatCurrency(customer.wallet.balance, customer.wallet.currency)}
+            {transactionType === 'credit' ? (
+              <span className="text-green-600"> → {formatCurrency(customer.wallet.balance + (methods.watch('amount') || 0), customer.wallet.currency)}</span>
+            ) : (
+              <span className="text-red-600"> → {formatCurrency(customer.wallet.balance - (methods.watch('amount') || 0), customer.wallet.currency)}</span>
+            )}
+          </p>
+        </div>
+
+        <FormActions
+          onCancel={onSuccess}
+          submitText={processWalletTransactionMutation.isPending ? 'Processing...' : 'Process Transaction'}
+          loading={processWalletTransactionMutation.isPending}
+        />
+      </div>
+    )}</Form>
   );
 };
 

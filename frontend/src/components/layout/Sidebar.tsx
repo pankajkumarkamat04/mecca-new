@@ -29,6 +29,9 @@ import {
   BuildingOfficeIcon,
   ShoppingCartIcon,
   ExclamationTriangleIcon,
+  WrenchScrewdriverIcon,
+  ClipboardDocumentCheckIcon,
+  TruckIcon as DeliveryIcon,
 } from '@heroicons/react/24/outline';
 
 interface SidebarItem {
@@ -39,136 +42,299 @@ interface SidebarItem {
     module: string;
     action: string;
   };
+  roles?: string[]; // Specific roles that can see this item
   badge?: string;
   children?: SidebarItem[];
 }
 
-const sidebarItems: SidebarItem[] = [
-  {
-    name: 'Dashboard',
-    href: '/dashboard',
-    icon: HomeIcon,
-  },
-  {
-    name: 'POS',
-    href: '/pos',
-    icon: CreditCardIcon,
-    permission: { module: 'pos', action: 'read' },
-  },
-  {
-    name: 'Workshop',
-    href: '/workshop',
-    icon: ClipboardDocumentListIcon,
-    permission: { module: 'workshop', action: 'read' },
-  },
-  {
-    name: 'Users',
-    href: '/users',
-    icon: UserGroupIcon,
-    permission: { module: 'users', action: 'read' },
-  },
-  {
-    name: 'Products',
-    href: '/products',
-    icon: CubeIcon,
-    permission: { module: 'products', action: 'read' },
-  },
-  {
-    name: 'Customers',
-    href: '/customers',
-    icon: UsersIcon,
-    permission: { module: 'customers', action: 'read' },
-  },
-  {
-    name: 'Suppliers',
-    href: '/suppliers',
-    icon: TruckIcon,
-    permission: { module: 'suppliers', action: 'read' },
-  },
-  {
-    name: 'Invoices',
-    href: '/invoices',
-    icon: DocumentTextIcon,
-    permission: { module: 'invoices', action: 'read' },
-  },
-  {
-    name: 'Customer Inquiries',
-    href: '/customer-inquiries',
-    icon: ChatBubbleLeftRightIcon,
-    permission: { module: 'customerInquiries', action: 'read' },
-  },
-  {
-    name: 'Quotations',
-    href: '/quotations',
-    icon: DocumentTextIcon,
-    permission: { module: 'quotations', action: 'read' },
-  },
-  {
-    name: 'Orders',
-    href: '/orders',
-    icon: ShoppingBagIcon,
-    permission: { module: 'orders', action: 'read' },
-  },
-  {
-    name: 'Inventory',
-    href: '/inventory',
-    icon: ArchiveBoxIcon,
-    permission: { module: 'inventory', action: 'read' },
-  },
-  {
-    name: 'Warehouses',
-    href: '/warehouses',
-    icon: BuildingOfficeIcon,
-    permission: { module: 'warehouses', action: 'read' },
-  },
-  {
-    name: 'Warehouse Dashboard',
-    href: '/warehouse',
-    icon: ChartBarIcon,
-    permission: { module: 'warehouse', action: 'read' },
-  },
-  {
-    name: 'Purchase Orders',
-    href: '/purchase-orders',
-    icon: ShoppingCartIcon,
-    permission: { module: 'purchaseOrders', action: 'read' },
-  },
-  {
-    name: 'Stock Alerts',
-    href: '/stock-alerts',
-    icon: ExclamationTriangleIcon,
-    permission: { module: 'stockAlerts', action: 'read' },
-  },
-  {
-    name: 'Support',
-    href: '/support',
-    icon: LifebuoyIcon,
-    permission: { module: 'support', action: 'read' },
-  },
-  {
-    name: 'Transactions',
-    href: '/transactions',
-    icon: BanknotesIcon,
-    permission: { module: 'transactions', action: 'read' },
-  },
-  {
-    name: 'Reports',
-    href: '/reports',
-    icon: ChartBarIcon,
-    permission: { module: 'reports', action: 'read' },
-  },
-  {
+// Warehouse-specific sidebar configuration
+const getWarehouseSidebarItems = (userRole: string): SidebarItem[] => {
+  const warehouseItems: SidebarItem[] = [
+    {
+      name: 'Dashboard',
+      href: '/warehouse-portal/dashboard',
+      icon: HomeIcon,
+    },
+    {
+      name: 'Orders',
+      href: '/warehouse-portal/orders',
+      icon: ShoppingBagIcon,
+    },
+    {
+      name: 'Inventory',
+      href: '/warehouse-portal/inventory',
+      icon: ArchiveBoxIcon,
+    },
+  ];
+
+  // Manager can manage employees
+  if (userRole === 'warehouse_manager') {
+    warehouseItems.push({
+      name: 'Employees',
+      href: '/warehouse-portal/employees',
+      icon: UserGroupIcon,
+    });
+  }
+
+  // Manager can manage deliveries
+  if (userRole === 'warehouse_manager') {
+    warehouseItems.push({
+      name: 'Deliveries',
+      href: '/warehouse-portal/deliveries',
+      icon: DeliveryIcon,
+    });
+  }
+
+  // Only Manager can access settings
+  if (userRole === 'warehouse_manager') {
+    warehouseItems.push({
+      name: 'Settings',
+      href: '/warehouse-portal/settings',
+      icon: CogIcon,
+    });
+  }
+
+  // Profile access for all warehouse roles
+  warehouseItems.push({
     name: 'Profile',
     href: '/profile',
     icon: UserIcon,
-  },
-  {
-    name: 'Settings',
-    href: '/settings',
-    icon: CogIcon,
-    permission: { module: 'settings', action: 'read' },
-  },
-];
+  });
+
+  return warehouseItems;
+};
+
+// Role-based sidebar configuration
+const getSidebarItems = (userRole: string): SidebarItem[] => {
+  // Warehouse roles get a different base structure
+  if (['warehouse_manager', 'warehouse_employee'].includes(userRole)) {
+    return getWarehouseSidebarItems(userRole);
+  }
+
+  const baseItems: SidebarItem[] = [
+    {
+      name: 'Dashboard',
+      href: '/dashboard',
+      icon: HomeIcon,
+    },
+  ];
+
+  // Admin and Manager items
+  if (['admin', 'manager'].includes(userRole)) {
+    baseItems.push(
+      {
+        name: 'Users',
+        href: '/users',
+        icon: UserGroupIcon,
+        permission: { module: 'users', action: 'read' },
+      },
+      {
+        name: 'Warehouses',
+        href: '/warehouses',
+        icon: BuildingOfficeIcon,
+        permission: { module: 'warehouses', action: 'read' },
+      }
+    );
+  }
+
+  // Sales and Operations items
+  if (['admin', 'manager', 'employee'].includes(userRole)) {
+    baseItems.push(
+      {
+        name: 'POS',
+        href: '/pos',
+        icon: CreditCardIcon,
+        permission: { module: 'pos', action: 'read' },
+      },
+      {
+        name: 'Products',
+        href: '/products',
+        icon: CubeIcon,
+        permission: { module: 'products', action: 'read' },
+      },
+      {
+        name: 'Customers',
+        href: '/customers',
+        icon: UsersIcon,
+        permission: { module: 'customers', action: 'read' },
+      },
+      {
+        name: 'Suppliers',
+        href: '/suppliers',
+        icon: TruckIcon,
+        permission: { module: 'suppliers', action: 'read' },
+      },
+      {
+        name: 'Orders',
+        href: '/orders',
+        icon: ShoppingBagIcon,
+        permission: { module: 'orders', action: 'read' },
+      },
+      {
+        name: 'Invoices',
+        href: '/invoices',
+        icon: DocumentTextIcon,
+        permission: { module: 'invoices', action: 'read' },
+      },
+      {
+        name: 'Quotations',
+        href: '/quotations',
+        icon: ClipboardDocumentCheckIcon,
+        permission: { module: 'quotations', action: 'read' },
+      },
+      {
+        name: 'Customer Inquiries',
+        href: '/customer-inquiries',
+        icon: ChatBubbleLeftRightIcon,
+        permission: { module: 'customerInquiries', action: 'read' },
+      }
+    );
+  }
+
+  // Warehouse-specific items
+  if (['admin', 'manager', 'warehouse_manager', 'warehouse_employee'].includes(userRole)) {
+    baseItems.push(
+      {
+        name: 'Inventory',
+        href: '/inventory',
+        icon: ArchiveBoxIcon,
+        permission: { module: 'inventory', action: 'read' },
+      },
+      {
+        name: 'Stock Alerts',
+        href: '/stock-alerts',
+        icon: ExclamationTriangleIcon,
+        permission: { module: 'stockAlerts', action: 'read' },
+      },
+      {
+        name: 'Purchase Orders',
+        href: '/purchase-orders',
+        icon: ShoppingCartIcon,
+        permission: { module: 'purchaseOrders', action: 'read' },
+      }
+    );
+  }
+
+  // Workshop items
+  if (['admin', 'manager', 'employee'].includes(userRole)) {
+    baseItems.push({
+      name: 'Workshop',
+      href: '/workshop',
+      icon: WrenchScrewdriverIcon,
+      permission: { module: 'workshop', action: 'read' },
+    });
+  }
+
+  // Delivery items
+  if (['admin', 'manager', 'warehouse_manager'].includes(userRole)) {
+    baseItems.push({
+      name: 'Deliveries',
+      href: '/deliveries',
+      icon: DeliveryIcon,
+      permission: { module: 'deliveries', action: 'read' },
+    });
+  }
+
+  // Reports and Analytics
+  if (['admin', 'manager', 'employee'].includes(userRole)) {
+    baseItems.push(
+      {
+        name: 'Reports',
+        href: '/reports',
+        icon: ChartBarIcon,
+        permission: { module: 'reports', action: 'read' },
+      },
+      {
+        name: 'Analytics',
+        href: '/analytics',
+        icon: ChartBarIcon,
+        permission: { module: 'reports', action: 'read' },
+      }
+    );
+  }
+
+  // Support
+  if (['admin', 'manager', 'employee', 'customer'].includes(userRole)) {
+    baseItems.push({
+      name: 'Support',
+      href: '/support',
+      icon: LifebuoyIcon,
+      permission: { module: 'support', action: 'read' },
+    });
+  }
+
+  // Transactions (Admin and Manager only)
+  if (['admin', 'manager'].includes(userRole)) {
+    baseItems.push({
+      name: 'Transactions',
+      href: '/transactions',
+      icon: BanknotesIcon,
+      permission: { module: 'transactions', action: 'read' },
+    });
+  }
+
+  // Customer-specific items
+  if (userRole === 'customer') {
+    baseItems.push(
+      {
+        name: 'My Orders',
+        href: '/customer/orders',
+        icon: ShoppingBagIcon,
+      },
+      {
+        name: 'My Invoices',
+        href: '/customer/invoices',
+        icon: DocumentTextIcon,
+      },
+      {
+        name: 'My Quotations',
+        href: '/customer/quotations',
+        icon: ClipboardDocumentCheckIcon,
+      },
+      {
+        name: 'My Inquiries',
+        href: '/customer/inquiries',
+        icon: ChatBubbleLeftRightIcon,
+      },
+      {
+        name: 'My Support',
+        href: '/customer/support',
+        icon: LifebuoyIcon,
+      }
+    );
+  }
+
+  // Warehouse Portal access (only for admin/manager/employee, not warehouse roles)
+  if (['admin', 'manager', 'employee'].includes(userRole)) {
+    baseItems.push({
+      name: 'Warehouse Portal',
+      href: '/warehouse-portal',
+      icon: BuildingOfficeIcon,
+      roles: ['admin', 'manager', 'employee'],
+    });
+  }
+
+  // Profile and Settings
+  baseItems.push(
+    {
+      name: 'Profile',
+      href: '/profile',
+      icon: UserIcon,
+    }
+  );
+
+  // Settings (Admin and Manager only)
+  if (['admin', 'manager'].includes(userRole)) {
+    baseItems.push({
+      name: 'Settings',
+      href: '/settings',
+      icon: CogIcon,
+      permission: { module: 'settings', action: 'read' },
+    });
+  }
+
+  return baseItems;
+};
 
 interface SidebarProps {
   isOpen: boolean;
@@ -185,9 +351,22 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     // Layout component will handle redirect when isAuthenticated becomes false
   };
 
+  // Get role-based sidebar items
+  const sidebarItems = user ? getSidebarItems(user.role) : [];
+
+  // Filter items based on permissions and roles
   const filteredItems = sidebarItems.filter((item) => {
-    if (!item.permission) return true;
-    return hasPermission(item.permission.module, item.permission.action);
+    // If item has specific roles, check if user role is included
+    if (item.roles && !item.roles.includes(user?.role || '')) {
+      return false;
+    }
+    
+    // If item has permission requirement, check permission
+    if (item.permission) {
+      return hasPermission(item.permission.module, item.permission.action);
+    }
+    
+    return true;
   });
 
   return (
@@ -251,7 +430,9 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                   <p className="text-sm font-medium text-gray-900">
                     {user.firstName} {user.lastName}
                   </p>
-                  <p className="text-xs text-gray-500 capitalize">{user.role}</p>
+                  <p className="text-xs text-gray-500 capitalize">
+                    {user.role.replace('_', ' ')}
+                  </p>
                 </div>
               </div>
             </div>
@@ -291,15 +472,15 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
           </nav>
 
           {/* Logout */}
-                <div className="p-4 border-t border-gray-200">
-                  <button
-                    onClick={handleLogout}
-                    className="group flex items-center w-full px-2 py-2 text-sm font-medium text-gray-600 rounded-md hover:bg-gray-50 hover:text-gray-900"
-                  >
-                    <ArrowRightOnRectangleIcon className="mr-3 h-5 w-5 text-gray-400 group-hover:text-gray-500" />
-                    Logout
-                  </button>
-                </div>
+          <div className="p-4 border-t border-gray-200">
+            <button
+              onClick={handleLogout}
+              className="group flex items-center w-full px-2 py-2 text-sm font-medium text-gray-600 rounded-md hover:bg-gray-50 hover:text-gray-900"
+            >
+              <ArrowRightOnRectangleIcon className="mr-3 h-5 w-5 text-gray-400 group-hover:text-gray-500" />
+              Logout
+            </button>
+          </div>
         </div>
       </div>
     </>

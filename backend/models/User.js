@@ -37,7 +37,7 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['admin', 'manager', 'employee', 'customer', 'warehouse_manager'],
+    enum: ['admin', 'manager', 'employee', 'customer', 'warehouse_manager', 'warehouse_employee'],
     default: 'customer'
   },
   avatar: {
@@ -99,6 +99,27 @@ const userSchema = new mongoose.Schema({
     state: String,
     zipCode: String,
     country: String
+  },
+  warehouse: {
+    assignedWarehouse: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Warehouse',
+      default: null
+    },
+    warehousePosition: {
+      type: String,
+      enum: ['warehouse_manager', 'warehouse_employee'],
+      default: null
+    },
+    assignedAt: {
+      type: Date,
+      default: null
+    },
+    assignedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null
+    }
   }
 }, {
   timestamps: true,
@@ -137,6 +158,37 @@ userSchema.methods.comparePassword = async function(candidatePassword) {
 userSchema.methods.updateLastLogin = function() {
   this.lastLogin = new Date();
   return this.save({ validateBeforeSave: false });
+};
+
+// Check if user is warehouse manager
+userSchema.methods.isWarehouseManager = function() {
+  return this.role === 'warehouse_manager' || this.warehouse.warehousePosition === 'warehouse_manager';
+};
+
+// Check if user is warehouse employee
+userSchema.methods.isWarehouseEmployee = function() {
+  return ['warehouse_manager', 'warehouse_employee'].includes(this.role) ||
+         ['warehouse_manager', 'warehouse_employee'].includes(this.warehouse.warehousePosition);
+};
+
+// Assign user to warehouse
+userSchema.methods.assignToWarehouse = function(warehouseId, position, assignedBy) {
+  this.warehouse.assignedWarehouse = warehouseId;
+  this.warehouse.warehousePosition = position;
+  this.warehouse.assignedAt = new Date();
+  this.warehouse.assignedBy = assignedBy;
+  this.role = position; // Update role to match warehouse position
+  return this.save();
+};
+
+// Remove user from warehouse
+userSchema.methods.removeFromWarehouse = function() {
+  this.warehouse.assignedWarehouse = null;
+  this.warehouse.warehousePosition = null;
+  this.warehouse.assignedAt = null;
+  this.warehouse.assignedBy = null;
+  this.role = 'employee'; // Default role when removed from warehouse
+  return this.save();
 };
 
 module.exports = mongoose.model('User', userSchema);

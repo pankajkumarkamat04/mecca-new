@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { CustomerInquiry } from '@/types';
 import { 
   ChatBubbleLeftRightIcon,
   PlusIcon,
@@ -21,7 +22,7 @@ import { useAuth } from '@/contexts/AuthContext';
 
 const CustomerInquiriesPage: React.FC = () => {
   const { user } = useAuth();
-  const [selectedInquiry, setSelectedInquiry] = useState<any>(null);
+  const [selectedInquiry, setSelectedInquiry] = useState<CustomerInquiry | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
 
   // Fetch customer inquiries
@@ -33,7 +34,7 @@ const CustomerInquiriesPage: React.FC = () => {
     enabled: !!user?._id,
   });
 
-  const inquiries = inquiriesData?.data || [];
+  const inquiries = inquiriesData?.data?.data || inquiriesData?.data || [];
 
   const handleViewDetails = (inquiry: any) => {
     setSelectedInquiry(inquiry);
@@ -208,11 +209,11 @@ const CustomerInquiriesPage: React.FC = () => {
                 <p className="mt-1 text-sm text-gray-900">{selectedInquiry.description}</p>
               </div>
 
-              {selectedInquiry.productsOfInterest && selectedInquiry.productsOfInterest.length > 0 && (
+              {selectedInquiry.items && selectedInquiry.items.length > 0 && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Products of Interest</label>
                   <div className="space-y-2">
-                    {selectedInquiry.productsOfInterest.map((item: any, index: number) => (
+                    {selectedInquiry.items.map((item: any, index: number) => (
                       <div key={index} className="p-3 bg-gray-50 rounded-lg">
                         <div className="flex items-center justify-between">
                           <div>
@@ -229,10 +230,10 @@ const CustomerInquiriesPage: React.FC = () => {
                 </div>
               )}
 
-              {selectedInquiry.notes && (
+              {selectedInquiry.internalNotes && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Notes</label>
-                  <p className="mt-1 text-sm text-gray-900">{selectedInquiry.notes}</p>
+                  <label className="block text-sm font-medium text-gray-700">Internal Notes</label>
+                  <p className="mt-1 text-sm text-gray-900">{selectedInquiry.internalNotes}</p>
                 </div>
               )}
 
@@ -240,7 +241,10 @@ const CustomerInquiriesPage: React.FC = () => {
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Assigned To</label>
                   <p className="mt-1 text-sm text-gray-900">
-                    {selectedInquiry.assignedTo.firstName} {selectedInquiry.assignedTo.lastName}
+                    {typeof selectedInquiry.assignedTo === 'string' 
+                      ? selectedInquiry.assignedTo 
+                      : `${selectedInquiry.assignedTo.firstName} ${selectedInquiry.assignedTo.lastName}`
+                    }
                   </p>
                 </div>
               )}

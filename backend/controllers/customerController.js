@@ -259,13 +259,43 @@ const getCustomerStats = async (req, res) => {
   try {
     const customerId = req.params.id;
     
+    // Calculate customer statistics
+    const Invoice = require('../models/Invoice');
+    const Order = require('../models/Order');
+    
     const stats = {
-      totalInvoices: 0, // TODO: Count from Invoice model
-      totalPurchases: 0, // TODO: Sum from Invoice model
+      totalInvoices: 0,
+      totalPurchases: 0,
       averageOrderValue: 0,
       lastPurchase: null,
       walletBalance: 0,
     };
+
+    try {
+      // Count invoices for this customer
+      const invoiceCount = await Invoice.countDocuments({ customer: customerId });
+      stats.totalInvoices = invoiceCount;
+
+      // Sum total purchases from invoices
+      const purchasesResult = await Invoice.aggregate([
+        { $match: { customer: mongoose.Types.ObjectId(customerId) } },
+        { $group: { _id: null, totalPurchases: { $sum: '$total' } } }
+      ]);
+      stats.totalPurchases = purchasesResult.length > 0 ? purchasesResult[0].totalPurchases : 0;
+
+      // Get last purchase date
+      const lastInvoice = await Invoice.findOne({ customer: customerId })
+        .sort({ createdAt: -1 })
+        .select('createdAt');
+      stats.lastPurchase = lastInvoice ? lastInvoice.createdAt : null;
+
+      // Calculate average order value
+      if (invoiceCount > 0) {
+        stats.averageOrderValue = stats.totalPurchases / invoiceCount;
+      }
+    } catch (error) {
+      console.error('Error calculating customer stats:', error);
+    }
 
     const customer = await Customer.findById(customerId)
       .select('totalPurchases lastPurchase wallet');

@@ -68,12 +68,12 @@ const customerInquirySchema = new mongoose.Schema({
     required: true,
     trim: true
   },
-  description: {
+  message: {
     type: String,
     required: true,
     trim: true
   },
-  items: [inquiryItemSchema],
+  productsOfInterest: [inquiryItemSchema],
   estimatedBudget: {
     min: Number,
     max: Number,

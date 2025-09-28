@@ -71,6 +71,36 @@ const warehouseSchema = new mongoose.Schema({
       email: String
     }
   },
+  manager: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: false
+  },
+  employees: [{
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true
+    },
+    position: {
+      type: String,
+      required: true,
+      enum: ['warehouse_employee']
+    },
+    assignedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true
+    },
+    assignedAt: {
+      type: Date,
+      default: Date.now
+    },
+    isActive: {
+      type: Boolean,
+      default: true
+    }
+  }],
   capacity: {
     totalCapacity: {
       type: Number,
@@ -256,6 +286,58 @@ warehouseSchema.methods.getAvailableLocations = function() {
   return this.locations.filter(loc => 
     loc.isActive && 
     (loc.capacity === undefined || loc.currentOccupancy < loc.capacity)
+  );
+};
+
+// Instance method to add employee to warehouse
+warehouseSchema.methods.addEmployee = function(employeeData) {
+  // Check if employee is already assigned
+  const existingEmployee = this.employees.find(emp => 
+    emp.user.toString() === employeeData.user.toString() && emp.isActive
+  );
+  
+  if (existingEmployee) {
+    throw new Error('Employee is already assigned to this warehouse');
+  }
+  
+  this.employees.push(employeeData);
+  return this.save();
+};
+
+// Instance method to remove employee from warehouse
+warehouseSchema.methods.removeEmployee = function(employeeId) {
+  const employee = this.employees.id(employeeId);
+  if (employee) {
+    employee.isActive = false;
+    return this.save();
+  }
+  throw new Error('Employee not found');
+};
+
+// Instance method to update employee position
+warehouseSchema.methods.updateEmployeePosition = function(employeeId, newPosition) {
+  const employee = this.employees.id(employeeId);
+  if (employee) {
+    employee.position = newPosition;
+    return this.save();
+  }
+  throw new Error('Employee not found');
+};
+
+// Instance method to get active employees
+warehouseSchema.methods.getActiveEmployees = function() {
+  return this.employees.filter(emp => emp.isActive);
+};
+
+// Instance method to check if user is manager
+warehouseSchema.methods.isManager = function(userId) {
+  return this.manager && this.manager.toString() === userId.toString();
+};
+
+// Instance method to check if user is employee
+warehouseSchema.methods.isEmployee = function(userId) {
+  return this.employees.some(emp => 
+    emp.user.toString() === userId.toString() && emp.isActive
   );
 };
 

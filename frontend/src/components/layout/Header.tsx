@@ -11,11 +11,12 @@ import {
 } from '@heroicons/react/24/outline';
 
 interface HeaderProps {
-  onMenuClick: () => void;
+  onMenuClick?: () => void;
   title?: string;
+  hideMenuButton?: boolean;
 }
 
-const Header: React.FC<HeaderProps> = ({ onMenuClick, title }) => {
+const Header: React.FC<HeaderProps> = ({ onMenuClick, title, hideMenuButton = false }) => {
   const { user, logout } = useAuth();
   const [showUserMenu, setShowUserMenu] = useState(false);
 
@@ -30,12 +31,14 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, title }) => {
       <div className="flex items-center justify-between h-16 px-4">
         {/* Left side */}
         <div className="flex items-center">
-          <button
-            onClick={onMenuClick}
-            className="p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 lg:hidden"
-          >
-            <Bars3Icon className="h-6 w-6" />
-          </button>
+          {!hideMenuButton && (
+            <button
+              onClick={onMenuClick}
+              className="p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 lg:hidden"
+            >
+              <Bars3Icon className="h-6 w-6" />
+            </button>
+          )}
           
           {title && (
             <h1 className="ml-4 text-xl font-semibold text-gray-900 lg:ml-0">

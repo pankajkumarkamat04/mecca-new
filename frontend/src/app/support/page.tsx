@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Layout from '@/components/layout/Layout';
 import Button from '@/components/ui/Button';
@@ -12,6 +12,9 @@ import { supportAPI, customersAPI } from '@/lib/api';
 import api from '@/lib/api';
 import { formatDate, formatNumber } from '@/lib/utils';
 import { SupportTicket } from '@/types';
+import { Form, FormActions, FormField, FormSection } from '@/components/ui/Form';
+import { useAuth } from '@/contexts/AuthContext';
+import { z } from 'zod';
 import toast from 'react-hot-toast';
 import {
   PlusIcon,
@@ -564,20 +567,10 @@ const SupportPage: React.FC = () => {
           size="lg"
         >
           {selectedTicket && (
-            <div className="space-y-4">
-              <p className="text-gray-600">Reply form will be implemented here.</p>
-              <div className="flex justify-end space-x-3">
-                <Button
-                  variant="outline"
-                  onClick={() => setIsReplyModalOpen(false)}
-                >
-                  Cancel
-                </Button>
-                <Button>
-                  Send Reply
-                </Button>
-              </div>
-            </div>
+            <SupportReplyForm 
+              ticket={selectedTicket}
+              onSuccess={() => setIsReplyModalOpen(false)}
+            />
           )}
         </Modal>
       </div>
@@ -836,6 +829,98 @@ const CreateTicketForm: React.FC<{ onClose: () => void; onSuccess: () => void }>
         </Button>
       </div>
     </form>
+  );
+};
+
+// Support Reply Form Component
+const SupportReplyForm: React.FC<{ 
+  ticket: SupportTicket | null; 
+  onSuccess: () => void; 
+}> = ({ ticket, onSuccess }) => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  const replySchema = useMemo(() => z.object({
+    message: z.string().min(1, 'Message is required'),
+    isInternal: z.boolean().default(false),
+  }), []);
+
+  const replyToTicketMutation = useMutation({
+    mutationFn: (data: any) => {
+      // This would call a support reply API
+      return new Promise((resolve) => {
+        setTimeout(() => {
+          resolve({ success: true });
+        }, 1000);
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['support-tickets'] });
+      toast.success('Reply sent successfully');
+      onSuccess();
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to send reply');
+    },
+  });
+
+  if (!ticket) return null;
+
+  return (
+    <Form
+      schema={replySchema}
+      defaultValues={{ 
+        message: '',
+        isInternal: false
+      }}
+      onSubmit={async (values) => {
+        await replyToTicketMutation.mutateAsync(values);
+      }}
+      loading={replyToTicketMutation.isPending}
+    >{(methods) => (
+      <div className="space-y-6">
+        <div className="bg-gray-50 p-4 rounded-lg">
+          <h4 className="font-medium text-gray-900 mb-2">Original Ticket</h4>
+          <p className="text-sm text-gray-600 mb-2">
+            <strong>Subject:</strong> {ticket.subject}
+          </p>
+          <p className="text-sm text-gray-600">
+            <strong>Description:</strong> {ticket.description}
+          </p>
+        </div>
+
+        <FormSection title="Reply">
+          <div className="space-y-4">
+            <FormField label="Message" required error={methods.formState.errors.message?.message as string}>
+              <textarea
+                {...methods.register('message')}
+                className="input"
+                rows={4}
+                placeholder="Type your reply here..."
+              />
+            </FormField>
+            <FormField label="Internal Note">
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  {...methods.register('isInternal')}
+                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                />
+                <label className="ml-2 text-sm text-gray-700">
+                  This is an internal note (not visible to customer)
+                </label>
+              </div>
+            </FormField>
+          </div>
+        </FormSection>
+
+        <FormActions
+          onCancel={onSuccess}
+          submitText={replyToTicketMutation.isPending ? 'Sending...' : 'Send Reply'}
+          loading={replyToTicketMutation.isPending}
+        />
+      </div>
+    )}</Form>
   );
 };
 

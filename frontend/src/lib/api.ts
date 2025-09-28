@@ -180,11 +180,6 @@ export const posAPI = {
   createTransaction: (data: any) => api.post('/pos/transactions', data),
 };
 
-// Projects API
-export const projectsAPI = undefined as unknown as never;
-
-// Tasks API
-export const tasksAPI = undefined as unknown as never;
 
 // Support API
 export const supportAPI = {
@@ -299,8 +294,6 @@ export const settingsAPI = {
   deleteLogo: () => api.delete('/settings/logo'),
 };
 
-// HRM API
-export const hrmAPI = undefined as unknown as never;
 
 // Workshop API
 export const workshopAPI = {
@@ -331,6 +324,14 @@ export const warehouseAPI = {
   removeLocation: (id: string, locationId: string) => 
     api.delete(`/warehouses/${id}/locations/${locationId}`),
   transferProducts: (data: any) => api.post('/warehouses/transfer', data),
+  assignManager: (id: string, managerId: string) => 
+    api.put(`/warehouses/${id}/assign-manager`, { managerId }),
+  addEmployee: (id: string, data: any) => api.post(`/warehouses/${id}/employees`, data),
+  removeEmployee: (id: string, employeeId: string) => 
+    api.delete(`/warehouses/${id}/employees/${employeeId}`),
+  getWarehouseEmployees: (id: string) => api.get(`/warehouses/${id}/employees`),
+  getAvailableUsers: () => api.get('/warehouses/available-users'),
+  getWarehouseDashboard: (id: string) => api.get(`/warehouses/${id}/dashboard`),
 };
 
 // Purchase Order API
@@ -396,6 +397,98 @@ export const deliveriesAPI = {
   markAsDelivered: (id: string, data: any) => api.post(`/deliveries/${id}/deliver`, data),
   markAsFailed: (id: string, data: any) => api.post(`/deliveries/${id}/fail`, data),
   getDeliveryStats: () => api.get('/deliveries/stats'),
+};
+
+// Machines API
+export const machinesAPI = {
+  getMachines: (params?: any) => api.get('/machines', { params }),
+  getMachineById: (id: string) => api.get(`/machines/${id}`),
+  createMachine: (data: any) => api.post('/machines', data),
+  updateMachine: (id: string, data: any) => api.put(`/machines/${id}`, data),
+  deleteMachine: (id: string) => api.delete(`/machines/${id}`),
+  bookMachine: (id: string, data: any) => api.post(`/machines/${id}/book`, data),
+  releaseMachine: (id: string) => api.post(`/machines/${id}/release`),
+  addMaintenanceRecord: (id: string, data: any) => api.post(`/machines/${id}/maintenance`, data),
+  getMachineStats: () => api.get('/machines/stats'),
+};
+
+// Tools API
+export const toolsAPI = {
+  getTools: (params?: any) => api.get('/tools', { params }),
+  getToolById: (id: string) => api.get(`/tools/${id}`),
+  createTool: (data: any) => api.post('/tools', data),
+  updateTool: (id: string, data: any) => api.put(`/tools/${id}`, data),
+  deleteTool: (id: string) => api.delete(`/tools/${id}`),
+  assignTool: (id: string, data: any) => api.post(`/tools/${id}/assign`, data),
+  returnTool: (id: string, data: any) => api.post(`/tools/${id}/return`, data),
+  addMaintenanceRecord: (id: string, data: any) => api.post(`/tools/${id}/maintenance`, data),
+  calibrateTool: (id: string, data: any) => api.post(`/tools/${id}/calibrate`, data),
+  getToolStats: () => api.get('/tools/stats'),
+};
+
+// Workstations API
+export const workstationsAPI = {
+  getWorkStations: (params?: any) => api.get('/workstations', { params }),
+  getWorkStationById: (id: string) => api.get(`/workstations/${id}`),
+  createWorkStation: (data: any) => api.post('/workstations', data),
+  updateWorkStation: (id: string, data: any) => api.put(`/workstations/${id}`, data),
+  deleteWorkStation: (id: string) => api.delete(`/workstations/${id}`),
+  bookWorkStation: (id: string, data: any) => api.post(`/workstations/${id}/book`, data),
+  releaseWorkStation: (id: string, data: any) => api.post(`/workstations/${id}/release`, data),
+  scheduleMaintenance: (id: string, data: any) => api.post(`/workstations/${id}/maintenance`, data),
+  getWorkStationStats: () => api.get('/workstations/stats'),
+};
+
+// Technicians API
+export const techniciansAPI = {
+  getTechnicians: (params?: any) => api.get('/technicians', { params }),
+  getTechnicianById: (id: string) => api.get(`/technicians/${id}`),
+  createTechnician: (data: any) => api.post('/technicians', data),
+  updateTechnician: (id: string, data: any) => api.put(`/technicians/${id}`, data),
+  deleteTechnician: (id: string) => api.delete(`/technicians/${id}`),
+  addSkill: (id: string, data: any) => api.post(`/technicians/${id}/skills`, data),
+  addCertification: (id: string, data: any) => api.post(`/technicians/${id}/certifications`, data),
+  requestLeave: (id: string, data: any) => api.post(`/technicians/${id}/leave`, data),
+  updateLeaveStatus: (id: string, leaveId: string, data: any) => api.put(`/technicians/${id}/leave/${leaveId}`, data),
+  assignJob: (id: string, data: any) => api.post(`/technicians/${id}/assign-job`, data),
+  completeJob: (id: string, data: any) => api.post(`/technicians/${id}/complete-job`, data),
+  updatePerformance: (id: string, data: any) => api.post(`/technicians/${id}/performance`, data),
+  getTechnicianStats: () => api.get('/technicians/stats'),
+};
+
+// Enhanced Workshop API
+export const enhancedWorkshopAPI = {
+  // Basic operations
+  getJobs: (params?: any) => api.get('/workshop', { params }),
+  getJobById: (id: string) => api.get(`/workshop/${id}`),
+  createJob: (data: any) => api.post('/workshop', data),
+  updateJob: (id: string, data: any) => api.put(`/workshop/${id}`, data),
+  scheduleJob: (id: string, data: any) => api.put(`/workshop/${id}/schedule`, data),
+  updateJobProgress: (id: string, data: any) => api.put(`/workshop/${id}/progress`, data),
+  completeJob: (id: string) => api.post(`/workshop/${id}/complete`),
+  cancelJob: (id: string) => api.put(`/workshop/${id}/cancel`),
+  
+  // Resource management
+  assignTechnician: (id: string, data: any) => api.put(`/workshop/${id}/assign-technician`, data),
+  removeTechnician: (id: string, data: any) => api.put(`/workshop/${id}/remove-technician`, data),
+  bookMachine: (id: string, data: any) => api.post(`/workshop/${id}/book-machine`, data),
+  bookWorkStation: (id: string, data: any) => api.post(`/workshop/${id}/book-workstation`, data),
+  assignTool: (id: string, data: any) => api.post(`/workshop/${id}/assign-tool`, data),
+  
+  // Task management
+  addTask: (id: string, data: any) => api.post(`/workshop/${id}/tasks`, data),
+  updateTaskStatus: (id: string, taskId: string, data: any) => api.put(`/workshop/${id}/tasks/${taskId}`, data),
+  
+  // Inventory management
+  checkPartsAvailability: (id: string) => api.get(`/workshop/${id}/check-parts`),
+  reserveParts: (id: string) => api.post(`/workshop/${id}/reserve-parts`),
+  
+  // Resource availability
+  getAvailableResources: (id: string, type?: string) => api.get(`/workshop/${id}/available-resources`, { params: { type } }),
+  
+  // Statistics and customer portal
+  getJobStats: () => api.get('/workshop/stats'),
+  getCustomerJobs: (customerId: string) => api.get(`/workshop/customer/${customerId}`),
 };
 
 export default api;

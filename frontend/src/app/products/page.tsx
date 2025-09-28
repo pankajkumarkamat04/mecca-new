@@ -8,7 +8,7 @@ import DataTable from '@/components/ui/DataTable';
 import Modal from '@/components/ui/Modal';
 import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
-import { productsAPI, categoriesAPI } from '@/lib/api';
+import { productsAPI, categoriesAPI, warehouseAPI } from '@/lib/api';
 import { formatCurrency, formatNumber, getStatusColor } from '@/lib/utils';
 import { Product } from '@/types';
 import toast from 'react-hot-toast';
@@ -54,6 +54,20 @@ const ProductsPage: React.FC = () => {
     staleTime: 5 * 60 * 1000
   });
 
+  // Fetch warehouses for selection
+  const { data: warehousesData } = useQuery({
+    queryKey: ['warehouses'],
+    queryFn: () => warehouseAPI.getWarehouses({ isActive: true }),
+    staleTime: 5 * 60 * 1000
+  });
+
+  // Generate unique SKU function
+  const generateSKU = () => {
+    const timestamp = Date.now().toString().slice(-6);
+    const random = Math.random().toString(36).substring(2, 5).toUpperCase();
+    return `PRD-${timestamp}-${random}`;
+  };
+
   // Create product mutation
   const createProductMutation = useMutation({
     mutationFn: (data: any) => productsAPI.createProduct(data),
@@ -63,7 +77,12 @@ const ProductsPage: React.FC = () => {
       toast.success('Product created successfully');
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to create product');
+      const errorMessage = error.response?.data?.message || 'Failed to create product';
+      if (errorMessage.includes('already exists')) {
+        toast.error('A product with this SKU already exists. Please use a different SKU.');
+      } else {
+        toast.error(errorMessage);
+      }
     }
   });
 
@@ -77,7 +96,12 @@ const ProductsPage: React.FC = () => {
       toast.success('Product updated successfully');
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to update product');
+      const errorMessage = error.response?.data?.message || 'Failed to update product';
+      if (errorMessage.includes('already exists')) {
+        toast.error('A product with this SKU already exists. Please use a different SKU.');
+      } else {
+        toast.error(errorMessage);
+      }
     }
   });
 
@@ -267,6 +291,13 @@ const ProductsPage: React.FC = () => {
       reorderPoint: z.coerce.number().min(0).default(0),
       unit: z.string().min(1),
       location: z.string().optional().or(z.literal('')),
+      warehouse: z.string().min(1, 'Warehouse is required'),
+      warehouseLocation: z.object({
+        zone: z.string().min(1).default('A'),
+        aisle: z.string().min(1).default('01'),
+        shelf: z.string().min(1).default('01'),
+        bin: z.string().min(1).default('01'),
+      }).optional(),
     }),
     isActive: z.boolean().default(true),
   }), []);
@@ -366,7 +397,21 @@ const ProductsPage: React.FC = () => {
               description: '',
               category: '',
               pricing: { costPrice: 0, sellingPrice: 0, markup: 0, taxRate: 0, currency: 'USD' },
-              inventory: { currentStock: 0, minStock: 0, maxStock: 0, reorderPoint: 0, unit: 'pcs', location: '' },
+              inventory: { 
+                currentStock: 0, 
+                minStock: 0, 
+                maxStock: 0, 
+                reorderPoint: 0, 
+                unit: 'pcs', 
+                location: '',
+                warehouse: '',
+                warehouseLocation: {
+                  zone: 'A',
+                  aisle: '01',
+                  shelf: '01',
+                  bin: '01'
+                }
+              },
               isActive: true,
             }}
             onSubmit={async (values) => {
@@ -391,16 +436,26 @@ const ProductsPage: React.FC = () => {
                     <Input {...methods.register('name')} placeholder="e.g., Wireless Mouse" fullWidth />
                   </FormField>
                   <FormField label="SKU" required error={methods.formState.errors.sku?.message as string}>
-                    <Input {...methods.register('sku')} placeholder="e.g., WM-1001" fullWidth />
+                    <div className="flex gap-2">
+                      <Input {...methods.register('sku')} placeholder="e.g., WM-1001" fullWidth />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => methods.setValue('sku', generateSKU())}
+                      >
+                        Generate
+                      </Button>
+                    </div>
                   </FormField>
                   <FormField label="Barcode" error={methods.formState.errors.barcode?.message as string}>
                     <Input {...methods.register('barcode')} placeholder="Optional" fullWidth />
                   </FormField>
                   <FormField label="Category" required error={methods.formState.errors.category?.message as string}>
                     <Select
+                      {...methods.register('category')}
                       options={(categoriesData?.data?.data || []).map((c: any) => ({ value: c._id, label: c.name }))}
-                      value={methods.watch('category')}
-                      onChange={(e) => methods.setValue('category', e.target.value)}
+                      placeholder="Select category"
                       fullWidth
                     />
                   </FormField>
@@ -426,9 +481,9 @@ const ProductsPage: React.FC = () => {
                   </FormField>
                   <FormField label="Currency" required error={methods.formState.errors.pricing?.currency?.message as string}>
                     <Select
+                      {...methods.register('pricing.currency')}
                       options={currencyOptions}
-                      value={methods.watch('pricing.currency')}
-                      onChange={(e) => methods.setValue('pricing.currency', e.target.value)}
+                      placeholder="Select currency"
                       fullWidth
                     />
                   </FormField>
@@ -451,15 +506,69 @@ const ProductsPage: React.FC = () => {
                   </FormField>
                   <FormField label="Unit" required error={methods.formState.errors.inventory?.unit?.message as string}>
                     <Select
+                      {...methods.register('inventory.unit')}
                       options={unitOptions}
-                      value={methods.watch('inventory.unit')}
-                      onChange={(e) => methods.setValue('inventory.unit', e.target.value)}
+                      placeholder="Select unit"
                       fullWidth
                     />
                   </FormField>
                   <FormField label="Location" error={methods.formState.errors.inventory?.location?.message as string}>
                     <Input {...methods.register('inventory.location')} placeholder="e.g., Aisle 3" fullWidth />
                   </FormField>
+                </div>
+                
+                {/* Warehouse Selection */}
+                <div className="mt-4">
+                  <FormField label="Warehouse *" error={methods.formState.errors.inventory?.warehouse?.message as string}>
+                    <Select
+                      {...methods.register('inventory.warehouse')}
+                      options={warehousesData?.data?.data?.map((warehouse: any) => ({
+                        value: warehouse._id,
+                        label: `${warehouse.name} (${warehouse.code})`
+                      })) || []}
+                      placeholder="Select a warehouse"
+                      fullWidth
+                    />
+                  </FormField>
+                </div>
+
+                {/* Warehouse Location */}
+                <div className="mt-4">
+                  <h4 className="text-sm font-medium text-gray-700 mb-3">Warehouse Location</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <FormField label="Zone" error={methods.formState.errors.inventory?.warehouseLocation?.zone?.message as string}>
+                      <Input 
+                        {...methods.register('inventory.warehouseLocation.zone')} 
+                        placeholder="A" 
+                        defaultValue="A"
+                        fullWidth 
+                      />
+                    </FormField>
+                    <FormField label="Aisle" error={methods.formState.errors.inventory?.warehouseLocation?.aisle?.message as string}>
+                      <Input 
+                        {...methods.register('inventory.warehouseLocation.aisle')} 
+                        placeholder="01" 
+                        defaultValue="01"
+                        fullWidth 
+                      />
+                    </FormField>
+                    <FormField label="Shelf" error={methods.formState.errors.inventory?.warehouseLocation?.shelf?.message as string}>
+                      <Input 
+                        {...methods.register('inventory.warehouseLocation.shelf')} 
+                        placeholder="01" 
+                        defaultValue="01"
+                        fullWidth 
+                      />
+                    </FormField>
+                    <FormField label="Bin" error={methods.formState.errors.inventory?.warehouseLocation?.bin?.message as string}>
+                      <Input 
+                        {...methods.register('inventory.warehouseLocation.bin')} 
+                        placeholder="01" 
+                        defaultValue="01"
+                        fullWidth 
+                      />
+                    </FormField>
+                  </div>
                 </div>
               </FormSection>
 
@@ -594,6 +703,13 @@ const ProductsPage: React.FC = () => {
                   reorderPoint: selectedProduct.inventory.reorderPoint,
                   unit: selectedProduct.inventory.unit,
                   location: selectedProduct.inventory.location || '',
+                  warehouse: selectedProduct.inventory.warehouse || '',
+                  warehouseLocation: {
+                    zone: selectedProduct.inventory.warehouseLocation?.zone || 'A',
+                    aisle: selectedProduct.inventory.warehouseLocation?.aisle || '01',
+                    shelf: selectedProduct.inventory.warehouseLocation?.shelf || '01',
+                    bin: selectedProduct.inventory.warehouseLocation?.bin || '01',
+                  },
                 },
                 isActive: selectedProduct.isActive,
               }}
@@ -618,16 +734,26 @@ const ProductsPage: React.FC = () => {
                       <Input {...methods.register('name')} fullWidth />
                     </FormField>
                     <FormField label="SKU" required error={methods.formState.errors.sku?.message as string}>
-                      <Input {...methods.register('sku')} fullWidth />
+                      <div className="flex gap-2">
+                        <Input {...methods.register('sku')} fullWidth />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => methods.setValue('sku', generateSKU())}
+                        >
+                          Generate
+                        </Button>
+                      </div>
                     </FormField>
                     <FormField label="Barcode" error={methods.formState.errors.barcode?.message as string}>
                       <Input {...methods.register('barcode')} fullWidth />
                     </FormField>
                     <FormField label="Category" required error={methods.formState.errors.category?.message as string}>
                       <Select
+                        {...methods.register('category')}
                         options={(categoriesData?.data?.data || []).map((c: any) => ({ value: c._id, label: c.name }))}
-                        value={methods.watch('category')}
-                        onChange={(e) => methods.setValue('category', e.target.value)}
+                        placeholder="Select category"
                         fullWidth
                       />
                     </FormField>
@@ -653,9 +779,9 @@ const ProductsPage: React.FC = () => {
                     </FormField>
                     <FormField label="Currency" required error={methods.formState.errors.pricing?.currency?.message as string}>
                       <Select
+                        {...methods.register('pricing.currency')}
                         options={currencyOptions}
-                        value={methods.watch('pricing.currency')}
-                        onChange={(e) => methods.setValue('pricing.currency', e.target.value)}
+                        placeholder="Select currency"
                         fullWidth
                       />
                     </FormField>
@@ -678,15 +804,65 @@ const ProductsPage: React.FC = () => {
                     </FormField>
                     <FormField label="Unit" required error={methods.formState.errors.inventory?.unit?.message as string}>
                       <Select
+                        {...methods.register('inventory.unit')}
                         options={unitOptions}
-                        value={methods.watch('inventory.unit')}
-                        onChange={(e) => methods.setValue('inventory.unit', e.target.value)}
+                        placeholder="Select unit"
                         fullWidth
                       />
                     </FormField>
                     <FormField label="Location" error={methods.formState.errors.inventory?.location?.message as string}>
                       <Input {...methods.register('inventory.location')} fullWidth />
                     </FormField>
+                  </div>
+                  
+                  {/* Warehouse Selection */}
+                  <div className="mt-4">
+                    <FormField label="Warehouse *" error={methods.formState.errors.inventory?.warehouse?.message as string}>
+                      <Select
+                        {...methods.register('inventory.warehouse')}
+                        options={warehousesData?.data?.data?.map((warehouse: any) => ({
+                          value: warehouse._id,
+                          label: `${warehouse.name} (${warehouse.code})`
+                        })) || []}
+                        placeholder="Select a warehouse"
+                        fullWidth
+                      />
+                    </FormField>
+                  </div>
+
+                  {/* Warehouse Location */}
+                  <div className="mt-4">
+                    <h4 className="text-sm font-medium text-gray-700 mb-3">Warehouse Location</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                      <FormField label="Zone" error={methods.formState.errors.inventory?.warehouseLocation?.zone?.message as string}>
+                        <Input 
+                          {...methods.register('inventory.warehouseLocation.zone')} 
+                          placeholder="A" 
+                          fullWidth 
+                        />
+                      </FormField>
+                      <FormField label="Aisle" error={methods.formState.errors.inventory?.warehouseLocation?.aisle?.message as string}>
+                        <Input 
+                          {...methods.register('inventory.warehouseLocation.aisle')} 
+                          placeholder="01" 
+                          fullWidth 
+                        />
+                      </FormField>
+                      <FormField label="Shelf" error={methods.formState.errors.inventory?.warehouseLocation?.shelf?.message as string}>
+                        <Input 
+                          {...methods.register('inventory.warehouseLocation.shelf')} 
+                          placeholder="01" 
+                          fullWidth 
+                        />
+                      </FormField>
+                      <FormField label="Bin" error={methods.formState.errors.inventory?.warehouseLocation?.bin?.message as string}>
+                        <Input 
+                          {...methods.register('inventory.warehouseLocation.bin')} 
+                          placeholder="01" 
+                          fullWidth 
+                        />
+                      </FormField>
+                    </div>
                   </div>
                 </FormSection>
 

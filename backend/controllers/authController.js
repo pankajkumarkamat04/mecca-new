@@ -3,6 +3,24 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const Customer = require('../models/Customer');
 
+// Email function for password reset
+const sendPasswordResetEmail = async (email, resetToken) => {
+  // This would integrate with an email service like SendGrid, Nodemailer, etc.
+  // For now, we'll just log the email content
+  const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/auth/reset-password?token=${resetToken}`;
+  
+  console.log('Sending password reset email:', {
+    to: email,
+    subject: 'Password Reset Request',
+    resetUrl: resetUrl
+  });
+  
+  // In a real implementation, you would:
+  // 1. Generate an HTML email template
+  // 2. Send via email service
+  // 3. Handle delivery status
+};
+
 // @desc    Register user
 // @route   POST /api/auth/register
 // @access  Public
@@ -240,12 +258,17 @@ const forgotPassword = async (req, res) => {
       { expiresIn: '1h' }
     );
 
-    // TODO: Send password reset email
-    // For now, just return success
+    // Send password reset email
+    try {
+      await sendPasswordResetEmail(user.email, resetToken);
+    } catch (error) {
+      console.error('Error sending password reset email:', error);
+      // Don't fail the request if email fails
+    }
+
     res.json({ 
       success: true,
-      message: 'Password reset instructions sent to your email',
-      resetToken // Remove this in production
+      message: 'Password reset instructions sent to your email'
     });
 
   } catch (error) {

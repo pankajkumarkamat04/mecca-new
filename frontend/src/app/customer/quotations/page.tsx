@@ -15,13 +15,16 @@ import Layout from '@/components/layout/Layout';
 import Button from '@/components/ui/Button';
 import Badge from '@/components/ui/Badge';
 import Modal from '@/components/ui/Modal';
-import { quotationsAPI } from '@/lib/api';
+import { Quotation, QuotationItem, Tax } from '@/types';
 import { formatDate, formatCurrency } from '@/lib/utils';
+import { calculatePrice } from '@/lib/priceCalculator';
+import { quotationsAPI } from '@/lib/api';
+import PriceSummary from '@/components/ui/PriceSummary';
 import { useAuth } from '@/contexts/AuthContext';
 
 const CustomerQuotationsPage: React.FC = () => {
   const { user } = useAuth();
-  const [selectedQuotation, setSelectedQuotation] = useState<any>(null);
+  const [selectedQuotation, setSelectedQuotation] = useState<Quotation | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
 
   // Fetch customer quotations
@@ -35,7 +38,7 @@ const CustomerQuotationsPage: React.FC = () => {
 
   const quotations = quotationsData?.data || [];
 
-  const handleViewDetails = (quotation: any) => {
+  const handleViewDetails = (quotation: Quotation) => {
     setSelectedQuotation(quotation);
     setShowDetailsModal(true);
   };
@@ -104,7 +107,7 @@ const CustomerQuotationsPage: React.FC = () => {
             </div>
           ) : quotations.length > 0 ? (
             <div className="divide-y divide-gray-200">
-              {quotations.map((quotation: any) => (
+              {quotations.map((quotation: Quotation) => (
                 <div key={quotation._id} className="p-6 hover:bg-gray-50">
                   <div className="flex items-center justify-between">
                     <div className="flex-1">
@@ -197,7 +200,7 @@ const CustomerQuotationsPage: React.FC = () => {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {selectedQuotation.items?.map((item: any, index: number) => (
+                      {selectedQuotation.items?.map((item: QuotationItem, index: number) => (
                         <tr key={index}>
                           <td className="px-4 py-2 text-sm text-gray-900">{item.name}</td>
                           <td className="px-4 py-2 text-sm text-gray-900">{item.quantity}</td>
@@ -210,19 +213,38 @@ const CustomerQuotationsPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Subtotal</label>
-                  <p className="mt-1 text-sm text-gray-900">{formatCurrency(selectedQuotation.subtotal)}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Tax ({selectedQuotation.taxRate}%)</label>
-                  <p className="mt-1 text-sm text-gray-900">{formatCurrency(selectedQuotation.taxAmount)}</p>
-                </div>
-                <div className="col-span-2">
-                  <label className="block text-sm font-medium text-gray-700">Total Amount</label>
-                  <p className="mt-1 text-lg font-bold text-gray-900">{formatCurrency(selectedQuotation.total)}</p>
-                </div>
+              {/* Price Summary */}
+              <div className="border-t pt-4">
+                {(() => {
+                  const priceItems = selectedQuotation.items?.map((item: QuotationItem) => ({
+                    name: item.name,
+                    quantity: item.quantity || 1,
+                    unitPrice: item.unitPrice || 0,
+                    discount: item.discount || 0,
+                    taxRate: item.taxRate || 0
+                  })) || [];
+                  
+                  // Convert additional taxes from quotation
+                  const additionalTaxes = selectedQuotation.taxes?.map((tax: Tax) => ({
+                    name: tax.name || 'Tax',
+                    rate: tax.rate,
+                    description: `Additional ${tax.name || 'Tax'} tax`
+                  })) || [];
+                  
+                  const calculation = calculatePrice(priceItems, [], additionalTaxes, {
+                    cost: selectedQuotation.shippingCost || 0
+                  });
+                  
+                  return (
+                    <PriceSummary 
+                      calculation={calculation} 
+                      showBreakdown={true}
+                      showItems={false}
+                      title=""
+                      className="bg-transparent p-0"
+                    />
+                  );
+                })()}
               </div>
 
               {selectedQuotation.notes && (

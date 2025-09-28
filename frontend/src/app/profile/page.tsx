@@ -42,27 +42,81 @@ const ProfilePage: React.FC = () => {
     }
   };
 
-  const handleUploadAvatar = () => {
+  const handleUploadAvatar = async () => {
     if (avatarFile) {
-      // TODO: Implement avatar upload API call
-      toast.success('Avatar uploaded successfully');
-      setAvatarFile(null);
-      setAvatarPreview(null);
+      try {
+        setLoading(true);
+        const formData = new FormData();
+        formData.append('avatar', avatarFile);
+        
+        // Upload avatar to backend
+        const response = await fetch('/api/users/profile/avatar', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+          body: formData
+        });
+        
+        if (response.ok) {
+          const result = await response.json();
+          updateUser({ ...user, avatar: result.avatar });
+          toast.success('Avatar uploaded successfully');
+          setAvatarFile(null);
+          setAvatarPreview(null);
+        } else {
+          throw new Error('Upload failed');
+        }
+      } catch (error) {
+        toast.error('Failed to upload avatar');
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
-  const handleDeleteAvatar = () => {
-    // TODO: Implement avatar delete API call
-    toast.success('Avatar deleted successfully');
+  const handleDeleteAvatar = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/users/profile/avatar', {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      
+      if (response.ok) {
+        updateUser({ ...user, avatar: undefined });
+        toast.success('Avatar deleted successfully');
+      } else {
+        throw new Error('Delete failed');
+      }
+    } catch (error) {
+      toast.error('Failed to delete avatar');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSaveProfile = async (data: any) => {
     setLoading(true);
     try {
-      // TODO: Implement profile update API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      updateUser(data);
-      toast.success('Profile updated successfully');
+      const response = await fetch('/api/users/profile', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify(data)
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        updateUser(result.data);
+        toast.success('Profile updated successfully');
+      } else {
+        throw new Error('Update failed');
+      }
     } catch (error) {
       toast.error('Failed to update profile');
     } finally {
@@ -73,11 +127,23 @@ const ProfilePage: React.FC = () => {
   const handleChangePassword = async (data: any) => {
     setLoading(true);
     try {
-      // TODO: Implement password change API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      toast.success('Password changed successfully');
-    } catch (error) {
-      toast.error('Failed to change password');
+      const response = await fetch('/api/auth/change-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify(data)
+      });
+      
+      if (response.ok) {
+        toast.success('Password changed successfully');
+      } else {
+        const error = await response.json();
+        throw new Error(error.message || 'Password change failed');
+      }
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to change password');
     } finally {
       setLoading(false);
     }

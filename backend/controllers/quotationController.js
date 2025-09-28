@@ -3,6 +3,7 @@ const Customer = require('../models/Customer');
 const Product = require('../models/Product');
 const Invoice = require('../models/Invoice');
 const Order = require('../models/Order');
+const { notifyWarehouseOfNewOrder } = require('../utils/warehouseNotification');
 
 // @desc    Get all quotations
 // @route   GET /api/quotations
@@ -128,7 +129,11 @@ const createQuotation = async (req, res) => {
         item.name = product.name;
         item.description = product.description;
         if (!item.unitPrice) {
-          item.unitPrice = product.pricing.salePrice;
+          item.unitPrice = product.pricing.sellingPrice;
+        }
+        // Set default tax rate from product if not provided
+        if (!item.taxRate && product.pricing.taxRate) {
+          item.taxRate = product.pricing.taxRate;
         }
         
         // Check inventory availability
@@ -491,6 +496,12 @@ const convertQuotationToOrder = async (req, res) => {
 
     const order = new Order(orderData);
     await order.save();
+
+    // Notify warehouse of new order from quotation conversion
+    const notificationResult = await notifyWarehouseOfNewOrder(order, 'quotation');
+    if (!notificationResult.success) {
+      console.error('Failed to notify warehouse:', notificationResult.error);
+    }
 
     // Mark quotation as converted
     quotation.status = 'converted';

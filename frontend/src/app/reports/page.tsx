@@ -149,10 +149,6 @@ const ReportsPage: React.FC = () => {
                 <CalendarIcon className="h-6 w-6 text-purple-600" />
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Active Projects</p>
-                <p className="text-2xl font-semibold text-gray-900">
-                  {statsLoading ? '...' : formatNumber(dashboardStats?.data?.data?.projects?.active || 0)}
-                </p>
               </div>
             </div>
           </div>

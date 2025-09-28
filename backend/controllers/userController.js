@@ -1,4 +1,5 @@
 const User = require('../models/User');
+const Warehouse = require('../models/Warehouse');
 
 // @desc    Get all users
 // @route   GET /api/users
@@ -84,7 +85,7 @@ const getUserById = async (req, res) => {
 // @access  Private (Admin/Manager)
 const createUser = async (req, res) => {
   try {
-    const { role } = req.body;
+    const { role, warehouse } = req.body;
     const currentUserRole = req.user.role;
 
     // Role-based permission checks
@@ -102,11 +103,63 @@ const createUser = async (req, res) => {
       });
     }
 
+    // Warehouse assignment logic
+    if (role === 'warehouse_employee') {
+      if (!warehouse) {
+        return res.status(400).json({
+          success: false,
+          message: 'Warehouse is required for warehouse employee role'
+        });
+      }
+
+      // Verify warehouse exists
+      const warehouseExists = await Warehouse.findById(warehouse);
+      if (!warehouseExists) {
+        return res.status(404).json({
+          success: false,
+          message: 'Warehouse not found'
+        });
+      }
+
+      // Check if warehouse already has a manager
+      if (warehouseExists.manager) {
+        return res.status(400).json({
+          success: false,
+          message: 'This warehouse already has a manager assigned'
+        });
+      }
+    }
+
     const userData = req.body;
     userData.createdBy = req.user._id;
 
+    // Handle warehouse assignment for warehouse_employee
+    if (role === 'warehouse_employee' && warehouse) {
+      userData.warehouse = {
+        assignedWarehouse: warehouse,
+        warehousePosition: 'warehouse_employee',
+        assignedAt: new Date(),
+        assignedBy: req.user._id
+      };
+    }
+
     const user = new User(userData);
     await user.save();
+
+    // If warehouse_employee, add to warehouse employees list
+    if (role === 'warehouse_employee' && warehouse) {
+      await Warehouse.findByIdAndUpdate(warehouse, {
+        $push: {
+          employees: {
+            user: user._id,
+            position: 'warehouse_employee',
+            assignedBy: req.user._id,
+            assignedAt: new Date(),
+            isActive: true
+          }
+        }
+      });
+    }
 
     const userResponse = user.toJSON();
     delete userResponse.password;
@@ -261,14 +314,30 @@ const getUserStats = async (req, res) => {
   try {
     const userId = req.params.id;
     
-    // This would typically include more complex aggregations
-    // For now, return basic stats
+    // Calculate user statistics
+    const Invoice = require('../models/Invoice');
+    
     const stats = {
-      totalInvoices: 0, // TODO: Count from Invoice model
-      totalSales: 0,    // TODO: Sum from Invoice model
+      totalInvoices: 0,
+      totalSales: 0,
       lastLogin: null,
       accountAge: 0
     };
+
+    try {
+      // Count invoices created by this user
+      const invoiceCount = await Invoice.countDocuments({ createdBy: userId });
+      stats.totalInvoices = invoiceCount;
+
+      // Sum total sales from invoices
+      const salesResult = await Invoice.aggregate([
+        { $match: { createdBy: mongoose.Types.ObjectId(userId) } },
+        { $group: { _id: null, totalSales: { $sum: '$total' } } }
+      ]);
+      stats.totalSales = salesResult.length > 0 ? salesResult[0].totalSales : 0;
+    } catch (error) {
+      console.error('Error calculating user stats:', error);
+    }
 
     const user = await User.findById(userId).select('lastLogin createdAt');
     if (user) {

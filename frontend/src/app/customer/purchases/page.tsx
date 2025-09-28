@@ -3,21 +3,22 @@
 import React, { useState } from 'react';
 import Layout from '@/components/layout/Layout';
 import { useQuery } from '@tanstack/react-query';
-import { invoicesAPI, workshopAPI } from '@/lib/api';
+import { Invoice, InvoiceItem } from '@/types';
 import { formatCurrency, formatDate } from '@/lib/utils';
+import { calculatePrice } from '@/lib/priceCalculator';
+import PriceSummary from '@/components/ui/PriceSummary';
 import DataTable from '@/components/ui/DataTable';
 import Modal from '@/components/ui/Modal';
 import { useAuth } from '@/contexts/AuthContext';
-import { DocumentTextIcon, EyeIcon, WrenchScrewdriverIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { DocumentTextIcon, EyeIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { invoicesAPI } from '@/lib/api';
 
 const CustomerPurchasesPage: React.FC = () => {
   const { user } = useAuth();
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(10);
-  const [selectedInvoice, setSelectedInvoice] = useState<any>(null);
-  const [selectedJob, setSelectedJob] = useState<any>(null);
+  const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
-  const [isJobModalOpen, setIsJobModalOpen] = useState(false);
 
   // Fetch customer's invoices/purchases
   const { data: purchasesData, isLoading: purchasesLoading } = useQuery({
@@ -30,12 +31,6 @@ const CustomerPurchasesPage: React.FC = () => {
     enabled: !!user?.phone
   });
 
-  // Fetch customer's workshop jobs
-  const { data: workshopData, isLoading: workshopLoading } = useQuery({
-    queryKey: ['customer-workshop', user?.phone],
-    queryFn: () => workshopAPI.getJobs({ customerPhone: user?.phone }),
-    enabled: !!user?.phone
-  });
 
   const invoiceColumns = [
     {
@@ -80,7 +75,7 @@ const CustomerPurchasesPage: React.FC = () => {
     {
       key: 'actions',
       label: 'Actions',
-      render: (_: any, row: any) => (
+      render: (_: any, row: Invoice) => (
         <div className="flex items-center space-x-2">
           <button
             onClick={() => {
@@ -97,73 +92,6 @@ const CustomerPurchasesPage: React.FC = () => {
     },
   ];
 
-  const workshopColumns = [
-    {
-      key: 'title',
-      label: 'Job Title',
-      sortable: true,
-      render: (value: string) => (
-        <span className="text-sm font-medium text-gray-900">{value}</span>
-      ),
-    },
-    {
-      key: 'priority',
-      label: 'Priority',
-      sortable: true,
-      render: (value: string) => (
-        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-          value === 'urgent' ? 'bg-red-100 text-red-800' :
-          value === 'high' ? 'bg-orange-100 text-orange-800' :
-          value === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-          'bg-gray-100 text-gray-800'
-        }`}>
-          {value.charAt(0).toUpperCase() + value.slice(1)}
-        </span>
-      ),
-    },
-    {
-      key: 'status',
-      label: 'Status',
-      sortable: true,
-      render: (value: string) => (
-        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-          value === 'completed' ? 'bg-green-100 text-green-800' :
-          value === 'in_progress' ? 'bg-blue-100 text-blue-800' :
-          value === 'on_hold' ? 'bg-yellow-100 text-yellow-800' :
-          value === 'cancelled' ? 'bg-red-100 text-red-800' :
-          'bg-gray-100 text-gray-800'
-        }`}>
-          {value.charAt(0).toUpperCase() + value.slice(1).replace('_', ' ')}
-        </span>
-      ),
-    },
-    {
-      key: 'createdAt',
-      label: 'Created',
-      sortable: true,
-      render: (value: string) => (
-        <span className="text-sm text-gray-900">{formatDate(value)}</span>
-      ),
-    },
-    {
-      key: 'actions',
-      label: 'Actions',
-      render: (_: any, row: any) => (
-        <div className="flex items-center space-x-2">
-          <button
-            onClick={() => {
-              setSelectedJob(row);
-              setIsJobModalOpen(true);
-            }}
-            className="text-blue-600 hover:text-blue-900"
-            title="View Job Details"
-          >
-            <EyeIcon className="h-4 w-4" />
-          </button>
-        </div>
-      ),
-    },
-  ];
 
   return (
     <Layout title="My Purchases">
@@ -206,28 +134,6 @@ const CustomerPurchasesPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Workshop Jobs Section */}
-        <div className="bg-white shadow rounded-lg">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <WrenchScrewdriverIcon className="h-5 w-5 text-gray-400 mr-2" />
-                <h3 className="text-lg font-medium text-gray-900">Workshop Jobs</h3>
-              </div>
-              <div className="text-sm text-gray-500">
-                {workshopData?.data?.data?.length || 0} total jobs
-              </div>
-            </div>
-          </div>
-          <div className="p-6">
-            <DataTable
-              columns={workshopColumns}
-              data={workshopData?.data?.data || []}
-              loading={workshopLoading}
-              emptyMessage="No workshop jobs found. Your jobs will appear here when linked to your phone number."
-            />
-          </div>
-        </div>
 
         {!user?.phone && (
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
@@ -288,65 +194,56 @@ const CustomerPurchasesPage: React.FC = () => {
               </div>
               
               {selectedInvoice.items && selectedInvoice.items.length > 0 && (
-                <div>
-                  <label className="text-sm font-medium text-gray-500">Items</label>
-                  <div className="mt-2 space-y-2">
-                    {selectedInvoice.items.map((item: any, index: number) => {
-                      const unitPrice = item.unitPrice || item.price || 0;
-                      const quantity = item.quantity || 0;
-                      const discount = item.discount || 0;
-                      const taxRate = item.taxRate || 0;
-                      
-                      // Calculate breakdown
-                      const subtotal = unitPrice * quantity;
-                      const discountAmount = (subtotal * discount) / 100;
-                      const afterDiscount = subtotal - discountAmount;
-                      const taxAmount = (afterDiscount * taxRate) / 100;
-                      const itemTotal = afterDiscount + taxAmount;
-                      
-                      return (
+                <>
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Items</label>
+                    <div className="mt-2 space-y-2">
+                      {selectedInvoice.items.map((item: InvoiceItem, index: number) => (
                         <div key={index} className="p-2 bg-gray-50 rounded">
                           <div className="flex justify-between items-start mb-1">
                             <div className="flex-1">
                               <p className="text-sm font-medium">{item.name}</p>
                               <p className="text-xs text-gray-500">
-                                Qty: {quantity} × {formatCurrency(unitPrice)}
+                                Qty: {item.quantity || 0} × {formatCurrency(item.unitPrice || item.price || 0)}
                               </p>
                               {item.sku && (
                                 <p className="text-xs text-gray-400">SKU: {item.sku}</p>
                               )}
                             </div>
-                            <p className="text-sm font-medium">{formatCurrency(itemTotal)}</p>
-                          </div>
-                          
-                          {/* Tax and Discount Breakdown */}
-                          <div className="text-xs text-gray-500 space-y-0.5">
-                            <div className="flex justify-between">
-                              <span>Subtotal:</span>
-                              <span>{formatCurrency(subtotal)}</span>
-                            </div>
-                            {discount > 0 && (
-                              <div className="flex justify-between text-green-600">
-                                <span>Discount ({discount}%):</span>
-                                <span>-{formatCurrency(discountAmount)}</span>
-                              </div>
-                            )}
-                            {taxRate > 0 && (
-                              <div className="flex justify-between text-blue-600">
-                                <span>Tax ({taxRate}%):</span>
-                                <span>+{formatCurrency(taxAmount)}</span>
-                              </div>
-                            )}
-                            <div className="flex justify-between font-medium text-gray-700 border-t pt-0.5">
-                              <span>Total:</span>
-                              <span>{formatCurrency(itemTotal)}</span>
-                            </div>
+                            <p className="text-sm font-medium">{formatCurrency((item.unitPrice || item.price || 0) * (item.quantity || 0))}</p>
                           </div>
                         </div>
-                      );
-                    })}
+                      ))}
+                    </div>
                   </div>
-                </div>
+
+                  {/* Price Summary */}
+                  <div className="border-t pt-4">
+                    {(() => {
+                      const priceItems = selectedInvoice.items?.map((item: InvoiceItem) => ({
+                        name: item.name,
+                        quantity: item.quantity || 1,
+                        unitPrice: item.unitPrice || item.price || 0,
+                        discount: item.discount || 0,
+                        taxRate: item.taxRate || 0
+                      })) || [];
+                      
+                      const calculation = calculatePrice(priceItems, [], [], {
+                        cost: selectedInvoice.shippingCost || 0
+                      });
+                      
+                      return (
+                        <PriceSummary 
+                          calculation={calculation} 
+                          showBreakdown={true}
+                          showItems={false}
+                          title=""
+                          className="bg-transparent p-0"
+                        />
+                      );
+                    })()}
+                  </div>
+                </>
               )}
 
               {selectedInvoice.customerPhone && (
@@ -359,67 +256,6 @@ const CustomerPurchasesPage: React.FC = () => {
           )}
         </Modal>
 
-        {/* Workshop Job Details Modal */}
-        <Modal
-          isOpen={isJobModalOpen}
-          onClose={() => {
-            setIsJobModalOpen(false);
-            setSelectedJob(null);
-          }}
-          title="Workshop Job Details"
-        >
-          {selectedJob && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium text-gray-500">Job Title</label>
-                  <p className="text-sm text-gray-900">{selectedJob.title}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-500">Priority</label>
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                    selectedJob.priority === 'urgent' ? 'bg-red-100 text-red-800' :
-                    selectedJob.priority === 'high' ? 'bg-orange-100 text-orange-800' :
-                    selectedJob.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-                    'bg-gray-100 text-gray-800'
-                  }`}>
-                    {selectedJob.priority.charAt(0).toUpperCase() + selectedJob.priority.slice(1)}
-                  </span>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-500">Status</label>
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                    selectedJob.status === 'completed' ? 'bg-green-100 text-green-800' :
-                    selectedJob.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
-                    selectedJob.status === 'on_hold' ? 'bg-yellow-100 text-yellow-800' :
-                    selectedJob.status === 'cancelled' ? 'bg-red-100 text-red-800' :
-                    'bg-gray-100 text-gray-800'
-                  }`}>
-                    {selectedJob.status.charAt(0).toUpperCase() + selectedJob.status.slice(1).replace('_', ' ')}
-                  </span>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-500">Created</label>
-                  <p className="text-sm text-gray-900">{formatDate(selectedJob.createdAt)}</p>
-                </div>
-              </div>
-              
-              {selectedJob.description && (
-                <div>
-                  <label className="text-sm font-medium text-gray-500">Description</label>
-                  <p className="text-sm text-gray-900 mt-1">{selectedJob.description}</p>
-                </div>
-              )}
-
-              {selectedJob.customerPhone && (
-                <div>
-                  <label className="text-sm font-medium text-gray-500">Phone Number</label>
-                  <p className="text-sm text-gray-900">{selectedJob.customerPhone}</p>
-                </div>
-              )}
-            </div>
-          )}
-        </Modal>
       </div>
     </Layout>
   );

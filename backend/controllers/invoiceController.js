@@ -412,11 +412,39 @@ const getInvoiceStats = async (req, res) => {
   }
 };
 
+// @desc    Delete invoice
+// @route   DELETE /api/invoices/:id
+// @access  Private
+const deleteInvoice = async (req, res) => {
+  try {
+    const invoice = await Invoice.findById(req.params.id);
+    
+    if (!invoice) {
+      return res.status(404).json({ message: 'Invoice not found' });
+    }
+
+    // Check if invoice can be deleted (e.g., not paid)
+    if (invoice.status === 'paid' && invoice.paid > 0) {
+      return res.status(400).json({ 
+        message: 'Cannot delete paid invoice. Consider cancelling instead.' 
+      });
+    }
+
+    await Invoice.findByIdAndDelete(req.params.id);
+    
+    res.json({ message: 'Invoice deleted successfully' });
+  } catch (error) {
+    console.error('Delete invoice error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
 module.exports = {
   getInvoices,
   getInvoiceById,
   createInvoice,
   updateInvoice,
+  deleteInvoice,
   addPayment,
   generateQRCode,
   getInvoiceStats

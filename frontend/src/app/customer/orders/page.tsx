@@ -16,13 +16,16 @@ import Layout from '@/components/layout/Layout';
 import Button from '@/components/ui/Button';
 import Badge from '@/components/ui/Badge';
 import Modal from '@/components/ui/Modal';
-import { ordersAPI } from '@/lib/api';
+import { Order } from '@/types';
 import { formatDate, formatCurrency } from '@/lib/utils';
+import { ordersAPI } from '@/lib/api';
+import { calculatePrice } from '@/lib/priceCalculator';
+import PriceSummary from '@/components/ui/PriceSummary';
 import { useAuth } from '@/contexts/AuthContext';
 
 const CustomerOrdersPage: React.FC = () => {
   const { user } = useAuth();
-  const [selectedOrder, setSelectedOrder] = useState<any>(null);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
 
   // Fetch customer orders
@@ -181,7 +184,7 @@ const CustomerOrdersPage: React.FC = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Status</label>
-                  <div className="mt-1">{getStatusBadge(selectedOrder.status)}</div>
+                  <div className="mt-1">{getStatusBadge(selectedOrder.status || selectedOrder.orderStatus)}</div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Payment Status</label>
@@ -193,7 +196,7 @@ const CustomerOrdersPage: React.FC = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Expected Delivery</label>
-                  <p className="mt-1 text-sm text-gray-900">{formatDate(selectedOrder.expectedDeliveryDate)}</p>
+                  <p className="mt-1 text-sm text-gray-900">{selectedOrder.expectedDeliveryDate ? formatDate(selectedOrder.expectedDeliveryDate) : 'Not set'}</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Payment Method</label>
@@ -227,19 +230,31 @@ const CustomerOrdersPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Subtotal</label>
-                  <p className="mt-1 text-sm text-gray-900">{formatCurrency(selectedOrder.subtotal)}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Tax ({selectedOrder.taxRate}%)</label>
-                  <p className="mt-1 text-sm text-gray-900">{formatCurrency(selectedOrder.taxAmount)}</p>
-                </div>
-                <div className="col-span-2">
-                  <label className="block text-sm font-medium text-gray-700">Total Amount</label>
-                  <p className="mt-1 text-lg font-bold text-gray-900">{formatCurrency(selectedOrder.total)}</p>
-                </div>
+              {/* Price Summary */}
+              <div className="border-t pt-4">
+                {(() => {
+                  const priceItems = selectedOrder.items?.map((item: any) => ({
+                    name: item.name,
+                    quantity: item.quantity || 1,
+                    unitPrice: item.unitPrice || 0,
+                    discount: item.discount || 0,
+                    taxRate: item.taxRate || 0
+                  })) || [];
+                  
+                  const calculation = calculatePrice(priceItems, [], [], {
+                    cost: selectedOrder.shippingCost || 0
+                  });
+                  
+                  return (
+                    <PriceSummary 
+                      calculation={calculation} 
+                      showBreakdown={true}
+                      showItems={false}
+                      title=""
+                      className="bg-transparent p-0"
+                    />
+                  );
+                })()}
               </div>
 
               {selectedOrder.shippingAddress && (

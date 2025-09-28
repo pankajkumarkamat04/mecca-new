@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import Layout from '@/components/layout/Layout';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { warehouseAPI } from '@/lib/api';
@@ -15,8 +16,10 @@ import {
   PencilIcon,
   TrashIcon,
   BuildingOfficeIcon,
-  MapPinIcon,
   ArrowPathIcon,
+  UserPlusIcon,
+  UserGroupIcon,
+  ChartBarIcon,
 } from '@heroicons/react/24/outline';
 
 interface Warehouse {
@@ -24,12 +27,45 @@ interface Warehouse {
   name: string;
   code: string;
   description?: string;
+  manager?: {
+    _id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone: string;
+  };
+  employees?: Array<{
+    _id: string;
+    user: {
+      _id: string;
+      firstName: string;
+      lastName: string;
+      email: string;
+      phone: string;
+    };
+    position: string;
+    assignedAt: string;
+    assignedBy: {
+      _id: string;
+      firstName: string;
+      lastName: string;
+    };
+  }>;
   address?: {
     street?: string;
     city?: string;
     state?: string;
     zipCode?: string;
     country?: string;
+  };
+  contact?: {
+    phone?: string;
+    email?: string;
+    manager?: {
+      name?: string;
+      phone?: string;
+      email?: string;
+    };
   };
   capacity?: {
     totalCapacity?: number;
@@ -50,17 +86,20 @@ const WarehousesPage: React.FC = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [showLocationModal, setShowLocationModal] = useState(false);
+  const [showAssignManagerModal, setShowAssignManagerModal] = useState(false);
+  const [showEmployeesModal, setShowEmployeesModal] = useState(false);
   const [selectedWarehouse, setSelectedWarehouse] = useState<Warehouse | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [availableUsers, setAvailableUsers] = useState<any[]>([]);
+  const [selectedManagerId, setSelectedManagerId] = useState('');
 
   const queryClient = useQueryClient();
 
   // Fetch warehouses
-  const { data: warehousesData, isLoading } = useQuery({
+  const { data: warehousesData, isLoading, error: warehousesError } = useQuery({
     queryKey: ['warehouses', { page: currentPage, limit: pageSize, search: searchTerm, isActive: statusFilter === 'all' ? undefined : statusFilter === 'active' }],
     queryFn: () => warehouseAPI.getWarehouses({
       page: currentPage,
@@ -71,10 +110,22 @@ const WarehousesPage: React.FC = () => {
   });
 
   // Fetch warehouse stats
-  const { data: statsData } = useQuery({
+  const { data: statsData, error: statsError } = useQuery({
     queryKey: ['warehouse-stats'],
     queryFn: () => warehouseAPI.getWarehouseStats(),
   });
+
+  // Fetch available users
+  const { data: usersData } = useQuery({
+    queryKey: ['available-users'],
+    queryFn: () => warehouseAPI.getAvailableUsers(),
+  });
+
+  useEffect(() => {
+    if (usersData?.data?.data) {
+      setAvailableUsers(usersData.data.data);
+    }
+  }, [usersData]);
 
   // Delete warehouse mutation
   const deleteWarehouseMutation = useMutation({
@@ -82,12 +133,60 @@ const WarehousesPage: React.FC = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['warehouses'] });
       queryClient.invalidateQueries({ queryKey: ['warehouse-stats'] });
+      toast.success('Warehouse deleted successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to delete warehouse');
+    },
+  });
+
+  // Create warehouse mutation
+  const createWarehouseMutation = useMutation({
+    mutationFn: (data: any) => warehouseAPI.createWarehouse(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['warehouses'] });
+      queryClient.invalidateQueries({ queryKey: ['warehouse-stats'] });
+      setShowCreateModal(false);
+      toast.success('Warehouse created successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to create warehouse');
+    },
+  });
+
+  // Update warehouse mutation
+  const updateWarehouseMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => warehouseAPI.updateWarehouse(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['warehouses'] });
+      queryClient.invalidateQueries({ queryKey: ['warehouse-stats'] });
+      setShowEditModal(false);
+      setSelectedWarehouse(null);
+      toast.success('Warehouse updated successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to update warehouse');
+    },
+  });
+
+  // Assign manager mutation
+  const assignManagerMutation = useMutation({
+    mutationFn: ({ warehouseId, managerId }: { warehouseId: string; managerId: string }) =>
+      warehouseAPI.assignManager(warehouseId, managerId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['warehouses'] });
+      setShowAssignManagerModal(false);
+      setSelectedManagerId('');
+      toast.success('Manager assigned successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to assign manager');
     },
   });
 
   const warehouses = warehousesData?.data?.data || warehousesData?.data || [];
   const pagination = warehousesData?.data?.pagination || warehousesData?.data?.pagination || {};
-  const stats = statsData?.data;
+  const stats = statsData?.data?.data || statsData?.data;
 
   const columns = [
     {
@@ -104,14 +203,34 @@ const WarehousesPage: React.FC = () => {
       ),
     },
     {
-      key: 'address',
-      label: 'Location',
+      key: 'manager',
+      label: 'Manager',
       render: (value: any, row: Warehouse) => (
-        <div className="text-sm text-gray-900">
-          {row.address?.city && row.address?.state 
-            ? `${row.address.city}, ${row.address.state}`
-            : 'No address set'
-          }
+        <div className="text-sm">
+          {row.manager ? (
+            <div>
+              <div className="font-medium text-gray-900">
+                {row.manager.firstName} {row.manager.lastName}
+              </div>
+              <div className="text-gray-500">{row.manager.email}</div>
+            </div>
+          ) : (
+            <span className="text-gray-400 italic">No manager assigned</span>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: 'employees',
+      label: 'Employees',
+      render: (value: any, row: Warehouse) => (
+        <div className="text-sm">
+          <div className="font-medium text-gray-900">
+            {row.employees?.filter(emp => emp.user).length || 0} employees
+          </div>
+          <div className="text-gray-500">
+            {row.capacityUtilization}% capacity utilized
+          </div>
         </div>
       ),
     },
@@ -126,16 +245,6 @@ const WarehousesPage: React.FC = () => {
           <div className="text-gray-500">
             {row.capacityUtilization}% utilized
           </div>
-        </div>
-      ),
-    },
-    {
-      key: 'locationCount',
-      label: 'Locations',
-      render: (value: number) => (
-        <div className="flex items-center text-sm text-gray-900">
-          <MapPinIcon className="h-4 w-4 mr-1" />
-          {value || 0}
         </div>
       ),
     },
@@ -176,23 +285,12 @@ const WarehousesPage: React.FC = () => {
           </button>
           <button
             onClick={() => {
-              setSelectedWarehouse(row);
-              setShowEditModal(true);
-            }}
-            className="text-green-600 hover:text-green-800"
-            title="Edit"
-          >
-            <PencilIcon className="h-4 w-4" />
-          </button>
-          <button
-            onClick={() => {
-              setSelectedWarehouse(row);
-              setShowLocationModal(true);
+              window.location.href = `/warehouse-portal?warehouse=${row._id}`;
             }}
             className="text-purple-600 hover:text-purple-800"
-            title="Manage Locations"
+            title="Open Portal"
           >
-            <MapPinIcon className="h-4 w-4" />
+            <BuildingOfficeIcon className="h-4 w-4" />
           </button>
           <button
             onClick={() => {
@@ -221,6 +319,14 @@ const WarehousesPage: React.FC = () => {
     setCurrentPage(1);
   };
 
+  const handleAssignManager = () => {
+    if (!selectedWarehouse || !selectedManagerId) return;
+    assignManagerMutation.mutate({
+      warehouseId: selectedWarehouse._id,
+      managerId: selectedManagerId,
+    });
+  };
+
   return (
     <Layout title="Warehouses">
       <div className="space-y-6">
@@ -240,52 +346,87 @@ const WarehousesPage: React.FC = () => {
       </div>
 
       {/* Stats Cards */}
-      {stats && (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <div className="bg-white p-6 rounded-lg shadow">
-            <div className="flex items-center">
-              <BuildingOfficeIcon className="h-8 w-8 text-blue-600" />
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">Total Warehouses</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.totalWarehouses}</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-white p-6 rounded-lg shadow">
-            <div className="flex items-center">
-              <div className="h-8 w-8 bg-green-100 rounded-full flex items-center justify-center">
-                <span className="text-green-600 font-bold">✓</span>
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">Active Warehouses</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.activeWarehouses}</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-white p-6 rounded-lg shadow">
-            <div className="flex items-center">
-              <div className="h-8 w-8 bg-yellow-100 rounded-full flex items-center justify-center">
-                <span className="text-yellow-600 font-bold">%</span>
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">Capacity Utilization</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.capacityUtilization}%</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-white p-6 rounded-lg shadow">
-            <div className="flex items-center">
-              <div className="h-8 w-8 bg-purple-100 rounded-full flex items-center justify-center">
-                <span className="text-purple-600 font-bold">W</span>
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">Weight Utilization</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.weightUtilization}%</p>
-              </div>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="bg-white p-6 rounded-lg shadow">
+          <div className="flex items-center">
+            <BuildingOfficeIcon className="h-8 w-8 text-blue-600" />
+            <div className="ml-4">
+              <p className="text-sm font-medium text-gray-500">Total Warehouses</p>
+              <p className="text-2xl font-bold text-gray-900">{stats?.totalWarehouses || 0}</p>
             </div>
           </div>
         </div>
-      )}
+        <div className="bg-white p-6 rounded-lg shadow">
+          <div className="flex items-center">
+            <div className="h-8 w-8 bg-green-100 rounded-full flex items-center justify-center">
+              <span className="text-green-600 font-bold">✓</span>
+            </div>
+            <div className="ml-4">
+              <p className="text-sm font-medium text-gray-500">Active Warehouses</p>
+              <p className="text-2xl font-bold text-gray-900">{stats?.activeWarehouses || 0}</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white p-6 rounded-lg shadow">
+          <div className="flex items-center">
+            <div className="h-8 w-8 bg-yellow-100 rounded-full flex items-center justify-center">
+              <span className="text-yellow-600 font-bold">%</span>
+            </div>
+            <div className="ml-4">
+              <p className="text-sm font-medium text-gray-500">Capacity Utilization</p>
+              <p className="text-2xl font-bold text-gray-900">{stats?.capacityUtilization || 0}%</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white p-6 rounded-lg shadow">
+          <div className="flex items-center">
+            <div className="h-8 w-8 bg-purple-100 rounded-full flex items-center justify-center">
+              <span className="text-purple-600 font-bold">W</span>
+            </div>
+            <div className="ml-4">
+              <p className="text-sm font-medium text-gray-500">Weight Utilization</p>
+              <p className="text-2xl font-bold text-gray-900">{stats?.weightUtilization || 0}%</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Additional Stats Row */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+        <div className="bg-white p-6 rounded-lg shadow">
+          <div className="flex items-center">
+            <div className="h-8 w-8 bg-blue-100 rounded-full flex items-center justify-center">
+              <span className="text-blue-600 font-bold">📦</span>
+            </div>
+            <div className="ml-4">
+              <p className="text-sm font-medium text-gray-500">Total Products</p>
+              <p className="text-2xl font-bold text-gray-900">{stats?.totalProducts || 0}</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white p-6 rounded-lg shadow">
+          <div className="flex items-center">
+            <div className="h-8 w-8 bg-green-100 rounded-full flex items-center justify-center">
+              <span className="text-green-600 font-bold">✓</span>
+            </div>
+            <div className="ml-4">
+              <p className="text-sm font-medium text-gray-500">Products in Warehouses</p>
+              <p className="text-2xl font-bold text-gray-900">{stats?.productsInWarehouses || 0}</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white p-6 rounded-lg shadow">
+          <div className="flex items-center">
+            <div className="h-8 w-8 bg-red-100 rounded-full flex items-center justify-center">
+              <span className="text-red-600 font-bold">⚠</span>
+            </div>
+            <div className="ml-4">
+              <p className="text-sm font-medium text-gray-500">Products Without Warehouse</p>
+              <p className="text-2xl font-bold text-gray-900">{stats?.productsWithoutWarehouse || 0}</p>
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* Filters */}
       <div className="bg-white p-4 rounded-lg shadow">
@@ -334,12 +475,9 @@ const WarehousesPage: React.FC = () => {
         title="Create Warehouse"
       >
         <CreateWarehouseForm
-          onSuccess={() => {
-            setShowCreateModal(false);
-            queryClient.invalidateQueries({ queryKey: ['warehouses'] });
-            queryClient.invalidateQueries({ queryKey: ['warehouse-stats'] });
-          }}
+          mutation={createWarehouseMutation}
           onCancel={() => setShowCreateModal(false)}
+          availableUsers={availableUsers}
         />
       </Modal>
 
@@ -363,33 +501,119 @@ const WarehousesPage: React.FC = () => {
         {selectedWarehouse && (
           <EditWarehouseForm
             warehouse={selectedWarehouse}
-            onSuccess={() => {
-              setShowEditModal(false);
-              queryClient.invalidateQueries({ queryKey: ['warehouses'] });
-              queryClient.invalidateQueries({ queryKey: ['warehouse-stats'] });
-            }}
+            mutation={updateWarehouseMutation}
             onCancel={() => setShowEditModal(false)}
           />
         )}
       </Modal>
 
-      {/* Manage Locations Modal */}
+      {/* Assign Manager Modal */}
       <Modal
-        isOpen={showLocationModal}
-        onClose={() => setShowLocationModal(false)}
-        title="Manage Locations"
+        isOpen={showAssignManagerModal}
+        onClose={() => setShowAssignManagerModal(false)}
+        title="Assign Manager"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Select Manager
+            </label>
+            <Select
+              value={selectedManagerId}
+              onChange={(e) => setSelectedManagerId(e.target.value)}
+              options={[
+                { value: '', label: 'Select a manager...' },
+                ...availableUsers
+                  .filter(user => 
+                    user.role === 'warehouse_manager' || 
+                    user.role === 'manager' ||
+                    user.role === 'admin'
+                  )
+                  .map(user => ({
+                    value: user._id,
+                    label: `${user.firstName} ${user.lastName} (${user.email})`
+                  }))
+              ]}
+            />
+          </div>
+          <div className="flex justify-end space-x-3 pt-4">
+            <Button 
+              type="button" 
+              variant="secondary" 
+              onClick={() => setShowAssignManagerModal(false)}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleAssignManager}
+              disabled={assignManagerMutation.isPending || !selectedManagerId}
+            >
+              {assignManagerMutation.isPending ? 'Assigning...' : 'Assign Manager'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Employees Modal */}
+      <Modal
+        isOpen={showEmployeesModal}
+        onClose={() => setShowEmployeesModal(false)}
+        title={`Employees - ${selectedWarehouse?.name}`}
       >
         {selectedWarehouse && (
-          <ManageLocationsForm
-            warehouse={selectedWarehouse}
-            onSuccess={() => {
-              setShowLocationModal(false);
-              queryClient.invalidateQueries({ queryKey: ['warehouses'] });
-            }}
-            onCancel={() => setShowLocationModal(false)}
-          />
+          <div className="space-y-4">
+            {/* Manager Section */}
+            <div className="border-b pb-4">
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Manager</h3>
+              {selectedWarehouse.manager ? (
+                <div className="bg-gray-50 p-3 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="font-medium text-gray-900">
+                        {selectedWarehouse.manager.firstName} {selectedWarehouse.manager.lastName}
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        {selectedWarehouse.manager.email} • {selectedWarehouse.manager.phone}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-gray-400 italic">No manager assigned</div>
+              )}
+            </div>
+
+            {/* Employees Section */}
+            <div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Employees</h3>
+              {selectedWarehouse.employees && selectedWarehouse.employees.length > 0 ? (
+                <div className="space-y-2">
+                  {selectedWarehouse.employees.map((employee) => (
+                    <div key={employee._id} className="bg-gray-50 p-3 rounded-lg">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="font-medium text-gray-900">
+                            {employee.user.firstName} {employee.user.lastName}
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            {employee.user.email} • {employee.user.phone}
+                          </div>
+                          <div className="text-xs text-gray-400">
+                            Position: {employee.position.replace('warehouse_', '').replace('_', ' ')}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-gray-400 italic">No employees assigned</div>
+              )}
+            </div>
+          </div>
         )}
       </Modal>
+
       </div>
     </Layout>
   );
@@ -397,13 +621,15 @@ const WarehousesPage: React.FC = () => {
 
 // Create Warehouse Form Component
 const CreateWarehouseForm: React.FC<{
-  onSuccess: () => void;
+  mutation: any;
   onCancel: () => void;
-}> = ({ onSuccess, onCancel }) => {
+  availableUsers: any[];
+}> = ({ mutation, onCancel, availableUsers }) => {
   const [formData, setFormData] = useState({
     name: '',
     code: '',
     description: '',
+    manager: '', // Add manager selection
     address: {
       street: '',
       city: '',
@@ -411,22 +637,21 @@ const CreateWarehouseForm: React.FC<{
       zipCode: '',
       country: '',
     },
+    contact: {
+      phone: '',
+      email: '',
+    },
     capacity: {
-      totalCapacity: '',
-      maxWeight: '',
+      totalCapacity: 0,
+      maxWeight: 0,
     },
     isActive: true,
     isDefault: false,
   });
 
-  const createWarehouseMutation = useMutation({
-    mutationFn: (data: any) => warehouseAPI.createWarehouse(data),
-    onSuccess: onSuccess,
-  });
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    createWarehouseMutation.mutate(formData);
+    mutation.mutate(formData);
   };
 
   return (
@@ -466,6 +691,132 @@ const CreateWarehouseForm: React.FC<{
         />
       </div>
 
+      {/* Address Section */}
+      <div className="border-t pt-6">
+        <h3 className="text-lg font-medium text-gray-900 mb-4">Address Information</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Street
+            </label>
+            <Input
+              value={formData.address.street}
+              onChange={(e) => setFormData({
+                ...formData,
+                address: { ...formData.address, street: e.target.value }
+              })}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              City
+            </label>
+            <Input
+              value={formData.address.city}
+              onChange={(e) => setFormData({
+                ...formData,
+                address: { ...formData.address, city: e.target.value }
+              })}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              State
+            </label>
+            <Input
+              value={formData.address.state}
+              onChange={(e) => setFormData({
+                ...formData,
+                address: { ...formData.address, state: e.target.value }
+              })}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Zip Code
+            </label>
+            <Input
+              value={formData.address.zipCode}
+              onChange={(e) => setFormData({
+                ...formData,
+                address: { ...formData.address, zipCode: e.target.value }
+              })}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Country
+            </label>
+            <Input
+              value={formData.address.country}
+              onChange={(e) => setFormData({
+                ...formData,
+                address: { ...formData.address, country: e.target.value }
+              })}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Contact Section */}
+      <div className="border-t pt-6">
+        <h3 className="text-lg font-medium text-gray-900 mb-4">Contact Information</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Phone
+            </label>
+            <Input
+              value={formData.contact?.phone || ''}
+              onChange={(e) => setFormData({
+                ...formData,
+                contact: { ...formData.contact, phone: e.target.value }
+              })}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Email
+            </label>
+            <Input
+              type="email"
+              value={formData.contact?.email || ''}
+              onChange={(e) => setFormData({
+                ...formData,
+                contact: { ...formData.contact, email: e.target.value }
+              })}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Manager Selection */}
+      <div className="border-t pt-6">
+        <h3 className="text-lg font-medium text-gray-900 mb-4">Warehouse Manager</h3>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Select Manager *
+          </label>
+          <Select
+            value={formData.manager}
+            onChange={(e) => setFormData({ ...formData, manager: e.target.value })}
+            options={[
+              { value: '', label: 'Select a warehouse manager...' },
+              ...availableUsers
+                .filter(user => user.role === 'warehouse_manager')
+                .map(user => ({
+                  value: user._id,
+                  label: `${user.firstName} ${user.lastName} (${user.email})`
+                }))
+            ]}
+            required
+          />
+          <p className="mt-1 text-sm text-gray-500">
+            Only users with warehouse manager role can be selected as managers.
+          </p>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -476,8 +827,9 @@ const CreateWarehouseForm: React.FC<{
             value={formData.capacity.totalCapacity}
             onChange={(e) => setFormData({
               ...formData,
-              capacity: { ...formData.capacity, totalCapacity: e.target.value }
+              capacity: { ...formData.capacity, totalCapacity: Number(e.target.value) }
             })}
+            required
           />
         </div>
         <div>
@@ -489,7 +841,7 @@ const CreateWarehouseForm: React.FC<{
             value={formData.capacity.maxWeight}
             onChange={(e) => setFormData({
               ...formData,
-              capacity: { ...formData.capacity, maxWeight: e.target.value }
+              capacity: { ...formData.capacity, maxWeight: Number(e.target.value) }
             })}
           />
         </div>
@@ -520,8 +872,8 @@ const CreateWarehouseForm: React.FC<{
         <Button type="button" variant="secondary" onClick={onCancel}>
           Cancel
         </Button>
-        <Button type="submit" disabled={createWarehouseMutation.isPending}>
-          {createWarehouseMutation.isPending ? 'Creating...' : 'Create Warehouse'}
+        <Button type="submit" disabled={mutation.isPending}>
+          {mutation.isPending ? 'Creating...' : 'Create Warehouse'}
         </Button>
       </div>
     </form>
@@ -583,9 +935,9 @@ const ViewWarehouseDetails: React.FC<{ warehouse: Warehouse }> = ({ warehouse })
 // Edit Warehouse Form Component
 const EditWarehouseForm: React.FC<{
   warehouse: Warehouse;
-  onSuccess: () => void;
+  mutation: any;
   onCancel: () => void;
-}> = ({ warehouse, onSuccess, onCancel }) => {
+}> = ({ warehouse, mutation, onCancel }) => {
   const [formData, setFormData] = useState({
     name: warehouse.name,
     code: warehouse.code,
@@ -597,22 +949,26 @@ const EditWarehouseForm: React.FC<{
       zipCode: '',
       country: '',
     },
+    contact: warehouse.contact || {
+      phone: '',
+      email: '',
+      manager: {
+        name: '',
+        phone: '',
+        email: ''
+      }
+    },
     capacity: warehouse.capacity || {
-      totalCapacity: '',
-      maxWeight: '',
+      totalCapacity: 0,
+      maxWeight: 0,
     },
     isActive: warehouse.isActive,
     isDefault: warehouse.isDefault,
   });
 
-  const updateWarehouseMutation = useMutation({
-    mutationFn: (data: any) => warehouseAPI.updateWarehouse(warehouse._id, data),
-    onSuccess: onSuccess,
-  });
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    updateWarehouseMutation.mutate(formData);
+    mutation.mutate({ id: warehouse._id, data: formData });
   };
 
   return (
@@ -652,6 +1008,185 @@ const EditWarehouseForm: React.FC<{
         />
       </div>
 
+      {/* Address Section */}
+      <div className="border-t pt-6">
+        <h3 className="text-lg font-medium text-gray-900 mb-4">Address Information</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Street
+            </label>
+            <Input
+              value={formData.address.street}
+              onChange={(e) => setFormData({
+                ...formData,
+                address: { ...formData.address, street: e.target.value }
+              })}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              City
+            </label>
+            <Input
+              value={formData.address.city}
+              onChange={(e) => setFormData({
+                ...formData,
+                address: { ...formData.address, city: e.target.value }
+              })}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              State
+            </label>
+            <Input
+              value={formData.address.state}
+              onChange={(e) => setFormData({
+                ...formData,
+                address: { ...formData.address, state: e.target.value }
+              })}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Zip Code
+            </label>
+            <Input
+              value={formData.address.zipCode}
+              onChange={(e) => setFormData({
+                ...formData,
+                address: { ...formData.address, zipCode: e.target.value }
+              })}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Country
+            </label>
+            <Input
+              value={formData.address.country}
+              onChange={(e) => setFormData({
+                ...formData,
+                address: { ...formData.address, country: e.target.value }
+              })}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Contact Section */}
+      <div className="border-t pt-6">
+        <h3 className="text-lg font-medium text-gray-900 mb-4">Contact Information</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Phone
+            </label>
+            <Input
+              value={formData.contact?.phone || ''}
+              onChange={(e) => setFormData({
+                ...formData,
+                contact: { ...formData.contact, phone: e.target.value }
+              })}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Email
+            </label>
+            <Input
+              type="email"
+              value={formData.contact?.email || ''}
+              onChange={(e) => setFormData({
+                ...formData,
+                contact: { ...formData.contact, email: e.target.value }
+              })}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Manager Name
+            </label>
+            <Input
+              value={formData.contact?.manager?.name || ''}
+              onChange={(e) => setFormData({
+                ...formData,
+                contact: { 
+                  ...formData.contact, 
+                  manager: { ...formData.contact?.manager, name: e.target.value }
+                }
+              })}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Manager Phone
+            </label>
+            <Input
+              value={formData.contact?.manager?.phone || ''}
+              onChange={(e) => setFormData({
+                ...formData,
+                contact: { 
+                  ...formData.contact, 
+                  manager: { ...formData.contact?.manager, phone: e.target.value }
+                }
+              })}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Manager Email
+            </label>
+            <Input
+              type="email"
+              value={formData.contact?.manager?.email || ''}
+              onChange={(e) => setFormData({
+                ...formData,
+                contact: { 
+                  ...formData.contact, 
+                  manager: { ...formData.contact?.manager, email: e.target.value }
+                }
+              })}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Capacity Section */}
+      <div className="border-t pt-6">
+        <h3 className="text-lg font-medium text-gray-900 mb-4">Capacity Information</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Total Capacity *
+            </label>
+            <Input
+              type="number"
+              value={formData.capacity.totalCapacity}
+              onChange={(e) => setFormData({
+                ...formData,
+                capacity: { ...formData.capacity, totalCapacity: Number(e.target.value) }
+              })}
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Max Weight (kg)
+            </label>
+            <Input
+              type="number"
+              value={formData.capacity.maxWeight}
+              onChange={(e) => setFormData({
+                ...formData,
+                capacity: { ...formData.capacity, maxWeight: Number(e.target.value) }
+              })}
+            />
+          </div>
+        </div>
+      </div>
+
       <div className="flex items-center space-x-4">
         <label className="flex items-center">
           <input
@@ -677,32 +1212,13 @@ const EditWarehouseForm: React.FC<{
         <Button type="button" variant="secondary" onClick={onCancel}>
           Cancel
         </Button>
-        <Button type="submit" disabled={updateWarehouseMutation.isPending}>
-          {updateWarehouseMutation.isPending ? 'Updating...' : 'Update Warehouse'}
+        <Button type="submit" disabled={mutation.isPending}>
+          {mutation.isPending ? 'Updating...' : 'Update Warehouse'}
         </Button>
       </div>
     </form>
   );
 };
 
-// Manage Locations Form Component
-const ManageLocationsForm: React.FC<{
-  warehouse: Warehouse;
-  onSuccess: () => void;
-  onCancel: () => void;
-}> = ({ warehouse, onSuccess, onCancel }) => {
-  return (
-    <div className="space-y-4">
-      <p className="text-gray-600">
-        Location management for {warehouse.name} will be implemented here.
-      </p>
-      <div className="flex justify-end space-x-3 pt-4">
-        <Button type="button" variant="secondary" onClick={onCancel}>
-          Close
-        </Button>
-      </div>
-    </div>
-  );
-};
 
 export default WarehousesPage;

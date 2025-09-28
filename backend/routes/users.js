@@ -1,6 +1,7 @@
 const express = require('express');
 const { auth, authorize } = require('../middleware/auth');
 const { validate, validateObjectId, validatePagination } = require('../middleware/validation');
+const { createUserValidation, updateUserValidation, updateProfileValidation } = require('../validations/userValidation');
 const {
   getUsers,
   getUserById,
@@ -27,7 +28,7 @@ router.get('/profile', auth, getUserProfile);
 // @route   PUT /api/users/profile
 // @desc    Update user profile
 // @access  Private
-router.put('/profile', auth, updateUserProfile);
+router.put('/profile', auth, updateProfileValidation, validate, updateUserProfile);
 
 // @route   GET /api/users/:id
 // @desc    Get user by ID
@@ -37,7 +38,7 @@ router.get('/:id', auth, validateObjectId(), getUserById);
 // @route   PUT /api/users/:id
 // @desc    Update user
 // @access  Private
-router.put('/:id', auth, validateObjectId(), updateUser);
+router.put('/:id', auth, validateObjectId(), updateUserValidation, validate, updateUser);
 
 // @route   DELETE /api/users/:id
 // @desc    Delete user
@@ -47,7 +48,7 @@ router.delete('/:id', auth, authorize('admin'), validateObjectId(), deleteUser);
 // @route   POST /api/users
 // @desc    Create new user
 // @access  Private (Admin/Manager)
-router.post('/', auth, authorize('admin', 'manager'), createUser);
+router.post('/', auth, authorize('admin', 'manager'), createUserValidation, validate, createUser);
 
 // @route   GET /api/users/:id/stats
 // @desc    Get user statistics

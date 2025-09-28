@@ -5,7 +5,7 @@ export interface User {
   lastName: string;
   email: string;
   phone: string;
-  role: 'admin' | 'manager' | 'employee' | 'customer' | 'warehouse_manager';
+  role: 'admin' | 'manager' | 'employee' | 'customer' | 'warehouse_manager' | 'warehouse_employee';
   avatar?: string;
   isActive: boolean;
   lastLogin?: string;
@@ -17,6 +17,12 @@ export interface User {
   department?: string;
   position?: string;
   address?: Address;
+  warehouse?: {
+    assignedWarehouse: string;
+    warehousePosition: string;
+    assignedAt: string;
+    assignedBy: string;
+  };
   createdAt: string;
   updatedAt: string;
 }
@@ -84,6 +90,13 @@ export interface ProductInventory {
   reorderPoint: number;
   unit: string;
   location?: string;
+  warehouse?: string;
+  warehouseLocation?: {
+    zone: string;
+    aisle: string;
+    shelf: string;
+    bin: string;
+  };
 }
 
 export interface ProductVariation {
@@ -150,78 +163,252 @@ export interface Supplier {
   updatedAt: string;
 }
 
-// Invoice Types
-export interface Invoice {
+// Workshop Job Types
+export interface WorkshopJob {
   _id: string;
-  invoiceNumber: string;
+  jobNumber: string;
   customer: string | Customer;
-  customerPhone: string;
-  items: InvoiceItem[];
-  subTotal: number;
-  discount: Discount;
-  tax: Tax;
-  totalAmount: number;
-  paid: number;
-  dueAmount: number;
-  status: 'draft' | 'sent' | 'paid' | 'partial' | 'overdue' | 'cancelled';
-  invoiceDate: string;
+  customerName: string;
+  customerEmail: string;
+  customerPhone?: string;
+  vehicleInfo: {
+    make: string;
+    model: string;
+    year: number;
+    vin?: string;
+    licensePlate?: string;
+    mileage?: number;
+  };
+  jobType: 'repair' | 'maintenance' | 'inspection' | 'custom';
+  priority: 'low' | 'medium' | 'high' | 'urgent';
+  status: 'pending' | 'in_progress' | 'waiting_parts' | 'waiting_customer' | 'completed' | 'cancelled';
+  estimatedDuration: number; // in minutes
+  actualDuration?: number; // in minutes
+  estimatedCost: number;
+  actualCost?: number;
+  startDate?: string;
+  completionDate?: string;
   dueDate?: string;
-  paymentMethod?: string;
-  payments: Payment[];
+  tasks: JobTask[];
+  parts: JobPart[];
+  tools: JobTool[];
   notes?: string;
-  type: 'invoice' | 'quote' | 'receipt';
-  onlinePaymentLink?: string;
+  internalNotes?: string;
+  assignedTo?: string | User;
   createdBy: string;
-  updatedBy?: string;
   createdAt: string;
   updatedAt: string;
 }
 
-export interface InvoiceItem {
-  product: string | Product;
-  quantity: number;
-  unitPrice: number;
-  discount?: Discount;
-  tax?: Tax;
-  total: number;
+export interface JobTask {
+  _id: string;
+  title: string;
+  description?: string;
+  assignee?: string | User;
+  assigneeName?: string;
+  status: 'todo' | 'in_progress' | 'review' | 'completed' | 'cancelled';
+  priority: 'low' | 'medium' | 'high' | 'urgent';
+  estimatedDuration?: number;
+  actualDuration?: number;
+  startedAt?: string;
+  completedAt?: string;
+  notes?: string;
+  attachments: TaskAttachment[];
+  dependencies: string[];
+  createdBy: string;
+  lastUpdatedBy?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
-export interface Discount {
-  type: 'percentage' | 'fixed';
-  value: number;
-  amount: number;
-}
-
-export interface Tax {
-  type: string;
-  rate: number;
-  amount: number;
-}
-
-export interface Payment {
-  amount: number;
-  method: string;
-  reference?: string;
-  date: string;
-  processedBy: string;
-}
-
-// Stock Movement Types
-export interface StockMovement {
+export interface JobPart {
   _id: string;
   product: string | Product;
-  quantity: number;
-  type: 'in' | 'out' | 'transfer' | 'adjustment';
-  reason: string;
-  referenceDocument?: string;
-  movedBy: string;
-  movementDate: string;
+  productName: string;
+  productSku: string;
+  quantityRequired: number;
+  quantityUsed: number;
+  quantityAvailable: number;
+  unitCost?: number;
+  totalCost?: number;
+  isAvailable: boolean;
+  notes?: string;
+  reservedAt?: string;
+  reservedBy?: string | User;
+  issuedAt?: string;
+  issuedBy?: string | User;
   createdAt: string;
+  updatedAt: string;
 }
 
-// Project and Task types removed
+export interface JobTool {
+  _id: string;
+  name: string;
+  toolId?: string | Tool;
+  category: string;
+  condition: 'excellent' | 'good' | 'fair' | 'poor';
+  notes?: string;
+  requiredFrom?: string;
+  requiredUntil?: string;
+  assignedTo?: string | User;
+  createdAt: string;
+  updatedAt: string;
+}
 
-// Support Types
+export interface TaskAttachment {
+  filename: string;
+  url: string;
+  fileType?: string;
+  size?: number;
+  uploadedAt: string;
+}
+
+// Technician Types
+export interface Technician {
+  _id: string;
+  user: string | User;
+  employeeId: string;
+  department: string;
+  position: string;
+  hireDate: string;
+  certifications: Certification[];
+  skills: Skill[];
+  availability: Availability[];
+  currentJobs: string[];
+  completedJobs: number;
+  averageRating: number;
+  totalRating: number;
+  isActive: boolean;
+  emergencyContact: {
+    name: string;
+    relationship: string;
+    phone: string;
+    email?: string;
+  };
+  notes?: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Certification {
+  name: string;
+  issuingBody: string;
+  certificateNumber?: string;
+  issuedDate: string;
+  expiryDate: string;
+  isActive: boolean;
+  notes?: string;
+}
+
+export interface Skill {
+  name: string;
+  category: 'mechanical' | 'electrical' | 'diagnostic' | 'welding' | 'painting' | 'assembly' | 'other';
+  level: 'beginner' | 'intermediate' | 'advanced' | 'expert';
+  yearsExperience: number;
+  lastUsed?: string;
+  isActive: boolean;
+}
+
+export interface Availability {
+  dayOfWeek: 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
+  startTime: string;
+  endTime: string;
+  isAvailable: boolean;
+}
+
+// Machine Types
+export interface Machine {
+  _id: string;
+  name: string;
+  model?: string;
+  manufacturer?: string;
+  serialNumber?: string;
+  category: 'diagnostic' | 'repair' | 'lifting' | 'welding' | 'machining' | 'testing' | 'other';
+  status: 'operational' | 'maintenance' | 'broken' | 'retired';
+  location: {
+    building?: string;
+    floor?: string;
+    room?: string;
+    bay?: string;
+  };
+  specifications: {
+    powerRating?: string;
+    dimensions?: string;
+    weight?: number;
+    capacity?: string;
+    operatingPressure?: string;
+    operatingTemperature?: string;
+  };
+  purchaseInfo: {
+    purchaseDate?: string;
+    purchasePrice?: number;
+    supplier?: string;
+    warrantyExpiry?: string;
+  };
+  maintenance: {
+    schedule?: string;
+    lastMaintenance?: string;
+    nextMaintenance?: string;
+    maintenanceHistory: MaintenanceRecord[];
+  };
+  assignedTo?: string | User;
+  notes?: string;
+  isActive: boolean;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MaintenanceRecord {
+  type: 'preventive' | 'corrective' | 'emergency';
+  description: string;
+  performedBy?: string | User;
+  performedAt: string;
+  nextMaintenanceDate?: string;
+  cost?: number;
+  notes?: string;
+}
+
+// Customer Inquiry Types
+export interface CustomerInquiry {
+  _id: string;
+  inquiryNumber: string;
+  customer: string | Customer;
+  customerName: string;
+  customerEmail: string;
+  customerPhone?: string;
+  customerCompany?: string;
+  inquiryDate: string;
+  subject?: string;
+  description?: string;
+  items: InquiryItem[];
+  totalEstimatedValue: number;
+  status: 'new' | 'quoted' | 'converted' | 'cancelled' | 'expired';
+  priority: 'low' | 'medium' | 'high' | 'urgent';
+  source: 'website' | 'phone' | 'email' | 'walk_in' | 'referral' | 'other';
+  assignedTo?: string | User;
+  notes?: string;
+  internalNotes?: string;
+  followUpDate?: string;
+  quotationGenerated?: boolean;
+  quotationId?: string;
+  createdBy: string | User;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface InquiryItem {
+  product?: string | Product;
+  name: string;
+  description?: string;
+  quantity: number;
+  estimatedPrice?: number;
+  specifications?: string;
+  notes?: string;
+}
+
+// Support Ticket Types (updated to match backend)
 export interface SupportTicket {
   _id: string;
   ticketNumber: string;
@@ -243,6 +430,266 @@ export interface SupportTicket {
   createdAt: string;
   updatedAt: string;
 }
+
+// Tool Types
+export interface Tool {
+  _id: string;
+  name: string;
+  category: string;
+  brand?: string;
+  model?: string;
+  serialNumber?: string;
+  condition: 'excellent' | 'good' | 'fair' | 'poor';
+  status: 'available' | 'in_use' | 'maintenance' | 'retired';
+  location: {
+    building?: string;
+    floor?: string;
+    room?: string;
+    bay?: string;
+  };
+  specifications: {
+    powerRating?: string;
+    dimensions?: string;
+    weight?: number;
+    capacity?: string;
+  };
+  purchaseInfo: {
+    purchaseDate?: string;
+    purchasePrice?: number;
+    supplier?: string;
+    warrantyExpiry?: string;
+  };
+  assignedTo?: string | User;
+  notes?: string;
+  isActive: boolean;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Receipt Types
+export interface Receipt {
+  receiptNumber: string;
+  transactionId: string;
+  invoiceNumber?: string;
+  invoiceDate?: string;
+  date: string;
+  time: string;
+  status?: string;
+  items: ReceiptItem[];
+  subtotal: number;
+  tax: number;
+  totalTax?: number;
+  totalDiscount?: number;
+  total: number;
+  paymentMethod: string;
+  tenderedAmount: number;
+  change: number;
+  cashier: string;
+  payments?: Payment[];
+  customer?: {
+    name: string;
+    phone?: string;
+    email?: string;
+  };
+}
+
+export interface ReceiptItem {
+  name: string;
+  quantity: number;
+  unitPrice: number;
+  total: number;
+  sku?: string;
+}
+
+// Payment Types
+export interface OrderPayment {
+  method: 'cash' | 'card' | 'bank_transfer' | 'check' | 'online' | 'other';
+  amount: number;
+  reference?: string;
+  notes?: string;
+}
+
+// Order Types
+export interface Order {
+  _id: string;
+  orderNumber: string;
+  customer: string | Customer;
+  customerName: string;
+  customerEmail: string;
+  customerPhone?: string;
+  customerAddress?: Address;
+  orderDate: string;
+  expectedDeliveryDate?: string;
+  actualDeliveryDate?: string;
+  items: OrderItem[];
+  subtotal: number;
+  totalDiscount: number;
+  totalTax: number;
+  shippingCost: number;
+  totalAmount: number;
+  paymentStatus: 'pending' | 'partial' | 'paid' | 'refunded' | 'cancelled';
+  paymentMethod: 'cash' | 'card' | 'bank_transfer' | 'check' | 'online' | 'other';
+  paymentDetails?: {
+    transactionId?: string;
+    reference?: string;
+    notes?: string;
+  };
+  orderStatus: 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'returned';
+  status?: 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'returned'; // Legacy property for backward compatibility
+  fulfillmentStatus: 'unfulfilled' | 'partial' | 'fulfilled' | 'shipped' | 'delivered';
+  shippingAddress?: Address;
+  billingAddress?: Address;
+  shippingMethod: 'pickup' | 'delivery' | 'shipping' | 'express';
+  trackingNumber?: string;
+  carrier?: string;
+  notes?: string;
+  internalNotes?: string;
+  assignedTo?: string | User;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface OrderItem {
+  product: string | Product;
+  name: string;
+  sku?: string;
+  description?: string;
+  quantity: number;
+  unitPrice: number;
+  discount: number;
+  taxRate: number;
+  total: number;
+  notes?: string;
+}
+
+// Quotation Types
+export interface Quotation {
+  _id: string;
+  quotationNumber: string;
+  customer: string | Customer;
+  customerName: string;
+  customerEmail: string;
+  customerPhone?: string;
+  items: QuotationItem[];
+  subtotal: number;
+  discounts: Discount[];
+  totalDiscount: number;
+  taxes: Tax[];
+  totalTax: number;
+  shippingCost: number;
+  total: number;
+  totalAmount?: number; // Legacy property for backward compatibility
+  quotationDate: string;
+  validUntil: string;
+  status: 'draft' | 'sent' | 'viewed' | 'accepted' | 'rejected' | 'expired' | 'converted' | 'approved';
+  inventoryCheck?: any; // For inventory checking functionality
+  pickingList?: any; // For picking list functionality
+  notes?: string;
+  terms?: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface QuotationItem {
+  product: string | Product;
+  name: string;
+  description?: string;
+  quantity: number;
+  unitPrice: number;
+  discount: number;
+  taxRate: number;
+  total: number;
+}
+
+// Invoice Types
+export interface Invoice {
+  _id: string;
+  invoiceNumber: string;
+  type: 'sale' | 'proforma' | 'credit_note' | 'debit_note' | 'delivery_note';
+  status: 'draft' | 'pending' | 'paid' | 'partial' | 'overdue' | 'cancelled' | 'refunded';
+  customer?: string | Customer;
+  customerPhone: string;
+  location: string;
+  items: InvoiceItem[];
+  subtotal: number;
+  discounts: Discount[];
+  totalDiscount: number;
+  taxes: Tax[];
+  totalTax: number;
+  shipping: {
+    method?: string;
+    cost: number;
+    address?: Address;
+  };
+  shippingCost?: number; // Legacy property for backward compatibility
+  total: number;
+  paid: number;
+  balance: number;
+  payments: Payment[];
+  invoiceDate: string;
+  dueDate?: string;
+  paymentTerms?: string;
+  notes?: string;
+  internalNotes?: string;
+  createdBy: string;
+  updatedBy?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface InvoiceItem {
+  product: string | Product;
+  name: string;
+  description?: string;
+  sku?: string;
+  quantity: number;
+  unitPrice: number;
+  price?: number; // Legacy property for backward compatibility
+  discount: number;
+  taxRate: number;
+  total: number;
+}
+
+export interface Discount {
+  type: 'percentage' | 'fixed';
+  value: number;
+  description?: string;
+}
+
+export interface Tax {
+  name?: string;
+  rate: number;
+  amount: number;
+}
+
+export interface Payment {
+  method: 'cash' | 'card' | 'bank_transfer' | 'wallet' | 'stripe' | 'paypal' | 'other';
+  amount: number;
+  reference?: string;
+  date: string;
+  processedBy: string;
+  notes?: string;
+}
+
+// Stock Movement Types
+export interface StockMovement {
+  _id: string;
+  product: string | Product;
+  quantity: number;
+  type: 'in' | 'out' | 'transfer' | 'adjustment';
+  reason: string;
+  referenceDocument?: string;
+  movedBy: string;
+  movementDate: string;
+  createdAt: string;
+}
+
+// Project and Task types removed
+
+// Support Types
 
 export interface SupportAttachment {
   name: string;
@@ -508,10 +955,6 @@ export interface DashboardStats {
   products: {
     total: number;
     lowStock: number;
-  };
-  projects: {
-    active: number;
-    completedThisMonth: number;
   };
   support: {
     openTickets: number;

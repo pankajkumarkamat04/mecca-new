@@ -2,7 +2,7 @@ const Category = require('../models/Category');
 
 // GET /api/categories
 // Optional query: search, isActive
-exports.getCategories = async (req, res, next) => {
+const getCategories = async (req, res, next) => {
   try {
     const { search, isActive } = req.query;
 
@@ -28,7 +28,7 @@ exports.getCategories = async (req, res, next) => {
 };
 
 // POST /api/categories
-exports.createCategory = async (req, res, next) => {
+const createCategory = async (req, res, next) => {
   try {
     const { name, description, parent, color, icon, sortOrder, isActive } = req.body;
 
@@ -50,7 +50,7 @@ exports.createCategory = async (req, res, next) => {
 };
 
 // PUT /api/categories/:id
-exports.updateCategory = async (req, res, next) => {
+const updateCategory = async (req, res, next) => {
   try {
     const { id } = req.params;
     const { name, description, parent, color, icon, sortOrder, isActive } = req.body;
@@ -80,7 +80,7 @@ exports.updateCategory = async (req, res, next) => {
 };
 
 // DELETE /api/categories/:id
-exports.deleteCategory = async (req, res, next) => {
+const deleteCategory = async (req, res, next) => {
   try {
     const { id } = req.params;
     const deleted = await Category.findByIdAndDelete(id);
@@ -93,4 +93,9 @@ exports.deleteCategory = async (req, res, next) => {
   }
 };
 
-
+module.exports = {
+  getCategories,
+  createCategory,
+  updateCategory,
+  deleteCategory
+};

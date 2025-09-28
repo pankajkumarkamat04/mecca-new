@@ -1,13 +1,16 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Customer, Receipt } from '@/types';
 import Layout from '@/components/layout/Layout';
 import Button from '@/components/ui/Button';
 import Modal from '@/components/ui/Modal';
 import Input from '@/components/ui/Input';
 import { posAPI, productsAPI } from '@/lib/api';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { formatCurrency } from '@/lib/utils';
+import { calculatePrice } from '@/lib/priceCalculator';
+import PriceSummary from '@/components/ui/PriceSummary';
 import toast from 'react-hot-toast';
 import {
   ShoppingCartIcon,
@@ -32,12 +35,12 @@ const POSPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
-  const [linkedCustomer, setLinkedCustomer] = useState<any | null>(null);
+  const [linkedCustomer, setLinkedCustomer] = useState<Customer | null>(null);
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [tenderedAmount, setTenderedAmount] = useState(0);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isReceiptOpen, setIsReceiptOpen] = useState(false);
-  const [receipt, setReceipt] = useState<any | null>(null);
+  const [receipt, setReceipt] = useState<Receipt | null>(null);
 
   const queryClient = useQueryClient();
 
@@ -108,21 +111,29 @@ const POSPage: React.FC = () => {
     setCart(cart.filter(item => item.product._id !== productId));
   };
 
-  const getSubtotal = () => {
-    return cart.reduce((sum, item) => sum + item.total, 0);
+  // Use universal price calculator
+  const getPriceCalculation = () => {
+    const priceItems = cart.map(item => ({
+      product: item.product,
+      quantity: item.quantity,
+      unitPrice: item.price,
+      discount: 0, // POS doesn't use discounts per item
+      taxRate: item.product?.pricing?.taxRate || 0
+    }));
+
+    return calculatePrice(priceItems);
   };
 
-  // Calculate tax from product tax rates
+  const getSubtotal = () => {
+    return getPriceCalculation().subtotal;
+  };
+
   const getTax = () => {
-    return cart.reduce((sum, item) => {
-      const rate = Number(item.product?.pricing?.taxRate) || 0;
-      const lineTax = (item.total * rate) / 100;
-      return sum + lineTax;
-    }, 0);
+    return getPriceCalculation().totalTax;
   };
 
   const getTotal = () => {
-    return getSubtotal() + getTax();
+    return getPriceCalculation().total;
   };
 
   const getChange = () => {
@@ -275,18 +286,13 @@ const POSPage: React.FC = () => {
 
           {/* Order Summary */}
           <div className="border-t border-gray-200 pt-4 mb-6">
-            <div className="flex justify-between text-sm text-gray-600 mb-2">
-              <span>Subtotal:</span>
-              <span>{formatCurrency(getSubtotal())}</span>
-            </div>
-            <div className="flex justify-between text-sm text-gray-600 mb-2">
-              <span>Tax:</span>
-              <span>{formatCurrency(getTax())}</span>
-            </div>
-            <div className="flex justify-between text-lg font-semibold text-gray-900 border-t border-gray-200 pt-2">
-              <span>Total:</span>
-              <span>{formatCurrency(getTotal())}</span>
-            </div>
+            <PriceSummary 
+              calculation={getPriceCalculation()} 
+              showBreakdown={true}
+              showItems={false}
+              title=""
+              className="bg-transparent p-0"
+            />
           </div>
 
           {/* Payment Method */}

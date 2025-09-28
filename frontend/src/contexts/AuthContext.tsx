@@ -26,6 +26,12 @@ interface User {
     language: string;
     timezone: string;
   };
+  warehouse?: {
+    assignedWarehouse: string;
+    warehousePosition: string;
+    assignedAt: string;
+    assignedBy: string;
+  };
 }
 
 interface AuthContextType {
@@ -283,27 +289,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         purchaseOrders: ['read'],
       },
       warehouse_manager: {
-        users: ['read'],
-        products: ['read', 'update'],
-        customers: ['read'],
-        suppliers: ['read'],
-        invoices: ['read'],
+        // Only warehouse-related permissions
         inventory: ['read', 'create', 'update', 'delete'],
-        pos: ['read'],
-        reports: ['read'],
-        support: ['read'],
-        accounts: ['read'],
-        transactions: ['read'],
-        workshop: ['read'],
-        settings: ['read'],
-        // Warehouse-specific permissions
-        customerInquiries: ['read'],
-        quotations: ['read'],
-        orders: ['read'],
+        orders: ['read', 'update'],
         deliveries: ['read', 'create', 'update', 'delete'],
-        warehouses: ['read', 'create', 'update', 'delete'],
+        warehouses: ['read'],
         stockAlerts: ['read', 'create', 'update', 'delete'],
         purchaseOrders: ['read', 'create', 'update'],
+        // Basic user permissions
+        users: ['read'],
+      },
+      warehouse_employee: {
+        // Only warehouse-related permissions
+        inventory: ['read', 'update'],
+        orders: ['read', 'update'],
+        deliveries: ['read', 'update'],
+        warehouses: ['read'],
+        stockAlerts: ['read', 'update'],
+        purchaseOrders: ['read'],
       },
     };
 

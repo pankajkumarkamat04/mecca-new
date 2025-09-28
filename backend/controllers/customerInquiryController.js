@@ -3,6 +3,7 @@ const Customer = require('../models/Customer');
 const Product = require('../models/Product');
 const Quotation = require('../models/Quotation');
 const Order = require('../models/Order');
+const { notifyWarehouseOfNewOrder } = require('../utils/warehouseNotification');
 
 // @desc    Get all customer inquiries
 // @route   GET /api/customer-inquiries
@@ -26,7 +27,7 @@ const getCustomerInquiries = async (req, res) => {
         { customerName: { $regex: search, $options: 'i' } },
         { customerEmail: { $regex: search, $options: 'i' } },
         { subject: { $regex: search, $options: 'i' } },
-        { message: { $regex: search, $options: 'i' } }
+        { description: { $regex: search, $options: 'i' } }
       ];
     }
     if (status) filter.status = status;
@@ -38,8 +39,8 @@ const getCustomerInquiries = async (req, res) => {
       .populate('customer', 'firstName lastName email phone customerCode')
       .populate('createdBy', 'firstName lastName')
       .populate('assignedTo', 'firstName lastName')
-      .populate('convertedToQuotation', 'quotationNumber status')
-      .populate('convertedToOrder', 'orderNumber orderStatus')
+      .populate('quotation', 'quotationNumber status')
+      .populate('order', 'orderNumber orderStatus')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
@@ -74,9 +75,9 @@ const getCustomerInquiryById = async (req, res) => {
       .populate('customer', 'firstName lastName email phone customerCode address')
       .populate('createdBy', 'firstName lastName')
       .populate('assignedTo', 'firstName lastName')
-      .populate('convertedToQuotation', 'quotationNumber status totalAmount')
-      .populate('convertedToOrder', 'orderNumber orderStatus totalAmount')
-      .populate('productsOfInterest.product', 'name sku description pricing inventory');
+      .populate('quotation', 'quotationNumber status totalAmount')
+      .populate('order', 'orderNumber orderStatus totalAmount')
+      .populate('items.product', 'name sku description pricing inventory');
 
     if (!inquiry) {
       return res.status(404).json({
@@ -106,7 +107,8 @@ const createCustomerInquiry = async (req, res) => {
     const inquiryData = req.body;
     inquiryData.createdBy = req.user._id;
 
-    // Generate inquiry number is handled by pre-save hook
+    // Generate inquiry number
+    inquiryData.inquiryNumber = await CustomerInquiry.generateInquiryNumber();
 
     // Validate customer exists
     if (inquiryData.customer) {
@@ -133,6 +135,8 @@ const createCustomerInquiry = async (req, res) => {
               message: `Product not found: ${item.product}`
             });
           }
+          // Populate the name field from the product
+          item.name = product.name;
         }
       }
     }
@@ -172,7 +176,7 @@ const updateCustomerInquiry = async (req, res) => {
     }
 
     // Don't allow updates to converted inquiries
-    if (['resolved', 'closed', 'cancelled'].includes(inquiry.status)) {
+    if (['converted_to_order', 'closed', 'cancelled'].includes(inquiry.status)) {
       return res.status(400).json({
         success: false,
         message: 'Cannot update inquiry in current status'
@@ -249,10 +253,7 @@ const updateCustomerInquiryStatus = async (req, res) => {
 
     inquiry.status = status;
     if (notes) {
-      inquiry.notes = notes;
-    }
-    if (status === 'resolved') {
-      inquiry.resolutionDate = new Date();
+      inquiry.internalNotes = notes;
     }
     await inquiry.save();
 
@@ -325,17 +326,24 @@ const convertInquiryToQuotation = async (req, res) => {
       });
     }
 
-    if (inquiry.status !== 'new' && inquiry.status !== 'pending') {
+    if (inquiry.status !== 'new' && inquiry.status !== 'under_review') {
       return res.status(400).json({
         success: false,
         message: 'Inquiry cannot be converted to quotation in current status'
       });
     }
 
-    if (inquiry.convertedToQuotation) {
+    if (inquiry.quotation) {
       return res.status(400).json({
         success: false,
         message: 'Inquiry already has a quotation'
+      });
+    }
+
+    if (!inquiry.productsOfInterest || inquiry.productsOfInterest.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Inquiry must have products of interest to convert to quotation'
       });
     }
 
@@ -348,15 +356,15 @@ const convertInquiryToQuotation = async (req, res) => {
       customerAddress: inquiry.customer.address,
       quotationDate: new Date(),
       validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
-      items: inquiry.productsOfInterest.map(item => ({
-        product: item.product,
-        quantity: item.quantity,
-        unitPrice: 0, // Will be set when creating actual quotation
-        discount: 0,
-        taxRate: 0,
-        total: 0
-      })),
-      notes: inquiry.message,
+       items: (inquiry.productsOfInterest || []).map(item => ({
+         product: item.product,
+         quantity: item.quantity || 1,
+         unitPrice: 0, // Will be set when creating actual quotation
+         discount: 0,
+         taxRate: 0,
+         total: 0
+       })),
+       notes: inquiry.message,
       status: 'draft',
       createdBy: req.user._id
     };
@@ -365,8 +373,8 @@ const convertInquiryToQuotation = async (req, res) => {
     await quotation.save();
 
     // Link quotation to inquiry and update status
-    inquiry.convertedToQuotation = quotation._id;
-    inquiry.status = 'in_progress';
+    inquiry.quotation = quotation._id;
+    inquiry.status = 'quoted';
     await inquiry.save();
 
     res.json({
@@ -401,17 +409,24 @@ const convertInquiryToOrder = async (req, res) => {
       });
     }
 
-    if (!inquiry.convertedToQuotation) {
+    if (!inquiry.quotation) {
       return res.status(400).json({
         success: false,
         message: 'Inquiry must be quoted before converting to order'
       });
     }
 
-    if (inquiry.convertedToOrder) {
+    if (inquiry.order) {
       return res.status(400).json({
         success: false,
         message: 'Inquiry already has an order'
+      });
+    }
+
+    if (!inquiry.productsOfInterest || inquiry.productsOfInterest.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Inquiry must have products of interest to convert to order'
       });
     }
 
@@ -424,15 +439,15 @@ const convertInquiryToOrder = async (req, res) => {
       customerAddress: inquiry.customer.address,
       orderDate: new Date(),
       expectedDeliveryDate: inquiry.followUpDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      items: inquiry.productsOfInterest.map(item => ({
-        product: item.product,
-        quantity: item.quantity,
-        unitPrice: 0, // Will be set when creating actual order
-        discount: 0,
-        taxRate: 0,
-        total: 0
-      })),
-      notes: inquiry.message,
+       items: (inquiry.productsOfInterest || []).map(item => ({
+         product: item.product,
+         quantity: item.quantity || 1,
+         unitPrice: 0, // Will be set when creating actual order
+         discount: 0,
+         taxRate: 0,
+         total: 0
+       })),
+       notes: inquiry.message,
       orderStatus: 'pending',
       paymentStatus: 'pending',
       fulfillmentStatus: 'unfulfilled',
@@ -443,10 +458,15 @@ const convertInquiryToOrder = async (req, res) => {
     const order = new Order(orderData);
     await order.save();
 
+    // Notify warehouse of new order from inquiry conversion
+    const notificationResult = await notifyWarehouseOfNewOrder(order, 'inquiry');
+    if (!notificationResult.success) {
+      console.error('Failed to notify warehouse:', notificationResult.error);
+    }
+
     // Link order to inquiry and update status
-    inquiry.convertedToOrder = order._id;
-    inquiry.status = 'resolved';
-    inquiry.resolutionDate = new Date();
+    inquiry.order = order._id;
+    inquiry.status = 'converted_to_order';
     await inquiry.save();
 
     res.json({
@@ -476,17 +496,17 @@ const getCustomerInquiryStats = async (req, res) => {
       isActive: true, 
       status: 'new' 
     });
-    const pendingInquiries = await CustomerInquiry.countDocuments({ 
+    const underReviewInquiries = await CustomerInquiry.countDocuments({ 
       isActive: true, 
-      status: 'pending' 
+      status: 'under_review' 
     });
-    const inProgressInquiries = await CustomerInquiry.countDocuments({ 
+    const quotedInquiries = await CustomerInquiry.countDocuments({ 
       isActive: true, 
-      status: 'in_progress' 
+      status: 'quoted' 
     });
-    const resolvedInquiries = await CustomerInquiry.countDocuments({ 
+    const convertedToOrderInquiries = await CustomerInquiry.countDocuments({ 
       isActive: true, 
-      status: 'resolved' 
+      status: 'converted_to_order' 
     });
     const closedInquiries = await CustomerInquiry.countDocuments({ 
       isActive: true, 
@@ -494,13 +514,13 @@ const getCustomerInquiryStats = async (req, res) => {
     });
 
     // Calculate conversion rate
-    const conversionRate = totalInquiries > 0 ? (resolvedInquiries / totalInquiries) * 100 : 0;
+    const conversionRate = totalInquiries > 0 ? (convertedToOrderInquiries / totalInquiries) * 100 : 0;
 
     // Get overdue inquiries
     const overdueInquiries = await CustomerInquiry.find({
       isActive: true,
       followUpDate: { $lt: new Date() },
-      status: { $in: ['new', 'pending'] }
+      status: { $in: ['new', 'under_review'] }
     }).countDocuments();
 
     // Get inquiries by priority
@@ -519,9 +539,9 @@ const getCustomerInquiryStats = async (req, res) => {
         total: totalInquiries,
         byStatus: {
           new: newInquiries,
-          pending: pendingInquiries,
-          in_progress: inProgressInquiries,
-          resolved: resolvedInquiries,
+          under_review: underReviewInquiries,
+          quoted: quotedInquiries,
+          converted_to_order: convertedToOrderInquiries,
           closed: closedInquiries
         },
         conversionRate: Math.round(conversionRate * 100) / 100,

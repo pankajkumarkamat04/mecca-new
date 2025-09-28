@@ -30,6 +30,10 @@ const purchaseOrderRoutes = require('./routes/purchaseOrders');
 const stockAlertRoutes = require('./routes/stockAlerts');
 const customerInquiryRoutes = require('./routes/customerInquiries');
 const deliveryRoutes = require('./routes/deliveries');
+const machineRoutes = require('./routes/machines');
+const toolRoutes = require('./routes/tools');
+const workstationRoutes = require('./routes/workstations');
+const technicianRoutes = require('./routes/technicians');
 
 const app = express();
 
@@ -115,6 +119,10 @@ app.use('/api/purchase-orders', purchaseOrderRoutes);
 app.use('/api/stock-alerts', stockAlertRoutes);
 app.use('/api/customer-inquiries', customerInquiryRoutes);
 app.use('/api/deliveries', deliveryRoutes);
+app.use('/api/machines', machineRoutes);
+app.use('/api/tools', toolRoutes);
+app.use('/api/workstations', workstationRoutes);
+app.use('/api/technicians', technicianRoutes);
 
 // API documentation endpoint
 app.get('/api', (req, res) => {

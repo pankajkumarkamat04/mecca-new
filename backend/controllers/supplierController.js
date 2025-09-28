@@ -208,7 +208,24 @@ const getSupplierStats = async (req, res) => {
         : 0;
       stats.lastPurchase = supplier.lastPurchase;
       stats.rating = supplier.rating;
-      // TODO: Calculate credit utilization from actual outstanding amounts
+      // Calculate credit utilization from actual outstanding amounts
+      try {
+        const PurchaseOrder = require('../models/PurchaseOrder');
+        const outstandingOrders = await PurchaseOrder.aggregate([
+          { $match: { supplier: supplierId, status: { $in: ['pending', 'sent', 'confirmed'] } } },
+          { $group: { _id: null, totalOutstanding: { $sum: '$total' } } }
+        ]);
+        
+        const outstandingAmount = outstandingOrders.length > 0 ? outstandingOrders[0].totalOutstanding : 0;
+        stats.creditUtilization = supplier.creditLimit > 0 
+          ? (outstandingAmount / supplier.creditLimit) * 100 
+          : 0;
+        stats.outstandingAmount = outstandingAmount;
+      } catch (error) {
+        console.error('Error calculating credit utilization:', error);
+        stats.creditUtilization = 0;
+        stats.outstandingAmount = 0;
+      }
     }
 
     res.json({

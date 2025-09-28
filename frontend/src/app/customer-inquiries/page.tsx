@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
   PlusIcon, 
@@ -11,7 +12,9 @@ import {
   CheckCircleIcon,
   XCircleIcon,
   ClockIcon,
-  ExclamationTriangleIcon
+  ExclamationTriangleIcon,
+  DocumentTextIcon,
+  ShoppingCartIcon
 } from '@heroicons/react/24/outline';
 import Layout from '@/components/layout/Layout';
 import Button from '@/components/ui/Button';
@@ -35,17 +38,21 @@ const CustomerInquiriesPage: React.FC = () => {
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [showConvertModal, setShowConvertModal] = useState(false);
   const [convertType, setConvertType] = useState<'quotation' | 'order'>('quotation');
+  const [newStatus, setNewStatus] = useState('');
+  const [statusNotes, setStatusNotes] = useState('');
 
   const queryClient = useQueryClient();
 
   // Fetch customer inquiries
   const { data: inquiriesData, isLoading, error } = useQuery({
     queryKey: ['customerInquiries', searchTerm, statusFilter, priorityFilter],
-    queryFn: () => customerInquiriesAPI.getCustomerInquiries({
-      search: searchTerm,
-      status: statusFilter,
-      priority: priorityFilter
-    }),
+    queryFn: () => {
+      const params: any = {};
+      if (searchTerm) params.search = searchTerm;
+      if (statusFilter) params.status = statusFilter;
+      if (priorityFilter) params.priority = priorityFilter;
+      return customerInquiriesAPI.getCustomerInquiries(params);
+    },
   });
 
   // Fetch inquiry statistics
@@ -62,6 +69,10 @@ const CustomerInquiriesPage: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['customerInquiries'] });
       queryClient.invalidateQueries({ queryKey: ['customerInquiryStats'] });
       setShowStatusModal(false);
+      toast.success('Inquiry status updated successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to update inquiry status');
     },
   });
 
@@ -72,6 +83,10 @@ const CustomerInquiriesPage: React.FC = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['customerInquiries'] });
       setShowAssignModal(false);
+      toast.success('Inquiry assigned successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to assign inquiry');
     },
   });
 
@@ -85,11 +100,113 @@ const CustomerInquiriesPage: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['customerInquiries'] });
       queryClient.invalidateQueries({ queryKey: ['customerInquiryStats'] });
       setShowConvertModal(false);
+      toast.success('Inquiry converted successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to convert inquiry');
     },
   });
 
-  const inquiries = inquiriesData?.data || [];
-  const stats = statsData?.data || {};
+  const inquiries = inquiriesData?.data?.data || inquiriesData?.data || [];
+  const stats = statsData?.data?.data || statsData?.data || {};
+
+  // Table columns definition
+  const columns = [
+    {
+      key: 'inquiryNumber',
+      header: 'Inquiry #',
+      className: 'font-medium text-gray-900'
+    },
+    {
+      key: 'customerName',
+      header: 'Customer',
+      className: 'text-gray-900'
+    },
+    {
+      key: 'subject',
+      header: 'Subject',
+      className: 'text-gray-900'
+    },
+    {
+      key: 'priority',
+      header: 'Priority',
+      render: (inquiry: any) => (
+        <Badge
+          color={
+            inquiry.priority === 'urgent' ? 'red' :
+            inquiry.priority === 'high' ? 'orange' :
+            inquiry.priority === 'normal' ? 'blue' : 'gray'
+          }
+        >
+          {inquiry.priority}
+        </Badge>
+      )
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      render: (inquiry: any) => (
+        <Badge
+          color={
+            inquiry.status === 'new' ? 'blue' :
+            inquiry.status === 'under_review' ? 'purple' :
+            inquiry.status === 'quoted' ? 'orange' :
+            inquiry.status === 'converted_to_order' ? 'green' :
+            inquiry.status === 'closed' ? 'gray' : 'red'
+          }
+        >
+          {inquiry.status.replace('_', ' ')}
+        </Badge>
+      )
+    },
+    {
+      key: 'inquiryDate',
+      header: 'Date',
+      render: (inquiry: any) => new Date(inquiry.inquiryDate).toLocaleDateString()
+    },
+    {
+      key: 'actions',
+      header: 'Actions',
+      render: (inquiry: any) => (
+        <div className="flex gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleViewDetails(inquiry)}
+          >
+            <EyeIcon className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleUpdateStatus(inquiry)}
+          >
+            <PencilIcon className="h-4 w-4" />
+          </Button>
+          {(inquiry.status === 'new' || inquiry.status === 'under_review') && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleConvert(inquiry, 'quotation')}
+              title="Convert to Quotation"
+            >
+              <DocumentTextIcon className="h-4 w-4" />
+            </Button>
+          )}
+          {inquiry.status === 'quoted' && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleConvert(inquiry, 'order')}
+              title="Convert to Order"
+            >
+              <ShoppingCartIcon className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
+      )
+    }
+  ];
 
   const handleViewDetails = (inquiry: CustomerInquiry) => {
     setSelectedInquiry(inquiry);
@@ -98,6 +215,8 @@ const CustomerInquiriesPage: React.FC = () => {
 
   const handleUpdateStatus = (inquiry: CustomerInquiry) => {
     setSelectedInquiry(inquiry);
+    setNewStatus(inquiry.status);
+    setStatusNotes('');
     setShowStatusModal(true);
   };
 
@@ -106,10 +225,18 @@ const CustomerInquiriesPage: React.FC = () => {
     setShowAssignModal(true);
   };
 
+  const handleStatusUpdate = () => {
+    if (!selectedInquiry || !newStatus) return;
+    
+    updateStatusMutation.mutate({
+      id: selectedInquiry._id,
+      status: newStatus,
+      notes: statusNotes
+    });
+  };
+
   const handleConvert = (inquiry: CustomerInquiry, type: 'quotation' | 'order') => {
-    setSelectedInquiry(inquiry);
-    setConvertType(type);
-    setShowConvertModal(true);
+    convertMutation.mutate({ id: inquiry._id, type });
   };
 
   const getStatusBadge = (status: string) => {
@@ -152,75 +279,6 @@ const CustomerInquiriesPage: React.FC = () => {
     );
   };
 
-  const columns = [
-    {
-      key: 'inquiryNumber',
-      header: 'Inquiry #',
-      render: (inquiry: CustomerInquiry) => (
-        <div className="font-medium text-gray-900">{inquiry.inquiryNumber}</div>
-      ),
-    },
-    {
-      key: 'customer',
-      header: 'Customer',
-      render: (inquiry: CustomerInquiry) => (
-        <div>
-          <div className="font-medium text-gray-900">{inquiry.customerName}</div>
-          <div className="text-sm text-gray-500">{inquiry.customerEmail}</div>
-        </div>
-      ),
-    },
-    {
-      key: 'subject',
-      header: 'Subject',
-      render: (inquiry: CustomerInquiry) => (
-        <div className="max-w-xs truncate" title={inquiry.subject}>
-          {inquiry.subject}
-        </div>
-      ),
-    },
-    {
-      key: 'status',
-      header: 'Status',
-      render: (inquiry: CustomerInquiry) => getStatusBadge(inquiry.status),
-    },
-    {
-      key: 'priority',
-      header: 'Priority',
-      render: (inquiry: CustomerInquiry) => getPriorityBadge(inquiry.priority),
-    },
-    {
-      key: 'createdAt',
-      header: 'Created',
-      render: (inquiry: CustomerInquiry) => (
-        <div className="text-sm text-gray-500">
-          {new Date(inquiry.createdAt).toLocaleDateString()}
-        </div>
-      ),
-    },
-    {
-      key: 'actions',
-      header: 'Actions',
-      render: (inquiry: CustomerInquiry) => (
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => handleViewDetails(inquiry)}
-          >
-            <EyeIcon className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => handleUpdateStatus(inquiry)}
-          >
-            <PencilIcon className="h-4 w-4" />
-          </Button>
-        </div>
-      ),
-    },
-  ];
 
   if (error) {
     return (
@@ -253,7 +311,7 @@ const CustomerInquiriesPage: React.FC = () => {
 
         {/* Stats Cards */}
         {stats && (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
             <div className="bg-white p-4 rounded-lg border">
               <div className="text-sm font-medium text-gray-500">Total Inquiries</div>
               <div className="text-2xl font-bold text-gray-900">{stats.total || 0}</div>
@@ -263,8 +321,16 @@ const CustomerInquiriesPage: React.FC = () => {
               <div className="text-2xl font-bold text-blue-600">{stats.byStatus?.new || 0}</div>
             </div>
             <div className="bg-white p-4 rounded-lg border">
-              <div className="text-sm font-medium text-gray-500">In Progress</div>
-              <div className="text-2xl font-bold text-purple-600">{stats.byStatus?.in_progress || 0}</div>
+              <div className="text-sm font-medium text-gray-500">Under Review</div>
+              <div className="text-2xl font-bold text-purple-600">{stats.byStatus?.under_review || 0}</div>
+            </div>
+            <div className="bg-white p-4 rounded-lg border">
+              <div className="text-sm font-medium text-gray-500">Quoted</div>
+              <div className="text-2xl font-bold text-orange-600">{stats.byStatus?.quoted || 0}</div>
+            </div>
+            <div className="bg-white p-4 rounded-lg border">
+              <div className="text-sm font-medium text-gray-500">Converted to Order</div>
+              <div className="text-2xl font-bold text-green-600">{stats.byStatus?.converted_to_order || 0}</div>
             </div>
             <div className="bg-white p-4 rounded-lg border">
               <div className="text-sm font-medium text-gray-500">Conversion Rate</div>
@@ -291,9 +357,9 @@ const CustomerInquiriesPage: React.FC = () => {
             >
               <option value="">All Statuses</option>
               <option value="new">New</option>
-              <option value="pending">Pending</option>
-              <option value="in_progress">In Progress</option>
-              <option value="resolved">Resolved</option>
+              <option value="under_review">Under Review</option>
+              <option value="quoted">Quoted</option>
+              <option value="converted_to_order">Converted to Order</option>
               <option value="closed">Closed</option>
               <option value="cancelled">Cancelled</option>
             </select>
@@ -385,16 +451,16 @@ const CustomerInquiriesPage: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">Message</label>
+                <label className="block text-sm font-medium text-gray-700">Description</label>
                 <p className="mt-1 text-sm text-gray-900 whitespace-pre-wrap">
-                  {selectedInquiry.message}
+                  {selectedInquiry.description}
                 </p>
               </div>
 
-              {selectedInquiry.notes && (
+              {selectedInquiry.internalNotes && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Notes</label>
-                  <p className="mt-1 text-sm text-gray-900">{selectedInquiry.notes}</p>
+                  <label className="block text-sm font-medium text-gray-700">Internal Notes</label>
+                  <p className="mt-1 text-sm text-gray-900">{selectedInquiry.internalNotes}</p>
                 </div>
               )}
 
@@ -429,16 +495,14 @@ const CustomerInquiriesPage: React.FC = () => {
               <div>
                 <label className="block text-sm font-medium text-gray-700">Status</label>
                 <select
-                  defaultValue={selectedInquiry.status}
-                  onChange={(e) => {
-                    // Handle status change
-                  }}
+                  value={newStatus}
+                  onChange={(e) => setNewStatus(e.target.value)}
                   className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="new">New</option>
-                  <option value="pending">Pending</option>
-                  <option value="in_progress">In Progress</option>
-                  <option value="resolved">Resolved</option>
+                  <option value="under_review">Under Review</option>
+                  <option value="quoted">Quoted</option>
+                  <option value="converted_to_order">Converted to Order</option>
                   <option value="closed">Closed</option>
                   <option value="cancelled">Cancelled</option>
                 </select>
@@ -446,6 +510,8 @@ const CustomerInquiriesPage: React.FC = () => {
               <div>
                 <label className="block text-sm font-medium text-gray-700">Notes</label>
                 <textarea
+                  value={statusNotes}
+                  onChange={(e) => setStatusNotes(e.target.value)}
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
                   rows={3}
                   placeholder="Add notes..."
@@ -459,9 +525,7 @@ const CustomerInquiriesPage: React.FC = () => {
                   Cancel
                 </Button>
                 <Button
-                  onClick={() => {
-                    // Handle status update
-                  }}
+                  onClick={handleStatusUpdate}
                   loading={updateStatusMutation.isPending}
                 >
                   Update Status

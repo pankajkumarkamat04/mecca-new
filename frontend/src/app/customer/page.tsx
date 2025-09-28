@@ -5,13 +5,12 @@ import { useAuth } from '@/contexts/AuthContext';
 import Layout from '@/components/layout/Layout';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
-import { invoicesAPI, customersAPI, supportAPI, workshopAPI } from '@/lib/api';
+import { invoicesAPI, customersAPI, supportAPI } from '@/lib/api';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { 
   WalletIcon, 
   DocumentTextIcon, 
   TicketIcon, 
-  WrenchScrewdriverIcon,
   ShoppingBagIcon,
   ArrowTrendingUpIcon,
   ClockIcon,
@@ -55,15 +54,6 @@ const CustomerDashboardPage: React.FC = () => {
     enabled: !!user?._id,
   });
 
-  // Fetch recent workshop jobs
-  const { data: recentJobs, isLoading: jobsLoading } = useQuery({
-    queryKey: ['customer-recent-jobs', user?.phone],
-    queryFn: () => workshopAPI.getJobs({
-      customerPhone: user?.phone,
-      limit: 3,
-    }),
-    enabled: !!user?.phone,
-  });
 
   // Fetch wallet transactions
   const { data: walletTransactions, isLoading: walletLoading } = useQuery({
@@ -124,20 +114,6 @@ const CustomerDashboardPage: React.FC = () => {
     }
   };
 
-  const getJobStatusColor = (status: string) => {
-    switch (status) {
-      case 'completed':
-        return 'text-green-600 bg-green-100';
-      case 'in_progress':
-        return 'text-blue-600 bg-blue-100';
-      case 'on_hold':
-        return 'text-yellow-600 bg-yellow-100';
-      case 'cancelled':
-        return 'text-red-600 bg-red-100';
-      default:
-        return 'text-gray-600 bg-gray-100';
-    }
-  };
 
   return (
     <Layout title="My Dashboard">
@@ -345,39 +321,6 @@ const CustomerDashboardPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Workshop Jobs */}
-        {recentJobs?.data?.data && recentJobs.data.data.length > 0 && (
-          <div className="bg-white shadow rounded-lg">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <WrenchScrewdriverIcon className="h-5 w-5 text-gray-400 mr-2" />
-                  <h3 className="text-lg font-medium text-gray-900">Recent Workshop Jobs</h3>
-                </div>
-                <Link href="/customer/purchases" className="text-sm text-blue-600 hover:text-blue-800">
-                  View all
-                </Link>
-              </div>
-            </div>
-            <div className="p-6">
-              <div className="space-y-3">
-                {recentJobs.data.data.slice(0, 3).map((job: any) => (
-                  <div key={job._id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">{job.title}</p>
-                      <p className="text-xs text-gray-500">
-                        Priority: {job.priority} • {formatDate(job.createdAt)}
-                      </p>
-                    </div>
-                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getJobStatusColor(job.status)}`}>
-                      {job.status.replace('_', ' ')}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Quick Actions */}
         <div className="bg-white shadow rounded-lg p-6">

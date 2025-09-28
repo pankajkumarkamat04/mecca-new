@@ -1,6 +1,10 @@
 const WorkshopJob = require('../models/WorkshopJob');
 const Product = require('../models/Product');
 const StockMovement = require('../models/StockMovement');
+const Machine = require('../models/Machine');
+const Tool = require('../models/Tool');
+const WorkStation = require('../models/WorkStation');
+const Technician = require('../models/Technician');
 
 // Internal helper to process completion: deduct inventory and create invoice
 async function processJobCompletion(jobId, userId) {
@@ -309,6 +313,658 @@ const cancelJob = async (req, res) => {
   }
 };
 
+// @desc    Assign technician to job
+// @route   PUT /api/workshop/jobs/:id/assign-technician
+// @access  Private
+const assignTechnician = async (req, res) => {
+  try {
+    const { technicianId, role = 'technician' } = req.body;
+    const job = await WorkshopJob.findById(req.params.id);
+    
+    if (!job) {
+      return res.status(404).json({
+        success: false,
+        message: 'Job not found'
+      });
+    }
+
+    // Get technician details
+    const technician = await Technician.findById(technicianId).populate('user', 'firstName lastName');
+    if (!technician) {
+      return res.status(404).json({
+        success: false,
+        message: 'Technician not found'
+      });
+    }
+
+    // Check if technician is available
+    if (!technician.isCurrentlyAvailable) {
+      return res.status(400).json({
+        success: false,
+        message: 'Technician is not currently available'
+      });
+    }
+
+    // Assign technician to job
+    job.assignTechnician(technicianId, `${technician.user.firstName} ${technician.user.lastName}`, role, req.user._id);
+    job.lastUpdatedBy = req.user._id;
+    await job.save();
+
+    // Update technician's current jobs
+    technician.assignJob(job._id, role);
+    await technician.save();
+
+    const updatedJob = await WorkshopJob.findById(job._id)
+      .populate('customer', 'firstName lastName email phone')
+      .populate('createdBy', 'firstName lastName')
+      .populate('resources.assignedTechnicians.user', 'firstName lastName email');
+
+    res.json({
+      success: true,
+      message: 'Technician assigned successfully',
+      data: updatedJob
+    });
+  } catch (error) {
+    console.error('Assign technician error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+};
+
+// @desc    Remove technician from job
+// @route   PUT /api/workshop/jobs/:id/remove-technician
+// @access  Private
+const removeTechnician = async (req, res) => {
+  try {
+    const { technicianId } = req.body;
+    const job = await WorkshopJob.findById(req.params.id);
+    
+    if (!job) {
+      return res.status(404).json({
+        success: false,
+        message: 'Job not found'
+      });
+    }
+
+    // Remove technician from job
+    job.removeTechnician(technicianId);
+    job.lastUpdatedBy = req.user._id;
+    await job.save();
+
+    // Update technician's current jobs
+    const technician = await Technician.findById(technicianId);
+    if (technician) {
+      technician.completeJob(job._id);
+      await technician.save();
+    }
+
+    const updatedJob = await WorkshopJob.findById(job._id)
+      .populate('customer', 'firstName lastName email phone')
+      .populate('createdBy', 'firstName lastName')
+      .populate('resources.assignedTechnicians.user', 'firstName lastName email');
+
+    res.json({
+      success: true,
+      message: 'Technician removed successfully',
+      data: updatedJob
+    });
+  } catch (error) {
+    console.error('Remove technician error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+};
+
+// @desc    Add task to job
+// @route   POST /api/workshop/jobs/:id/tasks
+// @access  Private
+const addTask = async (req, res) => {
+  try {
+    const { title, description, assignee, priority, estimatedDuration } = req.body;
+    const job = await WorkshopJob.findById(req.params.id);
+    
+    if (!job) {
+      return res.status(404).json({
+        success: false,
+        message: 'Job not found'
+      });
+    }
+
+    const newTask = {
+      title,
+      description,
+      assignee,
+      priority: priority || 'medium',
+      estimatedDuration: estimatedDuration || 0,
+      createdBy: req.user._id
+    };
+
+    job.tasks.push(newTask);
+    job.lastUpdatedBy = req.user._id;
+    await job.save();
+
+    const updatedJob = await WorkshopJob.findById(job._id)
+      .populate('customer', 'firstName lastName email phone')
+      .populate('createdBy', 'firstName lastName')
+      .populate('tasks.assignee', 'firstName lastName email')
+      .populate('tasks.createdBy', 'firstName lastName');
+
+    res.json({
+      success: true,
+      message: 'Task added successfully',
+      data: updatedJob
+    });
+  } catch (error) {
+    console.error('Add task error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+};
+
+// @desc    Update task status
+// @route   PUT /api/workshop/jobs/:id/tasks/:taskId
+// @access  Private
+const updateTaskStatus = async (req, res) => {
+  try {
+    const { status, notes, actualDuration } = req.body;
+    const job = await WorkshopJob.findById(req.params.id);
+    
+    if (!job) {
+      return res.status(404).json({
+        success: false,
+        message: 'Job not found'
+      });
+    }
+
+    const task = job.tasks.id(req.params.taskId);
+    if (!task) {
+      return res.status(404).json({
+        success: false,
+        message: 'Task not found'
+      });
+    }
+
+    task.status = status;
+    task.lastUpdatedBy = req.user._id;
+    
+    if (notes) task.notes = notes;
+    if (actualDuration) task.actualDuration = actualDuration;
+    
+    if (status === 'in_progress' && !task.startedAt) {
+      task.startedAt = new Date();
+    }
+    
+    if (status === 'completed' && !task.completedAt) {
+      task.completedAt = new Date();
+    }
+
+    job.lastUpdatedBy = req.user._id;
+    await job.save();
+
+    const updatedJob = await WorkshopJob.findById(job._id)
+      .populate('customer', 'firstName lastName email phone')
+      .populate('createdBy', 'firstName lastName')
+      .populate('tasks.assignee', 'firstName lastName email')
+      .populate('tasks.createdBy', 'firstName lastName');
+
+    res.json({
+      success: true,
+      message: 'Task updated successfully',
+      data: updatedJob
+    });
+  } catch (error) {
+    console.error('Update task status error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+};
+
+// @desc    Book machine for job
+// @route   POST /api/workshop/jobs/:id/book-machine
+// @access  Private
+const bookMachine = async (req, res) => {
+  try {
+    const { machineId, until } = req.body;
+    const job = await WorkshopJob.findById(req.params.id);
+    
+    if (!job) {
+      return res.status(404).json({
+        success: false,
+        message: 'Job not found'
+      });
+    }
+
+    const machine = await Machine.findById(machineId);
+    if (!machine) {
+      return res.status(404).json({
+        success: false,
+        message: 'Machine not found'
+      });
+    }
+
+    if (!machine.availability.isAvailable) {
+      return res.status(400).json({
+        success: false,
+        message: 'Machine is not available'
+      });
+    }
+
+    // Book machine
+    machine.bookMachine(job._id, req.user._id, new Date(until));
+    await machine.save();
+
+    // Add machine to job resources
+    const existingMachine = job.resources.requiredMachines.find(m => m.machineId.toString() === machineId);
+    if (!existingMachine) {
+      job.resources.requiredMachines.push({
+        name: machine.name,
+        machineId: machine._id,
+        requiredFrom: new Date(),
+        requiredUntil: new Date(until),
+        isAvailable: false,
+        assignedAt: new Date(),
+        assignedBy: req.user._id
+      });
+    }
+
+    job.lastUpdatedBy = req.user._id;
+    await job.save();
+
+    const updatedJob = await WorkshopJob.findById(job._id)
+      .populate('customer', 'firstName lastName email phone')
+      .populate('resources.requiredMachines.machineId', 'name model category');
+
+    res.json({
+      success: true,
+      message: 'Machine booked successfully',
+      data: updatedJob
+    });
+  } catch (error) {
+    console.error('Book machine error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+};
+
+// @desc    Book workstation for job
+// @route   POST /api/workshop/jobs/:id/book-workstation
+// @access  Private
+const bookWorkStation = async (req, res) => {
+  try {
+    const { workstationId, until } = req.body;
+    const job = await WorkshopJob.findById(req.params.id);
+    
+    if (!job) {
+      return res.status(404).json({
+        success: false,
+        message: 'Job not found'
+      });
+    }
+
+    const workstation = await WorkStation.findById(workstationId);
+    if (!workstation) {
+      return res.status(404).json({
+        success: false,
+        message: 'Workstation not found'
+      });
+    }
+
+    if (!workstation.isCurrentlyAvailable) {
+      return res.status(400).json({
+        success: false,
+        message: 'Workstation is not currently available'
+      });
+    }
+
+    // Book workstation
+    workstation.bookWorkstation(job._id, req.user._id, new Date(until));
+    await workstation.save();
+
+    // Add workstation to job resources
+    const existingWorkstation = job.resources.workStations.find(w => w.stationId.toString() === workstationId);
+    if (!existingWorkstation) {
+      job.resources.workStations.push({
+        name: workstation.name,
+        stationId: workstation._id,
+        requiredFrom: new Date(),
+        requiredUntil: new Date(until),
+        isAvailable: false
+      });
+    }
+
+    job.lastUpdatedBy = req.user._id;
+    await job.save();
+
+    const updatedJob = await WorkshopJob.findById(job._id)
+      .populate('customer', 'firstName lastName email phone')
+      .populate('resources.workStations.stationId', 'name type capacity');
+
+    res.json({
+      success: true,
+      message: 'Workstation booked successfully',
+      data: updatedJob
+    });
+  } catch (error) {
+    console.error('Book workstation error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+};
+
+// @desc    Assign tool to job
+// @route   POST /api/workshop/jobs/:id/assign-tool
+// @access  Private
+const assignTool = async (req, res) => {
+  try {
+    const { toolId, expectedReturn } = req.body;
+    const job = await WorkshopJob.findById(req.params.id);
+    
+    if (!job) {
+      return res.status(404).json({
+        success: false,
+        message: 'Job not found'
+      });
+    }
+
+    const tool = await Tool.findById(toolId);
+    if (!tool) {
+      return res.status(404).json({
+        success: false,
+        message: 'Tool not found'
+      });
+    }
+
+    if (!tool.availability.isAvailable) {
+      return res.status(400).json({
+        success: false,
+        message: 'Tool is not available'
+      });
+    }
+
+    // Assign tool
+    tool.assignTool(job._id, req.user._id, new Date(expectedReturn));
+    await tool.save();
+
+    // Add tool to job resources
+    const existingTool = job.tools.find(t => t.toolId && t.toolId.toString() === toolId);
+    if (!existingTool) {
+      job.tools.push({
+        name: tool.name,
+        toolId: tool._id,
+        category: tool.category,
+        condition: tool.condition,
+        requiredFrom: new Date(),
+        requiredUntil: new Date(expectedReturn),
+        assignedTo: req.user._id,
+        assignedAt: new Date(),
+        isAvailable: false
+      });
+    }
+
+    job.lastUpdatedBy = req.user._id;
+    await job.save();
+
+    const updatedJob = await WorkshopJob.findById(job._id)
+      .populate('customer', 'firstName lastName email phone')
+      .populate('tools.toolId', 'name category condition');
+
+    res.json({
+      success: true,
+      message: 'Tool assigned successfully',
+      data: updatedJob
+    });
+  } catch (error) {
+    console.error('Assign tool error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+};
+
+// @desc    Check parts availability for job
+// @route   GET /api/workshop/jobs/:id/check-parts
+// @access  Private
+const checkPartsAvailability = async (req, res) => {
+  try {
+    const job = await WorkshopJob.findById(req.params.id);
+    
+    if (!job) {
+      return res.status(404).json({
+        success: false,
+        message: 'Job not found'
+      });
+    }
+
+    await job.checkPartsAvailability();
+
+    const updatedJob = await WorkshopJob.findById(job._id)
+      .populate('parts.product', 'name sku inventory pricing');
+
+    res.json({
+      success: true,
+      message: 'Parts availability checked',
+      data: {
+        parts: updatedJob.parts,
+        allPartsAvailable: updatedJob.parts.every(part => part.isAvailable)
+      }
+    });
+  } catch (error) {
+    console.error('Check parts availability error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+};
+
+// @desc    Reserve parts for job
+// @route   POST /api/workshop/jobs/:id/reserve-parts
+// @access  Private
+const reserveParts = async (req, res) => {
+  try {
+    const job = await WorkshopJob.findById(req.params.id);
+    
+    if (!job) {
+      return res.status(404).json({
+        success: false,
+        message: 'Job not found'
+      });
+    }
+
+    await job.checkPartsAvailability();
+
+    // Check if all parts are available
+    const unavailableParts = job.parts.filter(part => !part.isAvailable);
+    if (unavailableParts.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Some parts are not available in sufficient quantity',
+        data: unavailableParts
+      });
+    }
+
+    // Reserve parts
+    for (const part of job.parts) {
+      part.reservedAt = new Date();
+      part.reservedBy = req.user._id;
+    }
+
+    job.lastUpdatedBy = req.user._id;
+    await job.save();
+
+    res.json({
+      success: true,
+      message: 'Parts reserved successfully',
+      data: job.parts
+    });
+  } catch (error) {
+    console.error('Reserve parts error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+};
+
+// @desc    Get available resources for job
+// @route   GET /api/workshop/jobs/:id/available-resources
+// @access  Private
+const getAvailableResources = async (req, res) => {
+  try {
+    const { type } = req.query; // 'machines', 'tools', 'workstations', 'technicians'
+    
+    let resources = {};
+    
+    if (!type || type === 'machines') {
+      const machines = await Machine.find({ 
+        'availability.isAvailable': true, 
+        status: 'operational',
+        isActive: true 
+      }).select('name model category location');
+      resources.machines = machines;
+    }
+    
+    if (!type || type === 'tools') {
+      const tools = await Tool.find({ 
+        'availability.isAvailable': true, 
+        status: 'available',
+        isActive: true 
+      }).select('name category condition location');
+      resources.tools = tools;
+    }
+    
+    if (!type || type === 'workstations') {
+      const workstations = await WorkStation.find({ 
+        'availability.isAvailable': true, 
+        status: 'available',
+        isActive: true 
+      }).select('name type capacity location');
+      resources.workstations = workstations;
+    }
+    
+    if (!type || type === 'technicians') {
+      const technicians = await Technician.find({ 
+        employmentStatus: 'active',
+        isActive: true 
+      }).populate('user', 'firstName lastName email').select('user employeeId department position skills');
+      resources.technicians = technicians;
+    }
+
+    res.json({
+      success: true,
+      data: resources
+    });
+  } catch (error) {
+    console.error('Get available resources error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+};
+
+// @desc    Get job statistics
+// @route   GET /api/workshop/jobs/stats
+// @access  Private
+const getJobStats = async (req, res) => {
+  try {
+    const totalJobs = await WorkshopJob.countDocuments({ isActive: true });
+    const draftJobs = await WorkshopJob.countDocuments({ status: 'draft', isActive: true });
+    const scheduledJobs = await WorkshopJob.countDocuments({ status: 'scheduled', isActive: true });
+    const inProgressJobs = await WorkshopJob.countDocuments({ status: 'in_progress', isActive: true });
+    const completedJobs = await WorkshopJob.countDocuments({ status: 'completed', isActive: true });
+    const overdueJobs = await WorkshopJob.countDocuments({ 
+      deadline: { $lt: new Date() }, 
+      status: { $nin: ['completed', 'cancelled'] },
+      isActive: true 
+    });
+
+    // Get jobs by priority
+    const urgentJobs = await WorkshopJob.countDocuments({ priority: 'urgent', isActive: true });
+    const highPriorityJobs = await WorkshopJob.countDocuments({ priority: 'high', isActive: true });
+
+    // Get average completion time
+    const completedJobsWithDuration = await WorkshopJob.find({ 
+      status: 'completed', 
+      isActive: true,
+      'scheduled.actualDuration': { $exists: true, $gt: 0 }
+    });
+    
+    const avgCompletionTime = completedJobsWithDuration.length > 0 
+      ? completedJobsWithDuration.reduce((sum, job) => sum + job.scheduled.actualDuration, 0) / completedJobsWithDuration.length
+      : 0;
+
+    res.json({
+      success: true,
+      data: {
+        total: totalJobs,
+        byStatus: {
+          draft: draftJobs,
+          scheduled: scheduledJobs,
+          in_progress: inProgressJobs,
+          completed: completedJobs
+        },
+        overdue: overdueJobs,
+        byPriority: {
+          urgent: urgentJobs,
+          high: highPriorityJobs
+        },
+        averageCompletionTime: Math.round(avgCompletionTime),
+        completionRate: totalJobs > 0 ? Math.round((completedJobs / totalJobs) * 100) : 0
+      }
+    });
+  } catch (error) {
+    console.error('Get job stats error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+};
+
+// @desc    Get customer portal job data
+// @route   GET /api/workshop/jobs/customer/:customerId
+// @access  Private
+const getCustomerJobs = async (req, res) => {
+  try {
+    const { customerId } = req.params;
+    const jobs = await WorkshopJob.find({ 
+      customer: customerId, 
+      isActive: true,
+      'customerPortal.isVisible': true
+    })
+    .populate('customer', 'firstName lastName email phone')
+    .populate('createdBy', 'firstName lastName')
+    .populate('resources.assignedTechnicians.user', 'firstName lastName')
+    .select('title description status priority progress deadline scheduled jobCard customerPortal links createdAt updatedAt')
+    .sort({ createdAt: -1 });
+
+    res.json({
+      success: true,
+      data: jobs
+    });
+  } catch (error) {
+    console.error('Get customer jobs error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+};
+
 module.exports = {
   createJob,
   getJobs,
@@ -318,6 +974,18 @@ module.exports = {
   updateJobProgress,
   completeJob,
   cancelJob,
+  assignTechnician,
+  removeTechnician,
+  addTask,
+  updateTaskStatus,
+  bookMachine,
+  bookWorkStation,
+  assignTool,
+  checkPartsAvailability,
+  reserveParts,
+  getAvailableResources,
+  getJobStats,
+  getCustomerJobs
 };
 
 
