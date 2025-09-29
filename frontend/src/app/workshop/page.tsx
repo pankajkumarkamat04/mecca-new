@@ -10,8 +10,12 @@ import Select from '@/components/ui/Select';
 import DataTable from '@/components/ui/DataTable';
 import Modal from '@/components/ui/Modal';
 import Badge from '@/components/ui/Badge';
+import WorkshopDashboard from '@/components/workshop/WorkshopDashboard';
+import JobCardManager from '@/components/workshop/JobCardManager';
+import JobProgressVisualization from '@/components/workshop/JobProgressVisualization';
 import { WorkshopJob } from '@/types';
 import { enhancedWorkshopAPI, techniciansAPI, machinesAPI, toolsAPI, workstationsAPI, customersAPI, productsAPI } from '@/lib/api';
+import api from '@/lib/api';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { formatDate, formatCurrency } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
@@ -27,7 +31,10 @@ import {
   CheckCircleIcon,
   ExclamationTriangleIcon,
   ClockIcon,
-  EyeIcon
+  EyeIcon,
+  ChartBarIcon,
+  DocumentTextIcon,
+  ChatBubbleLeftRightIcon
 } from '@heroicons/react/24/outline';
 
 const WorkshopPage: React.FC = () => {
@@ -42,6 +49,9 @@ const WorkshopPage: React.FC = () => {
   const [isResourceModalOpen, setIsResourceModalOpen] = useState(false);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [isJobCardModalOpen, setIsJobCardModalOpen] = useState(false);
+  const [isProgressModalOpen, setIsProgressModalOpen] = useState(false);
+  const [isDashboardOpen, setIsDashboardOpen] = useState(false);
   const [selectedJob, setSelectedJob] = useState<WorkshopJob | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -318,7 +328,7 @@ const WorkshopPage: React.FC = () => {
       key: 'actions',
       label: 'Actions',
       render: (job: any) => (
-        <div className="flex gap-2">
+        <div className="flex gap-1 flex-wrap">
           <Button
             variant="ghost"
             size="sm"
@@ -326,6 +336,7 @@ const WorkshopPage: React.FC = () => {
               setSelectedJob(job);
               setIsDetailsOpen(true);
             }}
+            title="View Details"
           >
             <EyeIcon className="h-4 w-4" />
           </Button>
@@ -336,6 +347,7 @@ const WorkshopPage: React.FC = () => {
               setSelectedJob(job);
               setIsEditOpen(true);
             }}
+            title="Edit Job"
           >
             <PencilIcon className="h-4 w-4" />
           </Button>
@@ -344,8 +356,31 @@ const WorkshopPage: React.FC = () => {
             size="sm"
             onClick={() => {
               setSelectedJob(job);
+              setIsJobCardModalOpen(true);
+            }}
+            title="Job Card"
+          >
+            <DocumentTextIcon className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setSelectedJob(job);
+              setIsProgressModalOpen(true);
+            }}
+            title="Progress View"
+          >
+            <ChartBarIcon className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setSelectedJob(job);
               setIsResourceModalOpen(true);
             }}
+            title="Manage Resources"
           >
             <WrenchScrewdriverIcon className="h-4 w-4" />
           </Button>
@@ -356,6 +391,7 @@ const WorkshopPage: React.FC = () => {
               setSelectedJob(job);
               setIsTaskModalOpen(true);
             }}
+            title="Manage Tasks"
           >
             <ClipboardDocumentListIcon className="h-4 w-4" />
           </Button>
@@ -363,6 +399,7 @@ const WorkshopPage: React.FC = () => {
             variant="ghost"
             size="sm"
             onClick={() => handleCheckParts(job._id)}
+            title="Check Parts"
           >
             <CheckCircleIcon className="h-4 w-4" />
           </Button>
@@ -372,6 +409,7 @@ const WorkshopPage: React.FC = () => {
               size="sm"
               onClick={() => handleCompleteJob(job._id)}
               className="text-green-600 hover:text-green-700"
+              title="Complete Job"
             >
               Complete
             </Button>
@@ -401,12 +439,22 @@ const WorkshopPage: React.FC = () => {
             <h1 className="text-2xl font-bold text-gray-900">Workshop Management</h1>
             <p className="text-gray-600">Manage jobs with resource allocation and task tracking</p>
           </div>
-          {hasPermission('workshop', 'create') && (
-            <Button onClick={() => setIsCreateOpen(true)}>
-              <PlusIcon className="h-5 w-5 mr-2" />
-              Create Job
+          <div className="flex space-x-3">
+            <Button
+              variant="outline"
+              onClick={() => setIsDashboardOpen(true)}
+              className="flex items-center"
+            >
+              <ChartBarIcon className="h-5 w-5 mr-2" />
+              Dashboard
             </Button>
-          )}
+            {hasPermission('workshop', 'create') && (
+              <Button onClick={() => setIsCreateOpen(true)}>
+                <PlusIcon className="h-5 w-5 mr-2" />
+                Create Job
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Stats Cards */}
@@ -512,7 +560,8 @@ const WorkshopPage: React.FC = () => {
       <Modal
         isOpen={isCreateOpen}
         onClose={() => setIsCreateOpen(false)}
-        title="Create New Job"
+        title="Create Job Card"
+        size="xl"
       >
         <CreateJobForm
           onSubmit={handleCreateJob}
@@ -607,6 +656,58 @@ const WorkshopPage: React.FC = () => {
           />
         )}
       </Modal>
+
+      {/* Job Card Manager Modal */}
+      <Modal
+        isOpen={isJobCardModalOpen}
+        onClose={() => {
+          setIsJobCardModalOpen(false);
+          setSelectedJob(null);
+        }}
+        title="Job Card Manager"
+        size="xl"
+      >
+        {selectedJob && (
+          <JobCardManager
+            job={selectedJob}
+            onClose={() => {
+              setIsJobCardModalOpen(false);
+              setSelectedJob(null);
+            }}
+          />
+        )}
+      </Modal>
+
+      {/* Progress Visualization Modal */}
+      <Modal
+        isOpen={isProgressModalOpen}
+        onClose={() => {
+          setIsProgressModalOpen(false);
+          setSelectedJob(null);
+        }}
+        title="Job Progress Visualization"
+        size="xl"
+      >
+        {selectedJob && (
+          <JobProgressVisualization
+            jobId={selectedJob._id}
+            onClose={() => {
+              setIsProgressModalOpen(false);
+              setSelectedJob(null);
+            }}
+          />
+        )}
+      </Modal>
+
+      {/* Workshop Dashboard Modal */}
+      <Modal
+        isOpen={isDashboardOpen}
+        onClose={() => setIsDashboardOpen(false)}
+        title="Workshop Dashboard"
+        size="xl"
+      >
+        <WorkshopDashboard />
+      </Modal>
     </Layout>
   );
 };
@@ -624,13 +725,95 @@ const CreateJobForm: React.FC<{
     customerPhone: '',
     priority: 'medium',
     deadline: '',
+    // Job Card specific fields matching MECCA template
+    jobCard: {
+      workOrderNumber: '',
+      estimatedCost: 0,
+      laborHours: 0,
+      warrantyPeriod: 0,
+      version: 1,
+      isActive: true
+    },
+    // Customer Information (matching job card template)
+    customerInfo: {
+      name: '',
+      address: '',
+      contactName: '',
+      telCell: '',
+      orderNumber: ''
+    },
+    // Vehicle Information (matching job card template)
     vehicle: {
       make: '',
       model: '',
+      odometer: '',
       regNumber: '',
       vinNumber: ''
     },
-    repairRequest: ''
+    // Technician Information
+    technicians: {
+      primary: '',
+      secondary: ''
+    },
+    // Repair Request
+    repairRequest: '',
+    // Time Information
+    timeInfo: {
+      timeIn: '',
+      timeForCollection: ''
+    },
+    // Sublets (outsourced work)
+    sublets: [
+      { description: '', amount: 0 }
+    ],
+    // Parts (will be managed separately)
+    parts: [],
+    // Tools
+    tools: [] as Array<{
+      tool: string;
+      toolName: string;
+      quantity: number;
+      notes: string;
+    }>,
+    // Reports/Notes
+    reports: '',
+    // Vehicle Pre-check (matching the pre-check form)
+    precheck: {
+      alarms: false,
+      scratches: false,
+      lights: false,
+      windows: false,
+      mats: false,
+      centralLocking: false,
+      dents: false,
+      spareWheel: false,
+      windscreen: false,
+      wheelLockNut: false,
+      antiHijack: false,
+      brokenParts: false,
+      toolsAndJacks: false,
+      hubCaps: false,
+      radioFace: false,
+      mirrors: false,
+      tires: false,
+      brakes: false,
+      battery: false,
+      engine: false,
+      fuelLevel: 'E',
+      overallCondition: 'good',
+      otherComments: ''
+    },
+    // Terms and Conditions
+    termsAccepted: false,
+    // Scheduling Information
+    scheduled: {
+      start: '',
+      end: '',
+      estimatedDuration: 0,
+      bufferTime: 30,
+      isFlexible: false,
+      schedulingNotes: ''
+    }
   });
 
   // Fetch customers for dropdown
@@ -639,7 +822,21 @@ const CreateJobForm: React.FC<{
     queryFn: () => customersAPI.getCustomers({ limit: 100 }),
   });
 
+  // Fetch technicians for dropdown
+  const { data: techniciansData } = useQuery({
+    queryKey: ['technicians'],
+    queryFn: () => api.get('/technicians'),
+  });
+
+  // Fetch tools for dropdown
+  const { data: toolsData } = useQuery({
+    queryKey: ['tools'],
+    queryFn: () => api.get('/tools'),
+  });
+
   const customers = customersData?.data?.data?.customers || [];
+  const technicians = techniciansData?.data?.data?.technicians || [];
+  const tools = toolsData?.data?.data?.tools || [];
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -661,92 +858,525 @@ const CreateJobForm: React.FC<{
     }
   };
 
+  const addSublet = () => {
+    setFormData(prev => ({
+      ...prev,
+      sublets: [...prev.sublets, { description: '', amount: 0 }]
+    }));
+  };
+
+  const removeSublet = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      sublets: prev.sublets.filter((_, i) => i !== index)
+    }));
+  };
+
+  const updateSublet = (index: number, field: string, value: any) => {
+    setFormData(prev => ({
+      ...prev,
+      sublets: prev.sublets.map((sublet, i) => 
+        i === index ? { ...sublet, [field]: value } : sublet
+      )
+    }));
+  };
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Input
-          label="Job Title"
-          value={formData.title}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('title', e.target.value)}
-          required
-        />
-        <Select
-          label="Priority"
-          value={formData.priority}
-          onChange={(e: React.ChangeEvent<HTMLSelectElement>) => handleInputChange('priority', e.target.value)}
-          required
-          options={[
-            { value: 'low', label: 'Low' },
-            { value: 'medium', label: 'Medium' },
-            { value: 'high', label: 'High' },
-            { value: 'urgent', label: 'Urgent' }
-          ]}
-        />
-        <Select
-          label="Customer"
-          value={formData.customer}
-          onChange={(e: React.ChangeEvent<HTMLSelectElement>) => handleInputChange('customer', e.target.value)}
-          required
-          options={[
-            { value: '', label: 'Select Customer' },
-            ...customers.map((customer: any) => ({
-              value: customer._id,
-              label: `${customer.firstName} ${customer.lastName}`
-            }))
-          ]}
-        />
-        <Input
-          label="Customer Phone"
-          value={formData.customerPhone}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('customerPhone', e.target.value)}
-          required
-        />
-        <Input
-          label="Deadline"
-          type="date"
-          value={formData.deadline}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('deadline', e.target.value)}
-        />
-        <Input
-          label="Vehicle Make"
-          value={formData.vehicle.make}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('vehicle.make', e.target.value)}
-        />
-        <Input
-          label="Vehicle Model"
-          value={formData.vehicle.model}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('vehicle.model', e.target.value)}
-        />
-        <Input
-          label="Registration Number"
-          value={formData.vehicle.regNumber}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('vehicle.regNumber', e.target.value)}
-        />
-        <Input
-          label="VIN Number"
-          value={formData.vehicle.vinNumber}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('vehicle.vinNumber', e.target.value)}
+    <form onSubmit={handleSubmit} className="space-y-8">
+      {/* Job Card Header */}
+      <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white p-6 rounded-lg">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold">Create Job Card</h1>
+            <p className="text-blue-100">Complete vehicle service and repair documentation</p>
+          </div>
+          <div className="text-right">
+            <div className="bg-white/20 backdrop-blur-sm rounded-lg p-3">
+              <p className="text-sm text-blue-100">Job Number</p>
+              <p className="text-lg font-bold">Auto-Generated</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Customer and Vehicle Information */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Customer Information */}
+        <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+          <div className="flex items-center mb-4">
+            <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
+              <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900">Customer Information</h3>
+          </div>
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Input
+                label="Customer Name"
+                value={formData.customerInfo.name}
+                onChange={(e) => handleInputChange('customerInfo.name', e.target.value)}
+                required
+              />
+              <Input
+                label="Order Number"
+                value={formData.customerInfo.orderNumber}
+                onChange={(e) => handleInputChange('customerInfo.orderNumber', e.target.value)}
+              />
+            </div>
+            <TextArea
+              label="Address"
+              value={formData.customerInfo.address}
+              onChange={(e) => handleInputChange('customerInfo.address', e.target.value)}
+              rows={2}
+            />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Input
+                label="Contact Name"
+                value={formData.customerInfo.contactName}
+                onChange={(e) => handleInputChange('customerInfo.contactName', e.target.value)}
+              />
+              <Input
+                label="Phone Number"
+                value={formData.customerInfo.telCell}
+                onChange={(e) => handleInputChange('customerInfo.telCell', e.target.value)}
+              />
+            </div>
+            <Input
+              label="Service Date"
+              type="date"
+              value={formData.deadline}
+              onChange={(e) => handleInputChange('deadline', e.target.value)}
+            />
+          </div>
+        </div>
+
+        {/* Vehicle Information */}
+        <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+          <div className="flex items-center mb-4">
+            <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center mr-3">
+              <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900">Vehicle Information</h3>
+          </div>
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Input
+                label="Make"
+                value={formData.vehicle.make}
+                onChange={(e) => handleInputChange('vehicle.make', e.target.value)}
+              />
+              <Input
+                label="Model"
+                value={formData.vehicle.model}
+                onChange={(e) => handleInputChange('vehicle.model', e.target.value)}
+              />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Input
+                label="Registration Number"
+                value={formData.vehicle.regNumber}
+                onChange={(e) => handleInputChange('vehicle.regNumber', e.target.value)}
+              />
+              <Input
+                label="VIN Number"
+                value={formData.vehicle.vinNumber}
+                onChange={(e) => handleInputChange('vehicle.vinNumber', e.target.value)}
+              />
+            </div>
+            <Input
+              label="Odometer Reading"
+              value={formData.vehicle.odometer}
+              onChange={(e) => handleInputChange('vehicle.odometer', e.target.value)}
+            />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Select
+                label="Primary Technician"
+                value={formData.technicians.primary}
+                onChange={(e) => handleInputChange('technicians.primary', e.target.value)}
+                options={[
+                  { value: '', label: 'Select Primary Technician' },
+                  ...technicians.map((technician: any) => ({
+                    value: technician._id,
+                    label: `${technician.firstName} ${technician.lastName}`
+                  }))
+                ]}
+              />
+              <Select
+                label="Secondary Technician"
+                value={formData.technicians.secondary}
+                onChange={(e) => handleInputChange('technicians.secondary', e.target.value)}
+                options={[
+                  { value: '', label: 'Select Secondary Technician' },
+                  ...technicians.map((technician: any) => ({
+                    value: technician._id,
+                    label: `${technician.firstName} ${technician.lastName}`
+                  }))
+                ]}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Repair Request and Time Information */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2">
+          <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+            <div className="flex items-center mb-4">
+              <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center mr-3">
+                <svg className="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900">Repair Request</h3>
+            </div>
+            <TextArea
+              value={formData.repairRequest}
+              onChange={(e) => handleInputChange('repairRequest', e.target.value)}
+              rows={6}
+              placeholder="Describe the repair request in detail..."
+            />
+          </div>
+        </div>
+        
+        <div>
+          <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+            <div className="flex items-center mb-4">
+              <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center mr-3">
+                <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900">Time Information</h3>
+            </div>
+            <div className="space-y-4">
+              <Input
+                label="Time In"
+                type="datetime-local"
+                value={formData.timeInfo.timeIn}
+                onChange={(e) => handleInputChange('timeInfo.timeIn', e.target.value)}
+              />
+              <Input
+                label="Expected Collection"
+                type="datetime-local"
+                value={formData.timeInfo.timeForCollection}
+                onChange={(e) => handleInputChange('timeInfo.timeForCollection', e.target.value)}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Sublets */}
+      <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center">
+            <div className="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center mr-3">
+              <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900">Sublets (Outsourced Work)</h3>
+          </div>
+          <Button type="button" onClick={addSublet} size="sm" className="bg-indigo-600 hover:bg-indigo-700">
+            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Add Sublet
+          </Button>
+        </div>
+        
+        <div className="space-y-3">
+          {formData.sublets.map((sublet, index) => (
+            <div key={index} className="grid grid-cols-1 md:grid-cols-12 gap-3 p-3 bg-gray-50 rounded-lg">
+              <div className="md:col-span-8">
+                <Input
+                  value={sublet.description}
+                  onChange={(e) => updateSublet(index, 'description', e.target.value)}
+                  placeholder="Sublet description..."
+                />
+              </div>
+              <div className="md:col-span-3">
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={sublet.amount}
+                  onChange={(e) => updateSublet(index, 'amount', parseFloat(e.target.value) || 0)}
+                  placeholder="0.00"
+                />
+              </div>
+              <div className="md:col-span-1 flex items-center">
+                <Button
+                  type="button"
+                  onClick={() => removeSublet(index)}
+                  variant="ghost"
+                  size="sm"
+                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Tools Selection */}
+      <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+        <div className="flex items-center mb-4">
+          <div className="w-8 h-8 bg-cyan-100 rounded-lg flex items-center justify-center mr-3">
+            <svg className="w-5 h-5 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900">Required Tools</h3>
+        </div>
+        <div className="space-y-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Select
+              label="Select Tool"
+              value=""
+              onChange={(e) => {
+                if (e.target.value) {
+                  const selectedTool = tools.find((tool: any) => tool._id === e.target.value);
+                  if (selectedTool && !formData.tools.some((t: any) => t.tool === e.target.value)) {
+                    setFormData(prev => ({
+                      ...prev,
+                      tools: [...prev.tools, {
+                        tool: selectedTool._id,
+                        toolName: selectedTool.name,
+                        quantity: 1,
+                        notes: ''
+                      }]
+                    }));
+                  }
+                }
+              }}
+              options={[
+                { value: '', label: 'Add a tool...' },
+                ...tools.map((tool: any) => ({
+                  value: tool._id,
+                  label: tool.name
+                }))
+              ]}
+            />
+          </div>
+          {formData.tools.length > 0 && (
+            <div className="space-y-2">
+              {formData.tools.map((tool: any, index: number) => (
+                <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div className="flex-1">
+                    <span className="font-medium text-gray-900">{tool.toolName}</span>
+                    <div className="flex items-center space-x-4 mt-1">
+                      <Input
+                        type="number"
+                        min="1"
+                        value={tool.quantity}
+                        onChange={(e) => {
+                          const newTools = [...formData.tools];
+                          newTools[index].quantity = parseInt(e.target.value) || 1;
+                          setFormData(prev => ({ ...prev, tools: newTools }));
+                        }}
+                        className="w-20"
+                        placeholder="Qty"
+                      />
+                      <Input
+                        value={tool.notes}
+                        onChange={(e) => {
+                          const newTools = [...formData.tools];
+                          newTools[index].notes = e.target.value;
+                          setFormData(prev => ({ ...prev, tools: newTools }));
+                        }}
+                        placeholder="Notes (optional)"
+                        className="flex-1"
+                      />
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      const newTools = formData.tools.filter((_: any, i: number) => i !== index);
+                      setFormData(prev => ({ ...prev, tools: newTools }));
+                    }}
+                    variant="ghost"
+                    size="sm"
+                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Reports */}
+      <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+        <div className="flex items-center mb-4">
+          <div className="w-8 h-8 bg-yellow-100 rounded-lg flex items-center justify-center mr-3">
+            <svg className="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900">Reports & Findings</h3>
+        </div>
+        <TextArea
+          value={formData.reports}
+          onChange={(e) => handleInputChange('reports', e.target.value)}
+          rows={4}
+          placeholder="Enter detailed reports and findings..."
         />
       </div>
-      <TextArea
-        label="Description"
-        value={formData.description}
-        onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => handleInputChange('description', e.target.value)}
-        rows={3}
-      />
-      <TextArea
-        label="Repair Request"
-        value={formData.repairRequest}
-        onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => handleInputChange('repairRequest', e.target.value)}
-        rows={3}
-      />
+
+      {/* Vehicle Pre-Check */}
+      <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+        <div className="flex items-center mb-6">
+          <div className="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center mr-3">
+            <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900">Vehicle Pre-Check</h3>
+        </div>
+        
+        {/* Pre-check Checklist */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+          <div className="space-y-3">
+            <h4 className="font-medium text-gray-900 text-sm uppercase tracking-wide">Safety & Security</h4>
+            {['alarms', 'centralLocking', 'antiHijack'].map((item) => (
+              <label key={item} className="flex items-center">
+                <input
+                  type="checkbox"
+                  checked={formData.precheck[item as keyof typeof formData.precheck] as boolean}
+                  onChange={(e) => handleInputChange(`precheck.${item}`, e.target.checked)}
+                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                />
+                <span className="ml-2 text-sm text-gray-700 capitalize">{item.replace(/([A-Z])/g, ' $1').trim()}</span>
+              </label>
+            ))}
+          </div>
+          
+          <div className="space-y-3">
+            <h4 className="font-medium text-gray-900 text-sm uppercase tracking-wide">Exterior</h4>
+            {['scratches', 'dents', 'brokenParts', 'toolsAndJacks', 'hubCaps', 'mirrors', 'tires'].map((item) => (
+              <label key={item} className="flex items-center">
+                <input
+                  type="checkbox"
+                  checked={formData.precheck[item as keyof typeof formData.precheck] as boolean}
+                  onChange={(e) => handleInputChange(`precheck.${item}`, e.target.checked)}
+                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                />
+                <span className="ml-2 text-sm text-gray-700 capitalize">{item.replace(/([A-Z])/g, ' $1').trim()}</span>
+              </label>
+            ))}
+          </div>
+          
+          <div className="space-y-3">
+            <h4 className="font-medium text-gray-900 text-sm uppercase tracking-wide">Interior & Systems</h4>
+            {['lights', 'windows', 'mats', 'spareWheel', 'windscreen', 'wheelLockNut', 'radioFace', 'brakes', 'battery', 'engine'].map((item) => (
+              <label key={item} className="flex items-center">
+                <input
+                  type="checkbox"
+                  checked={formData.precheck[item as keyof typeof formData.precheck] as boolean}
+                  onChange={(e) => handleInputChange(`precheck.${item}`, e.target.checked)}
+                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                />
+                <span className="ml-2 text-sm text-gray-700 capitalize">{item.replace(/([A-Z])/g, ' $1').trim()}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+
+        {/* Fuel Level and Overall Condition */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+          <div>
+            <h4 className="font-medium text-gray-900 mb-3">Fuel Level</h4>
+            <div className="flex space-x-4">
+              {['E', '1/4', '1/2', '3/4', 'F'].map((level) => (
+                <label key={level} className="flex items-center">
+                  <input
+                    type="radio"
+                    name="fuelLevel"
+                    value={level}
+                    checked={formData.precheck.fuelLevel === level}
+                    onChange={(e) => handleInputChange('precheck.fuelLevel', e.target.value)}
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                  />
+                  <span className="ml-2 text-sm text-gray-700">{level}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+          
+          <div>
+            <h4 className="font-medium text-gray-900 mb-3">Overall Condition</h4>
+            <div className="flex space-x-4">
+              {['poor', 'avg', 'good', 'excellent'].map((condition) => (
+                <label key={condition} className="flex items-center">
+                  <input
+                    type="radio"
+                    name="overallCondition"
+                    value={condition}
+                    checked={formData.precheck.overallCondition === condition}
+                    onChange={(e) => handleInputChange('precheck.overallCondition', e.target.value)}
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                  />
+                  <span className="ml-2 text-sm text-gray-700 capitalize">{condition}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Other Comments */}
+        <div>
+          <h4 className="font-medium text-gray-900 mb-3">Additional Comments</h4>
+          <TextArea
+            value={formData.precheck.otherComments}
+            onChange={(e) => handleInputChange('precheck.otherComments', e.target.value)}
+            rows={3}
+            placeholder="Additional comments or observations..."
+          />
+        </div>
+      </div>
+
+      {/* Terms and Conditions */}
+      <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Terms and Conditions</h3>
+        <div className="space-y-3 text-sm text-gray-700 mb-4">
+          <p>1. I accept the technical advice regarding the service and repair of my vehicle.</p>
+          <p>2. I confirm that all valuables and personal possessions have been removed from the vehicle. We will not be liable for any loss or damage to such items.</p>
+          <p>3. I authorize the repairs as outlined on this Job Card. Any additional work will require an approved estimate.</p>
+          <p>4. I have read and understood the terms and conditions above.</p>
+        </div>
+        
+        <div className="flex items-center">
+          <input
+            type="checkbox"
+            checked={formData.termsAccepted}
+            onChange={(e) => handleInputChange('termsAccepted', e.target.checked)}
+            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+          />
+          <span className="ml-2 text-sm text-gray-700">I accept the terms and conditions</span>
+        </div>
+      </div>
 
       <div className="flex justify-end space-x-3">
         <Button type="button" variant="outline" onClick={onCancel}>
           Cancel
         </Button>
-        <Button type="submit" loading={loading}>
-          Create Job
+        <Button type="submit" loading={loading} disabled={!formData.termsAccepted}>
+          Create Job Card
         </Button>
       </div>
     </form>

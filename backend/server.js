@@ -34,6 +34,7 @@ const machineRoutes = require('./routes/machines');
 const toolRoutes = require('./routes/tools');
 const workstationRoutes = require('./routes/workstations');
 const technicianRoutes = require('./routes/technicians');
+const analyticsRoutes = require('./routes/analytics');
 
 const app = express();
 
@@ -123,6 +124,7 @@ app.use('/api/machines', machineRoutes);
 app.use('/api/tools', toolRoutes);
 app.use('/api/workstations', workstationRoutes);
 app.use('/api/technicians', technicianRoutes);
+app.use('/api/analytics', analyticsRoutes);
 
 // API documentation endpoint
 app.get('/api', (req, res) => {
@@ -150,7 +152,8 @@ app.get('/api', (req, res) => {
       orders: '/api/orders',
       warehouses: '/api/warehouses',
       purchaseOrders: '/api/purchase-orders',
-      stockAlerts: '/api/stock-alerts'
+      stockAlerts: '/api/stock-alerts',
+      analytics: '/api/analytics'
     },
     documentation: 'See individual route files for detailed API documentation'
   });

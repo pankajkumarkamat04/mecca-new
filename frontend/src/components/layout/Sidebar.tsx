@@ -223,6 +223,12 @@ const getSidebarItems = (userRole: string): SidebarItem[] => {
       icon: WrenchScrewdriverIcon,
       permission: { module: 'workshop', action: 'read' },
     });
+    baseItems.push({
+      name: 'Resources',
+      href: '/resources',
+      icon: CogIcon,
+      permission: { module: 'resources', action: 'read' },
+    });
   }
 
   // Delivery items

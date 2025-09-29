@@ -31,6 +31,7 @@ export const routePermissionMap: Array<{
   { prefix: '/stock-alerts', permission: { module: 'stockAlerts', action: 'read' } },
   { prefix: '/purchase-orders', permission: { module: 'purchaseOrders', action: 'read' } },
   { prefix: '/analytics', permission: { module: 'reports', action: 'read' } },
+  { prefix: '/resources', permission: { module: 'resources', action: 'read' } },
   // Customer portal
   { prefix: '/customer', roles: ['customer'] },
   { prefix: '/profile' },

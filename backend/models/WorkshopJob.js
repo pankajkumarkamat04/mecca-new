@@ -38,7 +38,37 @@ const jobPartSchema = new mongoose.Schema({
   reservedAt: { type: Date }, // When part was reserved
   reservedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   issuedAt: { type: Date }, // When part was issued for use
-  issuedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
+  issuedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  // Enhanced parts management
+  status: { 
+    type: String, 
+    enum: ['pending', 'reserved', 'issued', 'used', 'returned', 'shortage'], 
+    default: 'pending' 
+  },
+  location: { type: String, trim: true }, // Warehouse location
+  supplier: { type: mongoose.Schema.Types.ObjectId, ref: 'Supplier' },
+  alternativeParts: [{
+    product: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
+    productName: { type: String, trim: true },
+    productSku: { type: String, trim: true },
+    quantityAvailable: { type: Number, min: 0 },
+    unitCost: { type: Number, min: 0 }
+  }],
+  // Quality control
+  qualityCheck: {
+    checked: { type: Boolean, default: false },
+    checkedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    checkedAt: { type: Date },
+    passed: { type: Boolean, default: false },
+    notes: { type: String, trim: true }
+  },
+  // Warranty information
+  warranty: {
+    hasWarranty: { type: Boolean, default: false },
+    warrantyPeriod: { type: Number, min: 0 }, // in days
+    warrantyExpiry: { type: Date },
+    warrantyProvider: { type: String, trim: true }
+  }
 }, { timestamps: true });
 
 const jobToolSchema = new mongoose.Schema({
@@ -69,6 +99,25 @@ const workshopJobSchema = new mongoose.Schema({
     end: Date,
     estimatedDuration: { type: Number, min: 0 }, // in minutes
     actualDuration: { type: Number, min: 0 }, // in minutes
+    // Enhanced scheduling features
+    bufferTime: { type: Number, min: 0, default: 30 }, // Buffer time in minutes
+    isFlexible: { type: Boolean, default: false }, // Can be rescheduled
+    schedulingNotes: { type: String, trim: true },
+    conflicts: [{
+      resourceId: { type: mongoose.Schema.Types.ObjectId, required: true },
+      resourceType: { type: String, enum: ['machine', 'workstation', 'technician'], required: true },
+      conflictReason: { type: String, required: true },
+      suggestedTime: { type: Date },
+      resolved: { type: Boolean, default: false }
+    }],
+    // Recurring job support
+    isRecurring: { type: Boolean, default: false },
+    recurrencePattern: {
+      frequency: { type: String, enum: ['daily', 'weekly', 'monthly', 'yearly'] },
+      interval: { type: Number, min: 1, default: 1 },
+      daysOfWeek: [{ type: Number, min: 0, max: 6 }], // 0 = Sunday
+      endDate: { type: Date }
+    }
   },
   // Resource allocation
   resources: {
@@ -146,9 +195,31 @@ const workshopJobSchema = new mongoose.Schema({
     technicianSignature: { type: String, trim: true },
     technicianSignedAt: { type: Date },
     supervisorSignature: { type: String, trim: true },
-    supervisorSignedAt: { type: Date }
+    supervisorSignedAt: { type: Date },
+    // Enhanced job card features
+    workOrderNumber: { type: String, trim: true },
+    estimatedCost: { type: Number, min: 0 },
+    actualCost: { type: Number, min: 0 },
+    laborHours: { type: Number, min: 0 },
+    materialCost: { type: Number, min: 0 },
+    laborCost: { type: Number, min: 0 },
+    warrantyPeriod: { type: Number, min: 0 }, // in days
+    warrantyExpiry: { type: Date },
+    qualityCheck: {
+      checkedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+      checkedAt: { type: Date },
+      passed: { type: Boolean, default: false },
+      notes: { type: String, trim: true }
+    },
+    // Job card history for version control
+    history: [{
+      version: { type: Number, required: true },
+      changes: { type: String, required: true },
+      changedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+      changedAt: { type: Date, default: Date.now }
+    }]
   },
-  // Customer portal visibility
+  // Customer portal visibility and communication
   customerPortal: {
     isVisible: { type: Boolean, default: true },
     showProgress: { type: Boolean, default: true },
@@ -157,7 +228,28 @@ const workshopJobSchema = new mongoose.Schema({
     showTools: { type: Boolean, default: false }, // Hide tools from customer by default
     allowComments: { type: Boolean, default: true },
     lastViewedAt: { type: Date },
-    notificationsEnabled: { type: Boolean, default: true }
+    notificationsEnabled: { type: Boolean, default: true },
+    // Enhanced customer portal features
+    customerComments: [{
+      comment: { type: String, required: true },
+      commentedBy: { type: String, required: true }, // Customer name or ID
+      commentedAt: { type: Date, default: Date.now },
+      isInternal: { type: Boolean, default: false } // Internal staff comments
+    }],
+    statusUpdates: [{
+      status: { type: String, required: true },
+      message: { type: String, required: true },
+      updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+      updatedAt: { type: Date, default: Date.now },
+      notifyCustomer: { type: Boolean, default: true }
+    }],
+    estimatedCompletion: { type: Date },
+    actualCompletion: { type: Date },
+    customerSatisfaction: {
+      rating: { type: Number, min: 1, max: 5 },
+      feedback: { type: String, trim: true },
+      submittedAt: { type: Date }
+    }
   },
   // Vehicle pre-check form
   precheck: {
@@ -273,10 +365,131 @@ workshopJobSchema.methods.checkPartsAvailability = async function() {
       part.unitCost = product.pricing?.costPrice || 0;
       part.totalCost = part.unitCost * part.quantityRequired;
       part.isAvailable = part.quantityAvailable >= part.quantityRequired;
+      
+      // Update part status based on availability
+      if (part.quantityAvailable >= part.quantityRequired) {
+        part.status = 'pending';
+      } else {
+        part.status = 'shortage';
+      }
     }
   }
   
   await this.save();
+};
+
+// Enhanced job card management methods
+workshopJobSchema.methods.updateJobCardVersion = function(changes, userId) {
+  this.jobCard.version += 1;
+  this.jobCard.history.push({
+    version: this.jobCard.version,
+    changes: changes,
+    changedBy: userId,
+    changedAt: new Date()
+  });
+  this.lastUpdatedBy = userId;
+};
+
+workshopJobSchema.methods.addCustomerComment = function(comment, customerName) {
+  this.customerPortal.customerComments.push({
+    comment: comment,
+    commentedBy: customerName,
+    commentedAt: new Date(),
+    isInternal: false
+  });
+};
+
+workshopJobSchema.methods.addStatusUpdate = function(status, message, userId, notifyCustomer = true) {
+  this.customerPortal.statusUpdates.push({
+    status: status,
+    message: message,
+    updatedBy: userId,
+    updatedAt: new Date(),
+    notifyCustomer: notifyCustomer
+  });
+};
+
+workshopJobSchema.methods.calculateJobCosts = function() {
+  let materialCost = 0;
+  let laborCost = 0;
+  
+  // Calculate material costs from parts
+  for (const part of this.parts) {
+    if (part.quantityUsed > 0) {
+      materialCost += (part.unitCost || 0) * part.quantityUsed;
+    }
+  }
+  
+  // Calculate labor costs from tasks
+  for (const task of this.tasks) {
+    if (task.actualDuration && task.assignee) {
+      // This would need to be enhanced with actual labor rates
+      const hourlyRate = 50; // Default hourly rate - should come from technician profile
+      laborCost += (task.actualDuration / 60) * hourlyRate;
+    }
+  }
+  
+  this.jobCard.materialCost = materialCost;
+  this.jobCard.laborCost = laborCost;
+  this.jobCard.actualCost = materialCost + laborCost;
+  
+  return {
+    materialCost,
+    laborCost,
+    totalCost: materialCost + laborCost
+  };
+};
+
+workshopJobSchema.methods.checkResourceConflicts = async function() {
+  const conflicts = [];
+  
+  // Check technician conflicts
+  for (const tech of this.resources.assignedTechnicians) {
+    const existingJobs = await this.constructor.find({
+      _id: { $ne: this._id },
+      'resources.assignedTechnicians.user': tech.user,
+      status: { $in: ['scheduled', 'in_progress'] },
+      'scheduled.start': { $lt: this.scheduled.end },
+      'scheduled.end': { $gt: this.scheduled.start }
+    });
+    
+    if (existingJobs.length > 0) {
+      conflicts.push({
+        resourceId: tech.user,
+        resourceType: 'technician',
+        conflictReason: 'Technician already assigned to another job',
+        suggestedTime: null,
+        resolved: false
+      });
+    }
+  }
+  
+  // Check machine conflicts
+  for (const machine of this.resources.requiredMachines) {
+    const Machine = require('./Machine');
+    const machineDoc = await Machine.findById(machine.machineId);
+    
+    if (machineDoc && !machineDoc.availability.isAvailable) {
+      conflicts.push({
+        resourceId: machine.machineId,
+        resourceType: 'machine',
+        conflictReason: 'Machine is not available',
+        suggestedTime: machineDoc.availability.availableFrom,
+        resolved: false
+      });
+    }
+  }
+  
+  this.scheduled.conflicts = conflicts;
+  return conflicts;
+};
+
+workshopJobSchema.methods.generateWorkOrderNumber = async function() {
+  const count = await this.constructor.countDocuments();
+  const year = new Date().getFullYear();
+  const month = String(new Date().getMonth() + 1).padStart(2, '0');
+  const number = String(count + 1).padStart(4, '0');
+  return `WO-${year}${month}-${number}`;
 };
 
 // Pre-save middleware
@@ -286,8 +499,34 @@ workshopJobSchema.pre('save', async function(next) {
     this.jobCard.cardNumber = await this.generateJobCardNumber();
   }
   
+  // Generate work order number if not exists
+  if (!this.jobCard.workOrderNumber && this.status !== 'draft') {
+    this.jobCard.workOrderNumber = await this.generateWorkOrderNumber();
+  }
+  
   // Update progress based on tasks
   this.updateProgress();
+  
+  // Calculate job costs
+  this.calculateJobCosts();
+  
+  // Set warranty expiry if warranty period is set
+  if (this.jobCard.warrantyPeriod && !this.jobCard.warrantyExpiry) {
+    const completionDate = this.status === 'completed' ? new Date() : this.scheduled.end;
+    if (completionDate) {
+      this.jobCard.warrantyExpiry = new Date(completionDate.getTime() + (this.jobCard.warrantyPeriod * 24 * 60 * 60 * 1000));
+    }
+  }
+  
+  // Update customer portal estimated completion
+  if (this.scheduled.end && !this.customerPortal.estimatedCompletion) {
+    this.customerPortal.estimatedCompletion = this.scheduled.end;
+  }
+  
+  // Set actual completion date when job is completed
+  if (this.status === 'completed' && !this.customerPortal.actualCompletion) {
+    this.customerPortal.actualCompletion = new Date();
+  }
   
   next();
 });

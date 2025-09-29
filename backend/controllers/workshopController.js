@@ -965,6 +965,330 @@ const getCustomerJobs = async (req, res) => {
   }
 };
 
+// @desc    Update job card with version control
+// @route   PUT /api/workshop/jobs/:id/job-card
+// @access  Private
+const updateJobCard = async (req, res) => {
+  try {
+    const { changes, ...updateData } = req.body;
+    const job = await WorkshopJob.findById(req.params.id);
+    
+    if (!job) {
+      return res.status(404).json({
+        success: false,
+        message: 'Job not found'
+      });
+    }
+
+    // Update job card data
+    Object.assign(job.jobCard, updateData);
+    
+    // Add version history
+    if (changes) {
+      job.updateJobCardVersion(changes, req.user._id);
+    }
+
+    await job.save();
+
+    const updatedJob = await WorkshopJob.findById(job._id)
+      .populate('customer', 'firstName lastName email phone')
+      .populate('createdBy', 'firstName lastName')
+      .populate('jobCard.history.changedBy', 'firstName lastName');
+
+    res.json({
+      success: true,
+      message: 'Job card updated successfully',
+      data: updatedJob
+    });
+  } catch (error) {
+    console.error('Update job card error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+};
+
+// @desc    Add customer comment to job
+// @route   POST /api/workshop/jobs/:id/customer-comment
+// @access  Private
+const addCustomerComment = async (req, res) => {
+  try {
+    const { comment, customerName } = req.body;
+    const job = await WorkshopJob.findById(req.params.id);
+    
+    if (!job) {
+      return res.status(404).json({
+        success: false,
+        message: 'Job not found'
+      });
+    }
+
+    job.addCustomerComment(comment, customerName);
+    await job.save();
+
+    res.json({
+      success: true,
+      message: 'Comment added successfully',
+      data: job.customerPortal.customerComments
+    });
+  } catch (error) {
+    console.error('Add customer comment error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+};
+
+// @desc    Add status update to job
+// @route   POST /api/workshop/jobs/:id/status-update
+// @access  Private
+const addStatusUpdate = async (req, res) => {
+  try {
+    const { status, message, notifyCustomer = true } = req.body;
+    const job = await WorkshopJob.findById(req.params.id);
+    
+    if (!job) {
+      return res.status(404).json({
+        success: false,
+        message: 'Job not found'
+      });
+    }
+
+    job.addStatusUpdate(status, message, req.user._id, notifyCustomer);
+    await job.save();
+
+    res.json({
+      success: true,
+      message: 'Status update added successfully',
+      data: job.customerPortal.statusUpdates
+    });
+  } catch (error) {
+    console.error('Add status update error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+};
+
+// @desc    Check resource conflicts for job
+// @route   GET /api/workshop/jobs/:id/check-conflicts
+// @access  Private
+const checkResourceConflicts = async (req, res) => {
+  try {
+    const job = await WorkshopJob.findById(req.params.id);
+    
+    if (!job) {
+      return res.status(404).json({
+        success: false,
+        message: 'Job not found'
+      });
+    }
+
+    const conflicts = await job.checkResourceConflicts();
+    await job.save();
+
+    res.json({
+      success: true,
+      data: {
+        conflicts,
+        hasConflicts: conflicts.length > 0
+      }
+    });
+  } catch (error) {
+    console.error('Check resource conflicts error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+};
+
+// @desc    Get job analytics and insights
+// @route   GET /api/workshop/jobs/:id/analytics
+// @access  Private
+const getJobAnalytics = async (req, res) => {
+  try {
+    const job = await WorkshopJob.findById(req.params.id)
+      .populate('parts.product', 'name sku pricing')
+      .populate('tasks.assignee', 'firstName lastName')
+      .populate('resources.assignedTechnicians.user', 'firstName lastName');
+
+    if (!job) {
+      return res.status(404).json({
+        success: false,
+        message: 'Job not found'
+      });
+    }
+
+    // Calculate analytics
+    const analytics = {
+      efficiency: {
+        estimatedDuration: job.scheduled.estimatedDuration || 0,
+        actualDuration: job.scheduled.actualDuration || 0,
+        efficiency: job.scheduled.actualDuration && job.scheduled.estimatedDuration 
+          ? Math.round((job.scheduled.estimatedDuration / job.scheduled.actualDuration) * 100)
+          : 0
+      },
+      costs: job.calculateJobCosts(),
+      parts: {
+        total: job.parts.length,
+        available: job.parts.filter(p => p.isAvailable).length,
+        shortage: job.parts.filter(p => p.status === 'shortage').length,
+        used: job.parts.filter(p => p.quantityUsed > 0).length
+      },
+      tasks: {
+        total: job.tasks.length,
+        completed: job.tasks.filter(t => t.status === 'completed').length,
+        inProgress: job.tasks.filter(t => t.status === 'in_progress').length,
+        pending: job.tasks.filter(t => t.status === 'todo').length
+      },
+      timeline: {
+        created: job.createdAt,
+        scheduled: job.scheduled.start,
+        deadline: job.deadline,
+        completed: job.customerPortal.actualCompletion
+      }
+    };
+
+    res.json({
+      success: true,
+      data: analytics
+    });
+  } catch (error) {
+    console.error('Get job analytics error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+};
+
+// @desc    Get workshop dashboard data
+// @route   GET /api/workshop/dashboard
+// @access  Private
+const getWorkshopDashboard = async (req, res) => {
+  try {
+    const { period = '30d' } = req.query;
+    
+    // Calculate date range
+    const now = new Date();
+    let startDate;
+    switch (period) {
+      case '7d':
+        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        break;
+      case '30d':
+        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        break;
+      case '90d':
+        startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+        break;
+      default:
+        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    }
+
+    // Get job statistics
+    const totalJobs = await WorkshopJob.countDocuments({ 
+      isActive: true,
+      createdAt: { $gte: startDate }
+    });
+    
+    const completedJobs = await WorkshopJob.countDocuments({ 
+      status: 'completed',
+      isActive: true,
+      createdAt: { $gte: startDate }
+    });
+    
+    const inProgressJobs = await WorkshopJob.countDocuments({ 
+      status: 'in_progress',
+      isActive: true
+    });
+    
+    const overdueJobs = await WorkshopJob.countDocuments({ 
+      deadline: { $lt: now },
+      status: { $nin: ['completed', 'cancelled'] },
+      isActive: true
+    });
+
+    // Get efficiency metrics
+    const completedJobsWithDuration = await WorkshopJob.find({
+      status: 'completed',
+      isActive: true,
+      createdAt: { $gte: startDate },
+      'scheduled.estimatedDuration': { $exists: true, $gt: 0 },
+      'scheduled.actualDuration': { $exists: true, $gt: 0 }
+    });
+
+    const avgEfficiency = completedJobsWithDuration.length > 0
+      ? completedJobsWithDuration.reduce((sum, job) => {
+          const efficiency = (job.scheduled.estimatedDuration / job.scheduled.actualDuration) * 100;
+          return sum + efficiency;
+        }, 0) / completedJobsWithDuration.length
+      : 0;
+
+    // Get resource utilization
+    const resourceStats = await WorkshopJob.aggregate([
+      { $match: { isActive: true, createdAt: { $gte: startDate } } },
+      { $unwind: '$resources.assignedTechnicians' },
+      { $group: {
+        _id: '$resources.assignedTechnicians.user',
+        jobCount: { $sum: 1 },
+        totalHours: { $sum: { $divide: ['$scheduled.actualDuration', 60] } }
+      }},
+      { $lookup: {
+        from: 'users',
+        localField: '_id',
+        foreignField: '_id',
+        as: 'technician'
+      }},
+      { $unwind: '$technician' },
+      { $project: {
+        name: { $concat: ['$technician.firstName', ' ', '$technician.lastName'] },
+        jobCount: 1,
+        totalHours: 1
+      }}
+    ]);
+
+    // Get recent activity
+    const recentJobs = await WorkshopJob.find({ isActive: true })
+      .populate('customer', 'firstName lastName')
+      .populate('createdBy', 'firstName lastName')
+      .sort({ updatedAt: -1 })
+      .limit(10)
+      .select('title status priority progress customer createdBy updatedAt');
+
+    res.json({
+      success: true,
+      data: {
+        overview: {
+          totalJobs,
+          completedJobs,
+          inProgressJobs,
+          overdueJobs,
+          completionRate: totalJobs > 0 ? Math.round((completedJobs / totalJobs) * 100) : 0
+        },
+        efficiency: {
+          averageEfficiency: Math.round(avgEfficiency),
+          onTimeCompletion: completedJobsWithDuration.filter(job => 
+            job.scheduled.actualDuration <= job.scheduled.estimatedDuration
+          ).length
+        },
+        resources: resourceStats,
+        recentActivity: recentJobs
+      }
+    });
+  } catch (error) {
+    console.error('Get workshop dashboard error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+};
+
 module.exports = {
   createJob,
   getJobs,
@@ -985,7 +1309,13 @@ module.exports = {
   reserveParts,
   getAvailableResources,
   getJobStats,
-  getCustomerJobs
+  getCustomerJobs,
+  updateJobCard,
+  addCustomerComment,
+  addStatusUpdate,
+  checkResourceConflicts,
+  getJobAnalytics,
+  getWorkshopDashboard
 };
 
 

@@ -225,6 +225,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         warehouses: ['read', 'create', 'update', 'delete'],
         stockAlerts: ['read', 'create', 'update', 'delete'],
         purchaseOrders: ['read', 'create', 'update', 'delete'],
+        resources: ['read', 'create', 'update', 'delete'],
       },
       manager: {
         users: ['read', 'create', 'update'],
@@ -248,6 +249,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         warehouses: ['read', 'create', 'update', 'delete'],
         stockAlerts: ['read', 'create', 'update', 'delete'],
         purchaseOrders: ['read', 'create', 'update', 'delete'],
+        resources: ['read', 'create', 'update', 'delete'],
       },
       employee: {
         users: ['read'],
@@ -271,6 +273,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         warehouses: ['read'],
         stockAlerts: ['read', 'update'],
         purchaseOrders: ['read'],
+        resources: ['read', 'create', 'update'],
       },
       customer: {
         users: ['read'],

@@ -15,17 +15,17 @@ export const ROLE_ROUTES: Record<UserRole, RoleRoute> = {
   admin: {
     role: 'admin',
     defaultPath: '/dashboard',
-    allowedPaths: ['/dashboard', '/users', '/products', '/customers', '/suppliers', '/invoices', '/inventory', '/pos', '/support', '/accounts', '/transactions', '/workshop', '/reports', '/settings', '/analytics', '/customer-inquiries', '/quotations', '/orders', '/deliveries', '/warehouses', '/warehouse-portal', '/stock-alerts', '/purchase-orders', '/profile']
+    allowedPaths: ['/dashboard', '/users', '/products', '/customers', '/suppliers', '/invoices', '/inventory', '/pos', '/support', '/accounts', '/transactions', '/workshop', '/reports', '/settings', '/analytics', '/customer-inquiries', '/quotations', '/orders', '/deliveries', '/warehouses', '/warehouse-portal', '/stock-alerts', '/purchase-orders', '/resources', '/profile']
   },
   manager: {
     role: 'manager',
     defaultPath: '/dashboard',
-    allowedPaths: ['/dashboard', '/users', '/products', '/customers', '/suppliers', '/invoices', '/inventory', '/pos', '/support', '/accounts', '/transactions', '/workshop', '/reports', '/settings', '/customer-inquiries', '/quotations', '/orders', '/deliveries', '/warehouses', '/warehouse-portal', '/stock-alerts', '/purchase-orders', '/profile']
+    allowedPaths: ['/dashboard', '/users', '/products', '/customers', '/suppliers', '/invoices', '/inventory', '/pos', '/support', '/accounts', '/transactions', '/workshop', '/reports', '/settings', '/customer-inquiries', '/quotations', '/orders', '/deliveries', '/warehouses', '/warehouse-portal', '/stock-alerts', '/purchase-orders', '/resources', '/profile']
   },
   employee: {
     role: 'employee',
     defaultPath: '/dashboard',
-    allowedPaths: ['/dashboard', '/products', '/customers', '/invoices', '/inventory', '/pos', '/support', '/accounts', '/transactions', '/workshop', '/reports', '/customer-inquiries', '/quotations', '/orders', '/deliveries', '/warehouse-portal', '/profile']
+    allowedPaths: ['/dashboard', '/products', '/customers', '/invoices', '/inventory', '/pos', '/support', '/accounts', '/transactions', '/workshop', '/reports', '/customer-inquiries', '/quotations', '/orders', '/deliveries', '/warehouse-portal', '/resources', '/profile']
   },
   customer: {
     role: 'customer',

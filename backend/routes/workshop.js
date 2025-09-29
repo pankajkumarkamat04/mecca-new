@@ -20,7 +20,13 @@ const {
   reserveParts,
   getAvailableResources,
   getJobStats,
-  getCustomerJobs
+  getCustomerJobs,
+  updateJobCard,
+  addCustomerComment,
+  addStatusUpdate,
+  checkResourceConflicts,
+  getJobAnalytics,
+  getWorkshopDashboard
 } = require('../controllers/workshopController');
 
 const router = express.Router();
@@ -56,6 +62,18 @@ router.get('/:id/available-resources', auth, getAvailableResources);
 // Statistics and customer portal
 router.get('/stats', auth, getJobStats);
 router.get('/customer/:customerId', auth, getCustomerJobs);
+
+// Enhanced job card management
+router.put('/:id/job-card', auth, checkPermission('workshop', 'update'), updateJobCard);
+router.post('/:id/customer-comment', auth, addCustomerComment);
+router.post('/:id/status-update', auth, checkPermission('workshop', 'update'), addStatusUpdate);
+
+// Resource conflict detection
+router.get('/:id/check-conflicts', auth, checkResourceConflicts);
+
+// Analytics and insights
+router.get('/:id/analytics', auth, getJobAnalytics);
+router.get('/dashboard', auth, getWorkshopDashboard);
 
 module.exports = router;
 
