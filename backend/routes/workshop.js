@@ -31,6 +31,10 @@ const {
 
 const router = express.Router();
 
+// Statistics and customer portal (must come before /:id routes)
+router.get('/stats', auth, getJobStats);
+router.get('/customer/:customerId', auth, getCustomerJobs);
+
 // Basic CRUD operations
 router.get('/', auth, getJobs);
 router.post('/', auth, checkPermission('workshop', 'create'), createJob);
@@ -58,10 +62,6 @@ router.post('/:id/reserve-parts', auth, checkPermission('workshop', 'update'), r
 
 // Resource availability
 router.get('/:id/available-resources', auth, getAvailableResources);
-
-// Statistics and customer portal
-router.get('/stats', auth, getJobStats);
-router.get('/customer/:customerId', auth, getCustomerJobs);
 
 // Enhanced job card management
 router.put('/:id/job-card', auth, checkPermission('workshop', 'update'), updateJobCard);

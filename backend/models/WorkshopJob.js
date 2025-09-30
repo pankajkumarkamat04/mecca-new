@@ -289,7 +289,6 @@ const workshopJobSchema = new mongoose.Schema({
 
 // Indexes for better performance
 workshopJobSchema.index({ customer: 1, status: 1, priority: 1 });
-workshopJobSchema.index({ 'jobCard.cardNumber': 1 });
 workshopJobSchema.index({ 'scheduled.start': 1, 'scheduled.end': 1 });
 workshopJobSchema.index({ 'resources.assignedTechnicians.user': 1 });
 workshopJobSchema.index({ createdBy: 1, createdAt: -1 });

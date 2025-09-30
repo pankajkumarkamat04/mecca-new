@@ -168,9 +168,9 @@ const SupportPage: React.FC = () => {
       key: 'ticketNumber',
       label: 'Ticket',
       sortable: true,
-      render: (value: string, row: SupportTicket) => (
+      render: (row: SupportTicket) => (
         <div>
-          <div className="text-sm font-medium text-gray-900">{value}</div>
+          <div className="text-sm font-medium text-gray-900">{row.ticketNumber}</div>
           <div className="text-sm text-gray-500">{formatDate(row.createdAt)}</div>
         </div>
       ),
@@ -179,9 +179,9 @@ const SupportPage: React.FC = () => {
       key: 'subject',
       label: 'Subject',
       sortable: true,
-      render: (value: string, row: SupportTicket) => (
+      render: (row: SupportTicket) => (
         <div>
-          <div className="text-sm font-medium text-gray-900">{value}</div>
+          <div className="text-sm font-medium text-gray-900">{row.ticketNumber}</div>
           <div className="text-sm text-gray-500 flex items-center">
             <span className="mr-2">{getCategoryIcon(row.category)}</span>
             <span className="capitalize">{row.category.replace('_', ' ')}</span>
@@ -193,7 +193,7 @@ const SupportPage: React.FC = () => {
       key: 'customer',
       label: 'Customer',
       sortable: true,
-      render: (value: any, row: SupportTicket) => (
+      render: (row: SupportTicket) => (
         <div className="text-sm text-gray-900">
           {typeof row.customer === 'object' 
             ? `${row.customer.firstName} ${row.customer.lastName}`
@@ -206,7 +206,7 @@ const SupportPage: React.FC = () => {
       key: 'assignedTo',
       label: 'Assigned To',
       sortable: true,
-      render: (value: any, row: SupportTicket) => (
+      render: (row: SupportTicket) => (
         <div className="text-sm text-gray-900">
           {row.assignedTo && typeof row.assignedTo === 'object'
             ? `${row.assignedTo.firstName} ${row.assignedTo.lastName}`
@@ -219,9 +219,9 @@ const SupportPage: React.FC = () => {
       key: 'priority',
       label: 'Priority',
       sortable: true,
-      render: (value: string, row: SupportTicket) => (
+      render: (row: SupportTicket) => (
         <div className="flex flex-col space-y-1">
-          {getPriorityBadge(value)}
+          {getPriorityBadge(row.priority)}
           {isOverdue(row) && (
             <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
               <ExclamationTriangleIcon className="h-3 w-3 mr-1" />
@@ -241,7 +241,7 @@ const SupportPage: React.FC = () => {
       key: 'lastUpdate',
       label: 'Last Update',
       sortable: true,
-      render: (value: string, row: SupportTicket) => (
+      render: (row: SupportTicket) => (
         <div className="text-sm text-gray-900">
           {row.conversations && row.conversations.length > 0
             ? formatDate(row.conversations[row.conversations.length - 1].createdAt)
@@ -253,7 +253,7 @@ const SupportPage: React.FC = () => {
     {
       key: 'actions',
       label: 'Actions',
-      render: (_: any, row: SupportTicket) => (
+      render: (row: SupportTicket) => (
         <div className="flex items-center space-x-2">
           <button
             onClick={() => handleViewTicket(row)}
@@ -650,12 +650,12 @@ const CreateTicketForm: React.FC<{ onClose: () => void; onSuccess: () => void }>
     }));
   };
 
-  const customerOptions = (customersData?.data?.data?.data || []).map((customer: any) => ({
+  const customerOptions = (customersData?.data?.data || []).map((customer: any) => ({
     value: customer._id,
     label: `${customer.firstName} ${customer.lastName} (${customer.email})`
   }));
 
-  const userOptions = (usersData?.data?.data?.data || []).map((user: any) => ({
+  const userOptions = (usersData?.data?.data || []).map((user: any) => ({
     value: user._id,
     label: `${user.firstName} ${user.lastName} (${user.email})`
   }));

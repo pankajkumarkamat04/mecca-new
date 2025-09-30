@@ -10,7 +10,7 @@ import SalesChart from '@/components/charts/SalesChart';
 import PieChart from '@/components/charts/PieChart';
 import BarChart from '@/components/charts/BarChart';
 import { formatCurrency, formatNumber, formatDate } from '@/lib/utils';
-import { analyticsAPI } from '@/lib/api';
+import { insightsAPI } from '@/lib/api';
 import {
   ChartBarIcon,
   ArrowUpIcon,
@@ -42,54 +42,55 @@ const AnalyticsPage: React.FC = () => {
   const [selectedMetric, setSelectedMetric] = useState('revenue');
 
   // Fetch overview data from API
-  const { data: salesData, isLoading: salesDataLoading } = useQuery({
+  const { data: salesData, isLoading: salesDataLoading, error: salesDataError } = useQuery({
     queryKey: ['overview-sales-data', dateRange],
-    queryFn: () => analyticsAPI.getSalesPerformance({
-      dateRange,
-      groupBy: 'day'
-    }),
+    queryFn: () => insightsAPI.getSales({ groupBy: 'day' }),
   });
 
-  const { data: categoryData, isLoading: categoryDataLoading } = useQuery({
+  
+
+  const { data: categoryData, isLoading: categoryDataLoading, error: categoryDataError } = useQuery({
     queryKey: ['overview-category-data', dateRange],
-    queryFn: () => analyticsAPI.getProductPerformance({
-      dateRange,
-      groupBy: 'category'
-    }),
+    queryFn: () => insightsAPI.getSales({ groupBy: 'month' }),
   });
 
-  const { data: topProductsData, isLoading: topProductsLoading } = useQuery({
+  
+
+  const { data: topProductsData, isLoading: topProductsLoading, error: topProductsError } = useQuery({
     queryKey: ['overview-top-products-data', dateRange],
-    queryFn: () => analyticsAPI.getProductPerformance({
-      dateRange,
-      groupBy: 'product',
-      limit: 5
-    }),
+    queryFn: () => insightsAPI.getSales({ groupBy: 'month' }),
   });
 
-  const { data: paymentMethodData, isLoading: paymentMethodLoading } = useQuery({
+  
+
+  const { data: paymentMethodData, isLoading: paymentMethodLoading, error: paymentMethodError } = useQuery({
     queryKey: ['overview-payment-method-data', dateRange],
-    queryFn: () => analyticsAPI.getSalesPerformance({
-      dateRange,
-      groupBy: 'paymentMethod'
-    }),
+    queryFn: () => insightsAPI.getSales({ groupBy: 'month' }),
   });
 
-  const { data: monthlyComparisonData, isLoading: monthlyComparisonLoading } = useQuery({
+  
+
+  const { data: monthlyComparisonData, isLoading: monthlyComparisonLoading, error: monthlyComparisonError } = useQuery({
     queryKey: ['overview-monthly-comparison-data', dateRange],
-    queryFn: () => analyticsAPI.getSalesPerformance({
-      dateRange,
-      groupBy: 'month',
-      compare: true
-    }),
+    queryFn: () => insightsAPI.getSales({ groupBy: 'month' }),
   });
+
+  
 
   // Fetch analytics data
-  const { data: analyticsData, isLoading } = useQuery({
+  const { data: analyticsData, isLoading, error: analyticsError } = useQuery({
     queryKey: ['analytics', dateRange],
-    queryFn: () => analyticsAPI.getOverviewMetrics({ dateRange }),
+    queryFn: () => insightsAPI.getOverview(),
     refetchInterval: 30000
   });
+
+  
+
+  
+
+  
+
+  
 
   const dateRangeOptions = [
     { value: '7d', label: 'Last 7 days' },
@@ -174,6 +175,12 @@ const AnalyticsPage: React.FC = () => {
     }
   ];
 
+  // Derived totals from salesData as fallback (ensures tiles show real data)
+  const analyticsSeries: any[] = Array.isArray((salesData as any)?.data?.data?.analyticsSeries) ? (salesData as any).data.data.analyticsSeries : [];
+  const derivedRevenueTotal = analyticsSeries.reduce((sum, b) => sum + (Number(b.revenue || 0)), 0);
+  const derivedOrdersTotal = analyticsSeries.reduce((sum, b) => sum + (Number(b.orders || 0)), 0);
+  const derivedAOV = derivedOrdersTotal > 0 ? derivedRevenueTotal / derivedOrdersTotal : 0;
+
   const renderTabContent = () => {
     switch (activeTab) {
       case 'sales':
@@ -189,6 +196,8 @@ const AnalyticsPage: React.FC = () => {
 
   const renderOverviewContent = () => (
     <div className="space-y-6">
+      
+
       {/* Key Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <div className="bg-white p-6 rounded-lg shadow">
@@ -199,7 +208,7 @@ const AnalyticsPage: React.FC = () => {
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Total Revenue</p>
               <p className="text-2xl font-semibold text-gray-900">
-                {isLoading ? '...' : formatCurrency(analyticsData?.data?.totalRevenue || 0)}
+                {isLoading ? '...' : formatCurrency((analyticsData?.data?.totalRevenue ?? derivedRevenueTotal) || 0)}
               </p>
               <div className="flex items-center mt-1">
                 {getGrowthIcon(analyticsData?.data?.revenueGrowth || 0)}
@@ -220,7 +229,7 @@ const AnalyticsPage: React.FC = () => {
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Total Orders</p>
               <p className="text-2xl font-semibold text-gray-900">
-                {isLoading ? '...' : formatNumber(analyticsData?.data?.totalOrders || 0)}
+                {isLoading ? '...' : formatNumber((analyticsData?.data?.totalOrders ?? derivedOrdersTotal) || 0)}
               </p>
               <div className="flex items-center mt-1">
                 {getGrowthIcon(analyticsData?.data?.ordersGrowth || 0)}
@@ -262,7 +271,7 @@ const AnalyticsPage: React.FC = () => {
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Avg Order Value</p>
               <p className="text-2xl font-semibold text-gray-900">
-                {isLoading ? '...' : formatCurrency(analyticsData?.data?.averageOrderValue || 0)}
+                {isLoading ? '...' : formatCurrency((analyticsData?.data?.averageOrderValue ?? derivedAOV) || 0)}
               </p>
               <div className="flex items-center mt-1">
                 {getGrowthIcon(analyticsData?.data?.aovGrowth || 0)}
@@ -281,7 +290,11 @@ const AnalyticsPage: React.FC = () => {
         <ChartContainer
           title="Sales Trend"
           description="Revenue and sales performance over time"
-          trend={{ value: 12.5, isPositive: true, label: 'vs last month' }}
+          trend={{ 
+            value: analyticsData?.data?.revenueGrowth || 0, 
+            isPositive: (analyticsData?.data?.revenueGrowth || 0) >= 0, 
+            label: 'vs last period' 
+          }}
           actions={
             <div className="flex space-x-2">
               <Select
@@ -298,9 +311,10 @@ const AnalyticsPage: React.FC = () => {
               />
             </div>
           }
+          contentHeight={300}
         >
           <SalesChart 
-            data={salesData?.data || []} 
+            data={analyticsSeries || []} 
             type={chartType as 'line' | 'area'}
             height={300}
           />
@@ -309,10 +323,15 @@ const AnalyticsPage: React.FC = () => {
         <ChartContainer
           title="Sales by Category"
           description="Revenue distribution across product categories"
-          trend={{ value: 8.3, isPositive: true, label: 'vs last month' }}
+          trend={{ 
+            value: analyticsData?.data?.ordersGrowth || 0, 
+            isPositive: (analyticsData?.data?.ordersGrowth || 0) >= 0, 
+            label: 'vs last period' 
+          }}
+          contentHeight={300}
         >
           <PieChart 
-            data={categoryData?.data || []}
+            data={categoryData?.data?.data || []}
             height={300}
             showLegend={true}
           />
@@ -324,10 +343,15 @@ const AnalyticsPage: React.FC = () => {
         <ChartContainer
           title="Top Products"
           description="Best performing products by revenue"
-          trend={{ value: 15.2, isPositive: true, label: 'vs last month' }}
+          trend={{ 
+            value: analyticsData?.data?.aovGrowth || 0, 
+            isPositive: (analyticsData?.data?.aovGrowth || 0) >= 0, 
+            label: 'vs last period' 
+          }}
+          contentHeight={300}
         >
           <BarChart 
-            data={topProductsData?.data || []}
+            data={topProductsData?.data?.data || []}
             height={300}
             orientation="horizontal"
             formatValue={(value) => formatCurrency(value)}
@@ -337,10 +361,15 @@ const AnalyticsPage: React.FC = () => {
         <ChartContainer
           title="Payment Methods"
           description="Distribution of payment methods used"
-          trend={{ value: 2.1, isPositive: true, label: 'vs last month' }}
+          trend={{ 
+            value: analyticsData?.data?.customersGrowth || 0, 
+            isPositive: (analyticsData?.data?.customersGrowth || 0) >= 0, 
+            label: 'vs last period' 
+          }}
+          contentHeight={300}
         >
           <PieChart 
-            data={paymentMethodData?.data || []}
+            data={paymentMethodData?.data?.data || []}
             height={300}
             showLegend={true}
             showLabel={true}
@@ -352,10 +381,15 @@ const AnalyticsPage: React.FC = () => {
       <ChartContainer
         title="Monthly Performance Comparison"
         description="Current vs previous year performance"
-        trend={{ value: 18.7, isPositive: true, label: 'vs previous year' }}
+        trend={{ 
+          value: analyticsData?.data?.revenueGrowth || 0, 
+          isPositive: (analyticsData?.data?.revenueGrowth || 0) >= 0, 
+          label: 'vs last period' 
+        }}
+        contentHeight={300}
       >
         <BarChart 
-          data={(monthlyComparisonData?.data || []).map((item: any) => ({
+          data={(monthlyComparisonData?.data?.data || []).map((item: any) => ({
             name: item.name,
             value: item.current,
             color: '#3b82f6'
@@ -375,7 +409,7 @@ const AnalyticsPage: React.FC = () => {
               <span className="text-sm font-medium text-blue-900">Revenue Growth</span>
             </div>
             <p className="text-sm text-blue-700 mt-1">
-              Revenue increased by 12.5% compared to last month, driven by increased customer acquisition.
+              Revenue {analyticsData?.data?.revenueGrowth >= 0 ? 'increased' : 'decreased'} by {Math.abs(analyticsData?.data?.revenueGrowth || 0)}% compared to last period, driven by {analyticsData?.data?.revenueGrowth >= 0 ? 'increased' : 'decreased'} customer acquisition.
             </p>
           </div>
           <div className="bg-green-50 p-4 rounded-lg">
@@ -384,7 +418,7 @@ const AnalyticsPage: React.FC = () => {
               <span className="text-sm font-medium text-green-900">Customer Growth</span>
             </div>
             <p className="text-sm text-green-700 mt-1">
-              Customer base grew by 15.2% with improved retention rates and new customer acquisition.
+              Customer base {analyticsData?.data?.customersGrowth >= 0 ? 'grew' : 'decreased'} by {Math.abs(analyticsData?.data?.customersGrowth || 0)}% with {analyticsData?.data?.customersGrowth >= 0 ? 'improved' : 'declining'} retention rates and {analyticsData?.data?.customersGrowth >= 0 ? 'new' : 'reduced'} customer acquisition.
             </p>
           </div>
           <div className="bg-yellow-50 p-4 rounded-lg">
@@ -393,7 +427,7 @@ const AnalyticsPage: React.FC = () => {
               <span className="text-sm font-medium text-yellow-900">Order Volume</span>
             </div>
             <p className="text-sm text-yellow-700 mt-1">
-              Order volume increased by 8.3% with higher frequency purchases from existing customers.
+              Order volume {analyticsData?.data?.ordersGrowth >= 0 ? 'increased' : 'decreased'} by {Math.abs(analyticsData?.data?.ordersGrowth || 0)}% with {analyticsData?.data?.ordersGrowth >= 0 ? 'higher' : 'lower'} frequency purchases from existing customers.
             </p>
           </div>
         </div>

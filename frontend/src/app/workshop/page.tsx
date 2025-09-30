@@ -74,8 +74,8 @@ const WorkshopPage: React.FC = () => {
     queryFn: () => enhancedWorkshopAPI.getJobStats(),
   });
 
-  const jobs = jobsData?.data?.data?.jobs || [];
-  const pagination = jobsData?.data?.data?.pagination || {};
+  const jobs = jobsData?.data?.data || [];
+  const pagination = jobsData?.data?.pagination || {};
   const stats = statsData?.data?.data || {};
 
   // Create job mutation
@@ -151,7 +151,7 @@ const WorkshopPage: React.FC = () => {
   const checkPartsMutation = useMutation({
     mutationFn: (jobId: string) => enhancedWorkshopAPI.checkPartsAvailability(jobId),
     onSuccess: (response) => {
-      const { allPartsAvailable } = response.data.data;
+      const { allPartsAvailable } = response.data;
       if (allPartsAvailable) {
         toast.success('All parts are available');
       } else {
@@ -253,11 +253,26 @@ const WorkshopPage: React.FC = () => {
     {
       key: 'customer',
       label: 'Customer',
-      render: (job: any) => (
-        <span className="text-sm text-gray-900">
-          {job.customer?.firstName} {job.customer?.lastName}
-        </span>
-      )
+      render: (job: any) => {
+        try {
+          if (!job || !job.customer) {
+            return <span className="text-sm text-gray-900">No Customer</span>;
+          }
+          
+          const firstName = job.customer?.firstName || '';
+          const lastName = job.customer?.lastName || '';
+          const fullName = `${firstName} ${lastName}`.trim();
+          
+          return (
+            <span className="text-sm text-gray-900">
+              {fullName || 'No Customer'}
+            </span>
+          );
+        } catch (error) {
+          console.error('Error rendering customer:', error);
+          return <span className="text-sm text-gray-900">No Customer</span>;
+        }
+      }
     },
     {
       key: 'priority',
@@ -273,7 +288,7 @@ const WorkshopPage: React.FC = () => {
       label: 'Status',
       render: (job: any) => (
         <Badge color={getStatusColor(job.status)}>
-          {job.status.replace('_', ' ')}
+          {job.status?.replace('_', ' ') || 'Unknown'}
         </Badge>
       )
     },
@@ -302,9 +317,9 @@ const WorkshopPage: React.FC = () => {
               {tech.name}
             </Badge>
           ))}
-          {job.resources?.assignedTechnicians?.length > 2 && (
+          {(job.resources?.assignedTechnicians?.length || 0) > 2 && (
             <Badge color="gray" size="sm">
-              +{job.resources.assignedTechnicians.length - 2}
+              +{(job.resources?.assignedTechnicians?.length || 0) - 2}
             </Badge>
           )}
         </div>
@@ -328,7 +343,7 @@ const WorkshopPage: React.FC = () => {
       key: 'actions',
       label: 'Actions',
       render: (job: any) => (
-        <div className="flex gap-1 flex-wrap">
+        <div className="flex gap-1">
           <Button
             variant="ghost"
             size="sm"
@@ -547,10 +562,10 @@ const WorkshopPage: React.FC = () => {
             columns={columns}
             loading={isLoading}
             pagination={{
-              page: pagination.current || 1,
-              limit: pagination.pages || 10,
+              page: pagination.page || 1,
+              limit: pagination.limit || 10,
               total: pagination.total || 0,
-              pages: Math.ceil((pagination.total || 0) / (pagination.pages || 10))
+              pages: pagination.pages || 1
             }}
           />
         </div>
@@ -834,7 +849,7 @@ const CreateJobForm: React.FC<{
     queryFn: () => api.get('/tools'),
   });
 
-  const customers = customersData?.data?.data?.customers || [];
+  const customers = customersData?.data?.data || [];
   const technicians = techniciansData?.data?.data?.technicians || [];
   const tools = toolsData?.data?.data?.tools || [];
 
@@ -1494,8 +1509,8 @@ const ResourceManagementForm: React.FC<{
     queryFn: () => machinesAPI.getMachines({ available: 'true' }),
   });
 
-  const technicians = techniciansData?.data?.data?.technicians || [];
-  const machines = machinesData?.data?.data?.machines || [];
+  const technicians = techniciansData?.data?.technicians || [];
+  const machines = machinesData?.data?.machines || [];
 
   const handleAssignTechnician = () => {
     if (selectedTechnician) {
@@ -1527,7 +1542,7 @@ const ResourceManagementForm: React.FC<{
                   {tech.name} ({tech.role})
                 </Badge>
               ))}
-              {(!job.resources?.assignedTechnicians || job.resources.assignedTechnicians.length === 0) && (
+              {(!job.resources?.assignedTechnicians || job.resources?.assignedTechnicians?.length === 0) && (
                 <span className="text-gray-500 text-sm">No technicians assigned</span>
               )}
             </div>
@@ -1542,7 +1557,7 @@ const ResourceManagementForm: React.FC<{
                   {machine.name}
                 </Badge>
               ))}
-              {(!job.resources?.requiredMachines || job.resources.requiredMachines.length === 0) && (
+              {(!job.resources?.requiredMachines || job.resources?.requiredMachines?.length === 0) && (
                 <span className="text-gray-500 text-sm">No machines booked</span>
               )}
             </div>
@@ -1812,7 +1827,7 @@ const JobDetailsView: React.FC<{
         <div>
           <h3 className="text-lg font-medium text-gray-900 mb-3">Assigned Technicians</h3>
           <div className="space-y-2">
-            {job.resources.assignedTechnicians.map((tech: any, index: number) => (
+            {job.resources?.assignedTechnicians?.map((tech: any, index: number) => (
               <div key={index} className="flex items-center bg-blue-50 p-3 rounded-lg">
                 <UserIcon className="h-5 w-5 text-blue-600 mr-3" />
                 <div>
@@ -1830,7 +1845,7 @@ const JobDetailsView: React.FC<{
         <div>
           <h3 className="text-lg font-medium text-gray-900 mb-3">Tasks</h3>
           <div className="space-y-2">
-            {job.tasks.map((task: any, index: number) => (
+            {job.tasks?.map((task: any, index: number) => (
               <div key={index} className="border border-gray-200 p-3 rounded-lg">
                 <div className="flex items-center justify-between mb-2">
                   <h4 className="text-sm font-medium text-gray-900">{task.title}</h4>

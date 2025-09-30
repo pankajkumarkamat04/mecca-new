@@ -182,7 +182,7 @@ const InventoryPage: React.FC = () => {
       key: 'name',
       label: 'Product',
       sortable: true,
-      render: (value: string, row: any) => {
+      render: (row: any) => {
         const product = row?.product || row;
         return (
           <div className="flex items-center">
@@ -209,7 +209,7 @@ const InventoryPage: React.FC = () => {
       key: 'inventory.currentStock',
       label: 'Current Stock',
       sortable: true,
-      render: (value: number, row: any) => {
+      render: (row: any) => {
         const product = row?.product || row;
         const inv = product?.inventory || {};
         const current = typeof inv.currentStock === 'number' ? inv.currentStock : 0;
@@ -225,7 +225,7 @@ const InventoryPage: React.FC = () => {
       key: 'inventory.minStock',
       label: 'Min Stock',
       sortable: true,
-      render: (value: number, row: any) => {
+      render: (row: any) => {
         const product = row?.product || row;
         const inv = product?.inventory || {};
         const min = typeof inv.minStock === 'number' ? inv.minStock : 0;
@@ -241,7 +241,7 @@ const InventoryPage: React.FC = () => {
       key: 'inventory.maxStock',
       label: 'Max Stock',
       sortable: true,
-      render: (value: number, row: any) => {
+      render: (row: any) => {
         const product = row?.product || row;
         const inv = product?.inventory || {};
         const max = typeof inv.maxStock === 'number' ? inv.maxStock : 0;
@@ -257,7 +257,7 @@ const InventoryPage: React.FC = () => {
       key: 'stockValue',
       label: 'Stock Value',
       sortable: true,
-      render: (value: number, row: any) => {
+      render: (row: any) => {
         const product = row?.product || row;
         const inv = product?.inventory || {};
         const pricing = product?.pricing || {};
@@ -275,7 +275,7 @@ const InventoryPage: React.FC = () => {
       key: 'status',
       label: 'Status',
       sortable: true,
-      render: (value: any, row: any) => {
+      render: (row: any) => {
         const product = row?.product || row;
         const inv = product?.inventory || {};
         const current = typeof inv.currentStock === 'number' ? inv.currentStock : 0;
@@ -297,7 +297,7 @@ const InventoryPage: React.FC = () => {
       key: 'product',
       label: 'Product',
       sortable: true,
-      render: (value: any, row: StockMovement) => (
+      render: (row: StockMovement) => (
         <div className="text-sm font-medium text-gray-900">
           {typeof row.product === 'object' ? row.product.name : 'Unknown Product'}
         </div>
@@ -307,7 +307,7 @@ const InventoryPage: React.FC = () => {
       key: 'type',
       label: 'Type',
       sortable: true,
-      render: (value: string, row: StockMovement) => (
+      render: (row: StockMovement) => (
         <div className="flex items-center">
           {getMovementIcon(row.type)}
           <span className={`ml-2 text-sm font-medium capitalize ${getMovementColor(row.type)}`}>
@@ -320,7 +320,7 @@ const InventoryPage: React.FC = () => {
       key: 'quantity',
       label: 'Quantity',
       sortable: true,
-      render: (value: number, row: StockMovement) => (
+      render: (row: StockMovement) => (
         <div className={`text-sm font-medium ${row.type === 'in' ? 'text-green-600' : 'text-red-600'}`}>
           {row.type === 'in' ? '+' : '-'}{formatNumber(Math.abs(row.quantity))}
         </div>
@@ -461,7 +461,7 @@ const InventoryPage: React.FC = () => {
             </div>
             <DataTable
               columns={levelsColumns}
-              data={inventoryLevels?.data?.data || []}
+              data={Array.isArray(inventoryLevels?.data?.data) ? inventoryLevels.data.data : []}
               loading={levelsLoading}
               emptyMessage="No inventory data found"
             />
@@ -491,7 +491,7 @@ const InventoryPage: React.FC = () => {
             </div>
             <DataTable
               columns={movementsColumns}
-              data={movementsData?.data?.data || []}
+              data={Array.isArray(movementsData?.data?.data) ? movementsData.data.data : []}
               loading={movementsLoading}
               pagination={movementsData?.data?.pagination}
               onPageChange={setCurrentPage}
@@ -516,7 +516,7 @@ const InventoryPage: React.FC = () => {
             </div>
             <DataTable
               columns={levelsColumns}
-              data={lowStockData?.data?.data || []}
+              data={Array.isArray(lowStockData?.data?.data) ? lowStockData.data.data : []}
               loading={levelsLoading}
               emptyMessage="No low stock alerts"
             />

@@ -439,10 +439,10 @@ const MachinesPage: React.FC = () => {
             columns={columns}
             loading={isLoading}
             pagination={{
-              page: pagination.current || 1,
-              limit: pagination.pages || 10,
+              page: pagination.page || 1,
+              limit: pagination.limit || 10,
               total: pagination.total || 0,
-              pages: Math.ceil((pagination.total || 0) / (pagination.pages || 10))
+              pages: pagination.pages || 1
             }}
           />
         </div>

@@ -8,7 +8,11 @@ const {
   // getBalanceSheetReport,
   getInventoryReport,
   // getProjectReport,
-  getDashboardStats
+  getDashboardStats,
+  saveReport,
+  getSavedReports,
+  getSavedReportById,
+  deleteSavedReport
 } = require('../controllers/reportController');
 
 const router = express.Router();
@@ -47,5 +51,25 @@ router.get('/inventory', auth, getInventoryReport);
 // @desc    Get project report
 // @access  Private
 // router.get('/projects', auth, getProjectReport);
+
+// @route   POST /api/reports/save
+// @desc    Save a report to database
+// @access  Private
+router.post('/save', auth, saveReport);
+
+// @route   GET /api/reports/saved
+// @desc    Get all saved reports
+// @access  Private
+router.get('/saved', auth, getSavedReports);
+
+// @route   GET /api/reports/saved/:id
+// @desc    Get a single saved report
+// @access  Private
+router.get('/saved/:id', auth, getSavedReportById);
+
+// @route   DELETE /api/reports/saved/:id
+// @desc    Delete a saved report
+// @access  Private
+router.delete('/saved/:id', auth, deleteSavedReport);
 
 module.exports = router;

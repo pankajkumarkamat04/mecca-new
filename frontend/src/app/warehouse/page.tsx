@@ -38,9 +38,9 @@ const WarehouseDashboard: React.FC = () => {
     queryFn: () => stockAlertAPI.getReplenishmentSuggestions(),
   });
 
-  const alerts = alertsData?.data?.data || alertsData?.data || [];
-  const deliveryStats = deliveryStatsData?.data?.data || deliveryStatsData?.data || {};
-  const replenishmentSuggestions = replenishmentData?.data?.data?.suggestions || replenishmentData?.data?.suggestions || [];
+  const alerts = alertsData?.data?.data || [];
+  const deliveryStats = deliveryStatsData?.data?.data || {};
+  const replenishmentSuggestions = replenishmentData?.data?.data?.suggestions || [];
 
   const tabs = [
     { id: 'overview', name: 'Overview', icon: ChartBarIcon },

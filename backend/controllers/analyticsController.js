@@ -7,6 +7,20 @@ const WorkshopJob = require('../models/WorkshopJob');
 const Technician = require('../models/Technician');
 const StockMovement = require('../models/StockMovement');
 
+// Helper function to get payment method color
+const getPaymentMethodColor = (paymentMethod) => {
+  const colors = {
+    'cash': '#10b981',
+    'card': '#3b82f6',
+    'bank_transfer': '#8b5cf6',
+    'wallet': '#f59e0b',
+    'stripe': '#6366f1',
+    'paypal': '#06b6d4',
+    'other': '#6b7280'
+  };
+  return colors[paymentMethod] || '#6b7280';
+};
+
 // Helper function to get date range
 const getDateRange = (dateRange) => {
   const now = new Date();
@@ -49,7 +63,7 @@ const getOverviewMetrics = async (req, res) => {
     const [
       totalRevenue,
       totalOrders,
-      totalCustomers,
+      totalCustomersActive,
       averageOrderValue,
       previousPeriodRevenue,
       previousPeriodOrders,
@@ -61,26 +75,25 @@ const getOverviewMetrics = async (req, res) => {
         {
           $match: {
             invoiceDate: { $gte: startDate, $lte: endDate },
-            status: { $in: ['paid', 'partial'] }
+            status: { $in: ['paid', 'partial', 'pending', 'overdue'] }
           }
         },
-        { $group: { _id: null, total: { $sum: '$totalAmount' } } }
+        { $group: { _id: null, total: { $sum: '$total' } } }
       ]),
       Invoice.countDocuments({
         invoiceDate: { $gte: startDate, $lte: endDate },
-        status: { $in: ['paid', 'partial'] }
+        status: { $in: ['paid', 'partial', 'pending', 'overdue'] }
       }),
-      Customer.countDocuments({
-        createdAt: { $gte: startDate, $lte: endDate }
-      }),
+      // Total active customers (lifetime), not just this period
+      Customer.countDocuments({ isActive: true }),
       Invoice.aggregate([
         {
           $match: {
             invoiceDate: { $gte: startDate, $lte: endDate },
-            status: { $in: ['paid', 'partial'] }
+            status: { $in: ['paid', 'partial', 'pending', 'overdue'] }
           }
         },
-        { $group: { _id: null, avg: { $avg: '$totalAmount' } } }
+        { $group: { _id: null, avg: { $avg: '$total' } } }
       ]),
       // Previous period metrics for comparison
       Invoice.aggregate([
@@ -90,24 +103,20 @@ const getOverviewMetrics = async (req, res) => {
               $gte: new Date(startDate.getTime() - (endDate.getTime() - startDate.getTime())),
               $lt: startDate
             },
-            status: { $in: ['paid', 'partial'] }
+            status: { $in: ['paid', 'partial', 'pending', 'overdue'] }
           }
         },
-        { $group: { _id: null, total: { $sum: '$totalAmount' } } }
+        { $group: { _id: null, total: { $sum: '$total' } } }
       ]),
       Invoice.countDocuments({
         invoiceDate: { 
           $gte: new Date(startDate.getTime() - (endDate.getTime() - startDate.getTime())),
           $lt: startDate
         },
-        status: { $in: ['paid', 'partial'] }
+        status: { $in: ['paid', 'partial', 'pending', 'overdue'] }
       }),
-      Customer.countDocuments({
-        createdAt: { 
-          $gte: new Date(startDate.getTime() - (endDate.getTime() - startDate.getTime())),
-          $lt: startDate
-        }
-      }),
+      // Use same total for previous to avoid misleading growth when using lifetime count
+      Customer.countDocuments({ isActive: true }),
       Invoice.aggregate([
         {
           $match: {
@@ -115,16 +124,16 @@ const getOverviewMetrics = async (req, res) => {
               $gte: new Date(startDate.getTime() - (endDate.getTime() - startDate.getTime())),
               $lt: startDate
             },
-            status: { $in: ['paid', 'partial'] }
+            status: { $in: ['paid', 'partial', 'pending', 'overdue'] }
           }
         },
-        { $group: { _id: null, avg: { $avg: '$totalAmount' } } }
+        { $group: { _id: null, avg: { $avg: '$total' } } }
       ])
     ]);
 
     const currentRevenue = totalRevenue[0]?.total || 0;
     const currentOrders = totalOrders;
-    const currentCustomers = totalCustomers;
+    const currentCustomers = totalCustomersActive;
     const currentAOV = averageOrderValue[0]?.avg || 0;
 
     const prevRevenue = previousPeriodRevenue[0]?.total || 0;
@@ -166,7 +175,7 @@ const getOverviewMetrics = async (req, res) => {
 // @access  Private
 const getSalesPerformance = async (req, res) => {
   try {
-    const { dateRange = '30d', groupBy = 'day', shop, salesperson } = req.query;
+    const { dateRange = '30d', groupBy = 'day', shop, salesperson, compare } = req.query;
     const { startDate, endDate } = getDateRange(dateRange);
 
     let matchStage = {
@@ -184,45 +193,165 @@ const getSalesPerformance = async (req, res) => {
       matchStage['salesperson'] = salesperson;
     }
 
-    let groupFormat;
-    switch (groupBy) {
-      case 'day':
-        groupFormat = '%Y-%m-%d';
-        break;
-      case 'week':
-        groupFormat = '%Y-%W';
-        break;
-      case 'month':
-        groupFormat = '%Y-%m';
-        break;
-      case 'year':
-        groupFormat = '%Y';
-        break;
-      default:
-        groupFormat = '%Y-%m-%d';
-    }
+    let groupStage;
+    if (groupBy === 'paymentMethod') {
+      // Group by payment method - check if we have payment data
+      const pipeline = [
+        { $match: matchStage },
+        { $unwind: { path: '$payments', preserveNullAndEmptyArrays: true } },
+        {
+          $group: {
+            _id: { $ifNull: ['$payments.method', 'Unknown'] },
+            revenue: { $sum: '$total' },
+            orders: { $sum: 1 },
+            avgOrderValue: { $avg: '$total' }
+          }
+        },
+        { $sort: { revenue: -1 } }
+      ];
+      
+      const salesData = await Invoice.aggregate(pipeline);
+      
+      // If no payment data, create a fallback with all revenue as "Unknown"
+      if (salesData.length === 0) {
+        const fallbackData = await Invoice.aggregate([
+          { $match: matchStage },
+          {
+            $group: {
+              _id: 'Unknown',
+              revenue: { $sum: '$total' },
+              orders: { $sum: 1 },
+              avgOrderValue: { $avg: '$total' }
+            }
+          }
+        ]);
+        
+        const transformedData = fallbackData.map(item => ({
+          name: item._id || 'Unknown',
+          value: item.revenue,
+          revenue: item.revenue,
+          orders: item.orders,
+          avgOrderValue: Math.round(item.avgOrderValue * 100) / 100,
+          color: getPaymentMethodColor(item._id)
+        }));
 
-    const salesData = await Invoice.aggregate([
-      { $match: matchStage },
-      {
+        return res.json({
+          success: true,
+          data: transformedData
+        });
+      }
+      
+      // Transform data for frontend
+      const transformedData = salesData.map(item => ({
+        name: item._id || 'Unknown',
+        value: item.revenue,
+        revenue: item.revenue,
+        orders: item.orders,
+        avgOrderValue: Math.round(item.avgOrderValue * 100) / 100,
+        color: getPaymentMethodColor(item._id)
+      }));
+
+      return res.json({
+        success: true,
+        data: transformedData
+      });
+    } else {
+      // Date-based grouping
+      let groupFormat;
+      switch (groupBy) {
+        case 'day':
+          groupFormat = '%Y-%m-%d';
+          break;
+        case 'week':
+          groupFormat = '%Y-%W';
+          break;
+        case 'month':
+          groupFormat = '%Y-%m';
+          break;
+        case 'year':
+          groupFormat = '%Y';
+          break;
+        default:
+          groupFormat = '%Y-%m-%d';
+      }
+      
+      groupStage = {
         $group: {
           _id: { $dateToString: { format: groupFormat, date: '$invoiceDate' } },
-          revenue: { $sum: '$totalAmount' },
+          revenue: { $sum: '$total' },
           orders: { $sum: 1 },
-          avgOrderValue: { $avg: '$totalAmount' }
+          avgOrderValue: { $avg: '$total' }
         }
-      },
+      };
+    }
+
+    let salesData = await Invoice.aggregate([
+      { $match: matchStage },
+      groupStage,
       { $sort: { _id: 1 } }
     ]);
 
+    // Handle comparison data if requested
+    if (compare === 'true' && groupBy === 'month') {
+      // Get previous period data for comparison
+      const previousPeriodStart = new Date(startDate.getTime() - (endDate.getTime() - startDate.getTime()));
+      const previousPeriodEnd = new Date(startDate.getTime());
+      
+      const previousMatchStage = {
+        ...matchStage,
+        invoiceDate: { $gte: previousPeriodStart, $lt: previousPeriodEnd }
+      };
+      
+      const previousSalesData = await Invoice.aggregate([
+        { $match: previousMatchStage },
+        groupStage,
+        { $sort: { _id: 1 } }
+      ]);
+      
+      // Combine current and previous data
+      const combinedData = salesData.map(current => {
+        const previous = previousSalesData.find(p => p._id === current._id);
+        return {
+          name: current._id,
+          current: current.revenue,
+          previous: previous ? previous.revenue : 0,
+          currentOrders: current.orders,
+          previousOrders: previous ? previous.orders : 0
+        };
+      });
+      
+      salesData = combinedData;
+    }
+
     // Transform data for frontend
-    const transformedData = salesData.map(item => ({
-      date: item._id,
-      sales: item.revenue,
-      revenue: item.revenue,
-      orders: item.orders,
-      avgOrderValue: Math.round(item.avgOrderValue * 100) / 100
-    }));
+    const transformedData = salesData.map(item => {
+      if (groupBy === 'paymentMethod') {
+        return {
+          name: item._id || 'Unknown',
+          value: item.revenue,
+          revenue: item.revenue,
+          orders: item.orders,
+          avgOrderValue: Math.round(item.avgOrderValue * 100) / 100,
+          color: getPaymentMethodColor(item._id)
+        };
+      } else if (compare === 'true' && groupBy === 'month') {
+        return {
+          name: item.name,
+          current: item.current,
+          previous: item.previous,
+          currentOrders: item.currentOrders,
+          previousOrders: item.previousOrders
+        };
+      } else {
+        return {
+          date: item._id,
+          sales: item.revenue,
+          revenue: item.revenue,
+          orders: item.orders,
+          avgOrderValue: Math.round(item.avgOrderValue * 100) / 100
+        };
+      }
+    });
 
     res.json({
       success: true,
@@ -256,7 +385,7 @@ const getSalesByShop = async (req, res) => {
       {
         $group: {
           _id: '$shop',
-          revenue: { $sum: '$totalAmount' },
+          revenue: { $sum: '$total' },
           orders: { $sum: 1 },
           growth: { $avg: 10.4 } // This would be calculated based on previous period
         }
@@ -316,9 +445,9 @@ const getSalesBySalesperson = async (req, res) => {
             salesperson: '$salesperson',
             shop: '$shop'
           },
-          revenue: { $sum: '$totalAmount' },
+          revenue: { $sum: '$total' },
           orders: { $sum: 1 },
-          avgOrderValue: { $avg: '$totalAmount' }
+          avgOrderValue: { $avg: '$total' }
         }
       },
       { $sort: { revenue: -1 } }
@@ -355,17 +484,6 @@ const getProductPerformance = async (req, res) => {
     const { dateRange = '30d', groupBy = 'product', limit = 10 } = req.query;
     const { startDate, endDate } = getDateRange(dateRange);
 
-    let groupStage;
-    switch (groupBy) {
-      case 'category':
-        groupStage = { _id: '$category' };
-        break;
-      case 'product':
-      default:
-        groupStage = { _id: '$productName' };
-        break;
-    }
-
     const productData = await Invoice.aggregate([
       {
         $match: {
@@ -376,10 +494,10 @@ const getProductPerformance = async (req, res) => {
       { $unwind: '$items' },
       {
         $group: {
-          ...groupStage,
-          revenue: { $sum: { $multiply: ['$items.quantity', '$items.price'] } },
+          _id: groupBy === 'category' ? '$items.category' : '$items.name',
+          revenue: { $sum: { $multiply: ['$items.quantity', '$items.unitPrice'] } },
           units: { $sum: '$items.quantity' },
-          avgPrice: { $avg: '$items.price' }
+          avgPrice: { $avg: '$items.unitPrice' }
         }
       },
       { $sort: { revenue: -1 } },
@@ -430,9 +548,9 @@ const getCustomerBehavior = async (req, res) => {
           name: 1,
           email: 1,
           customerType: 1,
-          totalSpent: { $sum: '$invoices.totalAmount' },
+          totalSpent: { $sum: '$invoices.total' },
           orderCount: { $size: '$invoices' },
-          avgOrderValue: { $avg: '$invoices.totalAmount' }
+          avgOrderValue: { $avg: '$invoices.total' }
         }
       },
       {
@@ -721,7 +839,7 @@ const getLeadTimeAnalysis = async (req, res) => {
         $project: {
           name: 1,
           avgLeadTime: { $avg: '$orders.leadTime' },
-          totalCost: { $sum: '$orders.totalAmount' },
+          totalCost: { $sum: '$orders.total' },
           orderCount: { $size: '$orders' }
         }
       },

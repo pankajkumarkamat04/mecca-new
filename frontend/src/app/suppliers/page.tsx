@@ -14,6 +14,7 @@ import { Supplier } from '@/types';
 import toast from 'react-hot-toast';
 import { z } from 'zod';
 import { Form, FormActions, FormField, FormSection } from '@/components/ui/Form';
+import TextArea from '@/components/ui/TextArea';
 import {
   PlusIcon,
   PencilIcon,
@@ -105,7 +106,7 @@ const SuppliersPage: React.FC = () => {
       key: 'name',
       label: 'Supplier',
       sortable: true,
-      render: (value: string, row: any) => (
+      render: (row: any) => (
         <div className="flex items-center">
           <div className="h-10 w-10 bg-gray-300 rounded-full mr-3 flex items-center justify-center">
             <TruckIcon className="h-5 w-5 text-gray-600" />
@@ -121,7 +122,7 @@ const SuppliersPage: React.FC = () => {
       key: 'code',
       label: 'Code',
       sortable: true,
-      render: (_: string, row: any) => (
+      render: (row: any) => (
         <span className="text-sm font-mono text-gray-900">{row.code || row.supplierCode}</span>
       ),
     },
@@ -129,7 +130,7 @@ const SuppliersPage: React.FC = () => {
       key: 'contactPerson',
       label: 'Contact Person',
       sortable: true,
-      render: (_: any, row: any) => {
+      render: (row: any) => {
         const cp = row.contactPerson || {};
         const name = [cp.firstName, cp.lastName].filter(Boolean).join(' ').trim();
         const details = cp.email || cp.phone || '';
@@ -144,10 +145,10 @@ const SuppliersPage: React.FC = () => {
       key: 'rating',
       label: 'Rating',
       sortable: true,
-      render: (value: number) => (
+      render: (row: any) => (
         <div className="flex items-center">
-          <div className="flex">{getRatingStars(value)}</div>
-          <span className="ml-2 text-sm text-gray-600">({value}/5)</span>
+          <div className="flex">{getRatingStars(row.rating)}</div>
+          <span className="ml-2 text-sm text-gray-600">({row.rating}/5)</span>
         </div>
       ),
     },
@@ -155,7 +156,7 @@ const SuppliersPage: React.FC = () => {
       key: 'totalPurchases',
       label: 'Total Purchases',
       sortable: true,
-      render: (_: any, row: any) => (
+      render: (row: any) => (
         <span className="text-sm text-gray-900">{formatCurrency(row.totalPurchases?.amount ?? row.totalPurchases ?? 0)}</span>
       ),
     },
@@ -163,15 +164,15 @@ const SuppliersPage: React.FC = () => {
       key: 'creditLimit',
       label: 'Credit Limit',
       sortable: true,
-      render: (value: number) => (
-        <span className="text-sm text-gray-900">{formatCurrency(value)}</span>
+      render: (row: any) => (
+        <span className="text-sm text-gray-900">{formatCurrency(row.creditLimit)}</span>
       ),
     },
     {
       key: 'lastPurchase',
       label: 'Last Purchase',
       sortable: true,
-      render: (_: any, row: any) => (
+      render: (row: any) => (
         <div className="text-sm text-gray-900">
           {row.lastPurchase ? formatDate(row.lastPurchase) : 'Never'}
         </div>
@@ -181,7 +182,7 @@ const SuppliersPage: React.FC = () => {
       key: 'status',
       label: 'Status',
       sortable: true,
-      render: (_: any, row: any) => {
+      render: (row: any) => {
         const isActive = typeof row.isActive === 'boolean' ? row.isActive : row.status === 'active';
         return (
           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
@@ -195,7 +196,7 @@ const SuppliersPage: React.FC = () => {
     {
       key: 'actions',
       label: 'Actions',
-      render: (_: any, row: Supplier) => (
+      render: (row: Supplier) => (
         <div className="flex items-center space-x-2">
           <button
             onClick={() => handleViewSupplier(row)}
@@ -244,12 +245,30 @@ const SuppliersPage: React.FC = () => {
 
   const supplierSchema = useMemo(() => z.object({
     name: z.string().min(2),
-    contactPerson: z.string().optional().or(z.literal('')),
-    email: z.string().email(),
-    phone: z.string().optional().or(z.literal('')),
-    supplierCode: z.string().min(1),
-    paymentTerms: z.string().min(1),
+    businessInfo: z.object({
+      companyName: z.string().min(2, 'Company name is required'),
+      taxId: z.string().optional(),
+      website: z.string().url().optional().or(z.literal('')),
+    }),
+    contactPerson: z.object({
+      firstName: z.string().optional(),
+      lastName: z.string().optional(),
+      email: z.string().email().optional().or(z.literal('')),
+      phone: z.string().optional().or(z.literal('')),
+    }),
+    address: z.object({
+      street: z.string().min(1, 'Street address is required'),
+      city: z.string().min(1, 'City is required'),
+      state: z.string().min(1, 'State is required'),
+      zipCode: z.string().min(1, 'ZIP code is required'),
+      country: z.string().min(1, 'Country is required'),
+    }),
+    paymentTerms: z.coerce.number().min(0, 'Payment terms must be a non-negative number'),
     creditLimit: z.coerce.number().min(0),
+    currency: z.string().length(3).optional(),
+    status: z.enum(['active', 'inactive', 'suspended']).optional(),
+    rating: z.number().min(1).max(5).optional(),
+    notes: z.string().optional(),
     isActive: z.boolean().default(true),
   }), []);
 
@@ -303,7 +322,7 @@ const SuppliersPage: React.FC = () => {
         {/* Suppliers Table */}
         <DataTable
           columns={columns}
-          data={suppliersData?.data?.data || []}
+          data={Array.isArray(suppliersData?.data?.data) ? suppliersData.data.data : []}
           loading={isPending}
           pagination={suppliersData?.data?.pagination}
           onPageChange={setCurrentPage}
@@ -320,41 +339,128 @@ const SuppliersPage: React.FC = () => {
           <Form
             schema={supplierSchema}
             defaultValues={{
-              name: '', contactPerson: '', email: '', phone: '', supplierCode: '', paymentTerms: 'Net 30', creditLimit: 0, isActive: true,
+              name: '',
+              businessInfo: {
+                companyName: '',
+                taxId: '',
+                website: '',
+              },
+              contactPerson: {
+                firstName: '',
+                lastName: '',
+                email: '',
+                phone: '',
+              },
+              address: {
+                street: '',
+                city: '',
+                state: '',
+                zipCode: '',
+                country: '',
+              },
+              paymentTerms: 30,
+              creditLimit: 0,
+              currency: 'USD',
+              status: 'active',
+              rating: 5,
+              notes: '',
+              isActive: true,
             }}
             onSubmit={async (values) => {
-              const payload = { ...values } as any;
-              if (!payload.contactPerson) delete payload.contactPerson;
-              if (!payload.phone) delete payload.phone;
-              await createSupplierMutation.mutateAsync(payload);
+              await createSupplierMutation.mutateAsync(values);
             }}
             loading={createSupplierMutation.isPending}
           >{(methods) => (
             <div className="space-y-6">
-              <FormSection title="Supplier Details">
+              <FormSection title="Basic Information">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField label="Supplier Name" required error={methods.formState.errors.name?.message as string}>
                     <Input {...methods.register('name')} fullWidth />
                   </FormField>
-                  <FormField label="Contact Person" error={methods.formState.errors.contactPerson?.message as string}>
-                    <Input {...methods.register('contactPerson')} fullWidth />
+                  <FormField label="Company Name" required error={methods.formState.errors.businessInfo?.companyName?.message as string}>
+                    <Input {...methods.register('businessInfo.companyName')} fullWidth />
                   </FormField>
-                  <FormField label="Email" required error={methods.formState.errors.email?.message as string}>
-                    <Input type="email" {...methods.register('email')} fullWidth />
+                  <FormField label="Tax ID" error={methods.formState.errors.businessInfo?.taxId?.message as string}>
+                    <Input {...methods.register('businessInfo.taxId')} fullWidth />
                   </FormField>
-                  <FormField label="Phone" error={methods.formState.errors.phone?.message as string}>
-                    <Input {...methods.register('phone')} fullWidth />
-                  </FormField>
-                  <FormField label="Supplier Code" required error={methods.formState.errors.supplierCode?.message as string}>
-                    <Input {...methods.register('supplierCode')} fullWidth />
-                  </FormField>
-                  <FormField label="Payment Terms" required error={methods.formState.errors.paymentTerms?.message as string}>
-                    <Input {...methods.register('paymentTerms')} placeholder="e.g., Net 30" fullWidth />
-                  </FormField>
-                  <FormField label="Credit Limit" required error={methods.formState.errors.creditLimit?.message as string}>
-                    <Input type="number" step="0.01" {...methods.register('creditLimit')} fullWidth />
+                  <FormField label="Website" error={methods.formState.errors.businessInfo?.website?.message as string}>
+                    <Input {...methods.register('businessInfo.website')} fullWidth />
                   </FormField>
                 </div>
+              </FormSection>
+
+              <FormSection title="Contact Information">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField label="First Name" error={methods.formState.errors.contactPerson?.firstName?.message as string}>
+                    <Input {...methods.register('contactPerson.firstName')} fullWidth />
+                  </FormField>
+                  <FormField label="Last Name" error={methods.formState.errors.contactPerson?.lastName?.message as string}>
+                    <Input {...methods.register('contactPerson.lastName')} fullWidth />
+                  </FormField>
+                  <FormField label="Email" error={methods.formState.errors.contactPerson?.email?.message as string}>
+                    <Input type="email" {...methods.register('contactPerson.email')} fullWidth />
+                  </FormField>
+                  <FormField label="Phone" error={methods.formState.errors.contactPerson?.phone?.message as string}>
+                    <Input {...methods.register('contactPerson.phone')} fullWidth />
+                  </FormField>
+                </div>
+              </FormSection>
+
+              <FormSection title="Address">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField label="Street Address" required error={methods.formState.errors.address?.street?.message as string}>
+                    <Input {...methods.register('address.street')} fullWidth />
+                  </FormField>
+                  <FormField label="City" required error={methods.formState.errors.address?.city?.message as string}>
+                    <Input {...methods.register('address.city')} fullWidth />
+                  </FormField>
+                  <FormField label="State" required error={methods.formState.errors.address?.state?.message as string}>
+                    <Input {...methods.register('address.state')} fullWidth />
+                  </FormField>
+                  <FormField label="ZIP Code" required error={methods.formState.errors.address?.zipCode?.message as string}>
+                    <Input {...methods.register('address.zipCode')} fullWidth />
+                  </FormField>
+                  <FormField label="Country" required error={methods.formState.errors.address?.country?.message as string}>
+                    <Input {...methods.register('address.country')} fullWidth />
+                  </FormField>
+                </div>
+              </FormSection>
+
+              <FormSection title="Business Details">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField label="Payment Terms (Days)" required error={methods.formState.errors.paymentTerms?.message as string}>
+                    <Input type="number" {...methods.register('paymentTerms')} fullWidth />
+                  </FormField>
+                  <FormField label="Credit Limit" error={methods.formState.errors.creditLimit?.message as string}>
+                    <Input type="number" step="0.01" {...methods.register('creditLimit')} fullWidth />
+                  </FormField>
+                  <FormField label="Currency" error={methods.formState.errors.currency?.message as string}>
+                    <Input {...methods.register('currency')} fullWidth />
+                  </FormField>
+                  <FormField label="Status" error={methods.formState.errors.status?.message as string}>
+                    <select {...methods.register('status')} className="input">
+                      <option value="active">Active</option>
+                      <option value="inactive">Inactive</option>
+                      <option value="suspended">Suspended</option>
+                    </select>
+                  </FormField>
+                  <FormField label="Rating" error={methods.formState.errors.rating?.message as string}>
+                    <Input type="number" min="1" max="5" {...methods.register('rating')} fullWidth />
+                  </FormField>
+                  <FormField label="Active" error={methods.formState.errors.isActive?.message as string}>
+                    <select
+                      className="input"
+                      value={methods.watch('isActive') ? 'true' : 'false'}
+                      onChange={(e) => methods.setValue('isActive', e.target.value === 'true')}
+                    >
+                      <option value="true">Active</option>
+                      <option value="false">Inactive</option>
+                    </select>
+                  </FormField>
+                </div>
+                <FormField label="Notes" error={methods.formState.errors.notes?.message as string}>
+                  <TextArea {...methods.register('notes')} rows={3} />
+                </FormField>
               </FormSection>
 
               <FormActions
@@ -378,75 +484,114 @@ const SuppliersPage: React.FC = () => {
               schema={supplierSchema}
               defaultValues={{
                 name: (selectedSupplier as any).name || '',
-                contactPerson: (selectedSupplier as any).contactPerson && typeof (selectedSupplier as any).contactPerson === 'object'
-                  ? [
-                      (selectedSupplier as any).contactPerson.firstName,
-                      (selectedSupplier as any).contactPerson.lastName,
-                    ].filter(Boolean).join(' ')
-                  : (selectedSupplier as any).contactPerson || '',
-                email: (selectedSupplier as any).contactPerson?.email || (selectedSupplier as any).email || '',
-                phone: (selectedSupplier as any).contactPerson?.phone || (selectedSupplier as any).phone || '',
-                supplierCode: (selectedSupplier as any).supplierCode || (selectedSupplier as any).code || '',
-                paymentTerms: String((selectedSupplier as any).paymentTerms ?? ''),
+                businessInfo: {
+                  companyName: (selectedSupplier as any).businessInfo?.companyName || '',
+                  taxId: (selectedSupplier as any).businessInfo?.taxId || '',
+                  website: (selectedSupplier as any).businessInfo?.website || '',
+                },
+                contactPerson: {
+                  firstName: (selectedSupplier as any).contactPerson?.firstName || '',
+                  lastName: (selectedSupplier as any).contactPerson?.lastName || '',
+                  email: (selectedSupplier as any).contactPerson?.email || '',
+                  phone: (selectedSupplier as any).contactPerson?.phone || '',
+                },
+                address: {
+                  street: (selectedSupplier as any).address?.street || '',
+                  city: (selectedSupplier as any).address?.city || '',
+                  state: (selectedSupplier as any).address?.state || '',
+                  zipCode: (selectedSupplier as any).address?.zipCode || '',
+                  country: (selectedSupplier as any).address?.country || '',
+                },
+                paymentTerms: (selectedSupplier as any).paymentTerms ?? 30,
                 creditLimit: (selectedSupplier as any).creditLimit ?? 0,
+                currency: (selectedSupplier as any).currency || 'USD',
+                status: (selectedSupplier as any).status || 'active',
+                rating: (selectedSupplier as any).rating || 5,
+                notes: (selectedSupplier as any).notes || '',
                 isActive: typeof (selectedSupplier as any).isActive === 'boolean' ? (selectedSupplier as any).isActive : (selectedSupplier as any).status === 'active',
               }}
               onSubmit={async (values) => {
-                const [cpFirst, ...cpRest] = (values.contactPerson || '').trim().split(' ');
-                const cpLast = cpRest.join(' ').trim();
-                const payload: any = {
-                  name: values.name,
-                  creditLimit: values.creditLimit,
-                  isActive: values.isActive,
-                };
-                // Map code
-                if (values.supplierCode) {
-                  payload.code = values.supplierCode;
-                }
-                // Map contact person structure if available
-                if (values.contactPerson || values.email || values.phone) {
-                  payload.contactPerson = {
-                    ...(cpFirst ? { firstName: cpFirst } : {}),
-                    ...(cpLast ? { lastName: cpLast } : {}),
-                    ...(values.email ? { email: values.email } : {}),
-                    ...(values.phone ? { phone: values.phone } : {}),
-                  };
-                }
-                // Map payment terms (try number)
-                if (values.paymentTerms !== undefined && values.paymentTerms !== null && String(values.paymentTerms).length > 0) {
-                  const ptNum = Number(values.paymentTerms);
-                  payload.paymentTerms = Number.isFinite(ptNum) ? ptNum : values.paymentTerms;
-                }
-
-                await updateSupplierMutation.mutateAsync({ id: (selectedSupplier as any)._id, data: payload });
+                await updateSupplierMutation.mutateAsync({ id: (selectedSupplier as any)._id, data: values });
               }}
               loading={updateSupplierMutation.isPending}
             >{(methods) => (
               <div className="space-y-6">
-                <FormSection title="Supplier Details">
+                <FormSection title="Basic Information">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField label="Supplier Name" required error={methods.formState.errors.name?.message as string}>
                       <Input {...methods.register('name')} fullWidth />
                     </FormField>
-                    <FormField label="Contact Person" error={methods.formState.errors.contactPerson?.message as string}>
-                      <Input {...methods.register('contactPerson')} placeholder="e.g., John Doe" fullWidth />
+                    <FormField label="Company Name" required error={methods.formState.errors.businessInfo?.companyName?.message as string}>
+                      <Input {...methods.register('businessInfo.companyName')} fullWidth />
                     </FormField>
-                    <FormField label="Email" required error={methods.formState.errors.email?.message as string}>
-                      <Input type="email" {...methods.register('email')} fullWidth />
+                    <FormField label="Tax ID" error={methods.formState.errors.businessInfo?.taxId?.message as string}>
+                      <Input {...methods.register('businessInfo.taxId')} fullWidth />
                     </FormField>
-                    <FormField label="Phone" error={methods.formState.errors.phone?.message as string}>
-                      <Input {...methods.register('phone')} fullWidth />
+                    <FormField label="Website" error={methods.formState.errors.businessInfo?.website?.message as string}>
+                      <Input {...methods.register('businessInfo.website')} fullWidth />
                     </FormField>
-                    <FormField label="Supplier Code" required error={methods.formState.errors.supplierCode?.message as string}>
-                      <Input {...methods.register('supplierCode')} fullWidth />
+                  </div>
+                </FormSection>
+
+                <FormSection title="Contact Information">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField label="First Name" error={methods.formState.errors.contactPerson?.firstName?.message as string}>
+                      <Input {...methods.register('contactPerson.firstName')} fullWidth />
                     </FormField>
-                    <FormField label="Payment Terms" required error={methods.formState.errors.paymentTerms?.message as string}>
-                      <Input {...methods.register('paymentTerms')} placeholder="e.g., Net 30 or 30" fullWidth />
+                    <FormField label="Last Name" error={methods.formState.errors.contactPerson?.lastName?.message as string}>
+                      <Input {...methods.register('contactPerson.lastName')} fullWidth />
                     </FormField>
-                    <FormField label="Credit Limit" required error={methods.formState.errors.creditLimit?.message as string}>
+                    <FormField label="Email" error={methods.formState.errors.contactPerson?.email?.message as string}>
+                      <Input type="email" {...methods.register('contactPerson.email')} fullWidth />
+                    </FormField>
+                    <FormField label="Phone" error={methods.formState.errors.contactPerson?.phone?.message as string}>
+                      <Input {...methods.register('contactPerson.phone')} fullWidth />
+                    </FormField>
+                  </div>
+                </FormSection>
+
+                <FormSection title="Address">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField label="Street Address" required error={methods.formState.errors.address?.street?.message as string}>
+                      <Input {...methods.register('address.street')} fullWidth />
+                    </FormField>
+                    <FormField label="City" required error={methods.formState.errors.address?.city?.message as string}>
+                      <Input {...methods.register('address.city')} fullWidth />
+                    </FormField>
+                    <FormField label="State" required error={methods.formState.errors.address?.state?.message as string}>
+                      <Input {...methods.register('address.state')} fullWidth />
+                    </FormField>
+                    <FormField label="ZIP Code" required error={methods.formState.errors.address?.zipCode?.message as string}>
+                      <Input {...methods.register('address.zipCode')} fullWidth />
+                    </FormField>
+                    <FormField label="Country" required error={methods.formState.errors.address?.country?.message as string}>
+                      <Input {...methods.register('address.country')} fullWidth />
+                    </FormField>
+                  </div>
+                </FormSection>
+
+                <FormSection title="Business Details">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField label="Payment Terms (Days)" required error={methods.formState.errors.paymentTerms?.message as string}>
+                      <Input type="number" {...methods.register('paymentTerms')} fullWidth />
+                    </FormField>
+                    <FormField label="Credit Limit" error={methods.formState.errors.creditLimit?.message as string}>
                       <Input type="number" step="0.01" {...methods.register('creditLimit')} fullWidth />
                     </FormField>
-                    <FormField label="Active">
+                    <FormField label="Currency" error={methods.formState.errors.currency?.message as string}>
+                      <Input {...methods.register('currency')} fullWidth />
+                    </FormField>
+                    <FormField label="Status" error={methods.formState.errors.status?.message as string}>
+                      <select {...methods.register('status')} className="input">
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                        <option value="suspended">Suspended</option>
+                      </select>
+                    </FormField>
+                    <FormField label="Rating" error={methods.formState.errors.rating?.message as string}>
+                      <Input type="number" min="1" max="5" {...methods.register('rating')} fullWidth />
+                    </FormField>
+                    <FormField label="Active" error={methods.formState.errors.isActive?.message as string}>
                       <select
                         className="input"
                         value={methods.watch('isActive') ? 'true' : 'false'}
@@ -457,6 +602,9 @@ const SuppliersPage: React.FC = () => {
                       </select>
                     </FormField>
                   </div>
+                  <FormField label="Notes" error={methods.formState.errors.notes?.message as string}>
+                    <TextArea {...methods.register('notes')} rows={3} />
+                  </FormField>
                 </FormSection>
 
                 <FormActions

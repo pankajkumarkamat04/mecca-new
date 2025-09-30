@@ -114,8 +114,8 @@ const PurchaseOrdersPage: React.FC = () => {
     },
   });
 
-  const orders = ordersData?.data?.data || ordersData?.data || [];
-  const pagination = ordersData?.data?.pagination || ordersData?.data?.pagination || {};
+  const orders = ordersData?.data?.data || [];
+  const pagination = ordersData?.data?.pagination || {};
   const stats = statsData?.data;
 
   const getStatusColor = (status: string) => {
@@ -145,11 +145,11 @@ const PurchaseOrdersPage: React.FC = () => {
     {
       key: 'orderNumber',
       label: 'Order Number',
-      render: (value: string, row: PurchaseOrder) => (
+      render: (row: PurchaseOrder) => (
         <div className="flex items-center">
           <ShoppingCartIcon className="h-5 w-5 text-gray-400 mr-2" />
           <div>
-            <div className="font-medium text-gray-900">{value}</div>
+            <div className="font-medium text-gray-900">{row.orderNumber}</div>
             <div className="text-sm text-gray-500">{row.supplierName}</div>
           </div>
         </div>
@@ -167,10 +167,10 @@ const PurchaseOrdersPage: React.FC = () => {
     {
       key: 'expectedDeliveryDate',
       label: 'Expected Delivery',
-      render: (value: string, row: PurchaseOrder) => (
+      render: (row: PurchaseOrder) => (
         <div className="text-sm">
           <div className={`${row.isOverdue ? 'text-red-600' : 'text-gray-900'}`}>
-            {value ? new Date(value).toLocaleDateString() : 'Not set'}
+            {row.expectedDeliveryDate ? new Date(row.expectedDeliveryDate).toLocaleDateString() : 'Not set'}
           </div>
           {row.isOverdue && (
             <div className="text-xs text-red-500">
@@ -183,10 +183,10 @@ const PurchaseOrdersPage: React.FC = () => {
     {
       key: 'status',
       label: 'Status',
-      render: (value: string, row: PurchaseOrder) => (
+      render: (row: PurchaseOrder) => (
         <div className="flex flex-col space-y-1">
-          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(value)}`}>
-            {value.charAt(0).toUpperCase() + value.slice(1)}
+          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(row.status)}`}>
+            {row.status.charAt(0).toUpperCase() + row.status.slice(1)}
           </span>
           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getPriorityColor(row.priority)}`}>
             {row.priority.charAt(0).toUpperCase() + row.priority.slice(1)}
@@ -221,7 +221,7 @@ const PurchaseOrdersPage: React.FC = () => {
     {
       key: 'actions',
       label: 'Actions',
-      render: (value: any, row: PurchaseOrder) => (
+      render: (row: PurchaseOrder) => (
         <div className="flex items-center space-x-2">
           <button
             onClick={() => {

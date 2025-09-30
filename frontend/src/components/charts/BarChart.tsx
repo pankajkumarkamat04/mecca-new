@@ -31,6 +31,22 @@ const BarChart: React.FC<BarChartProps> = ({
   showGrid = true,
   formatValue = (value) => value.toLocaleString()
 }) => {
+  // Ensure height is a valid positive number (robust coercion)
+  const coerced = Number(height as any);
+  const safeHeight = Number.isFinite(coerced) && coerced > 0 ? coerced : 300;
+  
+  // Debug logging for height issues
+  if (typeof height !== 'number' || isNaN(height)) {
+    console.warn('BarChart: Invalid height prop:', { height, type: typeof height, safeHeight });
+  }
+
+  // Sanitize data: ensure numeric values to avoid NaN heights inside bars
+  const sanitizedData = Array.isArray(data)
+    ? data.map((d) => ({
+        ...d,
+        value: Number.isFinite(d?.value as number) ? (d.value as number) : 0,
+      }))
+    : [];
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
@@ -51,9 +67,9 @@ const BarChart: React.FC<BarChartProps> = ({
   ];
 
   return (
-    <ResponsiveContainer width="100%" height={height}>
+    <ResponsiveContainer width="100%" height={safeHeight}>
       <RechartsBarChart 
-        data={data} 
+        data={sanitizedData} 
         margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
         layout={orientation === 'horizontal' ? 'horizontal' : 'vertical'}
       >
@@ -81,7 +97,7 @@ const BarChart: React.FC<BarChartProps> = ({
           dataKey="value" 
           radius={[4, 4, 0, 0]}
         >
-          {data.map((entry, index) => (
+          {sanitizedData.map((entry, index) => (
             <Cell 
               key={`cell-${index}`} 
               fill={entry.color || defaultColors[index % defaultColors.length]} 

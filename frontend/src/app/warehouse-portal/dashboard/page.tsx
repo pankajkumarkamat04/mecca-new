@@ -157,8 +157,8 @@ const WarehouseDashboard: React.FC = () => {
 
   // Update available users state
   useEffect(() => {
-    if (usersData?.data?.data) {
-      setAvailableUsers(usersData.data.data);
+    if (usersData?.data) {
+      setAvailableUsers(usersData.data);
     }
   }, [usersData]);
 

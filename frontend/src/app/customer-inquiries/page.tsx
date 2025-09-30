@@ -107,8 +107,8 @@ const CustomerInquiriesPage: React.FC = () => {
     },
   });
 
-  const inquiries = inquiriesData?.data?.data || inquiriesData?.data || [];
-  const stats = statsData?.data?.data || statsData?.data || {};
+  const inquiries = inquiriesData?.data?.data || [];
+  const stats = statsData?.data?.data || {};
 
   // Table columns definition
   const columns = [

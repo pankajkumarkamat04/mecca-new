@@ -199,7 +199,7 @@ const CustomerDashboardPage: React.FC = () => {
               <div className="ml-4">
                 <h3 className="text-sm font-medium text-gray-500">Open Tickets</h3>
                 <p className="mt-2 text-3xl font-bold text-orange-600">
-                  {recentTickets?.data?.data?.data ? recentTickets.data.data.data.filter((t: any) => t.status !== 'closed' && t.status !== 'resolved').length : 0}
+                  {recentTickets?.data ? recentTickets.data.filter((t: any) => t.status !== 'closed' && t.status !== 'resolved').length : 0}
                 </p>
                 <div className="mt-4">
                   <Link href="/customer/support" className="text-sm text-orange-600 hover:text-orange-800 flex items-center">
@@ -237,9 +237,9 @@ const CustomerDashboardPage: React.FC = () => {
                     </div>
                   ))}
                 </div>
-              ) : recentInvoices?.data?.data?.data && recentInvoices.data.data.data.length > 0 ? (
+              ) : recentInvoices?.data?.data && recentInvoices.data.data.length > 0 ? (
                 <div className="space-y-3">
-                  {recentInvoices.data.data.data.slice(0, 3).map((invoice: any) => (
+                  {recentInvoices.data.data.slice(0, 3).map((invoice: any) => (
                     <div key={invoice._id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                       <div>
                         <p className="text-sm font-medium text-gray-900">#{invoice.invoiceNumber}</p>
@@ -291,9 +291,9 @@ const CustomerDashboardPage: React.FC = () => {
                     </div>
                   ))}
                 </div>
-              ) : recentTickets?.data?.data?.data && recentTickets.data.data.data.length > 0 ? (
+              ) : recentTickets?.data && recentTickets.data.length > 0 ? (
                 <div className="space-y-3">
-                  {recentTickets.data.data.data.slice(0, 3).map((ticket: any) => (
+                  {recentTickets.data.slice(0, 3).map((ticket: any) => (
                     <div key={ticket._id} className="p-3 bg-gray-50 rounded-lg">
                       <div className="flex items-center justify-between">
                         <div>

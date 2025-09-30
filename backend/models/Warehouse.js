@@ -190,8 +190,7 @@ warehouseSchema.virtual('availableCapacity').get(function() {
   return Math.max(0, this.capacity.totalCapacity - this.capacity.currentOccupancy);
 });
 
-// Indexes
-warehouseSchema.index({ code: 1 });
+// Indexes (avoid duplicating unique indexes)
 warehouseSchema.index({ name: 'text', description: 'text' });
 warehouseSchema.index({ 'address.city': 1 });
 warehouseSchema.index({ isActive: 1 });

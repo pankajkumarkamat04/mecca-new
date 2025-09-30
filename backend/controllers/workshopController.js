@@ -186,7 +186,16 @@ const getJobs = async (req, res) => {
       .limit(limit);
     const total = await WorkshopJob.countDocuments(filter);
 
-    res.json({ success: true, data: jobs, pagination: { page, limit, total, pages: Math.ceil(total / limit) } });
+    res.json({
+      success: true,
+      data: jobs,
+      pagination: {
+        page,
+        limit,
+        total,
+        pages: Math.ceil(total / limit)
+      }
+    });
   } catch (error) {
     console.error('Get jobs error:', error);
     res.status(500).json({ success: false, message: 'Server error' });

@@ -26,7 +26,18 @@ const CreateOrderForm: React.FC<CreateOrderFormProps> = ({ onClose, onSuccess, i
     notes: initialData?.notes || '',
     internalNotes: initialData?.internalNotes || '',
     tags: initialData?.tags || [],
-    items: initialData?.items || [],
+    items: initialData?.items || [{
+      product: '',
+      quantity: 1,
+      unitPrice: 0,
+      discount: 0,
+      taxRate: 0,
+      notes: '',
+      name: '',
+      sku: '',
+      description: '',
+      total: 0
+    }], // Start with one default empty item
   });
 
   const [newItem, setNewItem] = useState({
@@ -59,10 +70,24 @@ const CreateOrderForm: React.FC<CreateOrderFormProps> = ({ onClose, onSuccess, i
 
   const handleItemChange = (index: number, field: string, value: any) => {
     const updatedItems = [...formData.items];
-    updatedItems[index] = {
+    const updatedItem = {
       ...updatedItems[index],
       [field]: value
     };
+
+    // If product is being changed, auto-fill price and product details
+    if (field === 'product' && value) {
+      const product = productsData?.data?.data?.find((p: any) => p._id === value);
+      if (product) {
+        updatedItem.unitPrice = product.pricing?.salePrice || product.pricing?.sellingPrice || 0;
+        updatedItem.name = product.name;
+        updatedItem.sku = product.sku;
+        updatedItem.description = product.description;
+        updatedItem.taxRate = product.pricing?.taxRate || 0;
+      }
+    }
+
+    updatedItems[index] = updatedItem;
     setFormData(prev => ({
       ...prev,
       items: updatedItems
@@ -70,33 +95,24 @@ const CreateOrderForm: React.FC<CreateOrderFormProps> = ({ onClose, onSuccess, i
   };
 
   const handleAddItem = () => {
-    if (newItem.product && newItem.quantity > 0) {
-      const product = productsData?.data?.data?.find((p: any) => p._id === newItem.product);
-      if (product) {
-        const item = {
-          ...newItem,
-          name: product.name,
-          sku: product.sku,
-          description: product.description,
-          unitPrice: newItem.unitPrice || product.pricing.salePrice,
-          total: 0 // Will be calculated
-        };
-        
-        setFormData(prev => ({
-          ...prev,
-          items: [...prev.items, item]
-        }));
-        
-        setNewItem({
-          product: '',
-          quantity: 1,
-          unitPrice: 0,
-          discount: 0,
-          taxRate: 0,
-          notes: ''
-        });
-      }
-    }
+    // Add a new empty item to the list
+    const newEmptyItem = {
+      product: '',
+      quantity: 1,
+      unitPrice: 0,
+      discount: 0,
+      taxRate: 0,
+      notes: '',
+      name: '',
+      sku: '',
+      description: '',
+      total: 0
+    };
+    
+    setFormData(prev => ({
+      ...prev,
+      items: [...prev.items, newEmptyItem]
+    }));
   };
 
   const handleRemoveItem = (index: number) => {
@@ -114,18 +130,21 @@ const CreateOrderForm: React.FC<CreateOrderFormProps> = ({ onClose, onSuccess, i
   };
 
   const calculateTotals = () => {
-    const subtotal = formData.items.reduce((sum: number, item: any) => {
+    // Only calculate totals for items with products selected
+    const validItems = formData.items.filter((item: any) => item.product && item.product.trim() !== '');
+    
+    const subtotal = validItems.reduce((sum: number, item: any) => {
       const discountAmount = (item.unitPrice * item.quantity * item.discount) / 100;
       const afterDiscount = (item.unitPrice * item.quantity) - discountAmount;
       return sum + afterDiscount;
     }, 0);
 
-    const totalDiscount = formData.items.reduce((sum: number, item: any) => {
+    const totalDiscount = validItems.reduce((sum: number, item: any) => {
       const discountAmount = (item.unitPrice * item.quantity * item.discount) / 100;
       return sum + discountAmount;
     }, 0);
 
-    const totalTax = formData.items.reduce((sum: number, item: any) => {
+    const totalTax = validItems.reduce((sum: number, item: any) => {
       const discountAmount = (item.unitPrice * item.quantity * item.discount) / 100;
       const afterDiscount = (item.unitPrice * item.quantity) - discountAmount;
       const taxAmount = (afterDiscount * item.taxRate) / 100;
@@ -140,13 +159,16 @@ const CreateOrderForm: React.FC<CreateOrderFormProps> = ({ onClose, onSuccess, i
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.customer || formData.items.length === 0) {
-      alert('Please select a customer and add at least one item');
+    // Filter out empty items (items without product selected)
+    const validItems = formData.items.filter((item: any) => item.product && item.product.trim() !== '');
+    
+    if (!formData.customer || validItems.length === 0) {
+      alert('Please select a customer and add at least one item with a product selected');
       return;
     }
 
-    // Calculate totals for each item
-    const itemsWithTotals = formData.items.map((item: any) => ({
+    // Calculate totals for each valid item
+    const itemsWithTotals = validItems.map((item: any) => ({
       ...item,
       total: calculateItemTotal(item)
     }));
@@ -235,172 +257,122 @@ const CreateOrderForm: React.FC<CreateOrderFormProps> = ({ onClose, onSuccess, i
 
       {/* Items */}
       <div>
-        <h3 className="text-lg font-medium text-gray-900 mb-4">Items</h3>
-        
-        {/* Add New Item */}
-        <div className="bg-gray-50 p-4 rounded-lg mb-4">
-          <div className="grid grid-cols-5 gap-4 mb-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Product</label>
-              <Select
-                value={newItem.product}
-                onChange={(e) => {
-                  const productId = e.target.value;
-                  const product = productsData?.data?.data?.find((p: any) => p._id === productId);
-                  setNewItem(prev => ({
-                    ...prev,
-                    product: productId,
-                    unitPrice: product?.pricing?.salePrice || 0
-                  }));
-                }}
-                options={[
-                  { value: '', label: 'Select Product' },
-                  ...(productsData?.data?.data?.map((product: any) => ({
-                    value: product._id,
-                    label: `${product.name} (${product.sku})`
-                  })) || [])
-                ]}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Quantity</label>
-              <Input
-                type="number"
-                min="1"
-                value={newItem.quantity}
-                onChange={(e) => setNewItem(prev => ({ ...prev, quantity: parseInt(e.target.value) || 1 }))}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Unit Price</label>
-              <Input
-                type="number"
-                step="0.01"
-                min="0"
-                value={newItem.unitPrice}
-                onChange={(e) => setNewItem(prev => ({ ...prev, unitPrice: parseFloat(e.target.value) || 0 }))}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Discount %</label>
-              <Input
-                type="number"
-                min="0"
-                max="100"
-                value={newItem.discount}
-                onChange={(e) => setNewItem(prev => ({ ...prev, discount: parseFloat(e.target.value) || 0 }))}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Tax %</label>
-              <Input
-                type="number"
-                min="0"
-                max="100"
-                value={newItem.taxRate}
-                onChange={(e) => setNewItem(prev => ({ ...prev, taxRate: parseFloat(e.target.value) || 0 }))}
-              />
-            </div>
-          </div>
-          <div className="flex justify-end">
-            <Button
-              type="button"
-              onClick={handleAddItem}
-              className="flex items-center space-x-2"
-            >
-              <PlusIcon className="h-4 w-4" />
-              <span>Add Item</span>
-            </Button>
-          </div>
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-medium text-gray-900">Items</h3>
+          <Button
+            type="button"
+            onClick={handleAddItem}
+            className="flex items-center space-x-2"
+            variant="outline"
+          >
+            <PlusIcon className="h-4 w-4" />
+            <span>Add Product</span>
+          </Button>
         </div>
-
+        
         {/* Items List */}
-        {formData.items.length > 0 && (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Qty</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Discount</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tax</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {formData.items.map((item: any, index: number) => (
-                  <tr key={index}>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div>
-                        <div className="text-sm font-medium text-gray-900">{item.name}</div>
-                        {item.sku && (
-                          <div className="text-sm text-gray-500">SKU: {item.sku}</div>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <Input
-                        type="number"
-                        min="1"
-                        value={item.quantity}
-                        onChange={(e) => handleItemChange(index, 'quantity', parseInt(e.target.value) || 1)}
-                        className="w-20"
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200 table-fixed">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-48">Product</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-20">Qty</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">Price</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-20">Discount %</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-20">Tax %</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">Total</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-16">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {formData.items.map((item: any, index: number) => (
+                <tr key={index}>
+                  <td className="px-6 py-4">
+                    <div className="w-48 min-w-0">
+                      <Select
+                        value={item.product}
+                        onChange={(e) => handleItemChange(index, 'product', e.target.value)}
+                        options={[
+                          { value: '', label: 'Select Product' },
+                          ...(productsData?.data?.data?.map((product: any) => ({
+                            value: product._id,
+                            label: `${product.name} (${product.sku})`
+                          })) || [])
+                        ]}
+                        className="w-full"
                       />
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <Input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        value={item.unitPrice}
-                        onChange={(e) => handleItemChange(index, 'unitPrice', parseFloat(e.target.value) || 0)}
-                        className="w-24"
-                      />
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <Input
-                        type="number"
-                        min="0"
-                        max="100"
-                        value={item.discount}
-                        onChange={(e) => handleItemChange(index, 'discount', parseFloat(e.target.value) || 0)}
-                        className="w-20"
-                      />
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <Input
-                        type="number"
-                        min="0"
-                        max="100"
-                        value={item.taxRate}
-                        onChange={(e) => handleItemChange(index, 'taxRate', parseFloat(e.target.value) || 0)}
-                        className="w-20"
-                      />
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      {formatCurrency(calculateItemTotal(item))}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                      {item.name && (
+                        <div className="mt-1 text-xs text-gray-500 truncate">
+                          {item.sku && `SKU: ${item.sku}`}
+                        </div>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <Input
+                      type="number"
+                      min="1"
+                      value={item.quantity}
+                      onChange={(e) => handleItemChange(index, 'quantity', parseInt(e.target.value) || 1)}
+                      className="w-16 min-w-0"
+                    />
+                  </td>
+                  <td className="px-6 py-4">
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={item.unitPrice}
+                      onChange={(e) => handleItemChange(index, 'unitPrice', parseFloat(e.target.value) || 0)}
+                      className="w-20 min-w-0"
+                    />
+                  </td>
+                   <td className="px-6 py-4">
+                     <Input
+                       type="number"
+                       min="0"
+                       max="100"
+                       step="1"
+                       value={item.discount}
+                       onChange={(e) => handleItemChange(index, 'discount', parseFloat(e.target.value) || 0)}
+                       className="w-16 min-w-0"
+                     />
+                   </td>
+                   <td className="px-6 py-4">
+                     <Input
+                       type="number"
+                       min="0"
+                       max="100"
+                       step="1"
+                       value={item.taxRate}
+                       onChange={(e) => handleItemChange(index, 'taxRate', parseFloat(e.target.value) || 0)}
+                       className="w-16 min-w-0"
+                     />
+                   </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    {item.product ? formatCurrency(calculateItemTotal(item)) : '$0.00'}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {formData.items.length > 1 && (
                       <button
                         type="button"
                         onClick={() => handleRemoveItem(index)}
                         className="text-red-600 hover:text-red-800"
+                        title="Remove item"
                       >
                         <TrashIcon className="h-4 w-4" />
                       </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* Totals */}
-      {formData.items.length > 0 && (
+      {formData.items.some((item: any) => item.product && item.product.trim() !== '') && (
         <div className="border-t pt-4">
           <div className="flex justify-end">
             <div className="w-64 space-y-2">
@@ -448,7 +420,7 @@ const CreateOrderForm: React.FC<CreateOrderFormProps> = ({ onClose, onSuccess, i
         </Button>
         <Button
           type="submit"
-          disabled={!formData.customer || formData.items.length === 0}
+          disabled={!formData.customer || !formData.items.some((item: any) => item.product && item.product.trim() !== '')}
         >
           {initialData ? 'Update Order' : 'Create Order'}
         </Button>

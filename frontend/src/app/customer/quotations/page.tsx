@@ -36,7 +36,7 @@ const CustomerQuotationsPage: React.FC = () => {
     enabled: !!user?._id,
   });
 
-  const quotations = quotationsData?.data || [];
+  const quotations = quotationsData?.data?.data || [];
 
   const handleViewDetails = (quotation: Quotation) => {
     setSelectedQuotation(quotation);

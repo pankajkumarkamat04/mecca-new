@@ -26,8 +26,8 @@ const validateDateRange = [
 const validateGroupBy = [
   query('groupBy')
     .optional()
-    .isIn(['day', 'week', 'month', 'year'])
-    .withMessage('Group by must be one of: day, week, month, year'),
+    .isIn(['day', 'week', 'month', 'year', 'paymentMethod'])
+    .withMessage('Group by must be one of: day, week, month, year, paymentMethod'),
   handleValidationErrors
 ];
 

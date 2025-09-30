@@ -83,7 +83,7 @@ const TransactionsPage: React.FC = () => {
 
         <DataTable
           columns={columns}
-          data={data?.data?.data || []}
+          data={Array.isArray(data?.data?.data) ? data.data.data : []}
           loading={isLoading}
           pagination={data?.data?.pagination}
           onPageChange={setCurrentPage}

@@ -34,7 +34,8 @@ const machineRoutes = require('./routes/machines');
 const toolRoutes = require('./routes/tools');
 const workstationRoutes = require('./routes/workstations');
 const technicianRoutes = require('./routes/technicians');
-const analyticsRoutes = require('./routes/analytics');
+const analyticsRoutes = require('./routes/analytics'); // temporarily restored for compatibility
+const insightsRoutes = require('./routes/insights');
 
 const app = express();
 
@@ -111,7 +112,7 @@ app.use('/api/settings', settingsRoutes);
 app.use('/api/categories', categoryRoutes);
 // app.use('/api/accounts', accountRoutes);
 app.use('/api/transactions', transactionRoutes);
-app.use('/api/reports', reportRoutes);
+app.use('/api/reports', reportRoutes); // re-enabled for dashboard compatibility
 app.use('/api/workshop', workshopRoutes);
 app.use('/api/quotations', quotationRoutes);
 app.use('/api/orders', orderRoutes);
@@ -124,7 +125,8 @@ app.use('/api/machines', machineRoutes);
 app.use('/api/tools', toolRoutes);
 app.use('/api/workstations', workstationRoutes);
 app.use('/api/technicians', technicianRoutes);
-app.use('/api/analytics', analyticsRoutes);
+app.use('/api/analytics', analyticsRoutes); // temporarily enabled for compatibility during migration
+app.use('/api/insights', insightsRoutes);
 
 // API documentation endpoint
 app.get('/api', (req, res) => {

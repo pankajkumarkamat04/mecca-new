@@ -19,7 +19,7 @@ const getSalesReport = async (req, res) => {
 
     const matchStage = {
       invoiceDate: { $gte: new Date(startDate), $lte: new Date(endDate) },
-      status: { $in: ['paid', 'partial'] }
+      status: { $in: ['paid', 'partial', 'pending', 'overdue'] } // Include pending and overdue invoices
     };
 
     let groupFormat;
@@ -45,9 +45,9 @@ const getSalesReport = async (req, res) => {
       {
         $group: {
           _id: { $dateToString: { format: groupFormat, date: '$invoiceDate' } },
-          totalSales: { $sum: '$totalAmount' },
+          totalSales: { $sum: '$total' },
           totalInvoices: { $sum: 1 },
-          averageInvoice: { $avg: '$totalAmount' }
+          averageInvoice: { $avg: '$total' }
         }
       },
       { $sort: { _id: 1 } }
@@ -91,7 +91,7 @@ const getSalesReport = async (req, res) => {
       {
         $group: {
           _id: '$customer',
-          totalSpent: { $sum: '$totalAmount' },
+          totalSpent: { $sum: '$total' },
           invoiceCount: { $sum: 1 }
         }
       },
@@ -235,7 +235,7 @@ const getProfitLossReport = async (req, res) => {
       {
         $group: {
           _id: null,
-          totalRevenue: { $sum: '$totalAmount' }
+          totalRevenue: { $sum: '$total' }
         }
       }
     ]);
@@ -635,13 +635,13 @@ const getDashboardStats = async (req, res) => {
       {
         $match: {
           invoiceDate: { $gte: thisMonth },
-          status: { $in: ['paid', 'partial'] }
+          status: { $in: ['paid', 'partial', 'pending', 'overdue'] } // Include pending and overdue
         }
       },
       {
         $group: {
           _id: null,
-          totalSales: { $sum: '$totalAmount' },
+          totalSales: { $sum: '$total' },
           invoiceCount: { $sum: 1 }
         }
       }
@@ -677,13 +677,13 @@ const getDashboardStats = async (req, res) => {
       {
         $match: {
           invoiceDate: { $gte: new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000) },
-          status: { $in: ['paid', 'partial'] }
+          status: { $in: ['paid', 'partial', 'pending', 'overdue'] } // Include pending and overdue
         }
       },
       {
         $group: {
           _id: { $dateToString: { format: '%Y-%m-%d', date: '$invoiceDate' } },
-          totalSales: { $sum: '$totalAmount' },
+          totalSales: { $sum: '$total' },
           totalInvoices: { $sum: 1 }
         }
       },
@@ -695,7 +695,7 @@ const getDashboardStats = async (req, res) => {
       {
         $match: {
           invoiceDate: { $gte: new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000) },
-          status: { $in: ['paid', 'partial'] }
+          status: { $in: ['paid', 'partial', 'pending', 'overdue'] } // Include pending and overdue
         }
       },
       { $unwind: '$items' },
@@ -760,6 +760,136 @@ const getDashboardStats = async (req, res) => {
   }
 };
 
+// @desc    Save a report to database
+// @route   POST /api/reports/save
+// @access  Private
+const saveReport = async (req, res) => {
+  try {
+    const Report = require('../models/Report');
+    const { name, type, description, dateRange, filters, data, summary } = req.body;
+
+    const report = await Report.create({
+      name,
+      type,
+      description,
+      dateRange,
+      filters,
+      data,
+      summary,
+      generatedBy: req.user.id
+    });
+
+    res.status(201).json({
+      success: true,
+      data: report
+    });
+  } catch (error) {
+    console.error('Save report error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+};
+
+// @desc    Get all saved reports
+// @route   GET /api/reports/saved
+// @access  Private
+const getSavedReports = async (req, res) => {
+  try {
+    const Report = require('../models/Report');
+    const { type, status, page = 1, limit = 10 } = req.query;
+
+    const filter = { isActive: true };
+    if (type) filter.type = type;
+    if (status) filter.status = status;
+
+    const reports = await Report.find(filter)
+      .populate('generatedBy', 'firstName lastName email')
+      .sort({ generatedAt: -1 })
+      .limit(limit * 1)
+      .skip((page - 1) * limit);
+
+    const total = await Report.countDocuments(filter);
+
+    res.json({
+      success: true,
+      data: {
+        reports,
+        totalPages: Math.ceil(total / limit),
+        currentPage: page,
+        total
+      }
+    });
+  } catch (error) {
+    console.error('Get saved reports error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+};
+
+// @desc    Get a single saved report
+// @route   GET /api/reports/saved/:id
+// @access  Private
+const getSavedReportById = async (req, res) => {
+  try {
+    const Report = require('../models/Report');
+    const report = await Report.findById(req.params.id)
+      .populate('generatedBy', 'firstName lastName email');
+
+    if (!report) {
+      return res.status(404).json({
+        success: false,
+        message: 'Report not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: report
+    });
+  } catch (error) {
+    console.error('Get saved report error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+};
+
+// @desc    Delete a saved report
+// @route   DELETE /api/reports/saved/:id
+// @access  Private
+const deleteSavedReport = async (req, res) => {
+  try {
+    const Report = require('../models/Report');
+    const report = await Report.findById(req.params.id);
+
+    if (!report) {
+      return res.status(404).json({
+        success: false,
+        message: 'Report not found'
+      });
+    }
+
+    report.isActive = false;
+    await report.save();
+
+    res.json({
+      success: true,
+      message: 'Report deleted successfully'
+    });
+  } catch (error) {
+    console.error('Delete saved report error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+};
+
 module.exports = {
   getSalesReport,
   getPurchaseReport,
@@ -767,5 +897,9 @@ module.exports = {
   getBalanceSheetReport,
   getInventoryReport,
   getProjectReport,
-  getDashboardStats
+  getDashboardStats,
+  saveReport,
+  getSavedReports,
+  getSavedReportById,
+  deleteSavedReport
 };

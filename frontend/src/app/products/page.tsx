@@ -144,7 +144,7 @@ const ProductsPage: React.FC = () => {
       key: 'name',
       label: 'Product',
       sortable: true,
-      render: (value: string, row: Product) => (
+      render: (row: Product) => (
         <div className="flex items-center">
           {row.images && row.images.length > 0 ? (
             <img
@@ -168,7 +168,7 @@ const ProductsPage: React.FC = () => {
       key: 'pricing.sellingPrice',
       label: 'Price',
       sortable: true,
-      render: (value: number, row: Product) => (
+      render: (row: Product) => (
         <div>
           <div className="text-sm font-medium text-gray-900">
             {formatCurrency(row.pricing.sellingPrice, row.pricing.currency)}
@@ -183,7 +183,7 @@ const ProductsPage: React.FC = () => {
       key: 'inventory.currentStock',
       label: 'Stock',
       sortable: true,
-      render: (value: number, row: Product) => {
+      render: (row: Product) => {
         const stockStatus = getStockStatus(row.inventory.currentStock, row.inventory.minStock);
         return (
           <div>
@@ -203,10 +203,8 @@ const ProductsPage: React.FC = () => {
       key: 'pricing.markup',
       label: 'Markup',
       sortable: true,
-      render: (value: number, row: Product) => {
-        const computed = typeof value === 'number'
-          ? value
-          : (row?.pricing?.costPrice || row?.pricing?.costPrice === 0)
+      render: (row: Product) => {
+        const computed = (row?.pricing?.costPrice || row?.pricing?.costPrice === 0)
             ? ((row.pricing.sellingPrice - row.pricing.costPrice) / (row.pricing.costPrice || 1)) * 100
             : 0;
         const safe = Number.isFinite(computed) ? computed : 0;
@@ -219,11 +217,11 @@ const ProductsPage: React.FC = () => {
       key: 'isActive',
       label: 'Status',
       sortable: true,
-      render: (value: boolean) => (
+      render: (row: Product) => (
         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-          value ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+          row.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
         }`}>
-          {value ? 'Active' : 'Inactive'}
+          {row.isActive ? 'Active' : 'Inactive'}
         </span>
       ),
     },
@@ -231,12 +229,12 @@ const ProductsPage: React.FC = () => {
       key: 'createdAt',
       label: 'Created',
       sortable: true,
-      render: (value: string) => new Date(value).toLocaleDateString(),
+      render: (row: Product) => new Date(row.createdAt).toLocaleDateString(),
     },
     {
       key: 'actions',
       label: 'Actions',
-      render: (_: any, row: Product) => (
+      render: (row: Product) => (
         <div className="flex items-center space-x-2">
           <button
             onClick={() => handleViewProduct(row)}
@@ -374,7 +372,7 @@ const ProductsPage: React.FC = () => {
         {/* Products Table */}
         <DataTable
           columns={columns}
-          data={productsData?.data?.data || []}
+          data={Array.isArray(productsData?.data?.data) ? productsData.data.data : []}
           loading={isPending}
           pagination={productsData?.data?.pagination}
           onPageChange={setCurrentPage}
@@ -522,7 +520,7 @@ const ProductsPage: React.FC = () => {
                   <FormField label="Warehouse *" error={methods.formState.errors.inventory?.warehouse?.message as string}>
                     <Select
                       {...methods.register('inventory.warehouse')}
-                      options={warehousesData?.data?.data?.map((warehouse: any) => ({
+                      options={warehousesData?.data?.map((warehouse: any) => ({
                         value: warehouse._id,
                         label: `${warehouse.name} (${warehouse.code})`
                       })) || []}
@@ -820,7 +818,7 @@ const ProductsPage: React.FC = () => {
                     <FormField label="Warehouse *" error={methods.formState.errors.inventory?.warehouse?.message as string}>
                       <Select
                         {...methods.register('inventory.warehouse')}
-                        options={warehousesData?.data?.data?.map((warehouse: any) => ({
+                        options={warehousesData?.data?.map((warehouse: any) => ({
                           value: warehouse._id,
                           label: `${warehouse.name} (${warehouse.code})`
                         })) || []}

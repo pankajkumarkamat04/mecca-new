@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import WarehousePortalLayout from '../layout';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { warehouseAPI, deliveryAPI } from '@/lib/api';
+import { warehouseAPI, deliveriesAPI } from '@/lib/api';
 import Button from '@/components/ui/Button';
 import DataTable from '@/components/ui/DataTable';
 import Modal from '@/components/ui/Modal';
@@ -69,7 +69,7 @@ const WarehouseDeliveries: React.FC = () => {
   // Fetch deliveries for warehouse
   const { data: deliveriesData, isLoading } = useQuery({
     queryKey: ['warehouse-deliveries', warehouseId, statusFilter, searchTerm],
-    queryFn: () => deliveryAPI.getDeliveries({
+    queryFn: () => deliveriesAPI.getDeliveries({
       warehouse: warehouseId,
       status: statusFilter === 'all' ? undefined : statusFilter,
       search: searchTerm,
@@ -81,7 +81,7 @@ const WarehouseDeliveries: React.FC = () => {
   // Update delivery status mutation
   const updateDeliveryStatusMutation = useMutation({
     mutationFn: ({ deliveryId, status }: { deliveryId: string; status: string }) =>
-      deliveryAPI.updateDelivery(deliveryId, { status }),
+      deliveriesAPI.updateDelivery(deliveryId, { status }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['warehouse-deliveries', warehouseId] });
       toast.success('Delivery status updated successfully');
@@ -91,7 +91,7 @@ const WarehouseDeliveries: React.FC = () => {
     },
   });
 
-  const deliveries = deliveriesData?.data?.data || deliveriesData?.data || [];
+  const deliveries = deliveriesData?.data?.data || [];
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -131,9 +131,9 @@ const WarehouseDeliveries: React.FC = () => {
     {
       key: 'deliveryNumber',
       label: 'Delivery',
-      render: (value: string, row: Delivery) => (
+      render: (row: Delivery) => (
         <div>
-          <div className="font-medium text-gray-900">{value}</div>
+          <div className="font-medium text-gray-900">{row.trackingNumber}</div>
           <div className="text-sm text-gray-500">
             Order: {row.order.orderNumber}
           </div>
@@ -143,7 +143,7 @@ const WarehouseDeliveries: React.FC = () => {
     {
       key: 'customer',
       label: 'Customer',
-      render: (value: any, row: Delivery) => (
+      render: (row: Delivery) => (
         <div>
           <div className="font-medium text-gray-900">
             {row.order.customer.firstName} {row.order.customer.lastName}
@@ -155,7 +155,7 @@ const WarehouseDeliveries: React.FC = () => {
     {
       key: 'deliveryAddress',
       label: 'Delivery Address',
-      render: (value: any, row: Delivery) => (
+      render: (row: Delivery) => (
         <div>
           <div className="text-sm text-gray-900">
             {row.deliveryAddress.street}
@@ -169,26 +169,26 @@ const WarehouseDeliveries: React.FC = () => {
     {
       key: 'deliveryDate',
       label: 'Delivery Date',
-      render: (value: string, row: Delivery) => (
+      render: (row: Delivery) => (
         <div className="text-sm text-gray-900">
-          {new Date(value).toLocaleDateString()}
+          {new Date(row.deliveryDate).toLocaleDateString()}
         </div>
       ),
     },
     {
       key: 'status',
       label: 'Status',
-      render: (value: string, row: Delivery) => (
-        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(value)}`}>
-          {getStatusIcon(value)}
-          <span className="ml-1">{value.replace('_', ' ')}</span>
+      render: (row: Delivery) => (
+        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(row.status)}`}>
+          {getStatusIcon(row.status)}
+          <span className="ml-1">{row.status.replace('_', ' ')}</span>
         </span>
       ),
     },
     {
       key: 'actions',
       label: 'Actions',
-      render: (value: any, row: Delivery) => (
+      render: (row: Delivery) => (
         <div className="flex items-center space-x-2">
           <button
             onClick={() => {
@@ -335,7 +335,7 @@ const WarehouseDeliveries: React.FC = () => {
             data={deliveries}
             columns={columns}
             loading={isLoading}
-            pagination={false}
+            pagination={undefined}
           />
         </div>
 
@@ -344,7 +344,7 @@ const WarehouseDeliveries: React.FC = () => {
           isOpen={showDeliveryModal}
           onClose={() => setShowDeliveryModal(false)}
           title={`Delivery Details - ${selectedDelivery?.deliveryNumber}`}
-          size="large"
+          size="lg"
         >
           {selectedDelivery && (
             <div className="space-y-6">

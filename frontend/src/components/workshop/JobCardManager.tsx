@@ -17,7 +17,6 @@ import {
   ClockIcon,
   CurrencyDollarIcon,
   ShieldCheckIcon,
-  HistoryIcon,
   ChatBubbleLeftRightIcon,
   ExclamationTriangleIcon
 } from '@heroicons/react/24/outline';
@@ -97,13 +96,13 @@ const JobCardManager: React.FC<JobCardManagerProps> = ({ job, onClose }) => {
   ];
 
   return (
-    <Modal isOpen={true} onClose={onClose} title="Job Card Manager" size="xl">
-      <div className="space-y-6">
+    <div className="h-full flex flex-col p-6">
+      <div className="flex-shrink-0">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between mb-6">
           <div>
             <h2 className="text-xl font-semibold text-gray-900">{job.title}</h2>
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-gray-600 mt-1">
               Job Card: {job.jobCard?.cardNumber || 'Not generated'} | 
               Work Order: {job.jobCard?.workOrderNumber || 'Not generated'}
             </p>
@@ -113,14 +112,16 @@ const JobCardManager: React.FC<JobCardManagerProps> = ({ job, onClose }) => {
               variant="outline"
               onClick={() => setShowHistory(true)}
               className="flex items-center"
+              size="sm"
             >
-              <HistoryIcon className="h-4 w-4 mr-2" />
+              <ClockIcon className="h-4 w-4 mr-2" />
               History
             </Button>
             <Button
               variant="outline"
               onClick={() => setShowComments(true)}
               className="flex items-center"
+              size="sm"
             >
               <ChatBubbleLeftRightIcon className="h-4 w-4 mr-2" />
               Comments
@@ -128,6 +129,7 @@ const JobCardManager: React.FC<JobCardManagerProps> = ({ job, onClose }) => {
             <Button
               onClick={() => setIsEditing(!isEditing)}
               className="flex items-center"
+              size="sm"
             >
               <PencilIcon className="h-4 w-4 mr-2" />
               {isEditing ? 'Cancel Edit' : 'Edit'}
@@ -137,7 +139,7 @@ const JobCardManager: React.FC<JobCardManagerProps> = ({ job, onClose }) => {
 
         {/* Tabs */}
         <div className="border-b border-gray-200">
-          <nav className="-mb-px flex space-x-8">
+          <nav className="-mb-px flex space-x-6">
             {tabs.map((tab) => {
               const Icon = tab.icon;
               return (
@@ -157,45 +159,51 @@ const JobCardManager: React.FC<JobCardManagerProps> = ({ job, onClose }) => {
             })}
           </nav>
         </div>
+      </div>
 
-        {/* Tab Content */}
-        <div className="space-y-6">
-          {activeTab === 'overview' && (
-            <OverviewTab 
-              job={job} 
-              isEditing={isEditing} 
-              onUpdate={handleUpdateJobCard}
-              loading={updateJobCardMutation.isPending}
-            />
-          )}
-          
-          {activeTab === 'costs' && (
-            <CostsTab 
-              job={job} 
-              isEditing={isEditing} 
-              onUpdate={handleUpdateJobCard}
-              loading={updateJobCardMutation.isPending}
-            />
-          )}
-          
-          {activeTab === 'quality' && (
-            <QualityTab 
-              job={job} 
-              isEditing={isEditing} 
-              onUpdate={handleUpdateJobCard}
-              loading={updateJobCardMutation.isPending}
-            />
-          )}
-          
-          {activeTab === 'warranty' && (
-            <WarrantyTab 
-              job={job} 
-              isEditing={isEditing} 
-              onUpdate={handleUpdateJobCard}
-              loading={updateJobCardMutation.isPending}
-            />
-          )}
-        </div>
+      {/* Tab Content - Scrollable */}
+      <div className="flex-1 overflow-y-auto py-4">
+
+        {activeTab === 'overview' && (
+          <OverviewTab 
+            job={job} 
+            isEditing={isEditing} 
+            onUpdate={handleUpdateJobCard}
+            onCancelEdit={() => setIsEditing(false)}
+            loading={updateJobCardMutation.isPending}
+          />
+        )}
+        
+        {activeTab === 'costs' && (
+          <CostsTab 
+            job={job} 
+            isEditing={isEditing} 
+            onUpdate={handleUpdateJobCard}
+            onCancelEdit={() => setIsEditing(false)}
+            loading={updateJobCardMutation.isPending}
+          />
+        )}
+        
+        {activeTab === 'quality' && (
+          <QualityTab 
+            job={job} 
+            isEditing={isEditing} 
+            onUpdate={handleUpdateJobCard}
+            onCancelEdit={() => setIsEditing(false)}
+            loading={updateJobCardMutation.isPending}
+          />
+        )}
+        
+        {activeTab === 'warranty' && (
+          <WarrantyTab 
+            job={job} 
+            isEditing={isEditing} 
+            onUpdate={handleUpdateJobCard}
+            onCancelEdit={() => setIsEditing(false)}
+            loading={updateJobCardMutation.isPending}
+          />
+        )}
+      </div>
 
         {/* Comments Modal */}
         <Modal
@@ -219,7 +227,6 @@ const JobCardManager: React.FC<JobCardManagerProps> = ({ job, onClose }) => {
           <HistorySection job={job} />
         </Modal>
       </div>
-    </Modal>
   );
 };
 
@@ -228,8 +235,9 @@ const OverviewTab: React.FC<{
   job: any;
   isEditing: boolean;
   onUpdate: (data: any) => void;
+  onCancelEdit: () => void;
   loading: boolean;
-}> = ({ job, isEditing, onUpdate, loading }) => {
+}> = ({ job, isEditing, onUpdate, onCancelEdit, loading }) => {
   const [formData, setFormData] = useState({
     workOrderNumber: job.jobCard?.workOrderNumber || '',
     estimatedCost: job.jobCard?.estimatedCost || 0,
@@ -271,7 +279,7 @@ const OverviewTab: React.FC<{
           rows={3}
         />
         <div className="flex justify-end space-x-3">
-          <Button type="button" variant="outline" onClick={() => setIsEditing(false)}>
+          <Button type="button" variant="outline" onClick={onCancelEdit}>
             Cancel
           </Button>
           <Button type="submit" loading={loading}>
@@ -283,61 +291,73 @@ const OverviewTab: React.FC<{
   }
 
   return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div>
-          <h3 className="text-lg font-medium text-gray-900 mb-3">Job Information</h3>
-          <div className="space-y-2">
-            <div className="flex justify-between">
-              <span className="text-sm text-gray-600">Job Card Number:</span>
-              <span className="text-sm text-gray-900">{job.jobCard?.cardNumber || 'Not generated'}</span>
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Job Information Card */}
+        <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-6">
+          <div className="flex items-center mb-4">
+            <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
+              <DocumentTextIcon className="h-5 w-5 text-blue-600" />
             </div>
-            <div className="flex justify-between">
-              <span className="text-sm text-gray-600">Work Order Number:</span>
-              <span className="text-sm text-gray-900">{job.jobCard?.workOrderNumber || 'Not generated'}</span>
+            <h3 className="text-lg font-semibold text-gray-900">Job Information</h3>
+          </div>
+          <div className="space-y-3">
+            <div className="flex justify-between items-center py-2 border-b border-gray-100">
+              <span className="text-sm font-medium text-gray-600">Job Card Number:</span>
+              <span className="text-sm font-semibold text-gray-900">{job.jobCard?.cardNumber || 'Not generated'}</span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-sm text-gray-600">Version:</span>
+            <div className="flex justify-between items-center py-2 border-b border-gray-100">
+              <span className="text-sm font-medium text-gray-600">Work Order Number:</span>
+              <span className="text-sm font-semibold text-gray-900">{job.jobCard?.workOrderNumber || 'Not generated'}</span>
+            </div>
+            <div className="flex justify-between items-center py-2 border-b border-gray-100">
+              <span className="text-sm font-medium text-gray-600">Version:</span>
               <span className="text-sm text-gray-900">{job.jobCard?.version || 1}</span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-sm text-gray-600">Status:</span>
+            <div className="flex justify-between items-center py-2">
+              <span className="text-sm font-medium text-gray-600">Status:</span>
               <Badge color={
                 job.status === 'completed' ? 'green' :
                 job.status === 'in_progress' ? 'orange' :
                 job.status === 'scheduled' ? 'blue' : 'gray'
               }>
-                {job.status.replace('_', ' ')}
+                {job.status?.replace('_', ' ') || 'Unknown'}
               </Badge>
             </div>
           </div>
         </div>
 
-        <div>
-          <h3 className="text-lg font-medium text-gray-900 mb-3">Scheduling</h3>
-          <div className="space-y-2">
-            <div className="flex justify-between">
-              <span className="text-sm text-gray-600">Scheduled Start:</span>
+        {/* Scheduling Card */}
+        <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-6">
+          <div className="flex items-center mb-4">
+            <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center mr-3">
+              <ClockIcon className="h-5 w-5 text-green-600" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900">Scheduling</h3>
+          </div>
+          <div className="space-y-3">
+            <div className="flex justify-between items-center py-2 border-b border-gray-100">
+              <span className="text-sm font-medium text-gray-600">Scheduled Start:</span>
               <span className="text-sm text-gray-900">
-                {job.scheduled?.start ? formatDate(job.scheduled.start) : 'Not scheduled'}
+                {job.scheduled?.start ? formatDate(job.scheduled.start) : <span className="text-gray-400 italic">Not scheduled</span>}
               </span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-sm text-gray-600">Scheduled End:</span>
+            <div className="flex justify-between items-center py-2 border-b border-gray-100">
+              <span className="text-sm font-medium text-gray-600">Scheduled End:</span>
               <span className="text-sm text-gray-900">
-                {job.scheduled?.end ? formatDate(job.scheduled.end) : 'Not scheduled'}
+                {job.scheduled?.end ? formatDate(job.scheduled.end) : <span className="text-gray-400 italic">Not scheduled</span>}
               </span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-sm text-gray-600">Estimated Duration:</span>
+            <div className="flex justify-between items-center py-2 border-b border-gray-100">
+              <span className="text-sm font-medium text-gray-600">Estimated Duration:</span>
               <span className="text-sm text-gray-900">
-                {job.scheduled?.estimatedDuration ? `${job.scheduled.estimatedDuration} min` : 'Not set'}
+                {job.scheduled?.estimatedDuration ? `${job.scheduled.estimatedDuration} min` : <span className="text-gray-400 italic">Not set</span>}
               </span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-sm text-gray-600">Actual Duration:</span>
+            <div className="flex justify-between items-center py-2">
+              <span className="text-sm font-medium text-gray-600">Actual Duration:</span>
               <span className="text-sm text-gray-900">
-                {job.scheduled?.actualDuration ? `${job.scheduled.actualDuration} min` : 'Not completed'}
+                {job.scheduled?.actualDuration ? `${job.scheduled.actualDuration} min` : <span className="text-gray-400 italic">Not completed</span>}
               </span>
             </div>
           </div>
@@ -345,9 +365,14 @@ const OverviewTab: React.FC<{
       </div>
 
       {job.scheduled?.schedulingNotes && (
-        <div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">Scheduling Notes</h3>
-          <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded-md">
+        <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-6">
+          <div className="flex items-center mb-4">
+            <div className="w-8 h-8 bg-yellow-100 rounded-lg flex items-center justify-center mr-3">
+              <DocumentTextIcon className="h-5 w-5 text-yellow-600" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900">Scheduling Notes</h3>
+          </div>
+          <p className="text-sm text-gray-700 leading-relaxed">
             {job.scheduled.schedulingNotes}
           </p>
         </div>
@@ -361,8 +386,9 @@ const CostsTab: React.FC<{
   job: any;
   isEditing: boolean;
   onUpdate: (data: any) => void;
+  onCancelEdit: () => void;
   loading: boolean;
-}> = ({ job, isEditing, onUpdate, loading }) => {
+}> = ({ job, isEditing, onUpdate, onCancelEdit, loading }) => {
   const [formData, setFormData] = useState({
     estimatedCost: job.jobCard?.estimatedCost || 0,
     actualCost: job.jobCard?.actualCost || 0,
@@ -409,7 +435,7 @@ const CostsTab: React.FC<{
           />
         </div>
         <div className="flex justify-end space-x-3">
-          <Button type="button" variant="outline" onClick={() => setIsEditing(false)}>
+          <Button type="button" variant="outline" onClick={onCancelEdit}>
             Cancel
           </Button>
           <Button type="submit" loading={loading}>
@@ -491,8 +517,9 @@ const QualityTab: React.FC<{
   job: any;
   isEditing: boolean;
   onUpdate: (data: any) => void;
+  onCancelEdit: () => void;
   loading: boolean;
-}> = ({ job, isEditing, onUpdate, loading }) => {
+}> = ({ job, isEditing, onUpdate, onCancelEdit, loading }) => {
   const [formData, setFormData] = useState({
     qualityCheck: {
       checked: job.jobCard?.qualityCheck?.checked || false,
@@ -554,7 +581,7 @@ const QualityTab: React.FC<{
         </div>
         
         <div className="flex justify-end space-x-3">
-          <Button type="button" variant="outline" onClick={() => setIsEditing(false)}>
+          <Button type="button" variant="outline" onClick={onCancelEdit}>
             Cancel
           </Button>
           <Button type="submit" loading={loading}>
@@ -599,8 +626,9 @@ const WarrantyTab: React.FC<{
   job: any;
   isEditing: boolean;
   onUpdate: (data: any) => void;
+  onCancelEdit: () => void;
   loading: boolean;
-}> = ({ job, isEditing, onUpdate, loading }) => {
+}> = ({ job, isEditing, onUpdate, onCancelEdit, loading }) => {
   const [formData, setFormData] = useState({
     warrantyPeriod: job.jobCard?.warrantyPeriod || 0,
   });
@@ -620,7 +648,7 @@ const WarrantyTab: React.FC<{
           onChange={(e) => setFormData(prev => ({ ...prev, warrantyPeriod: parseInt(e.target.value) }))}
         />
         <div className="flex justify-end space-x-3">
-          <Button type="button" variant="outline" onClick={() => setIsEditing(false)}>
+          <Button type="button" variant="outline" onClick={onCancelEdit}>
             Cancel
           </Button>
           <Button type="submit" loading={loading}>

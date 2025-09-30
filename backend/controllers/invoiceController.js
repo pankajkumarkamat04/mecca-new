@@ -65,14 +65,12 @@ const getInvoices = async (req, res) => {
 
     res.json({
       success: true,
-      data: {
-        data: invoices,
-        pagination: {
-          page,
-          limit,
-          total,
-          pages: Math.ceil(total / limit)
-        }
+      data: invoices,
+      pagination: {
+        page,
+        limit,
+        total,
+        pages: Math.ceil(total / limit)
       }
     });
   } catch (error) {

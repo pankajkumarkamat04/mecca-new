@@ -214,8 +214,7 @@ purchaseOrderSchema.virtual('statusColor').get(function() {
   return statusColors[this.status] || 'gray';
 });
 
-// Indexes
-purchaseOrderSchema.index({ orderNumber: 1 });
+// Indexes (avoid duplicating unique indexes)
 purchaseOrderSchema.index({ supplier: 1 });
 purchaseOrderSchema.index({ status: 1 });
 purchaseOrderSchema.index({ orderDate: -1 });

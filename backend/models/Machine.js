@@ -73,10 +73,9 @@ const machineSchema = new mongoose.Schema({
   toObject: { virtuals: true }
 });
 
-// Indexes
+// Indexes (avoid duplicating unique indexes)
 machineSchema.index({ name: 1, category: 1 });
 machineSchema.index({ status: 1, 'availability.isAvailable': 1 });
-machineSchema.index({ serialNumber: 1 });
 
 // Virtual fields
 machineSchema.virtual('isOverdueForMaintenance').get(function() {

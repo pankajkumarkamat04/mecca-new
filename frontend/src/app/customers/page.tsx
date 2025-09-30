@@ -48,6 +48,7 @@ const CustomersPage: React.FC = () => {
     })
   });
 
+
   // Delete customer mutation
   const deleteCustomerMutation = useMutation({
     mutationFn: (customerId: string) => customersAPI.deleteCustomer(customerId),
@@ -87,37 +88,37 @@ const CustomersPage: React.FC = () => {
       key: 'firstName',
       label: 'Customer',
       sortable: true,
-      render: (value: string, row: Customer) => (
-        <div className="flex items-center">
-          <div className="h-10 w-10 bg-gray-300 rounded-full mr-3 flex items-center justify-center">
-            <span className="text-sm font-medium text-gray-700">
-              {row.firstName.charAt(0)}{row.lastName.charAt(0)}
-            </span>
-          </div>
-          <div>
-            <div className="text-sm font-medium text-gray-900">
-              {row.firstName} {row.lastName}
+      render: (row: Customer) => (
+          <div className="flex items-center">
+            <div className="h-10 w-10 bg-gray-300 rounded-full mr-3 flex items-center justify-center">
+              <span className="text-sm font-medium text-gray-700">
+                {row.firstName?.charAt(0) || ''}{row.lastName?.charAt(0) || ''}
+              </span>
             </div>
-            <div className="text-sm text-gray-500">{row.email}</div>
+            <div>
+              <div className="text-sm font-medium text-gray-900">
+                {row.firstName || ''} {row.lastName || ''}
+              </div>
+              <div className="text-sm text-gray-500">{row.email || 'No email'}</div>
+            </div>
           </div>
-        </div>
-      ),
+        ),
     },
     {
       key: 'customerCode',
       label: 'Customer Code',
       sortable: true,
-      render: (value: string) => (
-        <span className="text-sm font-mono text-gray-900">{value}</span>
+      render: (row: Customer) => (
+        <span className="text-sm font-mono text-gray-900">{row.customerCode}</span>
       ),
     },
     {
       key: 'type',
       label: 'Type',
       sortable: true,
-      render: (value: string) => (
+      render: (row: Customer) => (
         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 capitalize">
-          {value}
+          {row.type}
         </span>
       ),
     },
@@ -125,7 +126,7 @@ const CustomersPage: React.FC = () => {
       key: 'wallet.balance',
       label: 'Wallet Balance',
       sortable: true,
-      render: (value: number, row: Customer) => (
+      render: (row: Customer) => (
         <div className="text-sm text-gray-900">
           {formatCurrency(row.wallet.balance, row.wallet.currency)}
         </div>
@@ -135,26 +136,26 @@ const CustomersPage: React.FC = () => {
       key: 'totalPurchases',
       label: 'Total Spent',
       sortable: true,
-      render: (value: number) => (
-        <span className="text-sm text-gray-900">{formatCurrency(value)}</span>
+      render: (row: Customer) => (
+        <span className="text-sm text-gray-900">{formatCurrency(row.wallet.balance, row.wallet.currency)}</span>
       ),
     },
     {
       key: 'isActive',
       label: 'Status',
       sortable: true,
-      render: (value: boolean) => (
+      render: (row: Customer) => (
         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-          value ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+          row.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
         }`}>
-          {value ? 'Active' : 'Inactive'}
+          {row.isActive ? 'Active' : 'Inactive'}
         </span>
       ),
     },
     {
       key: 'actions',
       label: 'Actions',
-      render: (_: any, row: Customer) => (
+      render: (row: Customer) => (
         <div className="flex items-center space-x-2">
           <button
             onClick={() => handleViewCustomer(row)}
@@ -267,7 +268,7 @@ const CustomersPage: React.FC = () => {
         {/* Customers Table */}
         <DataTable
           columns={columns}
-          data={customersData?.data?.data || []}
+          data={Array.isArray(customersData?.data?.data) ? customersData.data.data : []}
           loading={isPending}
           pagination={customersData?.data?.pagination}
           onPageChange={setCurrentPage}

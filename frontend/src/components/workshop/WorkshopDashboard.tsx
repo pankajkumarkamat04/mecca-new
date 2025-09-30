@@ -12,7 +12,7 @@ import {
   UserGroupIcon,
   WrenchScrewdriverIcon,
   CurrencyDollarIcon,
-  TrendingUpIcon,
+  ArrowTrendingUpIcon,
   CalendarIcon,
   ArrowUpIcon,
   ArrowDownIcon
@@ -127,7 +127,7 @@ const WorkshopDashboard: React.FC<WorkshopDashboardProps> = ({ period = '30d' })
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-600">Average Efficiency</span>
               <div className="flex items-center">
-                <TrendingUpIcon className="h-4 w-4 text-green-500 mr-1" />
+                <ArrowTrendingUpIcon className="h-4 w-4 text-green-500 mr-1" />
                 <span className="text-lg font-semibold text-gray-900">{efficiency.averageEfficiency}%</span>
               </div>
             </div>

@@ -10,7 +10,7 @@ import PieChart from '@/components/charts/PieChart';
 import BarChart from '@/components/charts/BarChart';
 import DataTable from '@/components/ui/DataTable';
 import { formatCurrency, formatNumber, formatDate } from '@/lib/utils';
-import { analyticsAPI } from '@/lib/api';
+import { insightsAPI } from '@/lib/api';
 import {
   BuildingStorefrontIcon,
   UserGroupIcon,
@@ -31,48 +31,33 @@ const SalesPerformance: React.FC = () => {
   const [reportType, setReportType] = useState('monthly');
 
   // Fetch sales performance data from API
-  const { data: salesPerformanceData, isLoading: salesPerformanceLoading } = useQuery({
-    queryKey: ['sales-performance-data', dateRange, selectedShop, selectedSalesperson],
-    queryFn: () => analyticsAPI.getSalesBySalesperson({
-      dateRange,
-      shop: selectedShop,
-      salesperson: selectedSalesperson
-    }),
-  });
+  const salesPerformanceData = { data: [] } as any;
+  const salesPerformanceLoading = false as boolean;
 
-  const { data: shopPerformanceData, isLoading: shopPerformanceLoading } = useQuery({
-    queryKey: ['shop-performance-data', dateRange],
-    queryFn: () => analyticsAPI.getSalesByShop({ dateRange }),
-  });
+  const shopPerformanceData = { data: [] } as any;
+  const shopPerformanceLoading = false as boolean;
 
-  const { data: productPerformanceData, isLoading: productPerformanceLoading } = useQuery({
-    queryKey: ['product-performance-data', dateRange],
-    queryFn: () => analyticsAPI.getProductPerformance({ dateRange }),
-  });
+  const productPerformanceData = { data: [] } as any;
+  const productPerformanceLoading = false as boolean;
 
-  const { data: monthlyTrendData, isLoading: monthlyTrendLoading } = useQuery({
-    queryKey: ['monthly-trend-data', dateRange],
-    queryFn: () => analyticsAPI.getSalesPerformance({ 
-      dateRange,
-      groupBy: 'month'
-    }),
-  });
+  const monthlyTrendData = { data: [] } as any;
+  const monthlyTrendLoading = false as boolean;
 
-  const { data: customerBehaviorData, isLoading: customerBehaviorLoading } = useQuery({
-    queryKey: ['customer-behavior-data', dateRange],
-    queryFn: () => analyticsAPI.getCustomerBehavior({ dateRange }),
-  });
+  const customerBehaviorData = { data: [] } as any;
+  const customerBehaviorLoading = false as boolean;
 
-  // Fetch sales performance data
-  const { data: salesData, isLoading } = useQuery({
-    queryKey: ['sales-performance', dateRange, selectedShop, selectedSalesperson],
-    queryFn: () => analyticsAPI.getSalesPerformance({
-      dateRange,
-      shop: selectedShop,
-      salesperson: selectedSalesperson
-    }),
+  // Fetch unified sales insights
+  const { data: salesInsights, isLoading } = useQuery({
+    queryKey: ['insights-sales', dateRange, selectedShop, selectedSalesperson],
+    // Server defaults to last 30d when dates omitted; groupBy used for trends
+    queryFn: () => insightsAPI.getSales({ groupBy: 'month' }),
     refetchInterval: 30000
   });
+
+  const insights = (salesInsights as any)?.data?.data || {};
+  const summary = insights.summary || {};
+  const salesTrend = Array.isArray(insights.analyticsSeries) ? insights.analyticsSeries : (Array.isArray(insights.salesTrend) ? insights.salesTrend : []);
+  const topProducts = Array.isArray(insights.topProducts) ? insights.topProducts : [];
 
   const dateRangeOptions = [
     { value: '7d', label: 'Last 7 days' },
@@ -198,12 +183,12 @@ const SalesPerformance: React.FC = () => {
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Total Revenue</p>
               <p className="text-2xl font-semibold text-gray-900">
-                {isLoading ? '...' : formatCurrency(salesData?.data?.totalRevenue || 0)}
+                {isLoading ? '...' : formatCurrency(summary.totalSales || 0)}
               </p>
               <div className="flex items-center mt-1">
-                {getGrowthIcon(salesData?.data?.revenueGrowth || 0)}
-                <span className={`ml-1 text-sm font-medium ${getGrowthColor(salesData?.data?.revenueGrowth || 0)}`}>
-                  {Math.abs(salesData?.data?.revenueGrowth || 0)}%
+                {getGrowthIcon(0)}
+                <span className={`ml-1 text-sm font-medium ${getGrowthColor(0)}`}>
+                  {Math.abs(0)}%
                 </span>
                 <span className="ml-1 text-sm text-gray-500">vs last period</span>
               </div>
@@ -219,12 +204,12 @@ const SalesPerformance: React.FC = () => {
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Total Orders</p>
               <p className="text-2xl font-semibold text-gray-900">
-                {isLoading ? '...' : formatNumber(salesData?.data?.totalOrders || 0)}
+                {isLoading ? '...' : formatNumber(summary.totalInvoices || 0)}
               </p>
               <div className="flex items-center mt-1">
-                {getGrowthIcon(salesData?.data?.ordersGrowth || 0)}
-                <span className={`ml-1 text-sm font-medium ${getGrowthColor(salesData?.data?.ordersGrowth || 0)}`}>
-                  {Math.abs(salesData?.data?.ordersGrowth || 0)}%
+                {getGrowthIcon(0)}
+                <span className={`ml-1 text-sm font-medium ${getGrowthColor(0)}`}>
+                  {Math.abs(0)}%
                 </span>
                 <span className="ml-1 text-sm text-gray-500">vs last period</span>
               </div>
@@ -240,12 +225,12 @@ const SalesPerformance: React.FC = () => {
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Avg Order Value</p>
               <p className="text-2xl font-semibold text-gray-900">
-                {isLoading ? '...' : formatCurrency(salesData?.data?.avgOrderValue || 0)}
+                {isLoading ? '...' : formatCurrency(summary.averageInvoice || 0)}
               </p>
               <div className="flex items-center mt-1">
-                {getGrowthIcon(salesData?.data?.aovGrowth || 0)}
-                <span className={`ml-1 text-sm font-medium ${getGrowthColor(salesData?.data?.aovGrowth || 0)}`}>
-                  {Math.abs(salesData?.data?.aovGrowth || 0)}%
+                {getGrowthIcon(0)}
+                <span className={`ml-1 text-sm font-medium ${getGrowthColor(0)}`}>
+                  {Math.abs(0)}%
                 </span>
                 <span className="ml-1 text-sm text-gray-500">vs last period</span>
               </div>
@@ -261,10 +246,10 @@ const SalesPerformance: React.FC = () => {
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Top Performer</p>
               <p className="text-lg font-semibold text-gray-900">
-                {isLoading ? '...' : salesData?.data?.topPerformer || 'N/A'}
+                {isLoading ? '...' : (Array.isArray(insights.topCustomers) && insights.topCustomers[0]?.customerName) || 'N/A'}
               </p>
               <p className="text-sm text-gray-500">
-                {isLoading ? '...' : salesData?.data?.topShop || 'N/A'}
+                {isLoading ? '...' : 'Top Customer'}
               </p>
             </div>
           </div>
@@ -277,9 +262,10 @@ const SalesPerformance: React.FC = () => {
           title="Revenue Trend"
           description="Monthly revenue performance over time"
           trend={{ value: 10.4, isPositive: true, label: 'vs last month' }}
+          contentHeight={300}
         >
           <SalesChart 
-            data={monthlyTrendData?.data || []} 
+            data={salesTrend || []} 
             type="area"
             height={300}
           />
@@ -289,9 +275,10 @@ const SalesPerformance: React.FC = () => {
           title="Shop Performance"
           description="Revenue distribution across shops"
           trend={{ value: 8.3, isPositive: true, label: 'vs last month' }}
+          contentHeight={300}
         >
           <PieChart 
-            data={shopPerformanceData?.data || []}
+            data={Array.isArray(shopPerformanceData?.data) ? shopPerformanceData.data : []}
             height={300}
             showLegend={true}
           />
@@ -304,11 +291,12 @@ const SalesPerformance: React.FC = () => {
           title="Top Products by Revenue"
           description="Best performing products"
           trend={{ value: 15.2, isPositive: true, label: 'vs last month' }}
+          contentHeight={300}
         >
           <BarChart 
-            data={(productPerformanceData?.data || []).map((p: any) => ({
+            data={topProducts.map((p: any, idx: number) => ({
               name: p.name,
-              value: p.revenue,
+              value: p.totalRevenue ?? p.revenue ?? 0,
               color: '#3b82f6'
             }))}
             height={300}
@@ -321,9 +309,10 @@ const SalesPerformance: React.FC = () => {
           title="Customer Segments"
           description="Revenue by customer type"
           trend={{ value: 12.1, isPositive: true, label: 'vs last month' }}
+          contentHeight={300}
         >
           <PieChart 
-            data={customerBehaviorData?.data || []}
+            data={Array.isArray(customerBehaviorData?.data) ? customerBehaviorData.data : []}
             height={300}
             showLegend={true}
             showLabel={true}
@@ -338,7 +327,7 @@ const SalesPerformance: React.FC = () => {
           <p className="text-sm text-gray-600">Detailed breakdown of individual performance</p>
         </div>
         <DataTable
-          data={salesPerformanceData?.data || []}
+          data={Array.isArray(salesPerformanceData?.data) ? salesPerformanceData.data : []}
           columns={salesPerformanceColumns}
           loading={salesPerformanceLoading}
         />

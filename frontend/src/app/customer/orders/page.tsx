@@ -37,7 +37,7 @@ const CustomerOrdersPage: React.FC = () => {
     enabled: !!user?._id,
   });
 
-  const orders = ordersData?.data || [];
+  const orders = ordersData?.data?.data || [];
 
   const handleViewDetails = (order: any) => {
     setSelectedOrder(order);

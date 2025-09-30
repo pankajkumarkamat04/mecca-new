@@ -147,7 +147,7 @@ const WarehouseEmployees: React.FC = () => {
     {
       key: 'user',
       label: 'Employee',
-      render: (value: any, row: Employee) => (
+      render: (row: Employee) => (
         <div>
           <div className="font-medium text-gray-900">
             {row.user.firstName} {row.user.lastName}
@@ -159,19 +159,19 @@ const WarehouseEmployees: React.FC = () => {
     {
       key: 'position',
       label: 'Position',
-      render: (value: string, row: Employee) => (
-        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getPositionColor(value)}`}>
-          {value.replace('warehouse_', '').replace('_', ' ')}
+      render: (row: Employee) => (
+        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getPositionColor(row.position)}`}>
+          {row.position.replace('warehouse_', '').replace('_', ' ')}
         </span>
       ),
     },
     {
       key: 'assignedAt',
       label: 'Assigned',
-      render: (value: string, row: Employee) => (
+      render: (row: Employee) => (
         <div>
           <div className="text-sm text-gray-900">
-            {new Date(value).toLocaleDateString()}
+            {new Date(row.assignedAt).toLocaleDateString()}
           </div>
           <div className="text-xs text-gray-500">
             by {row.assignedBy.firstName} {row.assignedBy.lastName}
@@ -182,7 +182,7 @@ const WarehouseEmployees: React.FC = () => {
     {
       key: 'actions',
       label: 'Actions',
-      render: (value: any, row: Employee) => (
+      render: (row: Employee) => (
         <button
           onClick={() => handleRemoveEmployee(row._id)}
           className="text-red-600 hover:text-red-800"

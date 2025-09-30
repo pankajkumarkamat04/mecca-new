@@ -42,7 +42,7 @@ const InvoicesPage: React.FC = () => {
   const queryClient = useQueryClient();
 
   // Fetch invoices
-  const { data: invoicesData, isPending } = useQuery({
+  const { data: invoicesData, isPending, error, isError } = useQuery({
     queryKey: ['invoices', currentPage, pageSize, searchTerm, filterStatus],
     queryFn: () => invoicesAPI.getInvoices({
       page: currentPage,
@@ -50,10 +50,8 @@ const InvoicesPage: React.FC = () => {
       search: searchTerm,
       status: filterStatus === 'all' ? undefined : filterStatus,
     }),
-    staleTime: 0,
-    refetchOnMount: 'always',
-    refetchOnWindowFocus: true,
-    refetchOnReconnect: true
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnWindowFocus: false
   });
 
   // Create invoice
@@ -97,8 +95,11 @@ const InvoicesPage: React.FC = () => {
     queryKey: ['products-list'],
     queryFn: () => productsAPI.getProducts({ limit: 100, page: 1 })
   });
-  const customerOptions = (customersList?.data?.data || []).map((c: any) => ({ value: c._id, label: `${c.firstName} ${c.lastName}` }));
-  const productOptions = (productsList?.data?.data || []).map((p: any) => ({ value: p._id, label: `${p.name} (${p.sku})` }));
+  const customerOptions = Array.isArray(customersList?.data) ? customersList.data : [];
+  const productOptions = Array.isArray(productsList?.data) ? productsList.data : [];
+  
+  const customerOptionsFormatted = customerOptions.map((c: any) => ({ value: c._id, label: `${c.firstName} ${c.lastName}` }));
+  const productOptionsFormatted = productOptions.map((p: any) => ({ value: p._id, label: `${p.name} (${p.sku})` }));
 
   // Form schema
   const invoiceSchema = useMemo(() => z.object({
@@ -182,9 +183,9 @@ const InvoicesPage: React.FC = () => {
       key: 'invoiceNumber',
       label: 'Invoice',
       sortable: true,
-      render: (value: string, row: Invoice) => (
+      render: (row: Invoice) => (
         <div>
-          <div className="text-sm font-medium text-gray-900">{value}</div>
+          <div className="text-sm font-medium text-gray-900">{row.invoiceNumber}</div>
           <div className="text-sm text-gray-500">{formatDate(row.invoiceDate)}</div>
         </div>
       ),
@@ -193,7 +194,7 @@ const InvoicesPage: React.FC = () => {
       key: 'customer',
       label: 'Customer',
       sortable: true,
-      render: (value: any, row: Invoice) => (
+      render: (row: Invoice) => (
         <div>
           <div className="text-sm font-medium text-gray-900">
             {row.customer && typeof row.customer === 'object' 
@@ -211,7 +212,7 @@ const InvoicesPage: React.FC = () => {
       key: 'totalAmount',
       label: 'Total',
       sortable: true,
-      render: (value: number, row: any) => {
+      render: (row: any) => {
         const toNumber = (v: any, fb = 0) => {
           const n = typeof v === 'string' ? Number(v) : v;
           return Number.isFinite(n) ? n : fb;
@@ -246,12 +247,12 @@ const InvoicesPage: React.FC = () => {
       key: 'status',
       label: 'Status',
       sortable: true,
-      render: (value: string) => getStatusBadge(value),
+      render: (row: Invoice) => getStatusBadge(row.status),
     },
     {
       key: 'options',
       label: 'Options',
-      render: (_: any, row: any) => {
+      render: (row: any) => {
         if (row.status === 'paid') return <span className="text-xs text-gray-500">Paid</span>;
         return (
           <div className="flex flex-col gap-2 min-w-[220px]">
@@ -312,10 +313,10 @@ const InvoicesPage: React.FC = () => {
       key: 'dueDate',
       label: 'Due Date',
       sortable: true,
-      render: (value: string, row: Invoice) => (
+      render: (row: Invoice) => (
         <div>
           <div className="text-sm text-gray-900">
-            {value ? formatDate(value) : 'N/A'}
+            {row.dueDate ? formatDate(row.dueDate) : 'N/A'}
           </div>
           {(row as any).isOverdue && (
             <div className="text-xs text-red-600">
@@ -328,7 +329,7 @@ const InvoicesPage: React.FC = () => {
     {
       key: 'actions',
       label: 'Actions',
-      render: (_: any, row: Invoice) => (
+      render: (row: Invoice) => (
         <div className="flex items-center space-x-2">
           <button
             onClick={() => handleViewInvoice(row)}
@@ -428,11 +429,11 @@ const InvoicesPage: React.FC = () => {
         {/* Invoices Table */}
         <DataTable
           columns={columns}
-          data={Array.isArray(invoicesData?.data?.data?.data) ? invoicesData.data.data.data : []}
+          data={Array.isArray(invoicesData?.data?.data) ? invoicesData.data.data : []}
           loading={isPending}
-          pagination={invoicesData?.data?.data?.pagination}
+          pagination={invoicesData?.data?.pagination}
           onPageChange={setCurrentPage}
-          emptyMessage="No invoices found"
+          emptyMessage={isPending ? "Loading invoices..." : "No invoices found"}
         />
 
         {/* Create Invoice Modal */}
@@ -467,7 +468,7 @@ const InvoicesPage: React.FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField label="Customer" required error={methods.formState.errors.customer?.message as string}>
                     <Select
-                      options={[{ value: '', label: 'Select customer', disabled: true }, ...customerOptions]}
+                      options={[{ value: '', label: 'Select customer', disabled: true }, ...customerOptionsFormatted]}
                       value={methods.watch('customer')}
                       onChange={(e) => methods.setValue('customer', e.target.value)}
                       fullWidth
@@ -498,7 +499,7 @@ const InvoicesPage: React.FC = () => {
                     <div key={idx} className="grid grid-cols-1 md:grid-cols-4 gap-3">
                       <FormField label="Product" required error={(methods.formState.errors.items as any)?.[idx]?.product?.message as string}>
                         <Select
-                          options={[{ value: '', label: 'Select product', disabled: true }, ...productOptions]}
+                          options={[{ value: '', label: 'Select product', disabled: true }, ...productOptionsFormatted]}
                           value={methods.watch(`items.${idx}.product` as const)}
                           onChange={(e) => methods.setValue(`items.${idx}.product` as const, e.target.value)}
                           fullWidth

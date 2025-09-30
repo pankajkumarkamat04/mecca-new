@@ -76,25 +76,25 @@ const CustomerWalletPage: React.FC = () => {
       key: 'date',
       label: 'Date',
       sortable: true,
-      render: (value: string) => (
-        <span className="text-sm text-gray-900">{formatDate(value)}</span>
+      render: (row: any) => (
+        <span className="text-sm text-gray-900">{formatDate(row.date)}</span>
       ),
     },
     {
       key: 'description',
       label: 'Description',
-      render: (value: string) => (
-        <span className="text-sm font-medium text-gray-900">{value}</span>
+      render: (row: any) => (
+        <span className="text-sm font-medium text-gray-900">{row.description}</span>
       ),
     },
     {
       key: 'type',
       label: 'Type',
-      render: (value: string) => (
+      render: (row: any) => (
         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-          value === 'credit' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+          row.type === 'credit' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
         }`}>
-          {value === 'credit' ? (
+          {row.type === 'credit' ? (
             <>
               <ArrowUpIcon className="h-3 w-3 mr-1" />
               Credit
@@ -112,11 +112,11 @@ const CustomerWalletPage: React.FC = () => {
       key: 'amount',
       label: 'Amount',
       sortable: true,
-      render: (value: number, row: any) => (
+      render: (row: any) => (
         <span className={`text-sm font-medium ${
           row.type === 'credit' ? 'text-green-600' : 'text-red-600'
         }`}>
-          {row.type === 'credit' ? '+' : '-'}{formatCurrency(value)}
+          {row.type === 'credit' ? '+' : '-'}{formatCurrency(row.amount)}
         </span>
       ),
     },
@@ -124,25 +124,25 @@ const CustomerWalletPage: React.FC = () => {
       key: 'balance',
       label: 'Balance',
       sortable: true,
-      render: (value: number) => (
-        <span className="text-sm font-medium text-gray-900">{formatCurrency(value)}</span>
+      render: (row: any) => (
+        <span className="text-sm font-medium text-gray-900">{formatCurrency(row.balance)}</span>
       ),
     },
     {
       key: 'status',
       label: 'Status',
-      render: (value: string) => (
+      render: (row: any) => (
         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-          value === 'completed' ? 'bg-green-100 text-green-800' :
-          value === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+          row.status === 'completed' ? 'bg-green-100 text-green-800' :
+          row.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
           'bg-red-100 text-red-800'
         }`}>
-          {value === 'completed' ? (
+          {row.status === 'completed' ? (
             <>
               <CheckCircleIcon className="h-3 w-3 mr-1" />
               Completed
             </>
-          ) : value === 'pending' ? (
+          ) : row.status === 'pending' ? (
             <>
               <ClockIcon className="h-3 w-3 mr-1" />
               Pending
@@ -159,9 +159,9 @@ const CustomerWalletPage: React.FC = () => {
   ];
 
   const getWalletStats = () => {
-    if (!walletData?.data?.data) return { totalTransactions: 0, totalCredits: 0, totalDebits: 0 };
+    if (!walletData?.data) return { totalTransactions: 0, totalCredits: 0, totalDebits: 0 };
     
-    const transactions = walletData.data.data;
+    const transactions = walletData.data;
     const totalCredits = transactions
       .filter((t: any) => t.type === 'credit')
       .reduce((sum: number, t: any) => sum + t.amount, 0);
@@ -279,7 +279,7 @@ const CustomerWalletPage: React.FC = () => {
           <div className="p-6">
             <DataTable
               columns={transactionColumns}
-              data={walletData?.data?.data || []}
+              data={Array.isArray(walletData?.data?.data) ? walletData.data.data : []}
               loading={walletLoading}
               pagination={walletData?.data?.pagination}
               onPageChange={setCurrentPage}

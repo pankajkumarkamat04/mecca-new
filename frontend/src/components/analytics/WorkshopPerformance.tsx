@@ -10,7 +10,7 @@ import PieChart from '@/components/charts/PieChart';
 import BarChart from '@/components/charts/BarChart';
 import DataTable from '@/components/ui/DataTable';
 import { formatCurrency, formatNumber, formatDate } from '@/lib/utils';
-import { analyticsAPI } from '@/lib/api';
+import { insightsAPI } from '@/lib/api';
 import {
   WrenchScrewdriverIcon,
   ClockIcon,
@@ -31,56 +31,39 @@ const WorkshopPerformance: React.FC = () => {
   const [jobType, setJobType] = useState('all');
 
   // Fetch workshop data from API
-  const { data: jobCompletionData, isLoading: jobCompletionLoading } = useQuery({
-    queryKey: ['job-completion-data', dateRange, selectedTechnician, jobType],
-    queryFn: () => analyticsAPI.getJobCompletion({
-      dateRange,
-      technician: selectedTechnician,
-      jobType
-    }),
-  });
-
-  const { data: technicianPerformanceData, isLoading: technicianPerformanceLoading } = useQuery({
-    queryKey: ['technician-performance-data', dateRange],
-    queryFn: () => analyticsAPI.getTechnicianPerformance({ dateRange }),
-  });
-
-  const { data: jobTypePerformanceData, isLoading: jobTypePerformanceLoading } = useQuery({
-    queryKey: ['job-type-performance-data', dateRange],
-    queryFn: () => analyticsAPI.getWorkshopPerformance({
-      dateRange,
-      groupBy: 'jobType'
-    }),
-  });
-
-  const { data: monthlyTrendData, isLoading: monthlyTrendLoading } = useQuery({
-    queryKey: ['workshop-monthly-trend-data', dateRange],
-    queryFn: () => analyticsAPI.getWorkshopPerformance({
-      dateRange,
-      groupBy: 'month'
-    }),
-  });
-
-  const { data: resourceUtilizationData, isLoading: resourceUtilizationLoading } = useQuery({
-    queryKey: ['resource-utilization-data', dateRange],
-    queryFn: () => analyticsAPI.getResourceUtilization({ dateRange }),
-  });
-
-  const { data: customerSatisfactionData, isLoading: customerSatisfactionLoading } = useQuery({
-    queryKey: ['customer-satisfaction-data', dateRange],
-    queryFn: () => analyticsAPI.getCustomerSatisfaction({ dateRange }),
-  });
-
-  // Fetch workshop performance data
-  const { data: workshopData, isLoading } = useQuery({
-    queryKey: ['workshop-performance', dateRange, selectedTechnician, jobType],
-    queryFn: () => analyticsAPI.getWorkshopPerformance({
-      dateRange,
-      technician: selectedTechnician,
-      jobType
-    }),
+  // Unified workshop insights
+  const { data: workshopInsights } = useQuery({
+    queryKey: ['insights-workshop', dateRange, selectedTechnician, jobType],
+    queryFn: () => insightsAPI.getWorkshop({ technician: selectedTechnician, jobType }),
     refetchInterval: 30000
   });
+  const wk = (workshopInsights as any)?.data?.data || {};
+  const monthly = Array.isArray(wk.monthly) ? wk.monthly : [];
+  const byType = Array.isArray(wk.byType) ? wk.byType : [];
+  const resources = Array.isArray(wk.resources) ? wk.resources : [];
+  const satisfaction = Array.isArray(wk.satisfaction) ? wk.satisfaction : [];
+  const summary = wk.summary || {};
+  const jobCompletionData = { data: [] } as any;
+  const jobCompletionLoading = false as boolean;
+
+  const technicianPerformanceData = { data: [] } as any;
+  const technicianPerformanceLoading = false as boolean;
+
+  const jobTypePerformanceData = { data: byType } as any;
+  const jobTypePerformanceLoading = false as boolean;
+
+  const monthlyTrendData = { data: monthly } as any;
+  const monthlyTrendLoading = false as boolean;
+
+  const resourceUtilizationData = { data: resources } as any;
+  const resourceUtilizationLoading = false as boolean;
+
+  const customerSatisfactionData = { data: satisfaction } as any;
+  const customerSatisfactionLoading = false as boolean;
+
+  // Fetch workshop performance data
+  const workshopData = { data: summary } as any;
+  const isLoading = false as boolean;
 
   const dateRangeOptions = [
     { value: '7d', label: 'Last 7 days' },
@@ -346,6 +329,7 @@ const WorkshopPerformance: React.FC = () => {
           title="Job Completion Trend"
           description="Monthly job completion and efficiency"
           trend={{ value: 15.2, isPositive: true, label: 'vs last month' }}
+          contentHeight={300}
         >
           <SalesChart 
             data={monthlyTrendData?.data || []} 
@@ -358,6 +342,7 @@ const WorkshopPerformance: React.FC = () => {
           title="Job Type Distribution"
           description="Jobs completed by type"
           trend={{ value: 8.3, isPositive: true, label: 'vs last month' }}
+          contentHeight={300}
         >
           <PieChart 
             data={jobTypePerformanceData?.data || []}
@@ -373,13 +358,14 @@ const WorkshopPerformance: React.FC = () => {
           title="Resource Utilization"
           description="How efficiently resources are being used"
           trend={{ value: 82, isPositive: true, label: 'utilization %' }}
+          contentHeight={300}
         >
           <BarChart 
-            data={(resourceUtilizationData?.data || []).map((r: any) => ({
+            data={Array.isArray(resourceUtilizationData?.data) ? resourceUtilizationData.data.map((r: any) => ({
               name: r.resource,
               value: r.utilization,
               color: r.color
-            }))}
+            })) : []}
             height={300}
             formatValue={(value) => `${value}%`}
           />
@@ -389,13 +375,14 @@ const WorkshopPerformance: React.FC = () => {
           title="Customer Satisfaction"
           description="Distribution of customer ratings"
           trend={{ value: 4.6, isPositive: true, label: 'avg rating' }}
+          contentHeight={300}
         >
           <BarChart 
-            data={(customerSatisfactionData?.data || []).map((c: any) => ({
+            data={Array.isArray(customerSatisfactionData?.data) ? customerSatisfactionData.data.map((c: any) => ({
               name: `${c.rating} Star${c.rating > 1 ? 's' : ''}`,
               value: c.percentage,
               color: c.color
-            }))}
+            })) : []}
             height={300}
             formatValue={(value) => `${value}%`}
           />
@@ -409,7 +396,7 @@ const WorkshopPerformance: React.FC = () => {
           <p className="text-sm text-gray-600">Current job status and performance</p>
         </div>
         <DataTable
-          data={jobCompletionData?.data || []}
+          data={Array.isArray(jobCompletionData?.data) ? jobCompletionData.data : []}
           columns={jobColumns}
           loading={jobCompletionLoading}
         />
@@ -422,7 +409,7 @@ const WorkshopPerformance: React.FC = () => {
           <p className="text-sm text-gray-600">Individual technician statistics and ratings</p>
         </div>
         <DataTable
-          data={technicianPerformanceData?.data || []}
+          data={Array.isArray(technicianPerformanceData?.data) ? technicianPerformanceData.data : []}
           columns={technicianColumns}
           loading={technicianPerformanceLoading}
         />

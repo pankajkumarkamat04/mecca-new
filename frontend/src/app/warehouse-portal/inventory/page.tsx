@@ -91,7 +91,7 @@ const WarehouseInventory: React.FC = () => {
     {
       key: 'product',
       label: 'Product',
-      render: (value: any, row: InventoryItem) => (
+      render: (row: InventoryItem) => (
         <div>
           <div className="font-medium text-gray-900">{row.product.name}</div>
           <div className="text-sm text-gray-500">SKU: {row.product.sku}</div>
@@ -101,7 +101,7 @@ const WarehouseInventory: React.FC = () => {
     {
       key: 'category',
       label: 'Category',
-      render: (value: any, row: InventoryItem) => (
+      render: (row: InventoryItem) => (
         <div className="text-sm text-gray-900">
           {row.product.category?.name || 'No category'}
         </div>
@@ -110,9 +110,9 @@ const WarehouseInventory: React.FC = () => {
     {
       key: 'currentStock',
       label: 'Stock',
-      render: (value: number, row: InventoryItem) => (
+      render: (row: InventoryItem) => (
         <div>
-          <div className="font-medium text-gray-900">{value}</div>
+          <div className="font-medium text-gray-900">{row.product.name}</div>
           <div className="text-sm text-gray-500">
             ${(row.costPrice || 0).toFixed(2)} per unit
           </div>
@@ -122,37 +122,37 @@ const WarehouseInventory: React.FC = () => {
     {
       key: 'stockStatus',
       label: 'Status',
-      render: (value: string, row: InventoryItem) => (
-        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStockStatusColor(value)}`}>
-          {getStockStatusIcon(value)}
-          <span className="ml-1">{value.replace('_', ' ')}</span>
+      render: (row: InventoryItem) => (
+        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStockStatusColor(row.stockStatus)}`}>
+          {getStockStatusIcon(row.stockStatus)}
+          <span className="ml-1">{row.stockStatus.replace('_', ' ')}</span>
         </span>
       ),
     },
     {
       key: 'location',
       label: 'Location',
-      render: (value: any, row: InventoryItem) => (
+      render: (row: InventoryItem) => (
         <div className="text-sm text-gray-900">
-          {value && typeof value === 'object' 
-            ? `${value.zone}-${value.aisle}-${value.shelf}-${value.bin}` 
-            : value || 'No location'}
+          {row.location && typeof row.location === 'object' 
+            ? `${row.location.zone}-${row.location.aisle}-${row.location.shelf}-${row.location.bin}` 
+            : row.location || 'No location'}
         </div>
       ),
     },
     {
       key: 'totalValue',
       label: 'Value',
-      render: (value: number, row: InventoryItem) => (
+      render: (row: InventoryItem) => (
         <div className="font-medium text-gray-900">
-          ${(value || 0).toFixed(2)}
+          ${(row.totalValue || 0).toFixed(2)}
         </div>
       ),
     },
     {
       key: 'actions',
       label: 'Actions',
-      render: (value: any, row: InventoryItem) => (
+      render: (row: InventoryItem) => (
         <button
           onClick={() => {
             setSelectedProduct(row);

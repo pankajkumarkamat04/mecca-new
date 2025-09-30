@@ -28,8 +28,10 @@ interface SalesChartProps {
 const SalesChart: React.FC<SalesChartProps> = ({ 
   data, 
   type = 'area',
-  height = 300 
+  height = 300
 }) => {
+  // Ensure height is a valid number
+  const safeHeight = typeof height === 'number' && !isNaN(height) ? height : 300;
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
@@ -51,7 +53,7 @@ const SalesChart: React.FC<SalesChartProps> = ({
 
   if (type === 'line') {
     return (
-      <ResponsiveContainer width="100%" height={height}>
+      <ResponsiveContainer width="100%" height={safeHeight}>
         <LineChart data={data} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
           <XAxis 
@@ -91,7 +93,7 @@ const SalesChart: React.FC<SalesChartProps> = ({
   }
 
   return (
-    <ResponsiveContainer width="100%" height={height}>
+    <ResponsiveContainer width="100%" height={safeHeight}>
       <AreaChart data={data} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
         <defs>
           <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">

@@ -37,45 +37,45 @@ const CustomerPurchasesPage: React.FC = () => {
       key: 'invoiceNumber',
       label: 'Invoice #',
       sortable: true,
-      render: (value: string) => (
-        <span className="text-sm font-mono text-gray-900">{value}</span>
+      render: (row: any) => (
+        <span className="text-sm font-mono text-gray-900">{row.invoiceNumber}</span>
       ),
     },
     {
       key: 'invoiceDate',
       label: 'Date',
       sortable: true,
-      render: (value: string) => (
-        <span className="text-sm text-gray-900">{formatDate(value)}</span>
+      render: (row: any) => (
+        <span className="text-sm text-gray-900">{formatDate(row.invoiceDate)}</span>
       ),
     },
     {
       key: 'total',
       label: 'Total',
       sortable: true,
-      render: (value: number) => (
-        <span className="text-sm font-medium text-gray-900">{formatCurrency(value)}</span>
+      render: (row: any) => (
+        <span className="text-sm font-medium text-gray-900">{formatCurrency(row.total)}</span>
       ),
     },
     {
       key: 'status',
       label: 'Status',
       sortable: true,
-      render: (value: string) => (
+      render: (row: any) => (
         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-          value === 'paid' ? 'bg-green-100 text-green-800' :
-          value === 'partial' ? 'bg-yellow-100 text-yellow-800' :
-          value === 'overdue' ? 'bg-red-100 text-red-800' :
+          row.status === 'paid' ? 'bg-green-100 text-green-800' :
+          row.status === 'partial' ? 'bg-yellow-100 text-yellow-800' :
+          row.status === 'overdue' ? 'bg-red-100 text-red-800' :
           'bg-gray-100 text-gray-800'
         }`}>
-          {value.charAt(0).toUpperCase() + value.slice(1)}
+          {row.status.charAt(0).toUpperCase() + row.status.slice(1)}
         </span>
       ),
     },
     {
       key: 'actions',
       label: 'Actions',
-      render: (_: any, row: Invoice) => (
+      render: (row: Invoice) => (
         <div className="flex items-center space-x-2">
           <button
             onClick={() => {
@@ -104,7 +104,7 @@ const CustomerPurchasesPage: React.FC = () => {
             </div>
             <div className="flex items-center text-sm text-gray-500">
               <DocumentTextIcon className="h-5 w-5 mr-2" />
-              {purchasesData?.data?.data?.pagination?.total || 0} total purchases
+              {purchasesData?.data?.pagination?.total || 0} total purchases
             </div>
           </div>
         </div>
@@ -118,16 +118,16 @@ const CustomerPurchasesPage: React.FC = () => {
                 <h3 className="text-lg font-medium text-gray-900">Purchase History</h3>
               </div>
               <div className="text-sm text-gray-500">
-                {purchasesData?.data?.data?.pagination?.total || 0} total purchases
+                {purchasesData?.data?.pagination?.total || 0} total purchases
               </div>
             </div>
           </div>
           <div className="p-6">
             <DataTable
               columns={invoiceColumns}
-              data={purchasesData?.data?.data?.data || []}
+              data={purchasesData?.data?.data || []}
               loading={purchasesLoading}
-              pagination={purchasesData?.data?.data?.pagination}
+              pagination={purchasesData?.data?.pagination}
               onPageChange={setCurrentPage}
               emptyMessage="No purchases found. Your purchases will appear here when linked to your phone number."
             />

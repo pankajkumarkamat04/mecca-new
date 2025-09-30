@@ -53,7 +53,7 @@ const CustomerSupportPage: React.FC = () => {
           search: user?.email 
         });
         // Find customer by exact email match
-        const customers = response?.data?.data || [];
+        const customers = response?.data?.data?.data || [];
         const customer = customers.find((c: any) => c.email === user?.email);
         
         return customer || null;
@@ -171,30 +171,30 @@ const CustomerSupportPage: React.FC = () => {
       key: 'ticketNumber',
       label: 'Ticket #',
       sortable: true,
-      render: (value: string) => (
-        <span className="text-sm font-mono text-gray-900">#{value}</span>
+      render: (row: any) => (
+        <span className="text-sm font-mono text-gray-900">#{row.ticketNumber}</span>
       ),
     },
     {
       key: 'subject',
       label: 'Subject',
-      render: (value: string) => (
-        <span className="text-sm font-medium text-gray-900">{value}</span>
+      render: (row: any) => (
+        <span className="text-sm font-medium text-gray-900">{row.subject}</span>
       ),
     },
     {
       key: 'priority',
       label: 'Priority',
       sortable: true,
-      render: (value: string) => (
+      render: (row: any) => (
         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-          value === 'urgent' ? 'bg-red-100 text-red-800' :
-          value === 'high' ? 'bg-orange-100 text-orange-800' :
-          value === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+          row.priority === 'urgent' ? 'bg-red-100 text-red-800' :
+          row.priority === 'high' ? 'bg-orange-100 text-orange-800' :
+          row.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
           'bg-gray-100 text-gray-800'
         }`}>
-          {getPriorityIcon(value)}
-          <span className="ml-1">{value.charAt(0).toUpperCase() + value.slice(1)}</span>
+          {getPriorityIcon(row.priority)}
+          <span className="ml-1">{row.priority.charAt(0).toUpperCase() + row.priority.slice(1)}</span>
         </span>
       ),
     },
@@ -202,16 +202,16 @@ const CustomerSupportPage: React.FC = () => {
       key: 'status',
       label: 'Status',
       sortable: true,
-      render: (value: string) => (
+      render: (row: any) => (
         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-          value === 'open' ? 'bg-blue-100 text-blue-800' :
-          value === 'in_progress' ? 'bg-yellow-100 text-yellow-800' :
-          value === 'resolved' ? 'bg-green-100 text-green-800' :
-          value === 'closed' ? 'bg-gray-100 text-gray-800' :
+          row.status === 'open' ? 'bg-blue-100 text-blue-800' :
+          row.status === 'in_progress' ? 'bg-yellow-100 text-yellow-800' :
+          row.status === 'resolved' ? 'bg-green-100 text-green-800' :
+          row.status === 'closed' ? 'bg-gray-100 text-gray-800' :
           'bg-gray-100 text-gray-800'
         }`}>
-          {getStatusIcon(value)}
-          <span className="ml-1">{value.charAt(0).toUpperCase() + value.slice(1).replace('_', ' ')}</span>
+          {getStatusIcon(row.status)}
+          <span className="ml-1">{row.status.charAt(0).toUpperCase() + row.status.slice(1).replace('_', ' ')}</span>
         </span>
       ),
     },
@@ -219,22 +219,22 @@ const CustomerSupportPage: React.FC = () => {
       key: 'createdAt',
       label: 'Created',
       sortable: true,
-      render: (value: string) => (
-        <span className="text-sm text-gray-900">{formatDate(value)}</span>
+      render: (row: any) => (
+        <span className="text-sm text-gray-900">{formatDate(row.createdAt)}</span>
       ),
     },
     {
       key: 'lastUpdated',
       label: 'Last Updated',
       sortable: true,
-      render: (value: string) => (
-        <span className="text-sm text-gray-900">{formatDate(value)}</span>
+      render: (row: any) => (
+        <span className="text-sm text-gray-900">{formatDate(row.lastUpdated)}</span>
       ),
     },
     {
       key: 'actions',
       label: 'Actions',
-      render: (_: any, row: any) => (
+      render: (row: any) => (
         <div className="flex items-center space-x-2">
           <button
             onClick={() => handleViewTicket(row)}
@@ -249,9 +249,9 @@ const CustomerSupportPage: React.FC = () => {
   ];
 
   const getStatusCounts = () => {
-    if (!ticketsData?.data?.data) return {};
+    if (!ticketsData?.data) return {};
     
-    const tickets = ticketsData.data.data;
+    const tickets = ticketsData.data;
     return {
       total: tickets.length,
       open: tickets.filter((t: any) => t.status === 'open').length,

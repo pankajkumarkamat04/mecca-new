@@ -244,36 +244,21 @@ export const reportsAPI = {
     api.get('/reports/balance-sheet', { params }),
   getInventoryReport: (params?: any) => api.get('/reports/inventory', { params }),
   
+  // Saved Reports
+  saveReport: (data: any) => api.post('/reports/save', data),
+  getSavedReports: (params?: any) => api.get('/reports/saved', { params }),
+  getSavedReportById: (id: string) => api.get(`/reports/saved/${id}`),
+  deleteSavedReport: (id: string) => api.delete(`/reports/saved/${id}`),
 };
 
-// Analytics API
-export const analyticsAPI = {
-  // Sales Performance
-  getSalesPerformance: (params?: any) => api.get('/analytics/sales-performance', { params }),
-  getSalesByShop: (params?: any) => api.get('/analytics/sales-by-shop', { params }),
-  getSalesBySalesperson: (params?: any) => api.get('/analytics/sales-by-salesperson', { params }),
-  getProductPerformance: (params?: any) => api.get('/analytics/product-performance', { params }),
-  getCustomerBehavior: (params?: any) => api.get('/analytics/customer-behavior', { params }),
-  
-  // Inventory Analysis
-  getInventoryAnalysis: (params?: any) => api.get('/analytics/inventory-analysis', { params }),
-  getStockLevels: (params?: any) => api.get('/analytics/stock-levels', { params }),
-  getSlowMovingItems: (params?: any) => api.get('/analytics/slow-moving-items', { params }),
-  getStockMovement: (params?: any) => api.get('/analytics/stock-movement', { params }),
-  getTurnoverRates: (params?: any) => api.get('/analytics/turnover-rates', { params }),
-  getLeadTimeAnalysis: (params?: any) => api.get('/analytics/lead-time-analysis', { params }),
-  
-  // Workshop Performance
-  getWorkshopPerformance: (params?: any) => api.get('/analytics/workshop-performance', { params }),
-  getJobCompletion: (params?: any) => api.get('/analytics/job-completion', { params }),
-  getTechnicianPerformance: (params?: any) => api.get('/analytics/technician-performance', { params }),
-  getResourceUtilization: (params?: any) => api.get('/analytics/resource-utilization', { params }),
-  getCustomerSatisfaction: (params?: any) => api.get('/analytics/customer-satisfaction', { params }),
-  
-  // General Analytics
-  getOverviewMetrics: (params?: any) => api.get('/analytics/overview', { params }),
-  exportAnalytics: (type: string, format: string, params?: any) => 
-    api.get(`/analytics/export/${type}/${format}`, { params, responseType: 'blob' }),
+// Analytics API (deprecated) - removed in favor of insightsAPI
+
+// Insights API (Unified Reports + Analytics)
+export const insightsAPI = {
+  getOverview: () => api.get('/insights/overview'),
+  getSales: (params?: any) => api.get('/insights/sales', { params }),
+  getInventory: (params?: any) => api.get('/insights/inventory', { params }),
+  getWorkshop: (params?: any) => api.get('/insights/workshop', { params }),
 };
 
 // Quotations API

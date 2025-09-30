@@ -10,7 +10,7 @@ import PieChart from '@/components/charts/PieChart';
 import BarChart from '@/components/charts/BarChart';
 import DataTable from '@/components/ui/DataTable';
 import { formatCurrency, formatNumber, formatDate } from '@/lib/utils';
-import { analyticsAPI } from '@/lib/api';
+import { insightsAPI } from '@/lib/api';
 import {
   ArchiveBoxIcon,
   ExclamationTriangleIcon,
@@ -30,43 +30,38 @@ const InventoryAnalysis: React.FC = () => {
   const [analysisType, setAnalysisType] = useState('turnover');
 
   // Fetch inventory data from API
-  const { data: inventoryLevelsData, isLoading: inventoryLevelsLoading } = useQuery({
-    queryKey: ['inventory-levels-data', dateRange, selectedCategory],
-    queryFn: () => analyticsAPI.getStockLevels({
-      dateRange,
-      category: selectedCategory
-    }),
-  });
-
-  const { data: slowMovingItems, isLoading: slowMovingLoading } = useQuery({
-    queryKey: ['slow-moving-items-data', dateRange],
-    queryFn: () => analyticsAPI.getSlowMovingItems({ dateRange }),
-  });
-
-  const { data: stockMovementData, isLoading: stockMovementLoading } = useQuery({
-    queryKey: ['stock-movement-data', dateRange],
-    queryFn: () => analyticsAPI.getStockMovement({ dateRange }),
-  });
-
-  const { data: categoryTurnoverData, isLoading: categoryTurnoverLoading } = useQuery({
-    queryKey: ['category-turnover-data', dateRange],
-    queryFn: () => analyticsAPI.getTurnoverRates({ dateRange }),
-  });
-
-  const { data: leadTimeAnalysisData, isLoading: leadTimeLoading } = useQuery({
-    queryKey: ['lead-time-analysis-data', dateRange],
-    queryFn: () => analyticsAPI.getLeadTimeAnalysis({ dateRange }),
-  });
-
-  // Fetch inventory analysis data
-  const { data: inventoryData, isLoading } = useQuery({
-    queryKey: ['inventory-analysis', dateRange, selectedCategory],
-    queryFn: () => analyticsAPI.getInventoryAnalysis({
-      dateRange,
-      category: selectedCategory
-    }),
+  // Unified inventory insights
+  const { data: inventoryInsights, isLoading: inventoryLevelsLoading, error: inventoryLevelsError } = useQuery({
+    queryKey: ['insights-inventory', dateRange, selectedCategory],
+    queryFn: () => insightsAPI.getInventory({ category: selectedCategory }),
     refetchInterval: 30000
   });
+  const inv = (inventoryInsights as any)?.data?.data || {};
+  const levels = Array.isArray(inv.levels) ? inv.levels : [];
+  const movementSeries = Array.isArray(inv.movement) ? inv.movement : [];
+  const turnover = Array.isArray(inv.turnover) ? inv.turnover : [];
+  const slowMoving = Array.isArray(inv.slowMoving) ? inv.slowMoving : [];
+  const leadTime = Array.isArray(inv.leadTime) ? inv.leadTime : [];
+
+  
+
+  const slowMovingItems = { data: slowMoving } as any;
+  const slowMovingLoading = false as boolean;
+
+  
+
+  const stockMovementData = { data: movementSeries } as any;
+  const stockMovementLoading = false as boolean;
+
+  const categoryTurnoverData = { data: turnover } as any;
+  const categoryTurnoverLoading = false as boolean;
+
+  const leadTimeAnalysisData = { data: leadTime } as any;
+  const leadTimeLoading = false as boolean;
+
+  // Fetch inventory analysis data
+  const isLoading = inventoryLevelsLoading;
+  const inventoryData = undefined as any;
 
   const dateRangeOptions = [
     { value: '7d', label: 'Last 7 days' },
@@ -226,7 +221,7 @@ const InventoryAnalysis: React.FC = () => {
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Total Inventory Value</p>
               <p className="text-2xl font-semibold text-gray-900">
-                {isLoading ? '...' : formatCurrency(inventoryData?.data?.totalValue || 0)}
+                {inventoryLevelsLoading ? '...' : formatCurrency(inv?.summary?.totalInventoryValue || 0)}
               </p>
               <div className="flex items-center mt-1">
                 <ArrowTrendingUpIcon className="h-4 w-4 text-green-500" />
@@ -247,7 +242,7 @@ const InventoryAnalysis: React.FC = () => {
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Total Items</p>
               <p className="text-2xl font-semibold text-gray-900">
-                {isLoading ? '...' : formatNumber(inventoryData?.data?.totalItems || 0)}
+                {inventoryLevelsLoading ? '...' : formatNumber(inv?.summary?.totalProducts || 0)}
               </p>
               <p className="text-sm text-gray-500 mt-1">
                 Avg turnover: {inventoryData?.data?.avgTurnover || 0}x
@@ -264,7 +259,7 @@ const InventoryAnalysis: React.FC = () => {
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Low Stock Items</p>
               <p className="text-2xl font-semibold text-gray-900">
-                {isLoading ? '...' : inventoryData?.data?.lowStockItems || 0}
+                {inventoryLevelsLoading ? '...' : inv?.summary?.lowStockProducts || 0}
               </p>
               <p className="text-sm text-gray-500 mt-1">
                 Need immediate attention
@@ -281,7 +276,7 @@ const InventoryAnalysis: React.FC = () => {
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Slow Moving Items</p>
               <p className="text-2xl font-semibold text-gray-900">
-                {isLoading ? '...' : inventoryData?.data?.slowMovingItems || 0}
+                {inventoryLevelsLoading ? '...' : inv?.summary?.outOfStockProducts || 0}
               </p>
               <p className="text-sm text-gray-500 mt-1">
                 Consider discounts
@@ -297,6 +292,7 @@ const InventoryAnalysis: React.FC = () => {
           title="Stock Movement Trend"
           description="Incoming vs outgoing inventory over time"
           trend={{ value: 5.2, isPositive: true, label: 'vs last month' }}
+          contentHeight={300}
         >
           <SalesChart 
             data={stockMovementData?.data || []} 
@@ -309,6 +305,7 @@ const InventoryAnalysis: React.FC = () => {
           title="Category Turnover Rates"
           description="Inventory turnover by product category"
           trend={{ value: 8.1, isPositive: true, label: 'vs last month' }}
+          contentHeight={300}
         >
           <PieChart 
             data={categoryTurnoverData?.data || []}
@@ -324,13 +321,14 @@ const InventoryAnalysis: React.FC = () => {
           title="Turnover Rate by Category"
           description="How fast inventory moves in each category"
           trend={{ value: 3.2, isPositive: true, label: 'avg turnover' }}
+          contentHeight={300}
         >
           <BarChart 
-            data={(categoryTurnoverData?.data || []).map((c: any) => ({
+            data={Array.isArray(categoryTurnoverData?.data) ? categoryTurnoverData.data.map((c: any) => ({
               name: c.name,
-              value: c.turnover,
+              value: c.turnover ?? c.turnoverRate ?? 0,
               color: c.color
-            }))}
+            })) : []}
             height={300}
             formatValue={(value) => `${value}x`}
           />
@@ -340,13 +338,14 @@ const InventoryAnalysis: React.FC = () => {
           title="Supplier Lead Time Analysis"
           description="Average delivery times and reliability"
           trend={{ value: 12, isPositive: false, label: 'avg days' }}
+          contentHeight={300}
         >
           <BarChart 
-            data={(leadTimeAnalysisData?.data || []).map((s: any) => ({
+            data={Array.isArray(leadTimeAnalysisData?.data) ? leadTimeAnalysisData.data.map((s: any) => ({
               name: s.supplier,
               value: s.avgLeadTime,
               color: s.color
-            }))}
+            })) : []}
             height={300}
             formatValue={(value) => `${value} days`}
           />
@@ -360,7 +359,7 @@ const InventoryAnalysis: React.FC = () => {
           <p className="text-sm text-gray-600">Stock levels and turnover analysis</p>
         </div>
         <DataTable
-          data={inventoryLevelsData?.data || []}
+          data={Array.isArray(levels) ? levels : []}
           columns={inventoryColumns}
           loading={inventoryLevelsLoading}
         />
@@ -373,7 +372,7 @@ const InventoryAnalysis: React.FC = () => {
           <p className="text-sm text-gray-600">Items requiring attention and optimization</p>
         </div>
         <DataTable
-          data={slowMovingItems?.data || []}
+          data={Array.isArray(slowMoving) ? slowMoving : []}
           columns={slowMovingColumns}
           loading={slowMovingLoading}
         />
@@ -389,7 +388,7 @@ const InventoryAnalysis: React.FC = () => {
               <span className="text-sm font-medium text-blue-900">Inventory Efficiency</span>
             </div>
             <p className="text-sm text-blue-700 mt-1">
-              Overall efficiency score of {inventoryData?.data?.efficiencyScore || 0}%. Focus on improving turnover rates.
+              Overall efficiency score of {inv?.efficiencyScore || 0}%. Focus on improving turnover rates.
             </p>
           </div>
           <div className="bg-red-50 p-4 rounded-lg">
@@ -398,7 +397,7 @@ const InventoryAnalysis: React.FC = () => {
               <span className="text-sm font-medium text-red-900">Stock Alerts</span>
             </div>
             <p className="text-sm text-red-700 mt-1">
-              {inventoryData?.data?.lowStockItems || 0} items are below minimum stock levels and need immediate restocking.
+              {inv?.summary?.lowStockProducts || 0} items are below minimum stock levels and need immediate restocking.
             </p>
           </div>
           <div className="bg-yellow-50 p-4 rounded-lg">
@@ -407,7 +406,7 @@ const InventoryAnalysis: React.FC = () => {
               <span className="text-sm font-medium text-yellow-900">Slow Moving Items</span>
             </div>
             <p className="text-sm text-yellow-700 mt-1">
-              {inventoryData?.data?.slowMovingItems || 0} items haven't moved in 60+ days. Consider promotional strategies.
+              {inv?.summary?.outOfStockProducts || 0} items haven't moved in 60+ days. Consider promotional strategies.
             </p>
           </div>
         </div>

@@ -91,7 +91,7 @@ const WarehouseOrders: React.FC = () => {
     },
   });
 
-  const orders = ordersData?.data?.data || ordersData?.data || [];
+  const orders = ordersData?.data?.data || [];
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -135,9 +135,9 @@ const WarehouseOrders: React.FC = () => {
     {
       key: 'orderNumber',
       label: 'Order',
-      render: (value: string, row: Order) => (
+      render: (row: Order) => (
         <div>
-          <div className="font-medium text-gray-900">{value}</div>
+          <div className="font-medium text-gray-900">{row.orderNumber}</div>
           <div className="text-sm text-gray-500">
             {new Date(row.createdAt).toLocaleDateString()}
           </div>
@@ -147,7 +147,7 @@ const WarehouseOrders: React.FC = () => {
     {
       key: 'customer',
       label: 'Customer',
-      render: (value: any, row: Order) => (
+      render: (row: Order) => (
         <div>
           <div className="font-medium text-gray-900">
             {row.customer.firstName} {row.customer.lastName}
@@ -159,7 +159,7 @@ const WarehouseOrders: React.FC = () => {
     {
       key: 'items',
       label: 'Items',
-      render: (value: any, row: Order) => (
+      render: (row: Order) => (
         <div>
           <div className="font-medium text-gray-900">{row.items.length} items</div>
           <div className="text-sm text-gray-500">
@@ -171,7 +171,7 @@ const WarehouseOrders: React.FC = () => {
     {
       key: 'totalAmount',
       label: 'Total',
-      render: (value: number, row: Order) => (
+      render: (row: Order) => (
         <div className="font-medium text-gray-900">
           ${row.totalAmount.toLocaleString()}
         </div>
@@ -180,17 +180,17 @@ const WarehouseOrders: React.FC = () => {
     {
       key: 'status',
       label: 'Status',
-      render: (value: string, row: Order) => (
-        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(value)}`}>
-          {getStatusIcon(value)}
-          <span className="ml-1">{value.replace('_', ' ')}</span>
+      render: (row: Order) => (
+        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(row.status)}`}>
+          {getStatusIcon(row.status)}
+          <span className="ml-1">{row.status.replace('_', ' ')}</span>
         </span>
       ),
     },
     {
       key: 'actions',
       label: 'Actions',
-      render: (value: any, row: Order) => (
+      render: (row: Order) => (
         <div className="flex items-center space-x-2">
           <button
             onClick={() => {

@@ -122,8 +122,8 @@ const WarehousesPage: React.FC = () => {
   });
 
   useEffect(() => {
-    if (usersData?.data?.data) {
-      setAvailableUsers(usersData.data.data);
+    if (usersData?.data) {
+      setAvailableUsers(usersData.data);
     }
   }, [usersData]);
 
@@ -184,19 +184,19 @@ const WarehousesPage: React.FC = () => {
     },
   });
 
-  const warehouses = warehousesData?.data?.data || warehousesData?.data || [];
-  const pagination = warehousesData?.data?.pagination || warehousesData?.data?.pagination || {};
-  const stats = statsData?.data?.data || statsData?.data;
+  const warehouses = warehousesData?.data?.data || [];
+  const pagination = warehousesData?.data?.pagination || {};
+  const stats = statsData?.data;
 
   const columns = [
     {
       key: 'name',
       label: 'Name',
-      render: (value: string, row: Warehouse) => (
+      render: (row: Warehouse) => (
         <div className="flex items-center">
           <BuildingOfficeIcon className="h-5 w-5 text-gray-400 mr-2" />
           <div>
-            <div className="font-medium text-gray-900">{value}</div>
+            <div className="font-medium text-gray-900">{row.name}</div>
             <div className="text-sm text-gray-500">{row.code}</div>
           </div>
         </div>
@@ -205,7 +205,7 @@ const WarehousesPage: React.FC = () => {
     {
       key: 'manager',
       label: 'Manager',
-      render: (value: any, row: Warehouse) => (
+      render: (row: Warehouse) => (
         <div className="text-sm">
           {row.manager ? (
             <div>
@@ -223,7 +223,7 @@ const WarehousesPage: React.FC = () => {
     {
       key: 'employees',
       label: 'Employees',
-      render: (value: any, row: Warehouse) => (
+      render: (row: Warehouse) => (
         <div className="text-sm">
           <div className="font-medium text-gray-900">
             {row.employees?.filter(emp => emp.user).length || 0} employees
@@ -237,7 +237,7 @@ const WarehousesPage: React.FC = () => {
     {
       key: 'capacity',
       label: 'Capacity',
-      render: (value: any, row: Warehouse) => (
+      render: (row: Warehouse) => (
         <div className="text-sm">
           <div className="text-gray-900">
             {row.capacity?.currentOccupancy || 0} / {row.capacity?.totalCapacity || 0}
@@ -251,7 +251,7 @@ const WarehousesPage: React.FC = () => {
     {
       key: 'status',
       label: 'Status',
-      render: (value: any, row: Warehouse) => (
+      render: (row: Warehouse) => (
         <div className="flex items-center">
           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
             row.isActive 
@@ -271,7 +271,7 @@ const WarehousesPage: React.FC = () => {
     {
       key: 'actions',
       label: 'Actions',
-      render: (value: any, row: Warehouse) => (
+      render: (row: Warehouse) => (
         <div className="flex items-center space-x-2">
           <button
             onClick={() => {

@@ -67,15 +67,15 @@ const WarehousePortalLayout: React.FC<{ children: React.ReactNode }> = ({ childr
   useEffect(() => {
     if (userData?.warehouse?.assignedWarehouse) {
       setSelectedWarehouseId(userData.warehouse.assignedWarehouse);
-    } else if (warehousesData?.data?.data && warehousesData.data.data.length > 0) {
+    } else if (warehousesData?.data && warehousesData.data.length > 0) {
       // For admin/manager, select first warehouse by default
-      setSelectedWarehouseId(warehousesData.data.data[0]._id);
+      setSelectedWarehouseId(warehousesData.data[0]._id);
     }
   }, [userData, warehousesData]);
 
   useEffect(() => {
-    if (selectedWarehouseId && warehousesData?.data?.data) {
-      const warehouse = warehousesData.data.data.find((w: Warehouse) => w._id === selectedWarehouseId);
+    if (selectedWarehouseId && warehousesData?.data) {
+      const warehouse = warehousesData.data.find((w: Warehouse) => w._id === selectedWarehouseId);
       setSelectedWarehouse(warehouse || null);
     }
   }, [selectedWarehouseId, warehousesData]);

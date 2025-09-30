@@ -34,7 +34,7 @@ const CustomerInquiriesPage: React.FC = () => {
     enabled: !!user?._id,
   });
 
-  const inquiries = inquiriesData?.data?.data || inquiriesData?.data || [];
+  const inquiries = inquiriesData?.data?.data || [];
 
   const handleViewDetails = (inquiry: any) => {
     setSelectedInquiry(inquiry);

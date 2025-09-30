@@ -289,7 +289,7 @@ const DashboardPage: React.FC = () => {
                     <div className="ml-4">
                       <p className="text-sm font-medium text-gray-500">Total Products</p>
                       <p className="text-2xl font-bold text-gray-900">
-                        {warehouseData.data.data.statistics?.totalProducts || 0}
+                        {warehouseData?.data?.data?.statistics?.totalProducts || 0}
                       </p>
                     </div>
                   </div>
@@ -302,7 +302,7 @@ const DashboardPage: React.FC = () => {
                     <div className="ml-4">
                       <p className="text-sm font-medium text-gray-500">Low Stock</p>
                       <p className="text-2xl font-bold text-gray-900">
-                        {warehouseData.data.data.statistics?.lowStockProducts || 0}
+                        {warehouseData?.data?.data?.statistics?.lowStockProducts || 0}
                       </p>
                     </div>
                   </div>
@@ -315,7 +315,7 @@ const DashboardPage: React.FC = () => {
                     <div className="ml-4">
                       <p className="text-sm font-medium text-gray-500">Employees</p>
                       <p className="text-2xl font-bold text-gray-900">
-                        {warehouseData.data.data.statistics?.activeEmployees || 0}
+                        {warehouseData?.data?.data?.statistics?.activeEmployees || 0}
                       </p>
                     </div>
                   </div>
@@ -328,7 +328,7 @@ const DashboardPage: React.FC = () => {
                     <div className="ml-4">
                       <p className="text-sm font-medium text-gray-500">Capacity Used</p>
                       <p className="text-2xl font-bold text-gray-900">
-                        {warehouseData.data.data.warehouse?.capacityUtilization || 0}%
+                        {warehouseData?.data?.data?.warehouse?.capacityUtilization || 0}%
                       </p>
                     </div>
                   </div>
@@ -343,7 +343,7 @@ const DashboardPage: React.FC = () => {
                   <h3 className="text-lg font-medium text-gray-900">Recent Stock Movements</h3>
                 </div>
                 <div className="p-6">
-                  {warehouseData.data.data.recentMovements.length > 0 ? (
+                  {warehouseData?.data?.data?.recentMovements && warehouseData.data.data.recentMovements.length > 0 ? (
                     <div className="space-y-4">
                       {warehouseData.data.data.recentMovements.slice(0, 5).map((movement: any) => (
                         <div key={movement._id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">

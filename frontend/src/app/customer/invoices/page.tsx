@@ -66,61 +66,61 @@ const CustomerInvoicesPage: React.FC = () => {
       key: 'invoiceNumber',
       label: 'Invoice #',
       sortable: true,
-      render: (value: string) => (
-        <span className="text-sm font-mono text-gray-900">{value}</span>
+      render: (row: any) => (
+        <span className="text-sm font-mono text-gray-900">{row.invoiceNumber}</span>
       ),
     },
     {
       key: 'invoiceDate',
       label: 'Date',
       sortable: true,
-      render: (value: string) => (
-        <span className="text-sm text-gray-900">{formatDate(value)}</span>
+      render: (row: any) => (
+        <span className="text-sm text-gray-900">{formatDate(row.invoiceDate)}</span>
       ),
     },
     {
       key: 'dueDate',
       label: 'Due Date',
       sortable: true,
-      render: (value: string) => (
-        <span className="text-sm text-gray-900">{value ? formatDate(value) : 'N/A'}</span>
+      render: (row: any) => (
+        <span className="text-sm text-gray-900">{row.dueDate ? formatDate(row.dueDate) : 'N/A'}</span>
       ),
     },
     {
       key: 'total',
       label: 'Total',
       sortable: true,
-      render: (value: number) => (
-        <span className="text-sm font-medium text-gray-900">{formatCurrency(value)}</span>
+      render: (row: any) => (
+        <span className="text-sm font-medium text-gray-900">{formatCurrency(row.total)}</span>
       ),
     },
     {
       key: 'paid',
       label: 'Paid',
       sortable: true,
-      render: (value: number) => (
-        <span className="text-sm font-medium text-green-600">{formatCurrency(value || 0)}</span>
+      render: (row: any) => (
+        <span className="text-sm font-medium text-green-600">{formatCurrency(row.paid || 0)}</span>
       ),
     },
     {
       key: 'status',
       label: 'Status',
       sortable: true,
-      render: (value: string) => (
+      render: (row: any) => (
         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-          value === 'paid' ? 'bg-green-100 text-green-800' :
-          value === 'partial' ? 'bg-yellow-100 text-yellow-800' :
-          value === 'overdue' ? 'bg-red-100 text-red-800' :
+          row.status === 'paid' ? 'bg-green-100 text-green-800' :
+          row.status === 'partial' ? 'bg-yellow-100 text-yellow-800' :
+          row.status === 'overdue' ? 'bg-red-100 text-red-800' :
           'bg-gray-100 text-gray-800'
         }`}>
-          {value.charAt(0).toUpperCase() + value.slice(1)}
+          {row.status.charAt(0).toUpperCase() + row.status.slice(1)}
         </span>
       ),
     },
     {
       key: 'actions',
       label: 'Actions',
-      render: (_: any, row: Invoice) => (
+      render: (row: Invoice) => (
         <div className="flex items-center space-x-2">
           <button
             onClick={() => handleViewInvoice(row)}
@@ -149,7 +149,7 @@ const CustomerInvoicesPage: React.FC = () => {
   ];
 
   const getStatusCounts = () => {
-    if (isLoading || !invoicesData?.data?.data?.data || !Array.isArray(invoicesData.data.data.data)) {
+    if (isLoading || !invoicesData?.data?.data || !Array.isArray(invoicesData.data.data)) {
       return {
         total: 0,
         paid: 0,
@@ -158,7 +158,7 @@ const CustomerInvoicesPage: React.FC = () => {
       };
     }
     
-    const invoices = invoicesData.data.data.data;
+    const invoices = invoicesData.data.data;
     return {
       total: invoices.length,
       paid: invoices.filter((inv: Invoice) => inv.status === 'paid').length,
@@ -288,16 +288,16 @@ const CustomerInvoicesPage: React.FC = () => {
                 <h3 className="text-lg font-medium text-gray-900">Invoice History</h3>
               </div>
               <div className="text-sm text-gray-500">
-                {invoicesData?.data?.data?.pagination?.total || 0} total invoices
+                {invoicesData?.data?.pagination?.total || 0} total invoices
               </div>
             </div>
           </div>
           <div className="p-6">
             <DataTable
               columns={invoiceColumns}
-              data={Array.isArray(invoicesData?.data?.data?.data) ? invoicesData.data.data.data : []}
+              data={invoicesData?.data?.data || []}
               loading={isLoading}
-              pagination={invoicesData?.data?.data?.pagination}
+              pagination={invoicesData?.data?.pagination}
               onPageChange={setCurrentPage}
               emptyMessage="No invoices found. Your invoices will appear here when available."
             />

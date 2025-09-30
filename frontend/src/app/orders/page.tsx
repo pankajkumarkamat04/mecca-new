@@ -256,16 +256,16 @@ const OrdersPage: React.FC = () => {
     {
       key: 'orderNumber',
       label: 'Order #',
-      render: (value: string) => (
-        <span className="font-medium text-blue-600">{value}</span>
+      render: (row: any) => (
+        <span className="font-medium text-blue-600">{row.orderNumber}</span>
       ),
     },
     {
       key: 'customerName',
       label: 'Customer',
-      render: (value: string, row: any) => (
+      render: (row: any) => (
         <div>
-          <div className="font-medium">{value}</div>
+          <div className="font-medium">{row.customerName}</div>
           <div className="text-sm text-gray-500">{row.customerEmail}</div>
         </div>
       ),
@@ -273,19 +273,19 @@ const OrdersPage: React.FC = () => {
     {
       key: 'orderDate',
       label: 'Order Date',
-      render: (value: string) => (
-        <span className="text-sm text-gray-900">{formatDate(value)}</span>
+      render: (row: any) => (
+        <span className="text-sm text-gray-900">{formatDate(row.orderDate)}</span>
       ),
     },
     {
       key: 'expectedDeliveryDate',
       label: 'Expected Delivery',
-      render: (value: string, row: any) => {
-        if (!value) return <span className="text-sm text-gray-400">Not set</span>;
-        const isOverdue = row.expectedDeliveryDate && new Date(value) < new Date() && !['delivered', 'cancelled'].includes(row.orderStatus);
+      render: (row: any) => {
+        if (!row.expectedDeliveryDate) return <span className="text-sm text-gray-400">Not set</span>;
+        const isOverdue = row.expectedDeliveryDate && new Date(row.expectedDeliveryDate) < new Date() && !['delivered', 'cancelled'].includes(row.orderStatus);
         return (
           <span className={`text-sm ${isOverdue ? 'text-red-600 font-medium' : 'text-gray-900'}`}>
-            {formatDate(value)}
+            {formatDate(row.expectedDeliveryDate)}
             {isOverdue && <ExclamationTriangleIcon className="inline h-4 w-4 ml-1" />}
           </span>
         );
@@ -294,29 +294,29 @@ const OrdersPage: React.FC = () => {
     {
       key: 'totalAmount',
       label: 'Total',
-      render: (value: number) => (
-        <span className="font-medium">{formatCurrency(value)}</span>
+      render: (row: any) => (
+        <span className="font-medium">{formatCurrency(row.totalAmount)}</span>
       ),
     },
     {
       key: 'orderStatus',
       label: 'Status',
-      render: (value: string) => getStatusBadge(value, 'order'),
+      render: (row: any) => getStatusBadge(row.orderStatus, 'order'),
     },
     {
       key: 'paymentStatus',
       label: 'Payment',
-      render: (value: string) => getStatusBadge(value, 'payment'),
+      render: (row: any) => getStatusBadge(row.paymentStatus, 'payment'),
     },
     {
       key: 'priority',
       label: 'Priority',
-      render: (value: string) => getPriorityBadge(value),
+      render: (row: any) => getPriorityBadge(row.priority),
     },
     {
       key: 'actions',
       label: 'Actions',
-      render: (value: any, row: any) => (
+      render: (row: any) => (
         <div className="flex space-x-2">
           <button
             onClick={() => {
@@ -467,18 +467,23 @@ const OrdersPage: React.FC = () => {
 
         {/* Orders Table */}
         <div className="bg-white shadow rounded-lg">
-          <DataTable
-            data={ordersData?.data?.data || []}
+          {(() => {
+            const pagination = ordersData?.data?.pagination || {};
+            return (
+              <DataTable
+             data={Array.isArray(ordersData?.data?.data) ? ordersData.data.data : []}
             columns={columns}
             loading={isLoading}
-            pagination={{
-              page: currentPage,
-              limit: pageSize,
-              total: ordersData?.data?.pagination?.total || 0,
-              pages: ordersData?.data?.pagination?.pages || 1,
-            }}
+             pagination={{
+               page: currentPage,
+               limit: pageSize,
+               total: pagination?.total || 0,
+               pages: pagination?.pages || 1,
+             }}
             onPageChange={setCurrentPage}
           />
+            );
+          })()}
         </div>
 
         {/* Order Details Modal */}
@@ -707,7 +712,7 @@ const OrdersPage: React.FC = () => {
                   }}
                   options={[
                     { value: '', label: 'Select User' },
-                    ...(usersData?.data?.data?.map((user: any) => ({
+                    ...(usersData?.data?.map((user: any) => ({
                       value: user._id,
                       label: `${user.firstName} ${user.lastName}`
                     })) || [])

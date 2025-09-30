@@ -27,6 +27,18 @@ const PieChart: React.FC<PieChartProps> = ({
   showLegend = true,
   showLabel = false
 }) => {
+  // Ensure height is a valid number
+  const safeHeight = typeof height === 'number' && !isNaN(height) ? height : 300;
+  // Sanitize data to ensure it's always an array of items with numeric value
+  const safeData = Array.isArray(data)
+    ? data
+        .map((d: any) => ({
+          name: typeof d?.name === 'string' ? d.name : String(d?.name ?? ''),
+          value: Number(d?.value ?? 0),
+          color: typeof d?.color === 'string' ? d.color : '#8884d8',
+        }))
+        .filter((d) => Number.isFinite(d.value))
+    : [];
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
       const data = payload[0];
@@ -87,19 +99,19 @@ const PieChart: React.FC<PieChartProps> = ({
   };
 
   return (
-    <ResponsiveContainer width="100%" height={height}>
+    <ResponsiveContainer width="100%" height={safeHeight}>
       <RechartsPieChart>
         <Pie
-          data={data}
+          data={safeData}
           cx="50%"
           cy="50%"
           labelLine={false}
           label={showLabel ? CustomLabel : false}
-          outerRadius={height / 3}
+          outerRadius={safeHeight / 3}
           fill="#8884d8"
           dataKey="value"
         >
-          {data.map((entry, index) => (
+          {safeData.map((entry, index) => (
             <Cell key={`cell-${index}`} fill={entry.color} />
           ))}
         </Pie>

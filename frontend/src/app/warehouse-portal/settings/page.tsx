@@ -104,8 +104,8 @@ const WarehouseSettings: React.FC = () => {
   });
 
   useEffect(() => {
-    if (warehouseData?.data?.data) {
-      const warehouse = warehouseData.data.data;
+    if (warehouseData?.data) {
+      const warehouse = warehouseData.data;
       setFormData({
         name: warehouse.name || '',
         code: warehouse.code || '',
@@ -174,7 +174,7 @@ const WarehouseSettings: React.FC = () => {
     setFormData(prev => ({
       ...prev,
       [parent]: {
-        ...prev[parent as keyof WarehouseSettings],
+        ...(prev[parent as keyof WarehouseSettings] as object || {}),
         [field]: value
       }
     }));

@@ -7,7 +7,7 @@ import Button from '@/components/ui/Button';
 import Modal from '@/components/ui/Modal';
 import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
-import { reportsAPI } from '@/lib/api';
+import { insightsAPI } from '@/lib/api';
 import { formatCurrency, formatDate, formatNumber } from '@/lib/utils';
 import toast from 'react-hot-toast';
 import {
@@ -20,39 +20,110 @@ import {
 } from '@heroicons/react/24/outline';
 
 const ReportsPage: React.FC = () => {
-  const [selectedReport, setSelectedReport] = useState<string>('');
+  // Default last 30 days and default sales selected
+  const todayDefault = new Date();
+  const thirtyDaysAgoDefault = new Date(todayDefault.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+  const [selectedReport, setSelectedReport] = useState<string>('sales');
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [dateRange, setDateRange] = useState({
-    startDate: '',
-    endDate: '',
+    startDate: thirtyDaysAgoDefault.toISOString().split('T')[0],
+    endDate: todayDefault.toISOString().split('T')[0],
   });
   const [filters, setFilters] = useState({
     category: 'all',
     paymentMethod: 'all',
   });
 
-  // Fetch dashboard stats
-  const { data: dashboardStats, isLoading: statsLoading } = useQuery({
-    queryKey: ['dashboard-stats'],
-    queryFn: () => reportsAPI.getDashboardStats(),
+  // Fetch insights overview (dashboard + analytics overview)
+  const { data: overview, isLoading: statsLoading, error: statsError } = useQuery({
+    queryKey: ['insights-overview'],
+    queryFn: () => insightsAPI.getOverview(),
     refetchInterval: 30000,
   });
 
-  // Fetch sales report
-  const { data: salesReport, isLoading: salesLoading } = useQuery({
-    queryKey: ['sales-report', dateRange, filters],
-    queryFn: () => reportsAPI.getSalesReport({
+  console.log('🔍 Insights Overview Debug:', {
+    overview,
+    statsLoading,
+    statsError,
+  });
+
+  // Fetch unified sales insights
+  const { data: salesReport, isLoading: salesLoading, error: salesError } = useQuery({
+    queryKey: ['insights-sales', dateRange, filters],
+    queryFn: () => insightsAPI.getSales({
       startDate: dateRange.startDate,
       endDate: dateRange.endDate,
+      groupBy: 'day',
       category: filters.category === 'all' ? undefined : filters.category,
     }),
     enabled: selectedReport === 'sales' && !!dateRange.startDate && !!dateRange.endDate,
   });
 
+  // Removed saved reports usage in unified module
+
+  // Debug logging for Reports
+  console.log('🔍 Reports Debug:', {
+    salesReport,
+    salesLoading,
+    salesError,
+    selectedReport,
+    dateRange,
+    filters,
+    enabled: selectedReport === 'sales' && !!dateRange.startDate && !!dateRange.endDate
+  });
+
+  // Test API connectivity to insights
+  React.useEffect(() => {
+    const testAPI = async () => {
+      try {
+        console.log('🔍 Testing Insights API connectivity...');
+        const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+        const response = await fetch(`${API_BASE_URL}/insights/overview`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        const data = await response.json();
+        console.log('🔍 Insights API Test Response:', { status: response.status, data });
+      } catch (error) {
+        console.error('🔍 Insights API Test Error:', error);
+      }
+    };
+    testAPI();
+  }, []);
+
+
   const handleGenerateReport = (reportType: string) => {
     setSelectedReport(reportType);
+    
+    // Set default date range (last 30 days)
+    const today = new Date();
+    const thirtyDaysAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+    
+    setDateRange({
+      startDate: thirtyDaysAgo.toISOString().split('T')[0],
+      endDate: today.toISOString().split('T')[0]
+    });
+    
     setIsReportModalOpen(true);
   };
+
+  const handleExecuteReport = () => {
+    if (!selectedReport || !dateRange.startDate || !dateRange.endDate) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+    
+    
+    // The report will be generated automatically by the useQuery hook
+    // when the conditions are met (enabled: selectedReport === 'sales' && !!dateRange.startDate && !!dateRange.endDate)
+    // We don't close the modal immediately so user can see the report preview
+    toast.success(`${selectedReport} report generated successfully`);
+  };
+
+  // Save report removed in unified insights module
 
   const handleExportReport = (reportType: string) => {
     toast.success(`${reportType} report exported successfully`);
@@ -113,6 +184,27 @@ const ReportsPage: React.FC = () => {
           </div>
         </div>
 
+        {/* Debug Panel */}
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+          <h3 className="text-sm font-medium text-yellow-800 mb-2">🔍 Debug Information</h3>
+          <div className="text-xs text-yellow-700 space-y-1">
+            <p><strong>Overview:</strong> {overview ? 'Loaded' : 'Not loaded'}</p>
+            <p><strong>Stats Loading:</strong> {statsLoading ? 'Yes' : 'No'}</p>
+            <p><strong>Stats Error:</strong> {statsError ? statsError.message : 'None'}</p>
+            {overview?.data?.data && (
+              <div className="mt-2 pl-2 border-l-2 border-yellow-400">
+                <p><strong>Monthly Sales:</strong> ${overview.data.data.dashboard?.sales?.monthlyTotal || 0}</p>
+                <p><strong>Monthly Invoices:</strong> {overview.data.data.dashboard?.sales?.monthlyInvoices || 0}</p>
+                <p><strong>Total Customers:</strong> {overview.data.data.dashboard?.customers?.total || 0}</p>
+                <p><strong>Total Products:</strong> {overview.data.data.dashboard?.products?.total || 0}</p>
+                <p><strong>Low Stock:</strong> {overview.data.data.dashboard?.products?.lowStock || 0}</p>
+              </div>
+            )}
+            <p className="pt-2"><strong>Sales Report:</strong> {salesReport ? 'Loaded' : 'Not loaded'}</p>
+            <p><strong>Selected Report:</strong> {selectedReport || 'None'}</p>
+          </div>
+        </div>
+
         {/* Quick Stats */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <div className="bg-white p-6 rounded-lg shadow">
@@ -123,7 +215,7 @@ const ReportsPage: React.FC = () => {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Total Sales</p>
                 <p className="text-2xl font-semibold text-gray-900">
-                  {statsLoading ? '...' : formatCurrency(dashboardStats?.data?.data?.sales?.monthlyTotal || 0)}
+                  {statsLoading ? '...' : formatCurrency(overview?.data?.data?.dashboard?.sales?.monthlyTotal || 0)}
                 </p>
               </div>
             </div>
@@ -137,7 +229,7 @@ const ReportsPage: React.FC = () => {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Total Invoices</p>
                 <p className="text-2xl font-semibold text-gray-900">
-                  {statsLoading ? '...' : formatNumber(dashboardStats?.data?.data?.sales?.monthlyInvoices || 0)}
+                  {statsLoading ? '...' : formatNumber(overview?.data?.data?.dashboard?.sales?.monthlyInvoices || 0)}
                 </p>
               </div>
             </div>
@@ -161,7 +253,7 @@ const ReportsPage: React.FC = () => {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Total Customers</p>
                 <p className="text-2xl font-semibold text-gray-900">
-                  {statsLoading ? '...' : formatNumber(dashboardStats?.data?.data?.customers?.total || 0)}
+                  {statsLoading ? '...' : formatNumber(overview?.data?.data?.dashboard?.customers?.total || 0)}
                 </p>
               </div>
             </div>
@@ -212,67 +304,28 @@ const ReportsPage: React.FC = () => {
           ))}
         </div>
 
-        {/* Recent Reports */}
+        {/* Insights Sales Summary (replaces saved reports section) */}
         <div className="bg-white rounded-lg shadow">
           <div className="px-6 py-4 border-b border-gray-200">
-            <h3 className="text-lg font-medium text-gray-900">Recent Reports</h3>
+            <h3 className="text-lg font-medium text-gray-900">Sales Insights (Last 30 Days)</h3>
           </div>
           <div className="p-6">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                <div className="flex items-center">
-                  <DocumentTextIcon className="h-8 w-8 text-blue-600 mr-3" />
-                  <div>
-                    <h4 className="text-sm font-medium text-gray-900">Sales Report - December 2024</h4>
-                    <p className="text-sm text-gray-500">Generated on {formatDate(new Date())}</p>
-                  </div>
-                </div>
-                <div className="flex space-x-2">
-                  <Button size="sm" variant="outline">
-                    <EyeIcon className="h-4 w-4" />
-                  </Button>
-                  <Button size="sm" variant="outline">
-                    <ArrowDownTrayIcon className="h-4 w-4" />
-                  </Button>
-                </div>
+            {salesLoading ? (
+              <div className="text-center py-8">
+                <p className="text-gray-500">Loading sales insights...</p>
               </div>
-
-              <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                <div className="flex items-center">
-                  <ChartBarIcon className="h-8 w-8 text-green-600 mr-3" />
-                  <div>
-                    <h4 className="text-sm font-medium text-gray-900">Inventory Report - December 2024</h4>
-                    <p className="text-sm text-gray-500">Generated on {formatDate(new Date())}</p>
-                  </div>
-                </div>
-                <div className="flex space-x-2">
-                  <Button size="sm" variant="outline">
-                    <EyeIcon className="h-4 w-4" />
-                  </Button>
-                  <Button size="sm" variant="outline">
-                    <ArrowDownTrayIcon className="h-4 w-4" />
-                  </Button>
-                </div>
+            ) : salesReport?.data?.data ? (
+              <div className="space-y-2 text-sm text-gray-700">
+                <p>• Total Sales: {formatCurrency(salesReport.data.data.summary?.totalSales || 0)}</p>
+                <p>• Total Invoices: {salesReport.data.data.summary?.totalInvoices || 0}</p>
+                <p>• Average Invoice: {formatCurrency(salesReport.data.data.summary?.averageInvoice || 0)}</p>
               </div>
-
-              <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                <div className="flex items-center">
-                  <DocumentTextIcon className="h-8 w-8 text-purple-600 mr-3" />
-                  <div>
-                    <h4 className="text-sm font-medium text-gray-900">Profit & Loss - Q4 2024</h4>
-                    <p className="text-sm text-gray-500">Generated on {formatDate(new Date())}</p>
-                  </div>
-                </div>
-                <div className="flex space-x-2">
-                  <Button size="sm" variant="outline">
-                    <EyeIcon className="h-4 w-4" />
-                  </Button>
-                  <Button size="sm" variant="outline">
-                    <ArrowDownTrayIcon className="h-4 w-4" />
-                  </Button>
-                </div>
+            ) : (
+              <div className="text-center py-8">
+                <DocumentTextIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-500">No insights available</p>
               </div>
-            </div>
+            )}
           </div>
         </div>
 
@@ -336,13 +389,34 @@ const ReportsPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Report Preview */}
+            {/* Report Preview (Insights Sales) */}
             {salesReport && (
               <div className="bg-gray-50 p-4 rounded-lg">
                 <h4 className="font-medium text-gray-900 mb-2">Report Preview</h4>
-                <p className="text-sm text-gray-600">
-                  Report will include data from {formatDate(dateRange.startDate)} to {formatDate(dateRange.endDate)}
-                </p>
+                {dateRange.startDate && dateRange.endDate && (
+                  <p className="text-sm text-gray-600 mb-2">
+                    Report includes data from {formatDate(dateRange.startDate)} to {formatDate(dateRange.endDate)}
+                  </p>
+                )}
+                {salesReport.data && (
+                  <div className="text-sm text-gray-700">
+                    <p>• Total Sales: {formatCurrency(salesReport.data.data?.summary?.totalSales || salesReport.data.data?.summary?.totalSales || 0)}</p>
+                    <p>• Total Invoices: {salesReport.data.data?.summary?.totalInvoices || 0}</p>
+                    <p>• Average Invoice: {formatCurrency(salesReport.data.data?.summary?.averageInvoice || 0)}</p>
+                  </div>
+                )}
+              </div>
+            )}
+            
+            {salesLoading && (
+              <div className="bg-blue-50 p-4 rounded-lg">
+                <p className="text-sm text-blue-700">Generating report...</p>
+              </div>
+            )}
+            
+            {salesError && (
+              <div className="bg-red-50 p-4 rounded-lg">
+                <p className="text-sm text-red-700">Error generating report: {salesError.message}</p>
               </div>
             )}
 
@@ -351,11 +425,20 @@ const ReportsPage: React.FC = () => {
                 variant="outline"
                 onClick={() => setIsReportModalOpen(false)}
               >
-                Cancel
+                {salesReport ? 'Close' : 'Cancel'}
               </Button>
-              <Button>
-                Generate Report
-              </Button>
+              {!salesReport && (
+                <Button onClick={handleExecuteReport}>
+                  Generate Report
+                </Button>
+              )}
+              {salesReport && (
+                <>
+                  <Button onClick={() => handleExportReport(selectedReport)}>
+                    Export Report
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         </Modal>

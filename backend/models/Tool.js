@@ -94,10 +94,9 @@ const toolSchema = new mongoose.Schema({
   toObject: { virtuals: true }
 });
 
-// Indexes
+// Indexes (avoid duplicating unique indexes)
 toolSchema.index({ name: 1, category: 1 });
 toolSchema.index({ status: 1, 'availability.isAvailable': 1 });
-toolSchema.index({ toolNumber: 1 });
 toolSchema.index({ 'availability.assignedTo': 1 });
 
 // Virtual fields

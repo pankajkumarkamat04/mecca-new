@@ -21,6 +21,7 @@ interface ChartContainerProps {
     label: string;
   };
   actions?: React.ReactNode;
+  contentHeight?: number; // desired inner chart height in pixels
 }
 
 const ChartContainer: React.FC<ChartContainerProps> = ({
@@ -32,6 +33,7 @@ const ChartContainer: React.FC<ChartContainerProps> = ({
   error,
   trend,
   actions,
+  contentHeight = 300,
 }) => {
   if (loading) {
     return (
@@ -95,7 +97,7 @@ const ChartContainer: React.FC<ChartContainerProps> = ({
           <div className="ml-4">{actions}</div>
         )}
       </div>
-      <div className="h-64 flex items-center justify-center">
+      <div className="flex items-center justify-center" style={{ height: `${Number.isFinite(contentHeight) && contentHeight > 0 ? contentHeight : 300}px` }}>
         {children}
       </div>
     </div>

@@ -16,7 +16,7 @@ interface Column {
   sortable?: boolean;
   width?: string;
   align?: 'left' | 'center' | 'right';
-  render?: (value: any, row: any) => React.ReactNode;
+  render?: (row: any) => React.ReactNode;
 }
 
 interface DataTableProps {
@@ -197,7 +197,7 @@ const DataTable: React.FC<DataTableProps> = ({
                       )}
                     >
                       {column.render
-                        ? column.render(row[column.key], row)
+                        ? column.render(row)
                         : row[column.key]}
                     </td>
                   ))}
@@ -209,7 +209,7 @@ const DataTable: React.FC<DataTableProps> = ({
       </div>
 
       {/* Pagination */}
-      {pagination && pagination.pages > 1 && (
+      {pagination && pagination.pages > 1 && pagination.total > pagination.limit && (
         <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
           <div className="flex-1 flex justify-between sm:hidden">
             <Button

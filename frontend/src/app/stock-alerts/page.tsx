@@ -149,8 +149,8 @@ const StockAlertsPage: React.FC = () => {
     },
   });
 
-  const alerts = alertsData?.data?.data || alertsData?.data || [];
-  const pagination = alertsData?.data?.pagination || alertsData?.data?.pagination || {};
+  const alerts = alertsData?.data?.data || [];
+  const pagination = alertsData?.data?.pagination || {};
   const stats = statsData?.data;
 
   const getSeverityColor = (severity: string) => {
@@ -179,7 +179,7 @@ const StockAlertsPage: React.FC = () => {
     {
       key: 'product',
       label: 'Product',
-      render: (value: any, row: StockAlert) => (
+      render: (row: StockAlert) => (
         <div className="flex items-center">
           <ExclamationTriangleIcon className="h-5 w-5 text-gray-400 mr-2" />
           <div>
@@ -192,10 +192,10 @@ const StockAlertsPage: React.FC = () => {
     {
       key: 'alertType',
       label: 'Alert Type',
-      render: (value: string, row: StockAlert) => (
+      render: (row: StockAlert) => (
         <div className="flex flex-col space-y-1">
-          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getAlertTypeColor(value)}`}>
-            {value.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getAlertTypeColor(row.alertType)}`}>
+            {row.alertType.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
           </span>
           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getSeverityColor(row.severity)}`}>
             {row.severity.charAt(0).toUpperCase() + row.severity.slice(1)}
@@ -206,9 +206,9 @@ const StockAlertsPage: React.FC = () => {
     {
       key: 'currentStock',
       label: 'Stock Level',
-      render: (value: number, row: StockAlert) => (
+      render: (row: StockAlert) => (
         <div className="text-sm">
-          <div className="text-gray-900">{value} units</div>
+          <div className="text-gray-900">{row.currentStock} units</div>
           <div className="text-gray-500">Threshold: {row.threshold}</div>
         </div>
       ),
@@ -216,7 +216,7 @@ const StockAlertsPage: React.FC = () => {
     {
       key: 'warehouse',
       label: 'Warehouse',
-      render: (value: any, row: StockAlert) => (
+      render: (row: StockAlert) => (
         <div className="text-sm text-gray-900">
           {row.warehouse?.name || 'No warehouse'}
         </div>
@@ -225,16 +225,16 @@ const StockAlertsPage: React.FC = () => {
     {
       key: 'message',
       label: 'Message',
-      render: (value: string) => (
+      render: (row: StockAlert) => (
         <div className="text-sm text-gray-900 max-w-xs truncate">
-          {value}
+          {row.message}
         </div>
       ),
     },
     {
       key: 'status',
       label: 'Status',
-      render: (value: any, row: StockAlert) => (
+      render: (row: StockAlert) => (
         <div className="flex items-center space-x-2">
           {!row.isRead && (
             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
@@ -256,16 +256,16 @@ const StockAlertsPage: React.FC = () => {
     {
       key: 'createdAt',
       label: 'Created',
-      render: (value: string) => (
+      render: (row: StockAlert) => (
         <div className="text-sm text-gray-900">
-          {new Date(value).toLocaleDateString()}
+          {new Date(row.createdAt).toLocaleDateString()}
         </div>
       ),
     },
     {
       key: 'actions',
       label: 'Actions',
-      render: (value: any, row: StockAlert) => (
+      render: (row: StockAlert) => (
         <div className="flex items-center space-x-2">
           <button
             onClick={() => {

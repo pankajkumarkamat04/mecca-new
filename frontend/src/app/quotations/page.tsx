@@ -99,8 +99,8 @@ const QuotationsPage: React.FC = () => {
     },
   });
 
-  const quotations = quotationsData?.data?.data || quotationsData?.data || [];
-  const stats = statsData?.data || {};
+  const quotations = quotationsData?.data?.data || [];
+  const stats = statsData?.data?.data || {};
 
   const handleViewDetails = (quotation: any) => {
     setSelectedQuotation(quotation);

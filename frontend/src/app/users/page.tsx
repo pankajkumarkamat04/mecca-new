@@ -78,7 +78,7 @@ const UsersPage: React.FC = () => {
       key: 'firstName',
       label: 'Name',
       sortable: true,
-      render: (value: string, row: User) => (
+      render: (row: User) => (
         <div className="flex items-center">
           {row.avatar ? (
             <img
@@ -106,9 +106,9 @@ const UsersPage: React.FC = () => {
       key: 'role',
       label: 'Role',
       sortable: true,
-      render: (value: string) => (
+      render: (row: User) => (
         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 capitalize">
-          {value.replace('_', ' ')}
+          {row.role.replace('_', ' ')}
         </span>
       ),
     },
@@ -116,11 +116,11 @@ const UsersPage: React.FC = () => {
       key: 'isActive',
       label: 'Status',
       sortable: true,
-      render: (value: boolean) => (
+      render: (row: User) => (
         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-          value ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+          row.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
         }`}>
-          {value ? 'Active' : 'Inactive'}
+          {row.isActive ? 'Active' : 'Inactive'}
         </span>
       ),
     },
@@ -128,18 +128,18 @@ const UsersPage: React.FC = () => {
       key: 'lastLogin',
       label: 'Last Login',
       sortable: true,
-      render: (value: string) => value ? formatDate(value) : 'Never',
+      render: (row: User) => row.lastLogin ? formatDate(row.lastLogin) : 'Never',
     },
     {
       key: 'createdAt',
       label: 'Created',
       sortable: true,
-      render: (value: string) => formatDate(value),
+      render: (row: User) => formatDate(row.createdAt),
     },
     {
       key: 'actions',
       label: 'Actions',
-      render: (_: any, row: User) => (
+      render: (row: User) => (
         <div className="flex items-center space-x-2">
           <button
             onClick={() => handleViewUser(row)}
@@ -220,7 +220,7 @@ const UsersPage: React.FC = () => {
         {/* Users Table */}
         <DataTable
           columns={columns}
-          data={usersData?.data?.data || []}
+          data={Array.isArray(usersData?.data?.data) ? usersData.data.data : []}
           loading={isPending}
           pagination={usersData?.data?.pagination}
           onPageChange={setCurrentPage}
