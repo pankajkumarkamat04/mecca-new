@@ -39,7 +39,34 @@ const handleValidationErrors = (req, res, next) => {
  * @returns {Array} - Array of middleware functions including validation and error handling
  */
 const validate = (validations) => {
-  return [...validations, handleValidationErrors];
+  // If used directly as an Express middleware (misused without args),
+  // treat this call as the error handler to keep routes from crashing.
+  if (
+    arguments.length === 3 &&
+    validations &&
+    typeof validations === 'object' &&
+    typeof validations.method === 'string' &&
+    typeof validations.url === 'string'
+  ) {
+    // Called as validate(req, res, next)
+    return handleValidationErrors(validations, arguments[1], arguments[2]);
+  }
+
+  // Support passing a single validator function or an array of validators
+  if (!validations) {
+    return [handleValidationErrors];
+  }
+
+  if (Array.isArray(validations)) {
+    return [...validations, handleValidationErrors];
+  }
+
+  if (typeof validations === 'function') {
+    return [validations, handleValidationErrors];
+  }
+
+  // Fallback: unknown type; just return error handler to avoid runtime errors
+  return [handleValidationErrors];
 };
 
 /**

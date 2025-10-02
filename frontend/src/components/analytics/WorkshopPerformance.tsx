@@ -43,6 +43,7 @@ const WorkshopPerformance: React.FC = () => {
   const resources = Array.isArray(wk.resources) ? wk.resources : [];
   const satisfaction = Array.isArray(wk.satisfaction) ? wk.satisfaction : [];
   const summary = wk.summary || {};
+  // Wire empty charts to actual backend data
   const jobCompletionData = { data: [] } as any;
   const jobCompletionLoading = false as boolean;
 
@@ -329,12 +330,10 @@ const WorkshopPerformance: React.FC = () => {
           title="Job Completion Trend"
           description="Monthly job completion and efficiency"
           trend={{ value: 15.2, isPositive: true, label: 'vs last month' }}
-          contentHeight={300}
         >
           <SalesChart 
             data={monthlyTrendData?.data || []} 
             type="area"
-            height={300}
           />
         </ChartContainer>
 
@@ -342,11 +341,9 @@ const WorkshopPerformance: React.FC = () => {
           title="Job Type Distribution"
           description="Jobs completed by type"
           trend={{ value: 8.3, isPositive: true, label: 'vs last month' }}
-          contentHeight={300}
         >
           <PieChart 
             data={jobTypePerformanceData?.data || []}
-            height={300}
             showLegend={true}
           />
         </ChartContainer>
@@ -358,7 +355,6 @@ const WorkshopPerformance: React.FC = () => {
           title="Resource Utilization"
           description="How efficiently resources are being used"
           trend={{ value: 82, isPositive: true, label: 'utilization %' }}
-          contentHeight={300}
         >
           <BarChart 
             data={Array.isArray(resourceUtilizationData?.data) ? resourceUtilizationData.data.map((r: any) => ({
@@ -366,7 +362,6 @@ const WorkshopPerformance: React.FC = () => {
               value: r.utilization,
               color: r.color
             })) : []}
-            height={300}
             formatValue={(value) => `${value}%`}
           />
         </ChartContainer>
@@ -375,7 +370,6 @@ const WorkshopPerformance: React.FC = () => {
           title="Customer Satisfaction"
           description="Distribution of customer ratings"
           trend={{ value: 4.6, isPositive: true, label: 'avg rating' }}
-          contentHeight={300}
         >
           <BarChart 
             data={Array.isArray(customerSatisfactionData?.data) ? customerSatisfactionData.data.map((c: any) => ({
@@ -383,7 +377,6 @@ const WorkshopPerformance: React.FC = () => {
               value: c.percentage,
               color: c.color
             })) : []}
-            height={300}
             formatValue={(value) => `${value}%`}
           />
         </ChartContainer>

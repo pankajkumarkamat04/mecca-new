@@ -97,6 +97,16 @@ app.get('/health', (req, res) => {
   });
 });
 
+// Mirror health under /api/health for compatibility with external test harnesses
+app.get('/api/health', (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: 'Server is running',
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development'
+  });
+});
+
 // API routes
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);

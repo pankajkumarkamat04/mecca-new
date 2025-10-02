@@ -20,7 +20,8 @@ const getCustomers = async (req, res) => {
         { lastName: { $regex: search, $options: 'i' } },
         { email: { $regex: search, $options: 'i' } },
         { customerCode: { $regex: search, $options: 'i' } },
-        { phone: { $regex: search, $options: 'i' } }
+        { phone: { $regex: search, $options: 'i' } },
+        { 'businessInfo.companyName': { $regex: search, $options: 'i' } }
       ];
     }
     if (phone) filter.phone = { $regex: phone, $options: 'i' };
@@ -85,6 +86,15 @@ const createCustomer = async (req, res) => {
   try {
     const customerData = req.body;
     customerData.createdBy = req.user._id;
+
+    // Map company field to businessInfo.companyName if provided
+    if (customerData.company) {
+      customerData.businessInfo = {
+        ...customerData.businessInfo,
+        companyName: customerData.company
+      };
+      delete customerData.company;
+    }
 
     const customer = new Customer(customerData);
     await customer.save();

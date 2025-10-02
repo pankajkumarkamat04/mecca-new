@@ -75,6 +75,10 @@ router.get('/:id/check-conflicts', auth, checkResourceConflicts);
 router.get('/:id/analytics', auth, getJobAnalytics);
 router.get('/dashboard', auth, getWorkshopDashboard);
 
+// Workflow updates
+router.put('/:id/quality-check', auth, checkPermission('workshop', 'update'), require('../controllers/workshopController').markQualityCheck);
+router.put('/:id/follow-up', auth, checkPermission('workshop', 'update'), require('../controllers/workshopController').markFollowUp);
+
 module.exports = router;
 
 

@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
-const WarehousePortalPage: React.FC = () => {
+const WarehousePortalPageInner: React.FC = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const warehouseId = searchParams.get('warehouse');
@@ -23,4 +23,10 @@ const WarehousePortalPage: React.FC = () => {
   );
 };
 
-export default WarehousePortalPage;
+export default function WarehousePortalPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div></div>}>
+      <WarehousePortalPageInner />
+    </Suspense>
+  );
+}

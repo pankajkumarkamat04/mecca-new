@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Customer, Receipt } from '@/types';
+import { Customer, Receipt, Invoice } from '@/types';
 import Layout from '@/components/layout/Layout';
 import Button from '@/components/ui/Button';
 import Modal from '@/components/ui/Modal';
@@ -11,6 +11,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { formatCurrency } from '@/lib/utils';
 import { calculatePrice } from '@/lib/priceCalculator';
 import PriceSummary from '@/components/ui/PriceSummary';
+import InvoiceReceipt from '@/components/ui/InvoiceReceipt';
+import { downloadReceipt, printReceipt } from '@/lib/receiptUtils';
 import toast from 'react-hot-toast';
 import {
   ShoppingCartIcon,
@@ -20,6 +22,10 @@ import {
   CreditCardIcon,
   BanknotesIcon,
   QrCodeIcon,
+  PrinterIcon,
+  ArrowDownTrayIcon,
+  ArrowLeftIcon,
+  MagnifyingGlassIcon,
 } from '@heroicons/react/24/outline';
 
 interface CartItem {
@@ -41,6 +47,8 @@ const POSPage: React.FC = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isReceiptOpen, setIsReceiptOpen] = useState(false);
   const [receipt, setReceipt] = useState<Receipt | null>(null);
+  const [showReceiptModal, setShowReceiptModal] = useState(false);
+  const [receiptType, setReceiptType] = useState<'short' | 'full'>('short');
 
   const queryClient = useQueryClient();
 
@@ -52,7 +60,7 @@ const POSPage: React.FC = () => {
       isActive: true,
       limit: 50,
     }),
-    enabled: isProductModalOpen,
+    enabled: true, // Always fetch products for the main POS screen
   });
 
   // Removed customer lookup; POS proceeds without pre-checking customer existence
@@ -76,6 +84,73 @@ const POSPage: React.FC = () => {
       toast.error(error.response?.data?.message || 'Failed to process sale');
     },
   });
+
+  const handleShowReceipt = (type: 'short' | 'full') => {
+    if (!receipt) return;
+    setReceiptType(type);
+    setShowReceiptModal(true);
+  };
+
+  const handlePrintReceipt = async () => {
+    if (!receipt) return;
+    try {
+      const elementId = receiptType === 'short' ? 'short-receipt' : 'full-invoice';
+      printReceipt(elementId);
+    } catch (error) {
+      console.error('Error printing receipt:', error);
+    }
+  };
+
+  const handleDownloadReceipt = async () => {
+    if (!receipt) return;
+    try {
+      const elementId = receiptType === 'short' ? 'short-receipt' : 'full-invoice';
+      await downloadReceipt(elementId, receiptType);
+    } catch (error) {
+      console.error('Error downloading receipt:', error);
+    }
+  };
+
+  // Convert Receipt to Invoice format for InvoiceReceipt component
+  const convertReceiptToInvoice = (receipt: Receipt): Invoice => {
+    return {
+      _id: receipt.transactionId,
+      invoiceNumber: receipt.invoiceNumber || receipt.receiptNumber,
+      type: 'sale',
+      status: receipt.status === 'completed' ? 'paid' : 'paid', // POS transactions are always paid when completed
+      customer: 'Walk-in Client',
+      customerPhone: '',
+      location: 'POS Terminal',
+      items: receipt.items?.map(item => ({
+        _id: '',
+        name: item.name,
+        description: '',
+        sku: item.sku || '',
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        price: item.unitPrice,
+        discount: 0,
+        taxRate: 0,
+        total: item.total,
+        product: ''
+      })) || [],
+      subtotal: receipt.subtotal,
+      discounts: [],
+      totalDiscount: receipt.totalDiscount || 0,
+      taxes: [],
+      totalTax: receipt.totalTax || receipt.tax || 0,
+      shipping: { cost: 0 },
+      total: receipt.total,
+      paid: receipt.total,
+      balance: 0,
+      payments: [],
+      notes: '',
+      createdBy: 'POS System',
+      createdAt: receipt.date,
+      updatedAt: receipt.date,
+      invoiceDate: receipt.invoiceDate || receipt.date
+    };
+  };
 
   const addToCart = (product: any) => {
     const existingItem = cart.find(item => item.product._id === product._id);
@@ -190,34 +265,93 @@ const POSPage: React.FC = () => {
   // Quick add products removed in favor of using real products from the catalog
 
   return (
-    <Layout title="Point of Sale">
-      <div className="h-full flex gap-6">
-        {/* Left Panel - Products */}
-        <div className="flex-1 bg-white rounded-lg shadow p-6">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-semibold text-gray-900">Products</h2>
+    <div className="h-screen bg-gray-100">
+      {/* Header */}
+      <div className="bg-white shadow-sm border-b px-6 py-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
             <Button
-              onClick={() => setIsProductModalOpen(true)}
-              leftIcon={<PlusIcon className="h-4 w-4" />}
+              variant="outline"
+              onClick={() => window.location.href = '/dashboard'}
+              leftIcon={<ArrowLeftIcon className="h-4 w-4" />}
             >
-              Add Product
+              Back to Dashboard
             </Button>
+            <h1 className="text-2xl font-bold text-gray-900">MECCA POS</h1>
+          </div>
+          <div className="text-sm text-gray-500">
+            {new Date().toLocaleDateString()} - {new Date().toLocaleTimeString()}
+          </div>
+        </div>
+      </div>
+
+      <div className="h-[calc(100vh-80px)] flex overflow-hidden">
+        {/* Left Panel - Products */}
+        <div className="flex-1 bg-white flex flex-col">
+          {/* Search Bar */}
+          <div className="p-6 border-b border-gray-200">
+            <div className="flex items-center space-x-4">
+              <div className="flex-1">
+                <Input
+                  placeholder="Search products by name, SKU, or description..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  fullWidth
+                />
+              </div>
+              <Button
+                onClick={() => setIsProductModalOpen(true)}
+                leftIcon={<MagnifyingGlassIcon className="h-4 w-4" />}
+              >
+                Search
+              </Button>
+            </div>
           </div>
 
-          {/* Quick add products removed */}
-
-          {/* Search moved into the Add Product modal */}
+          {/* Products Grid */}
+          <div className="p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Products</h2>
+            <div className="grid grid-cols-3 gap-4">
+              {productsData?.data?.data?.slice(0, 3).map((product: any) => (
+                <div
+                  key={product._id}
+                  className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 cursor-pointer transition-colors flex flex-col justify-between"
+                  onClick={() => addToCart(product)}
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="font-medium text-gray-900 text-sm">{product.name}</h3>
+                      <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                        {product.inventory.currentStock} {product.inventory.unit}
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-500 mb-2">SKU: {product.sku}</p>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-lg text-gray-900">
+                      {formatCurrency(product.pricing.sellingPrice, product.pricing.currency)}
+                    </span>
+                    <button className="bg-blue-600 text-white px-3 py-1 rounded text-xs hover:bg-blue-700">
+                      Add
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
 
           {/* Cart Items */}
-          <div className="mt-6">
+          <div className="border-t border-gray-200 p-6 flex-1 overflow-hidden flex flex-col">
             <h3 className="text-lg font-medium text-gray-900 mb-4">Cart Items</h3>
             {cart.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                <ShoppingCartIcon className="h-12 w-12 mx-auto mb-2 text-gray-300" />
-                <p>Cart is empty</p>
+              <div className="text-center py-8 text-gray-500 flex-1 flex items-center justify-center">
+                <div>
+                  <ShoppingCartIcon className="h-12 w-12 mx-auto mb-2 text-gray-300" />
+                  <p>Cart is empty</p>
+                </div>
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-3 overflow-y-auto flex-1">
                 {cart.map((item) => (
                   <div key={item.product._id} className="flex items-center justify-between border border-gray-200 rounded-lg p-3">
                     <div className="flex-1">
@@ -256,8 +390,12 @@ const POSPage: React.FC = () => {
         </div>
 
         {/* Right Panel - Checkout */}
-        <div className="w-96 bg-white rounded-lg shadow p-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-6">Checkout</h2>
+        <div className="w-96 bg-white border-l border-gray-200 flex flex-col overflow-hidden">
+          <div className="p-6 border-b border-gray-200">
+            <h2 className="text-xl font-semibold text-gray-900">Checkout</h2>
+          </div>
+          
+          <div className="flex-1 overflow-y-auto p-6">
 
           {/* Customer Info */}
           <div className="mb-6 space-y-4">
@@ -377,6 +515,7 @@ const POSPage: React.FC = () => {
               Clear Cart
             </Button>
           </div>
+          </div>
         </div>
 
         {/* Product Selection Modal */}
@@ -436,7 +575,9 @@ const POSPage: React.FC = () => {
                 </div>
                 <div className="text-right">
                   <div className="text-xl font-bold text-gray-900">{formatCurrency(receipt.total)}</div>
-                  <div className="text-xs text-gray-500 capitalize">{receipt.status}</div>
+                  <div className="text-xs text-gray-500 capitalize">
+                    {receipt.status === 'completed' ? 'Paid' : 'Processing'}
+                  </div>
                 </div>
               </div>
 
@@ -508,19 +649,70 @@ const POSPage: React.FC = () => {
                   Close
                 </Button>
                 <Button
-                  onClick={() => {
-                    const printContents = document.querySelector('#__next')?.innerHTML || '';
-                    window.print();
-                  }}
+                  variant="outline"
+                  onClick={() => handleShowReceipt('short')}
+                  className="flex items-center gap-2"
                 >
-                  Print
+                  <PrinterIcon className="h-4 w-4" />
+                  Short Receipt
+                </Button>
+                <Button
+                  onClick={() => handleShowReceipt('full')}
+                  className="flex items-center gap-2"
+                >
+                  <ArrowDownTrayIcon className="h-4 w-4" />
+                  Full Invoice
                 </Button>
               </div>
             </div>
           ) : null}
         </Modal>
+
+        {/* Receipt Modal */}
+        <Modal
+          isOpen={showReceiptModal}
+          onClose={() => setShowReceiptModal(false)}
+          title={`${receiptType === 'short' ? 'Short Receipt' : 'Full Invoice'} - ${receipt?.invoiceNumber}`}
+          size="lg"
+        >
+          {receipt && (
+            <div className="space-y-4">
+              {/* Receipt Type Selector */}
+              <div className="flex justify-center space-x-4 mb-6">
+                <button
+                  onClick={() => setReceiptType('short')}
+                  className={`px-4 py-2 rounded ${
+                    receiptType === 'short' 
+                      ? 'bg-blue-600 text-white' 
+                      : 'bg-gray-200 text-gray-700'
+                  }`}
+                >
+                  Short Receipt
+                </button>
+                <button
+                  onClick={() => setReceiptType('full')}
+                  className={`px-4 py-2 rounded ${
+                    receiptType === 'full' 
+                      ? 'bg-blue-600 text-white' 
+                      : 'bg-gray-200 text-gray-700'
+                  }`}
+                >
+                  Full Invoice
+                </button>
+              </div>
+
+              {/* Receipt Component */}
+              <InvoiceReceipt
+                invoice={convertReceiptToInvoice(receipt)}
+                type={receiptType}
+                onPrint={handlePrintReceipt}
+                onDownload={handleDownloadReceipt}
+              />
+            </div>
+          )}
+        </Modal>
       </div>
-    </Layout>
+    </div>
   );
 };
 

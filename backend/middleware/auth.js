@@ -1,12 +1,19 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
+// Simple in-memory blacklist for revoked JWTs (resets on process restart)
+const revokedTokens = new Set();
+
 const auth = async (req, res, next) => {
   try {
     const token = req.header('Authorization')?.replace('Bearer ', '');
     
     if (!token) {
       return res.status(401).json({ message: 'No token, authorization denied' });
+    }
+
+    if (revokedTokens.has(token)) {
+      return res.status(401).json({ message: 'Token is revoked' });
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
@@ -118,7 +125,7 @@ const warehouseAccessAuth = async (req, res, next) => {
     }
 
     // Admin has access to all warehouses
-    if (req.user.role === 'admin') {
+    if (req.user.role === 'admin' || req.user.role === 'manager') {
       return next();
     }
 
@@ -172,5 +179,6 @@ module.exports = {
   optionalAuth,
   warehouseManagerAuth,
   warehouseAccessAuth,
-  warehouseEmployeeAuth
+  warehouseEmployeeAuth,
+  revokedTokens
 };

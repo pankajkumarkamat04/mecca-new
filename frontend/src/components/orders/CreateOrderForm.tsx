@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { customersAPI, productsAPI } from '@/lib/api';
 import Button from '@/components/ui/Button';
+import CustomerSelector from '@/components/ui/CustomerSelector';
 import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
 import { formatCurrency } from '@/lib/utils';
@@ -188,17 +189,10 @@ const CreateOrderForm: React.FC<CreateOrderFormProps> = ({ onClose, onSuccess, i
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Customer Selection */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">Customer *</label>
-        <Select
+        <CustomerSelector
+          label="Customer *"
           value={formData.customer}
-          onChange={(e) => handleInputChange('customer', e.target.value)}
-          options={[
-            { value: '', label: 'Select Customer' },
-            ...(customersData?.data?.data?.map((customer: any) => ({
-              value: customer._id,
-              label: `${customer.firstName} ${customer.lastName} (${customer.email})`
-            })) || [])
-          ]}
+          onChange={(id) => handleInputChange('customer', id)}
         />
       </div>
 

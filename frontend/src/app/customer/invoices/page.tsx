@@ -7,9 +7,12 @@ import { Invoice, InvoiceItem } from '@/types';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { calculatePrice } from '@/lib/priceCalculator';
 import PriceSummary from '@/components/ui/PriceSummary';
+import Modal from '@/components/ui/Modal';
+import InvoiceReceipt from '@/components/ui/InvoiceReceipt';
 import DataTable from '@/components/ui/DataTable';
 import { useAuth } from '@/contexts/AuthContext';
 import { invoicesAPI } from '@/lib/api';
+import { downloadReceipt, printReceipt } from '@/lib/receiptUtils';
 import { 
   DocumentTextIcon, 
   EyeIcon, 
@@ -21,7 +24,6 @@ import {
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
-import Modal from '@/components/ui/Modal';
 
 const CustomerInvoicesPage: React.FC = () => {
   const { user } = useAuth();
@@ -31,6 +33,8 @@ const CustomerInvoicesPage: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+  const [showReceiptModal, setShowReceiptModal] = useState(false);
+  const [receiptType, setReceiptType] = useState<'short' | 'full'>('short');
 
   // Fetch customer's invoices
   const { data: invoicesData, isLoading, refetch } = useQuery({
@@ -51,14 +55,30 @@ const CustomerInvoicesPage: React.FC = () => {
     setShowInvoiceModal(true);
   };
 
-  const handlePrintInvoice = (invoice: Invoice) => {
-    // Implement print functionality
-    window.print();
+  const handleShowReceipt = (invoice: Invoice, type: 'short' | 'full') => {
+    setSelectedInvoice(invoice);
+    setReceiptType(type);
+    setShowReceiptModal(true);
   };
 
-  const handleDownloadInvoice = (invoice: Invoice) => {
-    // Implement download functionality
-    console.log('Download invoice:', invoice._id);
+  const handlePrintReceipt = async () => {
+    if (!selectedInvoice) return;
+    try {
+      const elementId = receiptType === 'short' ? 'short-receipt' : 'full-invoice';
+      printReceipt(elementId);
+    } catch (error) {
+      console.error('Error printing receipt:', error);
+    }
+  };
+
+  const handleDownloadReceipt = async () => {
+    if (!selectedInvoice) return;
+    try {
+      const elementId = receiptType === 'short' ? 'short-receipt' : 'full-invoice';
+      await downloadReceipt(elementId, receiptType);
+    } catch (error) {
+      console.error('Error downloading receipt:', error);
+    }
   };
 
   const invoiceColumns = [
@@ -129,20 +149,58 @@ const CustomerInvoicesPage: React.FC = () => {
           >
             <EyeIcon className="h-4 w-4" />
           </button>
-          <button
-            onClick={() => handlePrintInvoice(row)}
-            className="text-gray-600 hover:text-gray-900"
-            title="Print Invoice"
-          >
-            <PrinterIcon className="h-4 w-4" />
-          </button>
-          <button
-            onClick={() => handleDownloadInvoice(row)}
-            className="text-green-600 hover:text-green-900"
-            title="Download Invoice"
-          >
-            <ArrowDownTrayIcon className="h-4 w-4" />
-          </button>
+          <div className="relative group">
+            <button
+              className="text-gray-600 hover:text-gray-900"
+              title="Receipt Options"
+            >
+              <PrinterIcon className="h-4 w-4" />
+            </button>
+            <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 opacity-0 group-hover:opacity-100 transition-opacity">
+              <button
+                onClick={() => handleShowReceipt(row, 'short')}
+                className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+              >
+                Print Short Receipt
+              </button>
+              <button
+                onClick={() => handleShowReceipt(row, 'full')}
+                className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+              >
+                Print Full Invoice
+              </button>
+            </div>
+          </div>
+          <div className="relative group">
+            <button
+              className="text-green-600 hover:text-green-900"
+              title="Download Options"
+            >
+              <ArrowDownTrayIcon className="h-4 w-4" />
+            </button>
+            <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 opacity-0 group-hover:opacity-100 transition-opacity">
+              <button
+                onClick={() => {
+                  setSelectedInvoice(row);
+                  setReceiptType('short');
+                  handleDownloadReceipt();
+                }}
+                className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+              >
+                Download Short Receipt
+              </button>
+              <button
+                onClick={() => {
+                  setSelectedInvoice(row);
+                  setReceiptType('full');
+                  handleDownloadReceipt();
+                }}
+                className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+              >
+                Download Full Invoice
+              </button>
+            </div>
+          </div>
         </div>
       ),
     },
@@ -465,20 +523,64 @@ const CustomerInvoicesPage: React.FC = () => {
               <div className="flex justify-end space-x-3 pt-4 border-t">
                 <Button
                   variant="outline"
-                  onClick={() => handlePrintInvoice(selectedInvoice)}
+                  onClick={() => handleShowReceipt(selectedInvoice, 'short')}
                   className="flex items-center gap-2"
                 >
                   <PrinterIcon className="h-4 w-4" />
-                  Print
+                  Short Receipt
                 </Button>
                 <Button
-                  onClick={() => handleDownloadInvoice(selectedInvoice)}
+                  onClick={() => handleShowReceipt(selectedInvoice, 'full')}
                   className="flex items-center gap-2"
                 >
                   <ArrowDownTrayIcon className="h-4 w-4" />
-                  Download
+                  Full Invoice
                 </Button>
               </div>
+            </div>
+          )}
+        </Modal>
+
+        {/* Receipt Modal */}
+        <Modal
+          isOpen={showReceiptModal}
+          onClose={() => setShowReceiptModal(false)}
+          title={`${receiptType === 'short' ? 'Short Receipt' : 'Full Invoice'} - ${selectedInvoice?.invoiceNumber}`}
+          size="lg"
+        >
+          {selectedInvoice && (
+            <div className="space-y-4">
+              {/* Receipt Type Selector */}
+              <div className="flex justify-center space-x-4 mb-6">
+                <button
+                  onClick={() => setReceiptType('short')}
+                  className={`px-4 py-2 rounded ${
+                    receiptType === 'short' 
+                      ? 'bg-blue-600 text-white' 
+                      : 'bg-gray-200 text-gray-700'
+                  }`}
+                >
+                  Short Receipt
+                </button>
+                <button
+                  onClick={() => setReceiptType('full')}
+                  className={`px-4 py-2 rounded ${
+                    receiptType === 'full' 
+                      ? 'bg-blue-600 text-white' 
+                      : 'bg-gray-200 text-gray-700'
+                  }`}
+                >
+                  Full Invoice
+                </button>
+              </div>
+
+              {/* Receipt Component */}
+              <InvoiceReceipt
+                invoice={selectedInvoice}
+                type={receiptType}
+                onPrint={handlePrintReceipt}
+                onDownload={handleDownloadReceipt}
+              />
             </div>
           )}
         </Modal>

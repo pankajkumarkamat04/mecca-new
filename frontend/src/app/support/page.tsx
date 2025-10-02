@@ -9,6 +9,7 @@ import Modal from '@/components/ui/Modal';
 import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
 import { supportAPI, customersAPI } from '@/lib/api';
+import CustomerSelector from '@/components/ui/CustomerSelector';
 import api from '@/lib/api';
 import { formatDate, formatNumber } from '@/lib/utils';
 import { SupportTicket } from '@/types';
@@ -677,16 +678,10 @@ const CreateTicketForm: React.FC<{ onClose: () => void; onSuccess: () => void }>
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Customer
-          </label>
-          <Select
-            options={[
-              { value: '', label: 'Select customer (optional)', disabled: false },
-              ...customerOptions
-            ]}
+          <label className="block text-sm font-medium text-gray-700 mb-1">Customer</label>
+          <CustomerSelector
             value={formData.customer}
-            onChange={(e) => setFormData(prev => ({ ...prev, customer: e.target.value }))}
+            onChange={(id) => setFormData(prev => ({ ...prev, customer: id }))}
           />
         </div>
       </div>

@@ -167,6 +167,11 @@ customerSchema.virtual('fullName').get(function() {
   return `${this.firstName} ${this.lastName}`;
 });
 
+// Virtual for company name (from businessInfo)
+customerSchema.virtual('company').get(function() {
+  return this.businessInfo?.companyName || '';
+});
+
 // Virtual for customer lifetime value
 customerSchema.virtual('lifetimeValue').get(function() {
   return this.totalPurchases.amount;

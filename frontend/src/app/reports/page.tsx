@@ -42,11 +42,6 @@ const ReportsPage: React.FC = () => {
     refetchInterval: 30000,
   });
 
-  console.log('🔍 Insights Overview Debug:', {
-    overview,
-    statsLoading,
-    statsError,
-  });
 
   // Fetch unified sales insights
   const { data: salesReport, isLoading: salesLoading, error: salesError } = useQuery({
@@ -62,22 +57,11 @@ const ReportsPage: React.FC = () => {
 
   // Removed saved reports usage in unified module
 
-  // Debug logging for Reports
-  console.log('🔍 Reports Debug:', {
-    salesReport,
-    salesLoading,
-    salesError,
-    selectedReport,
-    dateRange,
-    filters,
-    enabled: selectedReport === 'sales' && !!dateRange.startDate && !!dateRange.endDate
-  });
 
   // Test API connectivity to insights
   React.useEffect(() => {
     const testAPI = async () => {
       try {
-        console.log('🔍 Testing Insights API connectivity...');
         const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
         const response = await fetch(`${API_BASE_URL}/insights/overview`, {
           headers: {
@@ -86,7 +70,6 @@ const ReportsPage: React.FC = () => {
           }
         });
         const data = await response.json();
-        console.log('🔍 Insights API Test Response:', { status: response.status, data });
       } catch (error) {
         console.error('🔍 Insights API Test Error:', error);
       }

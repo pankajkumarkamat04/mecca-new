@@ -311,12 +311,10 @@ const AnalyticsPage: React.FC = () => {
               />
             </div>
           }
-          contentHeight={300}
         >
           <SalesChart 
             data={analyticsSeries || []} 
             type={chartType as 'line' | 'area'}
-            height={300}
           />
         </ChartContainer>
 
@@ -328,11 +326,9 @@ const AnalyticsPage: React.FC = () => {
             isPositive: (analyticsData?.data?.ordersGrowth || 0) >= 0, 
             label: 'vs last period' 
           }}
-          contentHeight={300}
         >
           <PieChart 
-            data={categoryData?.data?.data || []}
-            height={300}
+            data={Array.isArray((categoryData as any)?.data?.data?.categoryBreakdown) ? (categoryData as any).data.data.categoryBreakdown : []}
             showLegend={true}
           />
         </ChartContainer>
@@ -348,11 +344,13 @@ const AnalyticsPage: React.FC = () => {
             isPositive: (analyticsData?.data?.aovGrowth || 0) >= 0, 
             label: 'vs last period' 
           }}
-          contentHeight={300}
         >
           <BarChart 
-            data={topProductsData?.data?.data || []}
-            height={300}
+            data={(Array.isArray((topProductsData as any)?.data?.data?.topProducts) && (topProductsData as any).data.data.topProducts.length > 0)
+              ? (topProductsData as any).data.data.topProducts.map((p: any) => ({ name: p.name, value: p.totalRevenue }))
+              : (Array.isArray((salesData as any)?.data?.data?.topProducts)
+                  ? (salesData as any).data.data.topProducts.map((p: any) => ({ name: p.name, value: p.totalRevenue }))
+                  : [])}
             orientation="horizontal"
             formatValue={(value) => formatCurrency(value)}
           />
@@ -366,11 +364,9 @@ const AnalyticsPage: React.FC = () => {
             isPositive: (analyticsData?.data?.customersGrowth || 0) >= 0, 
             label: 'vs last period' 
           }}
-          contentHeight={300}
         >
           <PieChart 
-            data={paymentMethodData?.data?.data || []}
-            height={300}
+            data={Array.isArray((paymentMethodData as any)?.data?.data?.paymentMethods) ? (paymentMethodData as any).data.data.paymentMethods : []}
             showLegend={true}
             showLabel={true}
           />
@@ -386,15 +382,13 @@ const AnalyticsPage: React.FC = () => {
           isPositive: (analyticsData?.data?.revenueGrowth || 0) >= 0, 
           label: 'vs last period' 
         }}
-        contentHeight={300}
       >
         <BarChart 
-          data={(monthlyComparisonData?.data?.data || []).map((item: any) => ({
-            name: item.name,
-            value: item.current,
-            color: '#3b82f6'
-          }))}
-          height={300}
+          data={(Array.isArray((monthlyComparisonData as any)?.data?.data?.monthlyComparison) && (monthlyComparisonData as any).data.data.monthlyComparison.length > 0)
+            ? (monthlyComparisonData as any).data.data.monthlyComparison.map((item: any) => ({ name: item.name, value: item.current, color: '#3b82f6' }))
+            : (Array.isArray((salesData as any)?.data?.data?.salesTrend)
+                ? ( (salesData as any).data.data.salesTrend.map((b: any) => ({ name: b._id || b.name || b.date, value: b.totalSales || b.current || 0, color: '#3b82f6' })) )
+                : [])}
           formatValue={(value) => formatCurrency(value)}
         />
       </ChartContainer>

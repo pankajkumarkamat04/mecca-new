@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
@@ -32,6 +32,8 @@ import {
   WrenchScrewdriverIcon,
   ClipboardDocumentCheckIcon,
   TruckIcon as DeliveryIcon,
+  ChevronDownIcon,
+  ChevronRightIcon,
 } from '@heroicons/react/24/outline';
 
 interface SidebarItem {
@@ -49,59 +51,68 @@ interface SidebarItem {
 
 // Warehouse-specific sidebar configuration
 const getWarehouseSidebarItems = (userRole: string): SidebarItem[] => {
-  const warehouseItems: SidebarItem[] = [
+  const groups: SidebarItem[] = [
     {
       name: 'Dashboard',
       href: '/warehouse-portal/dashboard',
       icon: HomeIcon,
     },
     {
-      name: 'Orders',
-      href: '/warehouse-portal/orders',
-      icon: ShoppingBagIcon,
-    },
-    {
-      name: 'Inventory',
-      href: '/warehouse-portal/inventory',
-      icon: ArchiveBoxIcon,
+      name: 'Warehouse',
+      href: '#',
+      icon: BuildingOfficeIcon,
+      children: [
+        {
+          name: 'Orders',
+          href: '/warehouse-portal/orders',
+          icon: ShoppingBagIcon,
+        },
+        {
+          name: 'Inventory',
+          href: '/warehouse-portal/inventory',
+          icon: ArchiveBoxIcon,
+        },
+        // Deliveries visible for manager; for employees it can be hidden if not permitted
+        ...(userRole === 'warehouse_manager'
+          ? [
+              {
+                name: 'Deliveries',
+                href: '/warehouse-portal/deliveries',
+                icon: DeliveryIcon,
+              } as SidebarItem,
+            ]
+          : []),
+      ],
     },
   ];
 
-  // Manager can manage employees
   if (userRole === 'warehouse_manager') {
-    warehouseItems.push({
-      name: 'Employees',
-      href: '/warehouse-portal/employees',
-      icon: UserGroupIcon,
-    });
-  }
-
-  // Manager can manage deliveries
-  if (userRole === 'warehouse_manager') {
-    warehouseItems.push({
-      name: 'Deliveries',
-      href: '/warehouse-portal/deliveries',
-      icon: DeliveryIcon,
-    });
-  }
-
-  // Only Manager can access settings
-  if (userRole === 'warehouse_manager') {
-    warehouseItems.push({
-      name: 'Settings',
-      href: '/warehouse-portal/settings',
+    groups.push({
+      name: 'Management',
+      href: '#',
       icon: CogIcon,
+      children: [
+        {
+          name: 'Employees',
+          href: '/warehouse-portal/employees',
+          icon: UserGroupIcon,
+        },
+        {
+          name: 'Settings',
+          href: '/warehouse-portal/settings',
+          icon: CogIcon,
+        },
+      ],
     });
   }
 
-  // Profile access for all warehouse roles
-  warehouseItems.push({
+  groups.push({
     name: 'Profile',
     href: '/profile',
     icon: UserIcon,
   });
 
-  return warehouseItems;
+  return groups;
 };
 
 // Role-based sidebar configuration
@@ -119,148 +130,209 @@ const getSidebarItems = (userRole: string): SidebarItem[] => {
     },
   ];
 
-  // Admin and Manager items
+  // We'll prepare Administration (Admin and Manager) to append last
+  let adminGroup: SidebarItem | null = null;
   if (['admin', 'manager'].includes(userRole)) {
-    baseItems.push(
-      {
-        name: 'Users',
-        href: '/users',
-        icon: UserGroupIcon,
-        permission: { module: 'users', action: 'read' },
-      },
-      {
-        name: 'Warehouses',
-        href: '/warehouses',
-        icon: BuildingOfficeIcon,
-        permission: { module: 'warehouses', action: 'read' },
-      }
-    );
+    adminGroup = {
+      name: 'Administration',
+      href: '#',
+      icon: CogIcon,
+      children: [
+        {
+          name: 'Users',
+          href: '/users',
+          icon: UserGroupIcon,
+          permission: { module: 'users', action: 'read' },
+        },
+        {
+          name: 'Settings',
+          href: '/settings',
+          icon: CogIcon,
+          permission: { module: 'settings', action: 'read' },
+        },
+      ],
+    };
   }
 
   // Sales and Operations items
   if (['admin', 'manager', 'employee'].includes(userRole)) {
     baseItems.push(
       {
-        name: 'POS',
-        href: '/pos',
+        name: 'Sales',
+        href: '#',
         icon: CreditCardIcon,
-        permission: { module: 'pos', action: 'read' },
+        children: [
+          {
+            name: 'POS',
+            href: '/pos',
+            icon: CreditCardIcon,
+            permission: { module: 'pos', action: 'read' },
+          },
+          {
+            name: 'Orders',
+            href: '/orders',
+            icon: ShoppingBagIcon,
+            permission: { module: 'orders', action: 'read' },
+          },
+          {
+            name: 'Invoices',
+            href: '/invoices',
+            icon: DocumentTextIcon,
+            permission: { module: 'invoices', action: 'read' },
+          },
+          {
+            name: 'Quotations',
+            href: '/quotations',
+            icon: ClipboardDocumentCheckIcon,
+            permission: { module: 'quotations', action: 'read' },
+          },
+          {
+            name: 'Customers',
+            href: '/customers',
+            icon: UsersIcon,
+            permission: { module: 'customers', action: 'read' },
+          }
+        ],
       },
-      {
-        name: 'Products',
-        href: '/products',
-        icon: CubeIcon,
-        permission: { module: 'products', action: 'read' },
-      },
-      {
-        name: 'Customers',
-        href: '/customers',
-        icon: UsersIcon,
-        permission: { module: 'customers', action: 'read' },
-      },
-      {
-        name: 'Suppliers',
-        href: '/suppliers',
-        icon: TruckIcon,
-        permission: { module: 'suppliers', action: 'read' },
-      },
-      {
-        name: 'Orders',
-        href: '/orders',
-        icon: ShoppingBagIcon,
-        permission: { module: 'orders', action: 'read' },
-      },
-      {
-        name: 'Invoices',
-        href: '/invoices',
-        icon: DocumentTextIcon,
-        permission: { module: 'invoices', action: 'read' },
-      },
-      {
-        name: 'Quotations',
-        href: '/quotations',
-        icon: ClipboardDocumentCheckIcon,
-        permission: { module: 'quotations', action: 'read' },
-      },
-      {
-        name: 'Customer Inquiries',
-        href: '/customer-inquiries',
-        icon: ChatBubbleLeftRightIcon,
-        permission: { module: 'customerInquiries', action: 'read' },
-      }
-    );
-  }
-
-  // Warehouse-specific items
-  if (['admin', 'manager', 'warehouse_manager', 'warehouse_employee'].includes(userRole)) {
-    baseItems.push(
       {
         name: 'Inventory',
-        href: '/inventory',
+        href: '#',
         icon: ArchiveBoxIcon,
-        permission: { module: 'inventory', action: 'read' },
+        children: [
+          {
+            name: 'Inventory',
+            href: '/inventory',
+            icon: ArchiveBoxIcon,
+            permission: { module: 'inventory', action: 'read' },
+          },
+          {
+            name: 'Stock Alerts',
+            href: '/stock-alerts',
+            icon: ExclamationTriangleIcon,
+            permission: { module: 'stockAlerts', action: 'read' },
+          },
+          {
+            name: 'Purchase Orders',
+            href: '/purchase-orders',
+            icon: ShoppingCartIcon,
+            permission: { module: 'purchaseOrders', action: 'read' },
+          },
+          {
+            name: 'Suppliers',
+            href: '/suppliers',
+            icon: TruckIcon,
+            permission: { module: 'suppliers', action: 'read' },
+          }
+        ],
       },
       {
-        name: 'Stock Alerts',
-        href: '/stock-alerts',
-        icon: ExclamationTriangleIcon,
-        permission: { module: 'stockAlerts', action: 'read' },
-      },
-      {
-        name: 'Purchase Orders',
-        href: '/purchase-orders',
-        icon: ShoppingCartIcon,
-        permission: { module: 'purchaseOrders', action: 'read' },
+        name: 'Customer Service',
+        href: '#',
+        icon: ChatBubbleLeftRightIcon,
+        children: [
+          {
+            name: 'Customer Inquiries',
+            href: '/customer-inquiries',
+            icon: ChatBubbleLeftRightIcon,
+            permission: { module: 'customerInquiries', action: 'read' },
+          },
+          {
+            name: 'Support',
+            href: '/support',
+            icon: LifebuoyIcon,
+            permission: { module: 'support', action: 'read' },
+          }
+        ],
       }
     );
   }
 
-  // Workshop items
+  // Deliveries (belongs to Inventory group above, but for warehouse roles show root if needed)
+  if (['admin', 'manager', 'warehouse_manager'].includes(userRole)) {
+    // Add Deliveries into Inventory group if exists; otherwise show standalone
+    const inventoryGroup = baseItems.find((i) => i.name === 'Inventory');
+    if (inventoryGroup && inventoryGroup.children) {
+      inventoryGroup.children.push({
+        name: 'Deliveries',
+        href: '/deliveries',
+        icon: DeliveryIcon,
+        permission: { module: 'deliveries', action: 'read' },
+      });
+    } else {
+      baseItems.push({
+        name: 'Deliveries',
+        href: '/deliveries',
+        icon: DeliveryIcon,
+        permission: { module: 'deliveries', action: 'read' },
+      });
+    }
+  }
+
+  // Workshop
   if (['admin', 'manager', 'employee'].includes(userRole)) {
     baseItems.push({
       name: 'Workshop',
-      href: '/workshop',
+      href: '#',
       icon: WrenchScrewdriverIcon,
-      permission: { module: 'workshop', action: 'read' },
-    });
-    baseItems.push({
-      name: 'Resources',
-      href: '/resources',
-      icon: CogIcon,
-      permission: { module: 'resources', action: 'read' },
-    });
-  }
-
-  // Delivery items
-  if (['admin', 'manager', 'warehouse_manager'].includes(userRole)) {
-    baseItems.push({
-      name: 'Deliveries',
-      href: '/deliveries',
-      icon: DeliveryIcon,
-      permission: { module: 'deliveries', action: 'read' },
+      children: [
+        {
+          name: 'Workshop',
+          href: '/workshop',
+          icon: WrenchScrewdriverIcon,
+          permission: { module: 'workshop', action: 'read' },
+        },
+        {
+          name: 'Resources',
+          href: '/resources',
+          icon: CogIcon,
+          permission: { module: 'resources', action: 'read' },
+        },
+      ],
     });
   }
 
   // Reports and Analytics
   if (['admin', 'manager', 'employee'].includes(userRole)) {
-    baseItems.push(
-      {
-        name: 'Reports',
-        href: '/reports',
-        icon: ChartBarIcon,
-        permission: { module: 'reports', action: 'read' },
-      },
-      {
-        name: 'Analytics',
-        href: '/analytics',
-        icon: ChartBarIcon,
-        permission: { module: 'reports', action: 'read' },
-      }
-    );
+    baseItems.push({
+      name: 'Reports & Analytics',
+      href: '#',
+      icon: ChartBarIcon,
+      children: [
+        {
+          name: 'Reports',
+          href: '/reports',
+          icon: ChartBarIcon,
+          permission: { module: 'reports', action: 'read' },
+        },
+        {
+          name: 'Analytics',
+          href: '/analytics',
+          icon: ChartBarIcon,
+          permission: { module: 'reports', action: 'read' },
+        },
+      ],
+    });
   }
 
-  // Support
-  if (['admin', 'manager', 'employee', 'customer'].includes(userRole)) {
+  // Finance
+  if (['admin', 'manager'].includes(userRole)) {
+    baseItems.push({
+      name: 'Finance',
+      href: '#',
+      icon: BanknotesIcon,
+      children: [
+        {
+          name: 'Transactions',
+          href: '/transactions',
+          icon: BanknotesIcon,
+          permission: { module: 'transactions', action: 'read' },
+        },
+      ],
+    });
+  }
+
+  // Support (already grouped under Customer Service for staff roles)
+  if (userRole === 'customer') {
     baseItems.push({
       name: 'Support',
       href: '/support',
@@ -269,15 +341,7 @@ const getSidebarItems = (userRole: string): SidebarItem[] => {
     });
   }
 
-  // Transactions (Admin and Manager only)
-  if (['admin', 'manager'].includes(userRole)) {
-    baseItems.push({
-      name: 'Transactions',
-      href: '/transactions',
-      icon: BanknotesIcon,
-      permission: { module: 'transactions', action: 'read' },
-    });
-  }
+  // (Transactions moved under Finance)
 
   // Customer-specific items
   if (userRole === 'customer') {
@@ -310,33 +374,46 @@ const getSidebarItems = (userRole: string): SidebarItem[] => {
     );
   }
 
-  // Warehouse Portal access (only for admin/manager/employee, not warehouse roles)
+  // (Warehouse Portal moved under Warehouse group)
+
+  // Move Profile into Administration group for main sidebar
+  if (adminGroup) {
+    adminGroup.children = [
+      ...(adminGroup.children || []),
+      {
+        name: 'Profile',
+        href: '/profile',
+        icon: UserIcon,
+      },
+    ];
+  }
+
+  // Merge Warehouse Portal and Warehouses under one group
   if (['admin', 'manager', 'employee'].includes(userRole)) {
     baseItems.push({
-      name: 'Warehouse Portal',
-      href: '/warehouse-portal',
+      name: 'Warehouse',
+      href: '#',
       icon: BuildingOfficeIcon,
-      roles: ['admin', 'manager', 'employee'],
+      children: [
+        {
+          name: 'Warehouses',
+          href: '/warehouses',
+          icon: BuildingOfficeIcon,
+          permission: { module: 'warehouses', action: 'read' },
+        },
+        {
+          name: 'Warehouse Portal',
+          href: '/warehouse-portal',
+          icon: BuildingOfficeIcon,
+          roles: ['admin', 'manager', 'employee'],
+        },
+      ],
     });
   }
 
-  // Profile and Settings
-  baseItems.push(
-    {
-      name: 'Profile',
-      href: '/profile',
-      icon: UserIcon,
-    }
-  );
-
-  // Settings (Admin and Manager only)
-  if (['admin', 'manager'].includes(userRole)) {
-    baseItems.push({
-      name: 'Settings',
-      href: '/settings',
-      icon: CogIcon,
-      permission: { module: 'settings', action: 'read' },
-    });
+  // Append Administration group last
+  if (adminGroup) {
+    baseItems.push(adminGroup);
   }
 
   return baseItems;
@@ -351,6 +428,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const pathname = usePathname();
   const { user, hasPermission, logout } = useAuth();
   const { company } = useSettings();
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
 
   const handleLogout = async () => {
     await logout();
@@ -447,6 +525,80 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
           {/* Navigation */}
           <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto">
             {filteredItems.map((item) => {
+              const hasChildren = Array.isArray(item.children) && item.children.length > 0;
+              if (hasChildren) {
+                const visibleChildren = (item.children || []).filter((child) => {
+                  if (child.roles && !child.roles.includes(user?.role || '')) return false;
+                  if (child.permission) {
+                    return hasPermission(child.permission.module, child.permission.action);
+                  }
+                  return true;
+                });
+                if (visibleChildren.length === 0) {
+                  return null;
+                }
+                const groupActive = visibleChildren.some((c) => pathname === c.href || pathname.startsWith(c.href + '/'));
+                const isOpen = openGroups[item.name] ?? groupActive;
+                const toggleOpen = () => setOpenGroups((prev) => ({ ...prev, [item.name]: !isOpen }));
+                return (
+                  <div key={item.name} className="space-y-1">
+                    <button
+                      type="button"
+                      onClick={toggleOpen}
+                      className={cn(
+                        'w-full flex items-center px-2 py-2 text-base font-medium rounded-md transition-colors',
+                        (groupActive || isOpen) ? 'bg-blue-100 text-blue-900' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                      )}
+                    >
+                      <item.icon
+                        className={cn(
+                          'mr-3 h-5 w-5 flex-shrink-0',
+                          (groupActive || isOpen) ? 'text-blue-500' : 'text-gray-400 group-hover:text-gray-500'
+                        )}
+                      />
+                      {item.name}
+                      <span className="ml-auto">
+                        {isOpen ? (
+                          <ChevronDownIcon className="h-4 w-4 text-gray-400" />
+                        ) : (
+                          <ChevronRightIcon className="h-4 w-4 text-gray-400" />
+                        )}
+                      </span>
+                    </button>
+                    {isOpen && (
+                      <div className="ml-8 space-y-1">
+                        {visibleChildren.map((child) => {
+                          const childActive = pathname === child.href || pathname.startsWith(child.href + '/');
+                          return (
+                            <Link
+                              key={child.name}
+                              href={child.href}
+                              className={cn(
+                                'group flex items-center px-2 py-1.5 text-sm font-medium rounded-md transition-colors',
+                                childActive ? 'bg-blue-50 text-blue-900' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                              )}
+                              onClick={onClose}
+                            >
+                              <child.icon
+                                className={cn(
+                                  'mr-3 h-4 w-4 flex-shrink-0',
+                                  childActive ? 'text-blue-500' : 'text-gray-400 group-hover:text-gray-500'
+                                )}
+                              />
+                              {child.name}
+                              {child.badge && (
+                                <span className="ml-auto bg-red-100 text-red-600 text-[10px] font-medium px-2 py-0.5 rounded-full">
+                                  {child.badge}
+                                </span>
+                              )}
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              }
               const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
               return (
                 <Link

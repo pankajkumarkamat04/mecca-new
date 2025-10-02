@@ -9,6 +9,7 @@ import Input from '@/components/ui/Input';
 import TextArea from '@/components/ui/TextArea';
 import Select from '@/components/ui/Select';
 import Button from '@/components/ui/Button';
+import CustomerSelector from '@/components/ui/CustomerSelector';
 import { customerInquiriesAPI } from '@/lib/api';
 import { customersAPI } from '@/lib/api';
 import { productsAPI } from '@/lib/api';
@@ -121,7 +122,9 @@ const CreateCustomerInquiryForm: React.FC<CreateCustomerInquiryFormProps> = ({
   };
 
   const defaultValues = initialData ? {
-    customer: initialData.customer._id || initialData.customer,
+    customer: typeof initialData.customer === 'string' 
+      ? initialData.customer 
+      : initialData.customer?._id || '',
     subject: initialData.subject,
     message: initialData.message || initialData.description,
     priority: initialData.priority,
@@ -144,20 +147,16 @@ const CreateCustomerInquiryForm: React.FC<CreateCustomerInquiryFormProps> = ({
           <FormSection title="Inquiry Details">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Customer *
-                </label>
-                <select
-                  {...methods.register('customer')}
-                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-                >
-                  <option value="">Select a customer</option>
-                  {customers.map((customer: any) => (
-                    <option key={customer._id} value={customer._id}>
-                      {customer.firstName} {customer.lastName} ({customer.email})
-                    </option>
-                  ))}
-                </select>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Customer *</label>
+                <CustomerSelector
+                  value={(() => {
+                    const customerValue = methods.watch('customer');
+                    if (typeof customerValue === 'string') return customerValue;
+                    if (typeof customerValue === 'object' && customerValue && '_id' in customerValue) return (customerValue as any)._id;
+                    return '';
+                  })()}
+                  onChange={(id) => methods.setValue('customer', id, { shouldValidate: true })}
+                />
                 {methods.formState.errors.customer && (
                   <p className="mt-1 text-sm text-red-600">
                     {methods.formState.errors.customer.message}

@@ -93,6 +93,7 @@ const workshopJobSchema = new mongoose.Schema({
   customerPhone: { type: String, trim: true },
   priority: { type: String, enum: ['low', 'medium', 'high', 'urgent'], default: 'medium' },
   status: { type: String, enum: ['draft', 'scheduled', 'in_progress', 'on_hold', 'completed', 'cancelled'], default: 'draft', index: true },
+  qualityChecked: { type: Boolean, default: false },
   deadline: Date,
   scheduled: {
     start: Date,
@@ -229,6 +230,8 @@ const workshopJobSchema = new mongoose.Schema({
     allowComments: { type: Boolean, default: true },
     lastViewedAt: { type: Date },
     notificationsEnabled: { type: Boolean, default: true },
+    followUpDone: { type: Boolean, default: false },
+    followUpAt: { type: Date },
     // Enhanced customer portal features
     customerComments: [{
       comment: { type: String, required: true },

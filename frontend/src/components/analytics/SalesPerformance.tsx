@@ -58,6 +58,19 @@ const SalesPerformance: React.FC = () => {
   const summary = insights.summary || {};
   const salesTrend = Array.isArray(insights.analyticsSeries) ? insights.analyticsSeries : (Array.isArray(insights.salesTrend) ? insights.salesTrend : []);
   const topProducts = Array.isArray(insights.topProducts) ? insights.topProducts : [];
+  // Wire charts to backend datasets
+  shopPerformanceData.data = Array.isArray(insights.categoryBreakdown)
+    ? insights.categoryBreakdown
+    : [];
+  customerBehaviorData.data = Array.isArray(insights.customerSegments)
+    ? insights.customerSegments
+    : [];
+  productPerformanceData.data = Array.isArray(insights.topProducts)
+    ? insights.topProducts.map((p: any) => ({ name: p.name, value: p.totalRevenue ?? p.revenue ?? 0, color: '#3b82f6' }))
+    : [];
+  monthlyTrendData.data = Array.isArray(insights.monthlyComparison)
+    ? insights.monthlyComparison.map((item: any) => ({ name: item.month, value: item.current, color: '#3b82f6' }))
+    : [];
 
   const dateRangeOptions = [
     { value: '7d', label: 'Last 7 days' },
@@ -262,12 +275,10 @@ const SalesPerformance: React.FC = () => {
           title="Revenue Trend"
           description="Monthly revenue performance over time"
           trend={{ value: 10.4, isPositive: true, label: 'vs last month' }}
-          contentHeight={300}
         >
           <SalesChart 
             data={salesTrend || []} 
             type="area"
-            height={300}
           />
         </ChartContainer>
 
@@ -275,11 +286,9 @@ const SalesPerformance: React.FC = () => {
           title="Shop Performance"
           description="Revenue distribution across shops"
           trend={{ value: 8.3, isPositive: true, label: 'vs last month' }}
-          contentHeight={300}
         >
           <PieChart 
             data={Array.isArray(shopPerformanceData?.data) ? shopPerformanceData.data : []}
-            height={300}
             showLegend={true}
           />
         </ChartContainer>
@@ -291,7 +300,6 @@ const SalesPerformance: React.FC = () => {
           title="Top Products by Revenue"
           description="Best performing products"
           trend={{ value: 15.2, isPositive: true, label: 'vs last month' }}
-          contentHeight={300}
         >
           <BarChart 
             data={topProducts.map((p: any, idx: number) => ({
@@ -299,7 +307,6 @@ const SalesPerformance: React.FC = () => {
               value: p.totalRevenue ?? p.revenue ?? 0,
               color: '#3b82f6'
             }))}
-            height={300}
             orientation="horizontal"
             formatValue={(value) => formatCurrency(value)}
           />
@@ -309,11 +316,9 @@ const SalesPerformance: React.FC = () => {
           title="Customer Segments"
           description="Revenue by customer type"
           trend={{ value: 12.1, isPositive: true, label: 'vs last month' }}
-          contentHeight={300}
         >
           <PieChart 
             data={Array.isArray(customerBehaviorData?.data) ? customerBehaviorData.data : []}
-            height={300}
             showLegend={true}
             showLabel={true}
           />

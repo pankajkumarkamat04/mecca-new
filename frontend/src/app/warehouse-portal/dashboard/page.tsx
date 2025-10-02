@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import WarehousePortalLayout from '../layout';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -81,9 +81,7 @@ interface User {
   };
 }
 
-const WarehouseDashboard: React.FC = () => {
-  const searchParams = useSearchParams();
-  const warehouseId = searchParams.get('warehouse');
+const WarehouseDashboardInner: React.FC<{ warehouseId: string | null }> = ({ warehouseId }) => {
   const queryClient = useQueryClient();
 
   // Employee management state
@@ -155,11 +153,10 @@ const WarehouseDashboard: React.FC = () => {
     }
   }, [employeesResponse]);
 
-  // Update available users state
+  // Update available users state (normalize response shape safely)
   useEffect(() => {
-    if (usersData?.data) {
-      setAvailableUsers(usersData.data);
-    }
+    const raw = usersData?.data?.data ?? usersData?.data;
+    setAvailableUsers(Array.isArray(raw) ? raw : []);
   }, [usersData]);
 
   const handleAddEmployee = () => {
@@ -380,7 +377,9 @@ const WarehouseDashboard: React.FC = () => {
               onChange={(e) => setSelectedUserId(e.target.value)}
               options={[
                 { value: '', label: 'Select an employee...' },
-                ...availableUsers
+                ...(
+                  Array.isArray(availableUsers) ? availableUsers : []
+                )
                   .filter(user => 
                     !user.warehouse?.assignedWarehouse &&
                     (user.role === 'employee' || 
@@ -472,4 +471,17 @@ const WarehouseDashboard: React.FC = () => {
   );
 };
 
-export default WarehouseDashboard;
+export default function WarehouseDashboard() {
+  return (
+    <Suspense fallback={<div className="p-6">Loading...</div>}>
+      <WarehouseDashboardWithParams />
+    </Suspense>
+  );
+}
+
+const WarehouseDashboardWithParams: React.FC = () => {
+  const searchParams = useSearchParams();
+  const warehouseId = searchParams.get('warehouse');
+  
+  return <WarehouseDashboardInner warehouseId={warehouseId} />;
+};

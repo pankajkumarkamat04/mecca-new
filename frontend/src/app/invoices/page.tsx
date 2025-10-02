@@ -9,10 +9,13 @@ import Modal from '@/components/ui/Modal';
 import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
 import { invoicesAPI, customersAPI, productsAPI } from '@/lib/api';
+import CustomerSelector from '@/components/ui/CustomerSelector';
 import { useSettings } from '@/contexts/SettingsContext';
 import { formatCurrency, formatDate, getStatusColor, buildPrintableInvoiceHTML } from '@/lib/utils';
 import { calculatePrice } from '@/lib/priceCalculator';
 import PriceSummary from '@/components/ui/PriceSummary';
+import InvoiceReceipt from '@/components/ui/InvoiceReceipt';
+import { downloadReceipt, printReceipt } from '@/lib/receiptUtils';
 import { Invoice } from '@/types';
 import toast from 'react-hot-toast';
 import { z } from 'zod';
@@ -24,6 +27,7 @@ import {
   QrCodeIcon,
   PrinterIcon,
   ShareIcon,
+  ArrowDownTrayIcon,
 } from '@heroicons/react/24/outline';
 
 const InvoicesPage: React.FC = () => {
@@ -38,6 +42,8 @@ const InvoicesPage: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(10);
   const [filterStatus, setFilterStatus] = useState('all');
+  const [showReceiptModal, setShowReceiptModal] = useState(false);
+  const [receiptType, setReceiptType] = useState<'short' | 'full'>('short');
 
   const queryClient = useQueryClient();
 
@@ -95,8 +101,8 @@ const InvoicesPage: React.FC = () => {
     queryKey: ['products-list'],
     queryFn: () => productsAPI.getProducts({ limit: 100, page: 1 })
   });
-  const customerOptions = Array.isArray(customersList?.data) ? customersList.data : [];
-  const productOptions = Array.isArray(productsList?.data) ? productsList.data : [];
+  const customerOptions = Array.isArray(customersList?.data?.data) ? customersList.data.data : [];
+  const productOptions = Array.isArray(productsList?.data?.data) ? productsList.data.data : [];
   
   const customerOptionsFormatted = customerOptions.map((c: any) => ({ value: c._id, label: `${c.firstName} ${c.lastName}` }));
   const productOptionsFormatted = productOptions.map((p: any) => ({ value: p._id, label: `${p.name} (${p.sku})` }));
@@ -147,6 +153,34 @@ const InvoicesPage: React.FC = () => {
       // Fallback to clipboard
       navigator.clipboard.writeText(shareUrl);
       toast.success('Invoice link copied to clipboard');
+    }
+  };
+
+  const handleShowReceipt = (invoice: Invoice, type: 'short' | 'full') => {
+    setSelectedInvoice(invoice);
+    setReceiptType(type);
+    setShowReceiptModal(true);
+  };
+
+  const handlePrintReceipt = async () => {
+    if (!selectedInvoice) return;
+    try {
+      const elementId = receiptType === 'short' ? 'short-receipt' : 'full-invoice';
+      await printReceipt(elementId);
+    } catch (error) {
+      console.error('Error printing receipt:', error);
+      toast.error('Failed to print receipt');
+    }
+  };
+
+  const handleDownloadReceipt = async () => {
+    if (!selectedInvoice) return;
+    try {
+      const elementId = receiptType === 'short' ? 'short-receipt' : 'full-invoice';
+      await downloadReceipt(elementId, receiptType);
+    } catch (error) {
+      console.error('Error downloading receipt:', error);
+      toast.error('Failed to download receipt');
     }
   };
 
@@ -338,13 +372,50 @@ const InvoicesPage: React.FC = () => {
           >
             <EyeIcon className="h-4 w-4" />
           </button>
-          <button
-            onClick={() => handlePrintInvoice(row)}
-            className="text-gray-600 hover:text-gray-900"
-            title="Print Invoice"
-          >
-            <PrinterIcon className="h-4 w-4" />
-          </button>
+          <div className="relative group">
+            <button
+              className="text-gray-600 hover:text-gray-900"
+              title="Print Options"
+            >
+              <PrinterIcon className="h-4 w-4" />
+            </button>
+            <div className="absolute right-0 top-6 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
+              <button
+                onClick={() => handleShowReceipt(row, 'short')}
+                className="block w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100"
+              >
+                Print Short Receipt
+              </button>
+              <button
+                onClick={() => handleShowReceipt(row, 'full')}
+                className="block w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100"
+              >
+                Print Full Invoice
+              </button>
+            </div>
+          </div>
+          <div className="relative group">
+            <button
+              className="text-green-600 hover:text-green-900"
+              title="Download Options"
+            >
+              <ArrowDownTrayIcon className="h-4 w-4" />
+            </button>
+            <div className="absolute right-0 top-6 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
+              <button
+                onClick={() => handleShowReceipt(row, 'short')}
+                className="block w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100"
+              >
+                Download Short Receipt
+              </button>
+              <button
+                onClick={() => handleShowReceipt(row, 'full')}
+                className="block w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100"
+              >
+                Download Full Invoice
+              </button>
+            </div>
+          </div>
           <button
             onClick={() => handleGenerateQR(row)}
             className="text-purple-600 hover:text-purple-900"
@@ -354,7 +425,7 @@ const InvoicesPage: React.FC = () => {
           </button>
           <button
             onClick={() => handleShareInvoice(row)}
-            className="text-green-600 hover:text-green-900"
+            className="text-orange-600 hover:text-orange-900"
             title="Share Invoice"
           >
             <ShareIcon className="h-4 w-4" />
@@ -466,12 +537,20 @@ const InvoicesPage: React.FC = () => {
             <div className="space-y-6">
               <FormSection title="Invoice Details">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField label="Customer" required error={methods.formState.errors.customer?.message as string}>
-                    <Select
-                      options={[{ value: '', label: 'Select customer', disabled: true }, ...customerOptionsFormatted]}
-                      value={methods.watch('customer')}
-                      onChange={(e) => methods.setValue('customer', e.target.value)}
-                      fullWidth
+                  <FormField label="Customer" required error={typeof methods.formState.errors.customer?.message === 'string' ? methods.formState.errors.customer.message : ''}>
+                    <CustomerSelector
+                      value={(() => {
+                        const customerValue = methods.watch('customer');
+                        if (typeof customerValue === 'string') return customerValue;
+                        if (typeof customerValue === 'object' && customerValue && '_id' in customerValue) return (customerValue as any)._id;
+                        return '';
+                      })()}
+                      onChange={(id, customer) => {
+                        methods.setValue('customer', id, { shouldValidate: true });
+                        if (customer?.phone) {
+                          methods.setValue('customerPhone', customer.phone);
+                        }
+                      }}
                     />
                   </FormField>
                   <FormField label="Customer Phone" required error={methods.formState.errors.customerPhone?.message as string}>
@@ -501,7 +580,18 @@ const InvoicesPage: React.FC = () => {
                         <Select
                           options={[{ value: '', label: 'Select product', disabled: true }, ...productOptionsFormatted]}
                           value={methods.watch(`items.${idx}.product` as const)}
-                          onChange={(e) => methods.setValue(`items.${idx}.product` as const, e.target.value)}
+                          onChange={(e) => {
+                            const productId = e.target.value;
+                            methods.setValue(`items.${idx}.product` as const, productId);
+                            
+                            // Auto-populate unit price when product is selected
+                            if (productId) {
+                              const selectedProduct = productOptions.find((p: any) => p._id === productId);
+                              if (selectedProduct && selectedProduct.pricing?.sellingPrice) {
+                                methods.setValue(`items.${idx}.unitPrice` as const, selectedProduct.pricing.sellingPrice);
+                              }
+                            }
+                          }}
                           fullWidth
                         />
                       </FormField>
@@ -546,13 +636,27 @@ const InvoicesPage: React.FC = () => {
               <FormSection title="Price Summary">
                 {(() => {
                   const items = methods.watch('items') || [];
-                  const priceItems = items.filter((item: any) => item.product).map((item: any) => ({
-                    product: productOptions.find((p: any) => p.value === item.product),
-                    quantity: item.quantity || 1,
-                    unitPrice: item.unitPrice || 0,
-                    discount: 0,
-                    taxRate: item.taxRate || 0
-                  }));
+                  const priceItems = items.filter((item: any) => item.product).map((item: any) => {
+                    const product = productOptions.find((p: any) => p._id === item.product);
+                    return {
+                      product: product ? {
+                        _id: product._id,
+                        name: product.name,
+                        sku: product.sku,
+                        pricing: {
+                          costPrice: product.pricing?.costPrice || 0,
+                          sellingPrice: item.unitPrice || 0,
+                          markup: product.pricing?.markup || 0,
+                          discount: 0,
+                          taxRate: item.taxRate || 0
+                        }
+                      } : undefined,
+                      quantity: item.quantity || 1,
+                      unitPrice: item.unitPrice || 0,
+                      discount: 0,
+                      taxRate: item.taxRate || 0
+                    };
+                  }).filter(item => item.product);
                   
                   const calculation = calculatePrice(priceItems);
                   return (
@@ -843,25 +947,32 @@ const InvoicesPage: React.FC = () => {
                 )}
 
                 <div className="flex justify-end space-x-3">
-                <Button
-                  variant="outline"
-                  onClick={() => handlePrintInvoice(selectedInvoice)}
-                  leftIcon={<PrinterIcon className="h-4 w-4" />}
-                >
-                  Print
-                </Button>
-                <Button
-                  onClick={() => handleGenerateQR(selectedInvoice)}
-                  leftIcon={<QrCodeIcon className="h-4 w-4" />}
-                >
-                  Generate QR
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => setIsViewModalOpen(false)}
-                >
-                  Close
-                </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => handleShowReceipt(selectedInvoice, 'short')}
+                    leftIcon={<PrinterIcon className="h-4 w-4" />}
+                  >
+                    Print Short Receipt
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => handleShowReceipt(selectedInvoice, 'full')}
+                    leftIcon={<ArrowDownTrayIcon className="h-4 w-4" />}
+                  >
+                    Print Full Invoice
+                  </Button>
+                  <Button
+                    onClick={() => handleGenerateQR(selectedInvoice)}
+                    leftIcon={<QrCodeIcon className="h-4 w-4" />}
+                  >
+                    Generate QR
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => setIsViewModalOpen(false)}
+                  >
+                    Close
+                  </Button>
                 </div>
               </div>
             </div>
@@ -915,6 +1026,50 @@ const InvoicesPage: React.FC = () => {
               </Button>
             </div>
           </div>
+        </Modal>
+
+        {/* Receipt Modal */}
+        <Modal
+          isOpen={showReceiptModal}
+          onClose={() => setShowReceiptModal(false)}
+          title={`${receiptType === 'short' ? 'Short Receipt' : 'Full Invoice'} - ${selectedInvoice?.invoiceNumber}`}
+          size="lg"
+        >
+          {selectedInvoice && (
+            <div className="space-y-4">
+              {/* Receipt Type Selector */}
+              <div className="flex justify-center space-x-4 mb-6">
+                <button
+                  onClick={() => setReceiptType('short')}
+                  className={`px-4 py-2 rounded ${
+                    receiptType === 'short' 
+                      ? 'bg-blue-600 text-white' 
+                      : 'bg-gray-200 text-gray-700'
+                  }`}
+                >
+                  Short Receipt
+                </button>
+                <button
+                  onClick={() => setReceiptType('full')}
+                  className={`px-4 py-2 rounded ${
+                    receiptType === 'full' 
+                      ? 'bg-blue-600 text-white' 
+                      : 'bg-gray-200 text-gray-700'
+                  }`}
+                >
+                  Full Invoice
+                </button>
+              </div>
+
+              {/* Receipt Component */}
+              <InvoiceReceipt
+                invoice={selectedInvoice}
+                type={receiptType}
+                onPrint={handlePrintReceipt}
+                onDownload={handleDownloadReceipt}
+              />
+            </div>
+          )}
         </Modal>
       </div>
     </Layout>

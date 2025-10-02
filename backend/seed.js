@@ -737,7 +737,8 @@ async function seed() {
     }
   ]);
 
-  // Warehouses
+  // Warehouses (ensure 3 warehouses, each with 1 manager and 2 employees)
+  await Warehouse.deleteMany({});
   const warehouses = await Warehouse.insertMany([
     {
       name: 'TechFlow Main Warehouse',
@@ -782,7 +783,11 @@ async function seed() {
         hasClimateControl: true
       },
       isActive: true,
-      createdBy: users[0]._id
+      createdBy: users[0]._id,
+      employees: [
+        { user: users[5]._id, position: 'warehouse_employee', assignedBy: users[0]._id, assignedAt: new Date(), isActive: true },
+        { user: users[6]._id, position: 'warehouse_employee', assignedBy: users[0]._id, assignedAt: new Date(), isActive: true }
+      ]
     },
     {
       name: 'TechFlow North Warehouse',
@@ -827,7 +832,11 @@ async function seed() {
         hasClimateControl: true
       },
       isActive: true,
-      createdBy: users[0]._id
+      createdBy: users[0]._id,
+      employees: [
+        { user: users[7]._id, position: 'warehouse_employee', assignedBy: users[0]._id, assignedAt: new Date(), isActive: true },
+        { user: users[8]._id, position: 'warehouse_employee', assignedBy: users[0]._id, assignedAt: new Date(), isActive: true }
+      ]
     },
     {
       name: 'TechFlow South Distribution Center',
@@ -872,52 +881,11 @@ async function seed() {
         hasClimateControl: true
       },
       isActive: true,
-      createdBy: users[0]._id
-    },
-    {
-      name: 'TechFlow Electronics Hub',
-      code: 'TFW004',
-      address: {
-        street: '3456 Digital Way',
-        city: 'Plano',
-        state: 'Texas',
-        zipCode: '75023',
-        country: 'USA'
-      },
-      contact: {
-        phone: '+1-972-555-8007',
-        email: 'electronics@techflow.com',
-        manager: {
-          name: 'Lisa Wang',
-          phone: '+1-972-555-8008',
-          email: 'l.wang@techflow.com'
-        }
-      },
-      manager: users[4]._id, // Warehouse Manager
-      capacity: {
-        totalCapacity: 25000,
-        currentOccupancy: 18000,
-        maxWeight: 500000,
-        currentWeight: 320000
-      },
-      operatingHours: {
-        monday: { open: '8:00 AM', close: '8:00 PM', isOpen: true },
-        tuesday: { open: '8:00 AM', close: '8:00 PM', isOpen: true },
-        wednesday: { open: '8:00 AM', close: '8:00 PM', isOpen: true },
-        thursday: { open: '8:00 AM', close: '8:00 PM', isOpen: true },
-        friday: { open: '8:00 AM', close: '8:00 PM', isOpen: true },
-        saturday: { open: '10:00 AM', close: '4:00 PM', isOpen: true },
-        sunday: { open: '10:00 AM', close: '4:00 PM', isOpen: true }
-      },
-      features: {
-        hasRefrigeration: false,
-        hasFreezer: false,
-        hasHazardousStorage: false,
-        hasSecurity: true,
-        hasClimateControl: true
-      },
-      isActive: true,
-      createdBy: users[0]._id
+      createdBy: users[0]._id,
+      employees: [
+        { user: users[9]._id, position: 'warehouse_employee', assignedBy: users[0]._id, assignedAt: new Date(), isActive: true },
+        { user: users[10]._id, position: 'warehouse_employee', assignedBy: users[0]._id, assignedAt: new Date(), isActive: true }
+      ]
     }
   ]);
 
@@ -1389,7 +1357,7 @@ async function seed() {
         maxStock: 25,
         unit: 'pcs',
         reorderLevel: 4,
-        warehouse: warehouses[3]._id, // Electronics Hub
+        warehouse: warehouses[2]._id, // South Distribution Center
         warehouseLocation: {
           zone: 'C',
           aisle: '01',
@@ -1450,7 +1418,7 @@ async function seed() {
         maxStock: 80,
         unit: 'pcs',
         reorderLevel: 10,
-        warehouse: warehouses[3]._id, // Electronics Hub
+        warehouse: warehouses[2]._id, // South Distribution Center
         warehouseLocation: {
           zone: 'D',
           aisle: '01',
@@ -1543,7 +1511,7 @@ async function seed() {
         maxStock: 15,
         unit: 'pcs',
         reorderLevel: 3,
-        warehouse: warehouses[3]._id, // Electronics Hub
+        warehouse: warehouses[2]._id, // South Distribution Center
         warehouseLocation: {
           zone: 'F',
           aisle: '01',
@@ -1656,6 +1624,7 @@ async function seed() {
   const stockMovements = await StockMovement.insertMany([
     {
       product: products[0]._id,
+      warehouse: warehouses[0]._id,
       movementType: 'in',
       quantity: 100,
       unitCost: 10.00,
@@ -1667,6 +1636,7 @@ async function seed() {
     },
     {
       product: products[1]._id,
+      warehouse: warehouses[1]._id,
       movementType: 'in',
       quantity: 50,
       unitCost: 35.00,
@@ -1678,6 +1648,7 @@ async function seed() {
     },
     {
       product: products[0]._id,
+      warehouse: warehouses[0]._id,
       movementType: 'in',
       quantity: 50,
       unitCost: 10.00,
@@ -1689,6 +1660,7 @@ async function seed() {
     },
     {
       product: products[1]._id,
+      warehouse: warehouses[1]._id,
       movementType: 'in',
       quantity: 30,
       unitCost: 35.00,
@@ -1700,21 +1672,14 @@ async function seed() {
     }
   ]);
 
-  // Invoices (including phone-based linking examples)
-  const invoices = await Invoice.insertMany([
+  // Invoices (including phone-based linking examples) with multi-month history
+  const invoicesData = [
     {
       invoiceNumber: 'INV-2024-01-0001',
       customer: customers[0]._id,
       customerPhone: customers[0].phone,
       items: [
-        {
-          product: products[0]._id,
-          name: products[0].name,
-          sku: 'MOU-001',
-          quantity: 2,
-          unitPrice: 19.99,
-          total: 39.98
-        }
+        { product: products[0]._id, name: products[0].name, sku: 'MOU-001', quantity: 2, unitPrice: 19.99, total: 39.98 }
       ],
       subtotal: 39.98,
       taxRate: 10,
@@ -1724,29 +1689,16 @@ async function seed() {
       paymentMethod: 'cash',
       shipping: { cost: 0 },
       dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-      createdBy: users[1]._id
+      createdBy: users[1]._id,
+      invoiceDate: new Date('2024-01-10')
     },
     {
       invoiceNumber: 'INV-2024-01-0002',
       customer: customers[1]._id,
       customerPhone: customers[1].phone,
       items: [
-        {
-          product: products[1]._id,
-          name: products[1].name,
-          sku: 'KEY-002',
-          quantity: 1,
-          unitPrice: 69.99,
-          total: 69.99
-        },
-        {
-          product: products[2]._id,
-          name: products[2].name,
-          sku: 'CHAIR-001',
-          quantity: 1,
-          unitPrice: 199.99,
-          total: 199.99
-        }
+        { product: products[1]._id, name: products[1].name, sku: 'KEY-002', quantity: 1, unitPrice: 69.99, total: 69.99 },
+        { product: products[2]._id, name: products[2].name, sku: 'CHAIR-001', quantity: 1, unitPrice: 199.99, total: 199.99 }
       ],
       subtotal: 269.98,
       taxRate: 10,
@@ -1756,23 +1708,17 @@ async function seed() {
       paymentMethod: 'credit_card',
       shipping: { cost: 0 },
       dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-      createdBy: users[1]._id
+      createdBy: users[1]._id,
+      invoiceDate: new Date('2024-01-18')
     },
     // Phone-based invoice (no customer object, just phone number)
     {
       invoiceNumber: 'INV-2024-01-0003',
-      customer: null, // No customer object
-      customerPhone: '+1-555-2000', // Phone-based linking
+      customer: null,
+      customerPhone: '+1-555-2000',
       customerName: 'Alice Customer',
       items: [
-        {
-          product: products[0]._id,
-          name: products[0].name,
-          sku: 'MOU-001',
-          quantity: 1,
-          unitPrice: 19.99,
-          total: 19.99
-        }
+        { product: products[0]._id, name: products[0].name, sku: 'MOU-001', quantity: 1, unitPrice: 19.99, total: 19.99 }
       ],
       subtotal: 19.99,
       taxRate: 10,
@@ -1782,23 +1728,17 @@ async function seed() {
       paymentMethod: 'cash',
       shipping: { cost: 0 },
       dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-      createdBy: users[2]._id
+      createdBy: users[2]._id,
+      invoiceDate: new Date('2024-01-22')
     },
     // Another phone-based invoice
     {
       invoiceNumber: 'INV-2024-01-0004',
-      customer: null, // No customer object
-      customerPhone: '+1-555-2002', // Phone-based linking
+      customer: null,
+      customerPhone: '+1-555-2002',
       customerName: 'Bob Customer',
       items: [
-        {
-          product: products[3]._id,
-          name: products[3].name,
-          sku: 'BAT-001',
-          quantity: 1,
-          unitPrice: 129.99,
-          total: 129.99
-        }
+        { product: products[3]._id, name: products[3].name, sku: 'BAT-001', quantity: 1, unitPrice: 129.99, total: 129.99 }
       ],
       subtotal: 129.99,
       taxRate: 12,
@@ -1808,9 +1748,56 @@ async function seed() {
       paymentMethod: 'credit_card',
       shipping: { cost: 0 },
       dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-      createdBy: users[2]._id
+      createdBy: users[2]._id,
+      invoiceDate: new Date('2024-01-28')
     }
-  ]);
+  ];
+
+  // Generate additional invoices across the last 12 months for charts
+  const now = new Date();
+  for (let m = 0; m < 12; m++) {
+    const monthDate = new Date(now.getFullYear(), now.getMonth() - m, 15);
+    // Two invoices per month with varying totals
+    invoicesData.push({
+      invoiceNumber: `INV-${monthDate.getFullYear()}-${String(monthDate.getMonth()+1).padStart(2,'0')}-A${String(m).padStart(3,'0')}`,
+      customer: customers[(m % customers.length)]. _id,
+      customerPhone: customers[(m % customers.length)].phone,
+      items: [
+        { product: products[0]._id, name: products[0].name, sku: products[0].sku, quantity: 1 + (m % 3), unitPrice: products[0].pricing.sellingPrice, total: products[0].pricing.sellingPrice * (1 + (m % 3)) }
+      ],
+      subtotal: products[0].pricing.sellingPrice * (1 + (m % 3)),
+      taxRate: 10,
+      taxAmount: products[0].pricing.sellingPrice * (1 + (m % 3)) * 0.1,
+      total: products[0].pricing.sellingPrice * (1 + (m % 3)) * 1.1,
+      status: 'paid',
+      paymentMethod: 'cash',
+      shipping: { cost: 0 },
+      dueDate: new Date(monthDate.getTime() + 30 * 24 * 60 * 60 * 1000),
+      createdBy: users[1]._id,
+      invoiceDate: monthDate
+    });
+    invoicesData.push({
+      invoiceNumber: `INV-${monthDate.getFullYear()}-${String(monthDate.getMonth()+1).padStart(2,'0')}-B${String(m).padStart(3,'0')}`,
+      customer: customers[((m+1) % customers.length)]. _id,
+      customerPhone: customers[((m+1) % customers.length)].phone,
+      items: [
+        { product: products[1]._id, name: products[1].name, sku: products[1].sku, quantity: 1, unitPrice: products[1].pricing.sellingPrice, total: products[1].pricing.sellingPrice },
+        { product: products[2]._id, name: products[2].name, sku: products[2].sku, quantity: 1 + (m % 2), unitPrice: products[2].pricing.sellingPrice, total: products[2].pricing.sellingPrice * (1 + (m % 2)) }
+      ],
+      subtotal: products[1].pricing.sellingPrice + products[2].pricing.sellingPrice * (1 + (m % 2)),
+      taxRate: 10,
+      taxAmount: (products[1].pricing.sellingPrice + products[2].pricing.sellingPrice * (1 + (m % 2))) * 0.1,
+      total: (products[1].pricing.sellingPrice + products[2].pricing.sellingPrice * (1 + (m % 2))) * 1.1,
+      status: 'partial',
+      paymentMethod: 'credit_card',
+      shipping: { cost: 0 },
+      dueDate: new Date(monthDate.getTime() + 20 * 24 * 60 * 60 * 1000),
+      createdBy: users[1]._id,
+      invoiceDate: new Date(monthDate.getFullYear(), monthDate.getMonth(), 25)
+    });
+  }
+
+  const invoices = await Invoice.insertMany(invoicesData);
 
   // Transactions
   const transactions = await Transaction.insertMany([

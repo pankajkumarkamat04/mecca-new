@@ -126,6 +126,12 @@ const JobProgressVisualization: React.FC<JobProgressVisualizationProps> = ({ job
         </div>
       </div>
 
+      {/* Workflow Steps */}
+      <div className="bg-white p-6 rounded-lg shadow">
+        <h3 className="text-lg font-medium text-gray-900 mb-4">Workflow</h3>
+        <WorkflowSteps job={job} />
+      </div>
+
       {/* View Tabs */}
       <div className="border-b border-gray-200">
         <nav className="-mb-px flex space-x-8">
@@ -553,3 +559,85 @@ const CostsView: React.FC<{ job: any; analytics: any }> = ({ job, analytics }) =
 };
 
 export default JobProgressVisualization;
+
+// Workflow Steps Component
+const WorkflowSteps: React.FC<{ job: any }> = ({ job }) => {
+  const steps = [
+    'Job Intake',
+    'Scheduling',
+    'Preparation',
+    'Work Execution',
+    'Quality Control',
+    'Completion',
+    'Follow-up',
+  ];
+
+  const hasPreparation = Boolean(job?.resources?.requiredMachines?.length || job?.resources?.assignedTechnicians?.length);
+  const hasQuality = Boolean((job?.tasks || []).some((t: any) => t.status === 'review') || job?.qualityChecked);
+  const isFollowUpDone = Boolean(job?.customerPortal?.followUpDone);
+
+  const statusToStepIndex = () => {
+    switch (job?.status) {
+      case 'draft':
+        return 0; // Job Intake
+      case 'scheduled':
+        return hasPreparation ? 2 : 1; // Preparation or Scheduling
+      case 'in_progress':
+        return 3; // Work Execution
+      case 'completed':
+        return isFollowUpDone ? 6 : (hasQuality ? 5 : 5); // Completion or Follow-up
+      case 'on_hold':
+      case 'cancelled':
+        return 3; // Treat as during execution
+      default:
+        return 0;
+    }
+  };
+
+  const currentIndex = statusToStepIndex();
+
+  const isStepCompleted = (index: number) => {
+    if (index < currentIndex) return true;
+    if (job?.status === 'completed') {
+      if (index <= 5) return true; // up to Completion
+      if (index === 6) return isFollowUpDone;
+    }
+    if (index === 2) return hasPreparation || currentIndex > 2;
+    if (index === 4) return hasQuality || currentIndex > 4;
+    return false;
+  };
+
+  const isStepCurrent = (index: number) => index === currentIndex;
+
+  return (
+    <div className="w-full">
+      <ol className="flex items-center w-full">
+        {steps.map((label, index) => (
+          <li key={index} className="flex-1 flex items-center">
+            <div className={`flex items-center ${index !== steps.length - 1 ? 'w-full' : ''}`}>
+              <div className={`flex items-center justify-center h-8 w-8 rounded-full text-xs font-bold transition-colors ${
+                isStepCompleted(index)
+                  ? 'bg-green-100 text-green-700 border border-green-300'
+                  : isStepCurrent(index)
+                  ? 'bg-blue-100 text-blue-700 border border-blue-300'
+                  : 'bg-gray-100 text-gray-500 border border-gray-300'
+              }`}>
+                {index + 1}
+              </div>
+              {index !== steps.length - 1 && (
+                <div className={`h-0.5 flex-1 mx-2 ${
+                  isStepCompleted(index)
+                    ? 'bg-green-300'
+                    : isStepCurrent(index)
+                    ? 'bg-blue-300'
+                    : 'bg-gray-200'
+                }`} />
+              )}
+            </div>
+            <div className="ml-2 text-xs text-gray-700 hidden sm:block">{label}</div>
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+};

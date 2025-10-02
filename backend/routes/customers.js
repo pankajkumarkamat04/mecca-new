@@ -1,6 +1,7 @@
 const express = require('express');
 const { auth } = require('../middleware/auth');
 const { validate, validateObjectId, validatePagination } = require('../middleware/validation');
+const { createCustomerValidation, updateCustomerValidation } = require('../validations/customerValidation');
 const {
   getCustomers,
   getCustomerById,
@@ -28,7 +29,7 @@ router.get('/top', auth, getTopCustomers);
 // @route   POST /api/customers
 // @desc    Create new customer
 // @access  Private
-router.post('/', auth, createCustomer);
+router.post('/', auth, validate(createCustomerValidation), createCustomer);
 
 // @route   GET /api/customers/:id
 // @desc    Get customer by ID
@@ -38,7 +39,7 @@ router.get('/:id', auth, validateObjectId(), getCustomerById);
 // @route   PUT /api/customers/:id
 // @desc    Update customer
 // @access  Private
-router.put('/:id', auth, validateObjectId(), updateCustomer);
+router.put('/:id', auth, validateObjectId(), validate(updateCustomerValidation), updateCustomer);
 
 // @route   DELETE /api/customers/:id
 // @desc    Delete customer

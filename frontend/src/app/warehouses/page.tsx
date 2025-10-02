@@ -115,6 +115,7 @@ const WarehousesPage: React.FC = () => {
     queryFn: () => warehouseAPI.getWarehouseStats(),
   });
 
+
   // Fetch available users
   const { data: usersData } = useQuery({
     queryKey: ['available-users'],
@@ -122,8 +123,11 @@ const WarehousesPage: React.FC = () => {
   });
 
   useEffect(() => {
-    if (usersData?.data) {
-      setAvailableUsers(usersData.data);
+    if (usersData?.data?.data) {
+      setAvailableUsers(usersData.data.data);
+    } else if (usersData?.data) {
+      // Fallback for any different shapes
+      setAvailableUsers(Array.isArray(usersData.data) ? usersData.data : []);
     }
   }, [usersData]);
 
@@ -186,7 +190,7 @@ const WarehousesPage: React.FC = () => {
 
   const warehouses = warehousesData?.data?.data || [];
   const pagination = warehousesData?.data?.pagination || {};
-  const stats = statsData?.data;
+  const stats = statsData?.data?.data;
 
   const columns = [
     {
@@ -226,7 +230,7 @@ const WarehousesPage: React.FC = () => {
       render: (row: Warehouse) => (
         <div className="text-sm">
           <div className="font-medium text-gray-900">
-            {row.employees?.filter(emp => emp.user).length || 0} employees
+            {(row.employees?.filter(emp => emp.user).length || 0)} employees
           </div>
           <div className="text-gray-500">
             {row.capacityUtilization}% capacity utilized
@@ -282,6 +286,16 @@ const WarehousesPage: React.FC = () => {
             title="View Details"
           >
             <EyeIcon className="h-4 w-4" />
+          </button>
+          <button
+            onClick={() => {
+              setSelectedWarehouse(row);
+              setShowEditModal(true);
+            }}
+            className="text-amber-600 hover:text-amber-800"
+            title="Edit Warehouse"
+          >
+            <PencilIcon className="h-4 w-4" />
           </button>
           <button
             onClick={() => {
@@ -473,6 +487,7 @@ const WarehousesPage: React.FC = () => {
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
         title="Create Warehouse"
+        size="xl"
       >
         <CreateWarehouseForm
           mutation={createWarehouseMutation}
@@ -497,12 +512,14 @@ const WarehousesPage: React.FC = () => {
         isOpen={showEditModal}
         onClose={() => setShowEditModal(false)}
         title="Edit Warehouse"
+        size="xl"
       >
         {selectedWarehouse && (
           <EditWarehouseForm
             warehouse={selectedWarehouse}
             mutation={updateWarehouseMutation}
             onCancel={() => setShowEditModal(false)}
+            availableUsers={availableUsers}
           />
         )}
       </Modal>
@@ -523,16 +540,18 @@ const WarehousesPage: React.FC = () => {
               onChange={(e) => setSelectedManagerId(e.target.value)}
               options={[
                 { value: '', label: 'Select a manager...' },
-                ...availableUsers
-                  .filter(user => 
-                    user.role === 'warehouse_manager' || 
-                    user.role === 'manager' ||
-                    user.role === 'admin'
-                  )
-                  .map(user => ({
-                    value: user._id,
-                    label: `${user.firstName} ${user.lastName} (${user.email})`
-                  }))
+                ...(
+                  Array.isArray(availableUsers)
+                    ? availableUsers
+                        .filter(user => 
+                          user && (user.role === 'warehouse_manager' || user.role === 'manager' || user.role === 'admin')
+                        )
+                        .map(user => ({
+                          value: user._id,
+                          label: `${user.firstName} ${user.lastName} (${user.email})`
+                        }))
+                    : []
+                )
               ]}
             />
           </div>
@@ -649,9 +668,20 @@ const CreateWarehouseForm: React.FC<{
     isDefault: false,
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    mutation.mutate(formData);
+    try {
+      // First create the warehouse
+      const warehouseData = { ...formData };
+      const result = await mutation.mutateAsync(warehouseData);
+      
+      // If manager is selected, assign them
+      if (formData.manager) {
+        await warehouseAPI.assignManager(result.data._id, formData.manager);
+      }
+    } catch (error) {
+      // Error handling is done by the mutation
+    }
   };
 
   return (
@@ -797,20 +827,24 @@ const CreateWarehouseForm: React.FC<{
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Select Manager *
           </label>
-          <Select
-            value={formData.manager}
-            onChange={(e) => setFormData({ ...formData, manager: e.target.value })}
-            options={[
-              { value: '', label: 'Select a warehouse manager...' },
-              ...availableUsers
-                .filter(user => user.role === 'warehouse_manager')
-                .map(user => ({
-                  value: user._id,
-                  label: `${user.firstName} ${user.lastName} (${user.email})`
-                }))
-            ]}
-            required
-          />
+           <Select
+             value={formData.manager}
+             onChange={(e) => setFormData({ ...formData, manager: e.target.value })}
+             options={[
+               { value: '', label: 'Select a warehouse manager...' },
+               ...(
+                 Array.isArray(availableUsers)
+                   ? availableUsers
+                       .filter(user => user && user.role === 'warehouse_manager')
+                       .map(user => ({
+                         value: user._id,
+                         label: `${user.firstName} ${user.lastName} (${user.email})`
+                       }))
+                   : []
+               )
+             ]}
+             required
+           />
           <p className="mt-1 text-sm text-gray-500">
             Only users with warehouse manager role can be selected as managers.
           </p>
@@ -937,11 +971,13 @@ const EditWarehouseForm: React.FC<{
   warehouse: Warehouse;
   mutation: any;
   onCancel: () => void;
-}> = ({ warehouse, mutation, onCancel }) => {
+  availableUsers: any[];
+}> = ({ warehouse, mutation, onCancel, availableUsers }) => {
   const [formData, setFormData] = useState({
     name: warehouse.name,
     code: warehouse.code,
     description: warehouse.description || '',
+    manager: warehouse.manager?._id || '', // Initialize with current manager ID
     address: warehouse.address || {
       street: '',
       city: '',
@@ -966,13 +1002,122 @@ const EditWarehouseForm: React.FC<{
     isDefault: warehouse.isDefault,
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const managerOptions = [
+    { value: '', label: 'Select a manager...' },
+    ...(
+      Array.isArray(availableUsers)
+        ? availableUsers
+            .filter(user => 
+              user && (user.role === 'warehouse_manager' || user.role === 'manager' || user.role === 'admin')
+            )
+            .map(user => ({
+              value: user._id,
+              label: `${user.firstName} ${user.lastName} (${user.email})`
+            }))
+        : []
+    )
+  ];
+
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>('');
+
+  const employeeOptions = [
+    { value: '', label: 'Select employee to add...' },
+    ...(
+      Array.isArray(availableUsers)
+        ? availableUsers
+            .filter(user => user && !['admin', 'manager', 'warehouse_manager'].includes(user.role))
+            .map(user => ({ value: user._id, label: `${user.firstName} ${user.lastName} (${user.email})` }))
+        : []
+    )
+  ];
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    mutation.mutate({ id: warehouse._id, data: formData });
+    try {
+      // First update the warehouse basic info
+      const { manager, ...updateData } = formData; // Destructure to exclude manager
+      await mutation.mutateAsync({ id: warehouse._id, data: updateData });
+      
+      // Then handle manager assignment if changed
+      const newManagerId = formData.manager;
+      const currentManagerId = warehouse.manager?._id;
+      if (newManagerId && newManagerId !== currentManagerId) {
+        await warehouseAPI.assignManager(warehouse._id, newManagerId);
+        toast.success('Manager updated successfully');
+      }
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Failed to update warehouse');
+    }
+  };
+
+  const handleAddEmployee = async () => {
+    if (!selectedEmployeeId) return;
+    try {
+      await warehouseAPI.addEmployee(warehouse._id, { userId: selectedEmployeeId, position: 'warehouse_employee' });
+      toast.success('Employee added to warehouse');
+      setSelectedEmployeeId('');
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Failed to add employee');
+    }
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {/* Manager and Employees Section */}
+      <div className="border-t pt-6">
+        <h3 className="text-lg font-medium text-gray-900 mb-4">Staff</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Change Manager</label>
+             <Select
+               value={formData.manager}
+               onChange={(e) => setFormData({ ...formData, manager: e.target.value })}
+               options={managerOptions}
+             />
+            <p className="mt-1 text-xs text-gray-500">Select a new manager for this warehouse.</p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Quick Add Employees</label>
+            <div className="flex gap-2 items-center">
+              <Select
+                value={selectedEmployeeId}
+                onChange={(e) => setSelectedEmployeeId(e.target.value)}
+                options={employeeOptions}
+              />
+              <Button type="button" onClick={handleAddEmployee} disabled={!selectedEmployeeId}>
+                Add Employee
+              </Button>
+            </div>
+            <p className="mt-1 text-xs text-gray-500">Select a user to add as warehouse employee.</p>
+            <div className="mt-4">
+              <h4 className="text-sm font-medium text-gray-700 mb-2">Current Employees ({(warehouse.employees || []).length})</h4>
+              <div className="space-y-2">
+                {(warehouse.employees || []).map((emp) => (
+                  <div key={emp._id} className="flex items-center justify-between bg-gray-50 p-2 rounded">
+                    <div className="text-sm text-gray-800">
+                      {emp.user?.firstName} {emp.user?.lastName} — {emp.position.replace('warehouse_', '').replace('_', ' ')}
+                    </div>
+                    <button
+                      type="button"
+                      className="text-red-600 hover:text-red-800 text-sm"
+                      onClick={async () => {
+                        try {
+                          await warehouseAPI.removeEmployee(warehouse._id, emp._id);
+                          toast.success('Employee removed');
+                        } catch (err: any) {
+                          toast.error(err?.response?.data?.message || 'Failed to remove employee');
+                        }
+                      }}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">

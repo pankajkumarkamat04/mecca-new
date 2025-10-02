@@ -182,7 +182,7 @@ warehouseSchema.virtual('weightUtilization').get(function() {
 
 // Virtual for location count
 warehouseSchema.virtual('locationCount').get(function() {
-  return this.locations.filter(loc => loc.isActive).length;
+  return Array.isArray(this.locations) ? this.locations.filter(loc => loc.isActive).length : 0;
 });
 
 // Virtual for available capacity

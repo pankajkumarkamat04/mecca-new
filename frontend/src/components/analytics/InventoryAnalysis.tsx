@@ -292,12 +292,10 @@ const InventoryAnalysis: React.FC = () => {
           title="Stock Movement Trend"
           description="Incoming vs outgoing inventory over time"
           trend={{ value: 5.2, isPositive: true, label: 'vs last month' }}
-          contentHeight={300}
         >
           <SalesChart 
             data={stockMovementData?.data || []} 
             type="area"
-            height={300}
           />
         </ChartContainer>
 
@@ -305,11 +303,9 @@ const InventoryAnalysis: React.FC = () => {
           title="Category Turnover Rates"
           description="Inventory turnover by product category"
           trend={{ value: 8.1, isPositive: true, label: 'vs last month' }}
-          contentHeight={300}
         >
           <PieChart 
             data={categoryTurnoverData?.data || []}
-            height={300}
             showLegend={true}
           />
         </ChartContainer>
@@ -321,7 +317,6 @@ const InventoryAnalysis: React.FC = () => {
           title="Turnover Rate by Category"
           description="How fast inventory moves in each category"
           trend={{ value: 3.2, isPositive: true, label: 'avg turnover' }}
-          contentHeight={300}
         >
           <BarChart 
             data={Array.isArray(categoryTurnoverData?.data) ? categoryTurnoverData.data.map((c: any) => ({
@@ -329,7 +324,6 @@ const InventoryAnalysis: React.FC = () => {
               value: c.turnover ?? c.turnoverRate ?? 0,
               color: c.color
             })) : []}
-            height={300}
             formatValue={(value) => `${value}x`}
           />
         </ChartContainer>
@@ -338,7 +332,6 @@ const InventoryAnalysis: React.FC = () => {
           title="Supplier Lead Time Analysis"
           description="Average delivery times and reliability"
           trend={{ value: 12, isPositive: false, label: 'avg days' }}
-          contentHeight={300}
         >
           <BarChart 
             data={Array.isArray(leadTimeAnalysisData?.data) ? leadTimeAnalysisData.data.map((s: any) => ({
@@ -346,7 +339,6 @@ const InventoryAnalysis: React.FC = () => {
               value: s.avgLeadTime,
               color: s.color
             })) : []}
-            height={300}
             formatValue={(value) => `${value} days`}
           />
         </ChartContainer>

@@ -22,8 +22,7 @@ const createCustomerValidation = [
     .withMessage('Valid email is required'),
   
   body('phone')
-    .notEmpty()
-    .withMessage('Phone number is required')
+    .optional()
     .isMobilePhone()
     .withMessage('Invalid phone number'),
   
@@ -47,6 +46,18 @@ const createCustomerValidation = [
     .trim()
     .isLength({ max: 100 })
     .withMessage('Company name cannot exceed 100 characters'),
+  
+  body('company')
+    .optional()
+    .trim()
+    .isLength({ max: 100 })
+    .withMessage('Company name cannot exceed 100 characters'),
+  
+  body('address')
+    .optional()
+    .trim()
+    .isLength({ max: 200 })
+    .withMessage('Address cannot exceed 200 characters'),
   
   body('businessInfo.taxId')
     .optional()
@@ -135,8 +146,7 @@ const updateCustomerValidation = [
     .withMessage('Valid email is required'),
   
   body('phone')
-    .notEmpty()
-    .withMessage('Phone number is required')
+    .optional()
     .isMobilePhone()
     .withMessage('Invalid phone number'),
   

@@ -13,6 +13,7 @@ import Badge from '@/components/ui/Badge';
 import WorkshopDashboard from '@/components/workshop/WorkshopDashboard';
 import JobCardManager from '@/components/workshop/JobCardManager';
 import JobProgressVisualization from '@/components/workshop/JobProgressVisualization';
+import CustomerSelector from '@/components/ui/CustomerSelector';
 import { WorkshopJob } from '@/types';
 import { enhancedWorkshopAPI, techniciansAPI, machinesAPI, toolsAPI, workstationsAPI, customersAPI, productsAPI } from '@/lib/api';
 import api from '@/lib/api';
@@ -150,7 +151,7 @@ const WorkshopPage: React.FC = () => {
   // Check parts availability mutation
   const checkPartsMutation = useMutation({
     mutationFn: (jobId: string) => enhancedWorkshopAPI.checkPartsAvailability(jobId),
-    onSuccess: (response) => {
+    onSuccess: (response: any) => {
       const { allPartsAvailable } = response.data;
       if (allPartsAvailable) {
         toast.success('All parts are available');
@@ -757,6 +758,8 @@ const CreateJobForm: React.FC<{
       telCell: '',
       orderNumber: ''
     },
+    // Selected customer data
+    selectedCustomer: null as any,
     // Vehicle Information (matching job card template)
     vehicle: {
       make: '',
@@ -873,6 +876,22 @@ const CreateJobForm: React.FC<{
     }
   };
 
+  const handleCustomerSelect = (customerId: string, customer?: any) => {
+    setFormData(prev => ({
+      ...prev,
+      customer: customerId,
+      selectedCustomer: customer,
+      customerInfo: {
+        ...prev.customerInfo,
+        name: customer ? `${customer.firstName} ${customer.lastName}` : '',
+        telCell: customer?.phone || '',
+        address: customer?.address || '',
+        contactName: customer ? `${customer.firstName} ${customer.lastName}` : '',
+        orderNumber: prev.customerInfo.orderNumber // Keep existing order number
+      }
+    }));
+  };
+
   const addSublet = () => {
     setFormData(prev => ({
       ...prev,
@@ -927,43 +946,58 @@ const CreateJobForm: React.FC<{
             <h3 className="text-lg font-semibold text-gray-900">Customer Information</h3>
           </div>
           <div className="space-y-4">
+            <CustomerSelector
+              value={formData.customer}
+              onChange={handleCustomerSelect}
+              label="Select Customer"
+              placeholder="Search customers by name, email, phone..."
+              required
+            />
+            
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Input
-                label="Customer Name"
-                value={formData.customerInfo.name}
-                onChange={(e) => handleInputChange('customerInfo.name', e.target.value)}
-                required
-              />
               <Input
                 label="Order Number"
                 value={formData.customerInfo.orderNumber}
                 onChange={(e) => handleInputChange('customerInfo.orderNumber', e.target.value)}
               />
-            </div>
-            <TextArea
-              label="Address"
-              value={formData.customerInfo.address}
-              onChange={(e) => handleInputChange('customerInfo.address', e.target.value)}
-              rows={2}
-            />
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Input
-                label="Contact Name"
-                value={formData.customerInfo.contactName}
-                onChange={(e) => handleInputChange('customerInfo.contactName', e.target.value)}
-              />
-              <Input
-                label="Phone Number"
-                value={formData.customerInfo.telCell}
-                onChange={(e) => handleInputChange('customerInfo.telCell', e.target.value)}
+                label="Service Date"
+                type="date"
+                value={formData.deadline}
+                onChange={(e) => handleInputChange('deadline', e.target.value)}
               />
             </div>
-            <Input
-              label="Service Date"
-              type="date"
-              value={formData.deadline}
-              onChange={(e) => handleInputChange('deadline', e.target.value)}
-            />
+            
+            {/* Display selected customer details */}
+            {formData.selectedCustomer && (
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h4 className="font-medium text-gray-900 mb-2">Selected Customer Details</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="text-gray-600">Name:</span>
+                    <span className="ml-2 font-medium">{formData.selectedCustomer.firstName} {formData.selectedCustomer.lastName}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Phone:</span>
+                    <span className="ml-2 font-medium">{formData.selectedCustomer.phone || 'N/A'}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Email:</span>
+                    <span className="ml-2 font-medium">{formData.selectedCustomer.email || 'N/A'}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Company:</span>
+                    <span className="ml-2 font-medium">{formData.selectedCustomer.company || 'N/A'}</span>
+                  </div>
+                </div>
+                {formData.selectedCustomer.address && (
+                  <div className="mt-2">
+                    <span className="text-gray-600">Address:</span>
+                    <span className="ml-2 font-medium">{formData.selectedCustomer.address}</span>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
 

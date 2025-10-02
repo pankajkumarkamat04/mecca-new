@@ -1298,6 +1298,44 @@ const getWorkshopDashboard = async (req, res) => {
   }
 };
 
+// @desc    Mark quality check status
+// @route   PUT /api/workshop/jobs/:id/quality-check
+// @access  Private
+const markQualityCheck = async (req, res) => {
+  try {
+    const { checked = true } = req.body;
+    const job = await WorkshopJob.findByIdAndUpdate(
+      req.params.id,
+      { qualityChecked: Boolean(checked), lastUpdatedBy: req.user._id },
+      { new: true }
+    );
+    if (!job) return res.status(404).json({ success: false, message: 'Job not found' });
+    res.json({ success: true, message: 'Quality check updated', data: job });
+  } catch (error) {
+    console.error('Mark quality check error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// @desc    Mark follow-up done on customer portal
+// @route   PUT /api/workshop/jobs/:id/follow-up
+// @access  Private
+const markFollowUp = async (req, res) => {
+  try {
+    const { done = true } = req.body;
+    const job = await WorkshopJob.findById(req.params.id);
+    if (!job) return res.status(404).json({ success: false, message: 'Job not found' });
+    job.customerPortal.followUpDone = Boolean(done);
+    job.customerPortal.followUpAt = done ? new Date() : undefined;
+    job.lastUpdatedBy = req.user._id;
+    await job.save();
+    res.json({ success: true, message: 'Follow-up status updated', data: job.customerPortal });
+  } catch (error) {
+    console.error('Mark follow-up error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
 module.exports = {
   createJob,
   getJobs,
@@ -1324,7 +1362,9 @@ module.exports = {
   addStatusUpdate,
   checkResourceConflicts,
   getJobAnalytics,
-  getWorkshopDashboard
+  getWorkshopDashboard,
+  markQualityCheck,
+  markFollowUp
 };
 
 

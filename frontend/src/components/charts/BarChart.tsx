@@ -40,13 +40,30 @@ const BarChart: React.FC<BarChartProps> = ({
     console.warn('BarChart: Invalid height prop:', { height, type: typeof height, safeHeight });
   }
 
-  // Sanitize data: ensure numeric values to avoid NaN heights inside bars
+  // Sanitize data: ensure valid names and numeric values to avoid NaN bar heights
   const sanitizedData = Array.isArray(data)
-    ? data.map((d) => ({
-        ...d,
-        value: Number.isFinite(d?.value as number) ? (d.value as number) : 0,
-      }))
+    ? data.map((d: any) => {
+        const numericValue = Number(d?.value);
+        const safeValue = Number.isFinite(numericValue) ? numericValue : 0;
+        const safeName = typeof d?.name === 'string' ? d.name : String(d?.name ?? '');
+        return { ...d, name: safeName, value: safeValue };
+      })
     : [];
+
+  // If height is invalid or data still contains invalid numbers, early fallback
+  const hasInvalid = !Number.isFinite(safeHeight) || sanitizedData.some((d: any) => !Number.isFinite(d.value));
+  if (hasInvalid) {
+    console.warn('BarChart: Invalid chart inputs. Rendering empty state.', { height, safeHeight, data });
+  }
+
+  // Render friendly empty state to avoid NaN rects when dataset is empty
+  if (!Array.isArray(sanitizedData) || sanitizedData.length === 0) {
+    return (
+      <div style={{ width: '100%', height: `${safeHeight}px` }} className="flex items-center justify-center text-sm text-gray-500">
+        No data
+      </div>
+    );
+  }
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
@@ -71,11 +88,13 @@ const BarChart: React.FC<BarChartProps> = ({
       <RechartsBarChart 
         data={sanitizedData} 
         margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-        layout={orientation === 'horizontal' ? 'horizontal' : 'vertical'}
+        // In Recharts, layout="vertical" renders horizontal bars (value on X, category on Y)
+        layout={orientation === 'horizontal' ? 'vertical' : 'horizontal'}
       >
         {showGrid && <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />}
         <XAxis 
           dataKey={orientation === 'horizontal' ? 'value' : 'name'}
+          type={orientation === 'horizontal' ? 'number' : 'category'}
           stroke="#6b7280"
           fontSize={12}
           tickLine={false}
@@ -83,14 +102,18 @@ const BarChart: React.FC<BarChartProps> = ({
           angle={orientation === 'horizontal' ? 0 : -45}
           textAnchor={orientation === 'horizontal' ? 'middle' : 'end'}
           height={orientation === 'vertical' ? 60 : undefined}
+          domain={orientation === 'horizontal' ? ['auto', 'auto'] : undefined}
         />
         <YAxis 
           dataKey={orientation === 'horizontal' ? 'name' : 'value'}
+          type={orientation === 'horizontal' ? 'category' : 'number'}
           stroke="#6b7280"
           fontSize={12}
           tickLine={false}
           axisLine={false}
           tickFormatter={orientation === 'horizontal' ? undefined : formatValue}
+          width={orientation === 'horizontal' ? 80 : undefined}
+          domain={orientation === 'horizontal' ? undefined : ['auto', 'auto']}
         />
         <Tooltip content={<CustomTooltip />} />
         <Bar 

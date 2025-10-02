@@ -400,7 +400,6 @@ const DashboardPage: React.FC = () => {
             </div>
             <SalesChart
               type="area"
-              height={260}
               data={(dashboardData?.data?.salesTrend || []).map((d: any) => ({
                 date: d._id,
                 sales: d.totalInvoices || d.totalSales,
@@ -416,7 +415,6 @@ const DashboardPage: React.FC = () => {
               <ChartBarIcon className="h-5 w-5 text-gray-400" />
             </div>
             <BarChart
-              height={260}
               data={(dashboardData?.data?.topProducts || []).map((p: any) => ({
                 name: p.name || 'Unknown',
                 value: p.totalQuantity,

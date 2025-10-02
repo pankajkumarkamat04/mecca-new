@@ -118,6 +118,13 @@ const createTransaction = async (req, res) => {
       }
     }
 
+    // Compute amount from entries (use total debit)
+    if (Array.isArray(transactionData.entries)) {
+      const totalDebit = transactionData.entries.reduce((sum, e) => sum + (Number(e.debit) || 0), 0);
+      const totalCredit = transactionData.entries.reduce((sum, e) => sum + (Number(e.credit) || 0), 0);
+      transactionData.amount = totalDebit || totalCredit || 0;
+    }
+
     const transaction = new Transaction(transactionData);
     await transaction.save();
 
@@ -148,6 +155,13 @@ const updateTransaction = async (req, res) => {
   try {
     const { id } = req.params;
     const updateData = req.body;
+
+    // Recompute amount if entries are provided
+    if (Array.isArray(updateData.entries)) {
+      const totalDebit = updateData.entries.reduce((sum, e) => sum + (Number(e.debit) || 0), 0);
+      const totalCredit = updateData.entries.reduce((sum, e) => sum + (Number(e.credit) || 0), 0);
+      updateData.amount = totalDebit || totalCredit || 0;
+    }
 
     const transaction = await Transaction.findByIdAndUpdate(
       id,

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import WarehousePortalLayout from '../layout';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -56,9 +56,7 @@ interface Delivery {
   updatedAt: string;
 }
 
-const WarehouseDeliveries: React.FC = () => {
-  const searchParams = useSearchParams();
-  const warehouseId = searchParams.get('warehouse');
+const WarehouseDeliveriesInner: React.FC<{ warehouseId: string | null }> = ({ warehouseId }) => {
   const [showDeliveryModal, setShowDeliveryModal] = useState(false);
   const [selectedDelivery, setSelectedDelivery] = useState<Delivery | null>(null);
   const [statusFilter, setStatusFilter] = useState('all');
@@ -452,4 +450,17 @@ const WarehouseDeliveries: React.FC = () => {
   );
 };
 
-export default WarehouseDeliveries;
+export default function WarehouseDeliveries() {
+  return (
+    <Suspense fallback={<div className="p-6">Loading...</div>}>
+      <WarehouseDeliveriesWithParams />
+    </Suspense>
+  );
+}
+
+const WarehouseDeliveriesWithParams: React.FC = () => {
+  const searchParams = useSearchParams();
+  const warehouseId = searchParams.get('warehouse');
+  
+  return <WarehouseDeliveriesInner warehouseId={warehouseId} />;
+};

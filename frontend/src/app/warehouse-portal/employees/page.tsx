@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import WarehousePortalLayout from '../layout';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -52,9 +52,7 @@ interface User {
   };
 }
 
-const WarehouseEmployees: React.FC = () => {
-  const searchParams = useSearchParams();
-  const warehouseId = searchParams.get('warehouse');
+const WarehouseEmployeesInner: React.FC<{ warehouseId: string | null }> = ({ warehouseId }) => {
   const { user: currentUser } = useAuth();
   const [showAddEmployeeModal, setShowAddEmployeeModal] = useState(false);
   const [showCreateUserModal, setShowCreateUserModal] = useState(false);
@@ -417,4 +415,17 @@ const CreateUserForm: React.FC<{
   );
 };
 
-export default WarehouseEmployees;
+export default function WarehouseEmployees() {
+  return (
+    <Suspense fallback={<div className="p-6">Loading...</div>}>
+      <WarehouseEmployeesWithParams />
+    </Suspense>
+  );
+}
+
+const WarehouseEmployeesWithParams: React.FC = () => {
+  const searchParams = useSearchParams();
+  const warehouseId = searchParams.get('warehouse');
+  
+  return <WarehouseEmployeesInner warehouseId={warehouseId} />;
+};

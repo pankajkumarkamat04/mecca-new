@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import React, { useState, useEffect, Suspense } from 'react';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import AccessControl from '@/components/auth/AccessControl';
 import { useQuery } from '@tanstack/react-query';
 import { warehouseAPI } from '@/lib/api';
@@ -40,9 +40,10 @@ interface Warehouse {
   isActive: boolean;
 }
 
-const WarehousePortalLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+const WarehousePortalLayoutInner: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { user, logout } = useAuth();
   const [selectedWarehouseId, setSelectedWarehouseId] = useState<string>('');
   const [selectedWarehouse, setSelectedWarehouse] = useState<Warehouse | null>(null);
@@ -65,17 +66,26 @@ const WarehousePortalLayout: React.FC<{ children: React.ReactNode }> = ({ childr
   });
 
   useEffect(() => {
+    // First check URL parameter
+    const warehouseFromUrl = searchParams.get('warehouse');
+    if (warehouseFromUrl) {
+      setSelectedWarehouseId(warehouseFromUrl);
+      return;
+    }
+
+    // Then check user's assigned warehouse
     if (userData?.warehouse?.assignedWarehouse) {
       setSelectedWarehouseId(userData.warehouse.assignedWarehouse);
-    } else if (warehousesData?.data && warehousesData.data.length > 0) {
+    } else if (warehousesData?.data?.data && Array.isArray(warehousesData.data.data) && warehousesData.data.data.length > 0) {
       // For admin/manager, select first warehouse by default
-      setSelectedWarehouseId(warehousesData.data[0]._id);
+      setSelectedWarehouseId(warehousesData.data.data[0]._id);
     }
-  }, [userData, warehousesData]);
+  }, [userData, warehousesData, searchParams]);
 
   useEffect(() => {
-    if (selectedWarehouseId && warehousesData?.data) {
-      const warehouse = warehousesData.data.find((w: Warehouse) => w._id === selectedWarehouseId);
+    if (selectedWarehouseId && warehousesData?.data?.data) {
+      const warehouses = Array.isArray(warehousesData.data.data) ? warehousesData.data.data : [];
+      const warehouse = warehouses.find((w: Warehouse) => w._id === selectedWarehouseId);
       setSelectedWarehouse(warehouse || null);
     }
   }, [selectedWarehouseId, warehousesData]);
@@ -256,4 +266,10 @@ const WarehousePortalLayout: React.FC<{ children: React.ReactNode }> = ({ childr
   );
 };
 
-export default WarehousePortalLayout;
+export default function WarehousePortalLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <Suspense fallback={<div className="h-screen w-screen fixed inset-0 bg-gray-100 flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div></div>}>
+      <WarehousePortalLayoutInner>{children}</WarehousePortalLayoutInner>
+    </Suspense>
+  );
+}
