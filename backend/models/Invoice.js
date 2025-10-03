@@ -310,10 +310,50 @@ invoiceSchema.pre('save', function(next) {
 });
 
 // Method to add payment
-invoiceSchema.methods.addPayment = function(paymentData) {
+invoiceSchema.methods.addPayment = async function(paymentData) {
   this.payments.push(paymentData);
   this.paid += paymentData.amount;
-  return this.save();
+  
+  // Save the invoice first to trigger pre-save hooks
+  await this.save();
+  
+  // Update corresponding order payment status if order exists
+  if (this.order) {
+    const Order = require('./Order');
+    const order = await Order.findById(this.order);
+    
+    if (order) {
+      // Map invoice status to order payment status
+      let orderPaymentStatus = order.paymentStatus;
+      switch (this.status) {
+        case 'pending':
+          orderPaymentStatus = 'pending';
+          break;
+        case 'partial':
+          orderPaymentStatus = 'partial';
+          break;
+        case 'paid':
+          orderPaymentStatus = 'paid';
+          break;
+        case 'refunded':
+          orderPaymentStatus = 'refunded';
+          break;
+        case 'cancelled':
+          orderPaymentStatus = 'cancelled';
+          break;
+        default:
+          orderPaymentStatus = 'pending';
+      }
+      
+      if (order.paymentStatus !== orderPaymentStatus) {
+        order.paymentStatus = orderPaymentStatus;
+        await order.save();
+        console.log(`Order ${order.orderNumber} payment status updated to ${orderPaymentStatus} for invoice ${this.invoiceNumber}`);
+      }
+    }
+  }
+  
+  return this;
 };
 
 // Method to generate invoice number

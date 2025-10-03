@@ -1,6 +1,16 @@
 const User = require('../models/User');
 const Warehouse = require('../models/Warehouse');
 
+// Helper function to verify warehouse manager access
+const verifyWarehouseManagerAccess = async (userId, warehouseId) => {
+  try {
+    const warehouse = await Warehouse.findById(warehouseId);
+    return warehouse && warehouse.manager && warehouse.manager.toString() === userId.toString();
+  } catch (error) {
+    return false;
+  }
+};
+
 // @desc    Get all users
 // @route   GET /api/users
 // @access  Private (Admin/Manager)
@@ -89,7 +99,7 @@ const createUser = async (req, res) => {
     const currentUserRole = req.user.role;
 
     // Role-based permission checks
-    if (currentUserRole === 'employee') {
+    if (currentUserRole === 'employee' || currentUserRole === 'warehouse_employee') {
       return res.status(403).json({
         success: false,
         message: 'Employees cannot create users'
@@ -101,6 +111,23 @@ const createUser = async (req, res) => {
         success: false,
         message: 'Managers can only create employees and customers'
       });
+    }
+
+    // Warehouse manager permissions
+    if (currentUserRole === 'warehouse_manager') {
+      if (role !== 'warehouse_employee') {
+        return res.status(403).json({
+          success: false,
+          message: 'Warehouse managers can only create warehouse employees'
+        });
+      }
+      // Verify warehouse manager has access to the specified warehouse
+      if (warehouse && !await verifyWarehouseManagerAccess(req.user._id, warehouse)) {
+        return res.status(403).json({
+          success: false,
+          message: 'You can only create employees for warehouses you manage'
+        });
+      }
     }
 
     // Warehouse assignment logic

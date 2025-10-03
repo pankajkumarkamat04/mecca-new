@@ -308,8 +308,21 @@ const assignOrderValidation = [
     .withMessage('Valid order ID is required'),
 
   body('assignedTo')
+    .optional()
     .isMongoId()
-    .withMessage('Valid user ID is required')
+    .withMessage('Valid user ID is required'),
+
+  body('warehouse')
+    .optional()
+    .isMongoId()
+    .withMessage('Valid warehouse ID is required'),
+
+  body().custom((value) => {
+    if (!value.assignedTo && !value.warehouse) {
+      throw new Error('Either assignedTo or warehouse must be provided');
+    }
+    return true;
+  })
 ];
 
 const getOrdersValidation = [

@@ -3,12 +3,14 @@
 import React, { useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import WarehousePortalLayout from '../layout';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { warehouseAPI } from '@/lib/api';
 import DataTable from '@/components/ui/DataTable';
 import Modal from '@/components/ui/Modal';
 import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
+import Button from '@/components/ui/Button';
+import toast from 'react-hot-toast';
 import {
   BuildingOfficeIcon,
   EyeIcon,
@@ -16,6 +18,7 @@ import {
   CheckCircleIcon,
   ArrowUpIcon,
   ArrowDownIcon,
+  PencilIcon,
 } from '@heroicons/react/24/outline';
 
 interface InventoryItem {
@@ -42,6 +45,7 @@ const WarehouseInventory: React.FC = () => {
   const searchParams = useSearchParams();
   const warehouseId = searchParams.get('warehouse');
   const [showProductModal, setShowProductModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<InventoryItem | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -153,16 +157,28 @@ const WarehouseInventory: React.FC = () => {
       key: 'actions',
       label: 'Actions',
       render: (row: InventoryItem) => (
-        <button
-          onClick={() => {
-            setSelectedProduct(row);
-            setShowProductModal(true);
-          }}
-          className="text-blue-600 hover:text-blue-800"
-          title="View Details"
-        >
-          <EyeIcon className="h-4 w-4" />
-        </button>
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={() => {
+              setSelectedProduct(row);
+              setShowProductModal(true);
+            }}
+            className="text-blue-600 hover:text-blue-800"
+            title="View Details"
+          >
+            <EyeIcon className="h-4 w-4" />
+          </button>
+          <button
+            onClick={() => {
+              setSelectedProduct(row);
+              setShowEditModal(true);
+            }}
+            className="text-amber-600 hover:text-amber-800"
+            title="Edit Inventory"
+          >
+            <PencilIcon className="h-4 w-4" />
+          </button>
+        </div>
       ),
     },
   ];
@@ -352,9 +368,180 @@ const WarehouseInventory: React.FC = () => {
             </div>
           )}
         </Modal>
+
+        {/* Edit Inventory Modal */}
+        <Modal
+          isOpen={showEditModal}
+          onClose={() => setShowEditModal(false)}
+          title={`Edit Inventory - ${selectedProduct?.product.name}`}
+        >
+          {selectedProduct && (
+            <EditInventoryForm
+              product={selectedProduct}
+              warehouseId={warehouseId}
+              onClose={() => setShowEditModal(false)}
+            />
+          )}
+        </Modal>
       </div>
     </WarehousePortalLayout>
   );
 };
 
 export default WarehouseInventory;
+
+// Edit Inventory Form Component
+const EditInventoryForm: React.FC<{
+  product: InventoryItem;
+  warehouseId: string | null;
+  onClose: () => void;
+}> = ({ product, warehouseId, onClose }) => {
+  const queryClient = useQueryClient();
+  const [formData, setFormData] = useState({
+    currentStock: product.currentStock,
+    location: product.location && typeof product.location === 'object' 
+      ? {
+          zone: product.location.zone || '',
+          aisle: product.location.aisle || '',
+          shelf: product.location.shelf || '',
+          bin: product.location.bin || '',
+        }
+      : {},
+    notes: '',
+  });
+
+  const updateInventoryMutation = useMutation({
+    mutationFn: async (data: any) => {
+      if (!warehouseId) throw new Error('Warehouse ID is required');
+      
+      // Call warehouse API to update inventory
+      return warehouseAPI.updateInventory(warehouseId, product.product._id, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['warehouse-inventory'] });
+      toast.success('Inventory updated successfully');
+      onClose();
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to update inventory');
+    },
+  });
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    await updateInventoryMutation.mutateAsync({
+      currentStock: formData.currentStock,
+      location: formData.location,
+      notes: formData.notes,
+    });
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="bg-gray-50 p-4 rounded-lg">
+        <h3 className="font-medium text-gray-900 mb-2">Product Information</h3>
+        <div className="text-sm text-gray-600">
+          <p><strong>Name:</strong> {product.product.name}</p>
+          <p><strong>SKU:</strong> {product.product.sku}</p>
+          <p><strong>Category:</strong> {product.product.category?.name || 'No category'}</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Current Stock *
+          </label>
+          <Input
+            type="number"
+            value={formData.currentStock}
+            onChange={(e) => setFormData({ ...formData, currentStock: Number(e.target.value) })}
+            min="0"
+            required
+          />
+        </div>
+      </div>
+
+      <div className="border-t pt-4">
+        <h3 className="text-lg font-medium text-gray-900 mb-3">Location Information</h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Zone
+            </label>
+            <Input
+              value={formData.location.zone || ''}
+              onChange={(e) => setFormData({
+                ...formData,
+                location: { ...formData.location, zone: e.target.value }
+              })}
+              placeholder="A1"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Aisle
+            </label>
+            <Input
+              value={formData.location.aisle || ''}
+              onChange={(e) => setFormData({
+                ...formData,
+                location: { ...formData.location, aisle: e.target.value }
+              })}
+              placeholder="01"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Shelf
+            </label>
+            <Input
+              value={formData.location.shelf || ''}
+              onChange={(e) => setFormData({
+                ...formData,
+                location: { ...formData.location, shelf: e.target.value }
+              })}
+              placeholder="A"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Bin
+            </label>
+            <Input
+              value={formData.location.bin || ''}
+              onChange={(e) => setFormData({
+                ...formData,
+                location: { ...formData.location, bin: e.target.value }
+              })}
+              placeholder="01"
+            />
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Notes
+        </label>
+        <textarea
+          value={formData.notes}
+          onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          rows={3}
+          placeholder="Add notes about inventory changes..."
+        />
+      </div>
+
+      <div className="flex justify-end space-x-3 pt-4">
+        <Button type="button" variant="secondary" onClick={onClose}>
+          Cancel
+        </Button>
+        <Button type="submit" disabled={updateInventoryMutation.isPending}>
+          {updateInventoryMutation.isPending ? 'Updating...' : 'Update Inventory'}
+        </Button>
+      </div>
+    </form>
+  );
+};

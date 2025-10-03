@@ -11,13 +11,15 @@ const {
   removeLocation,
   getWarehouseStats,
   getWarehouseInventory,
+  updateWarehouseInventory,
   transferProducts,
   assignManager,
   addEmployee,
   removeEmployee,
   getWarehouseEmployees,
   getAvailableUsers,
-  getWarehouseDashboard
+  getWarehouseDashboard,
+  getWarehouseOrders
 } = require('../controllers/warehouseController');
 const {
   getWarehousesValidation,
@@ -38,8 +40,10 @@ router.get('/stats', auth.auth, getWarehouseStats);
 router.get('/available-users', auth.auth, auth.authorize('admin', 'manager'), getAvailableUsers);
 router.get('/:id', auth.auth, ...validate(warehouseIdValidation), getWarehouseById);
 router.get('/:id/inventory', auth.auth, auth.warehouseEmployeeAuth, ...validate(warehouseIdValidation), getWarehouseInventory);
+router.put('/:id/inventory/:productId', auth.auth, auth.warehouseEmployeeAuth, ...validate(warehouseIdValidation), updateWarehouseInventory);
 router.get('/:id/employees', auth.auth, auth.warehouseManagerAuth, ...validate(warehouseIdValidation), getWarehouseEmployees);
 router.get('/:id/dashboard', auth.auth, auth.warehouseAccessAuth, ...validate(warehouseIdValidation), getWarehouseDashboard);
+router.get('/:id/orders', auth.auth, auth.warehouseAccessAuth, ...validate(warehouseIdValidation), getWarehouseOrders);
 router.post('/', auth.auth, auth.authorize('admin', 'manager'), ...validate(createWarehouseValidation), createWarehouse);
 router.put('/:id', auth.auth, auth.authorize('admin', 'manager'), ...validate(updateWarehouseValidation), updateWarehouse);
 router.put('/:id/assign-manager', auth.auth, auth.authorize('admin'), ...validate(assignManagerValidation), assignManager);

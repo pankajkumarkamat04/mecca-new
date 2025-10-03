@@ -15,7 +15,9 @@ import {
   ClockIcon,
   ExclamationTriangleIcon,
   DocumentTextIcon,
-  ShoppingCartIcon
+  ShoppingCartIcon,
+  PrinterIcon,
+  ArrowDownTrayIcon
 } from '@heroicons/react/24/outline';
 import Layout from '@/components/layout/Layout';
 import Button from '@/components/ui/Button';
@@ -28,6 +30,8 @@ import { quotationsAPI } from '@/lib/api';
 import CreateQuotationForm from '@/components/quotations/CreateQuotationForm';
 import InventoryCheckModal from '@/components/quotations/InventoryCheckModal';
 import PickingListModal from '@/components/quotations/PickingListModal';
+import QuotationReceipt from '@/components/ui/QuotationReceipt';
+import { downloadReceipt, printReceipt } from '@/lib/receiptUtils';
 
 const QuotationsPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -38,6 +42,7 @@ const QuotationsPage: React.FC = () => {
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showInventoryModal, setShowInventoryModal] = useState(false);
   const [showPickingListModal, setShowPickingListModal] = useState(false);
+  const [showReceiptModal, setShowReceiptModal] = useState(false);
 
   const queryClient = useQueryClient();
 
@@ -129,6 +134,33 @@ const QuotationsPage: React.FC = () => {
   const handleConvertToOrder = (quotation: any) => {
     if (window.confirm(`Are you sure you want to convert quotation ${quotation.quotationNumber} to an order?`)) {
       convertToOrderMutation.mutate(quotation._id);
+    }
+  };
+
+  const handleShowReceipt = (quotation: Quotation) => {
+    setSelectedQuotation(quotation);
+    setShowReceiptModal(true);
+  };
+
+  const handlePrintReceipt = async () => {
+    if (!selectedQuotation) return;
+    try {
+      const elementId = 'full-invoice';
+      await printReceipt(elementId);
+    } catch (error) {
+      console.error('Error printing receipt:', error);
+      toast.error('Failed to print receipt');
+    }
+  };
+
+  const handleDownloadReceipt = async () => {
+    if (!selectedQuotation) return;
+    try {
+      const elementId = 'full-invoice';
+      await downloadReceipt(elementId, 'full');
+    } catch (error) {
+      console.error('Error downloading receipt:', error);
+      toast.error('Failed to download receipt');
     }
   };
 
@@ -253,6 +285,26 @@ const QuotationsPage: React.FC = () => {
               <ShoppingCartIcon className="h-4 w-4" />
             </Button>
           )}
+          
+          {/* Print Quotation */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleShowReceipt(quotation)}
+            title="Print Quotation"
+          >
+            <PrinterIcon className="h-4 w-4" />
+          </Button>
+
+          {/* Download Quotation */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleShowReceipt(quotation)}
+            title="Download Quotation"
+          >
+            <ArrowDownTrayIcon className="h-4 w-4" />
+          </Button>
         </div>
       ),
     },
@@ -491,6 +543,24 @@ const QuotationsPage: React.FC = () => {
             quotation={selectedQuotation}
             onClose={() => setShowPickingListModal(false)}
           />
+        </Modal>
+
+        {/* Receipt Modal */}
+        <Modal
+          isOpen={showReceiptModal}
+          onClose={() => setShowReceiptModal(false)}
+          title={`Quotation - ${selectedQuotation?.quotationNumber}`}
+          size="lg"
+        >
+          {selectedQuotation && (
+            <div className="space-y-4">
+              <QuotationReceipt
+                quotation={selectedQuotation}
+                onPrint={handlePrintReceipt}
+                onDownload={handleDownloadReceipt}
+              />
+            </div>
+          )}
         </Modal>
       </div>
     </Layout>

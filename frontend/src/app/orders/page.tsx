@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import { Order, OrderPayment } from '@/types';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -25,7 +25,9 @@ import {
   ClockIcon,
   UserIcon,
   ArrowPathIcon,
-  ExclamationTriangleIcon
+  ExclamationTriangleIcon,
+  CurrencyDollarIcon,
+  ClipboardDocumentListIcon
 } from '@heroicons/react/24/outline';
 import CreateOrderForm from '@/components/orders/CreateOrderForm';
 import toast from 'react-hot-toast';
@@ -44,6 +46,7 @@ const OrdersPage: React.FC = () => {
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showAssignModal, setShowAssignModal] = useState(false);
+  const [selectedWarehouseId, setSelectedWarehouseId] = useState('');
   const [showConvertModal, setShowConvertModal] = useState(false);
 
   // Fetch orders
@@ -78,7 +81,7 @@ const OrdersPage: React.FC = () => {
   });
 
   // Fetch warehouses for assign modal
-  const { data: warehousesData } = useQuery({
+  const { data: warehousesData, isLoading: warehousesLoading, error: warehousesError } = useQuery({
     queryKey: ['warehouses-for-assignment'],
     queryFn: () => warehouseAPI.getWarehouses({ page: 1, limit: 100 })
   });
@@ -156,6 +159,7 @@ const OrdersPage: React.FC = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['orders'] });
       setShowAssignModal(false);
+      setSelectedWarehouseId('');
       toast.success('Order assigned successfully');
     },
     onError: (error: any) => {
@@ -194,9 +198,9 @@ const OrdersPage: React.FC = () => {
     }
   };
 
-  const handleAssign = (warehouseId: string) => {
-    if (selectedOrder) {
-      assignOrderMutation.mutate({ id: selectedOrder._id, warehouse: warehouseId });
+  const handleAssign = () => {
+    if (selectedOrder && selectedWarehouseId) {
+      assignOrderMutation.mutate({ id: selectedOrder._id, warehouse: selectedWarehouseId });
     }
   };
 
@@ -371,6 +375,26 @@ const OrdersPage: React.FC = () => {
           <button
             onClick={() => {
               setSelectedOrder(row);
+              setShowPaymentModal(true);
+            }}
+            className="text-purple-600 hover:text-purple-800"
+            title="Change Payment Status"
+          >
+            <CurrencyDollarIcon className="h-4 w-4" />
+          </button>
+          <button
+            onClick={() => {
+              setSelectedOrder(row);
+              setShowStatusModal(true);
+            }}
+            className="text-orange-600 hover:text-orange-800"
+            title="Update Order Status"
+          >
+            <ClipboardDocumentListIcon className="h-4 w-4" />
+          </button>
+          <button
+            onClick={() => {
+              setSelectedOrder(row);
               setShowAssignModal(true);
             }}
             className="text-indigo-600 hover:text-indigo-800"
@@ -402,7 +426,10 @@ const OrdersPage: React.FC = () => {
             <p className="text-gray-600">Manage customer orders and fulfillment</p>
           </div>
           <Button
-            onClick={() => setShowCreateModal(true)}
+            onClick={() => {
+              setSelectedOrder(null);
+              setShowCreateModal(true);
+            }}
             className="flex items-center space-x-2"
           >
             <PlusIcon className="h-5 w-5" />
@@ -614,8 +641,22 @@ const OrdersPage: React.FC = () => {
         >
           {selectedOrder && (
             <div className="space-y-4">
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h3 className="text-sm font-medium text-gray-900 mb-2">Order Information</h3>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="text-gray-600">Order:</span>
+                    <span className="ml-2 font-medium">{selectedOrder.orderNumber}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Current Status:</span>
+                    <span className="ml-2">{getStatusBadge(selectedOrder.orderStatus, 'order')}</span>
+                  </div>
+                </div>
+              </div>
+              
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">New Status</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Change Status To</label>
                 <Select
                   value=""
                   onChange={(e) => {
@@ -624,15 +665,23 @@ const OrdersPage: React.FC = () => {
                     }
                   }}
                   options={[
-                    { value: '', label: 'Select Status' },
+                    { value: '', label: 'Select New Status' },
+                    { value: 'pending', label: 'Pending' },
                     { value: 'confirmed', label: 'Confirmed' },
                     { value: 'processing', label: 'Processing' },
+                    { value: 'ready_for_pickup', label: 'Ready for Pickup' },
                     { value: 'shipped', label: 'Shipped' },
                     { value: 'delivered', label: 'Delivered' },
                     { value: 'cancelled', label: 'Cancelled' },
                     { value: 'returned', label: 'Returned' },
                   ]}
                 />
+              </div>
+              
+              <div className="bg-blue-50 p-3 rounded-lg">
+                <p className="text-sm text-blue-800">
+                  <strong>Note:</strong> Changing the order status will update the order workflow and may trigger notifications.
+                </p>
               </div>
               <div className="flex justify-end space-x-3">
                 <Button
@@ -655,8 +704,26 @@ const OrdersPage: React.FC = () => {
         >
           {selectedOrder && (
             <div className="space-y-4">
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h3 className="text-sm font-medium text-gray-900 mb-2">Order Information</h3>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="text-gray-600">Order:</span>
+                    <span className="ml-2 font-medium">{selectedOrder.orderNumber}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Total:</span>
+                    <span className="ml-2 font-medium">{formatCurrency(selectedOrder.totalAmount)}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Current Status:</span>
+                    <span className="ml-2">{getStatusBadge(selectedOrder.paymentStatus, 'payment')}</span>
+                  </div>
+                </div>
+              </div>
+              
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Payment Status</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Change Payment Status To</label>
                 <Select
                   value=""
                   onChange={(e) => {
@@ -665,15 +732,22 @@ const OrdersPage: React.FC = () => {
                     }
                   }}
                   options={[
-                    { value: '', label: 'Select Status' },
-                    { value: 'pending', label: 'Pending' },
-                    { value: 'partial', label: 'Partial' },
-                    { value: 'paid', label: 'Paid' },
+                    { value: '', label: 'Select New Status' },
+                    { value: 'pending', label: 'Pending Payment' },
+                    { value: 'partial', label: 'Partial Payment' },
+                    { value: 'paid', label: 'Fully Paid' },
                     { value: 'refunded', label: 'Refunded' },
-                    { value: 'cancelled', label: 'Cancelled' },
+                    { value: 'cancelled', label: 'Payment Cancelled' },
                   ]}
                 />
               </div>
+              
+              <div className="bg-blue-50 p-3 rounded-lg">
+                <p className="text-sm text-blue-800">
+                  <strong>Note:</strong> Changing the payment status will also update the corresponding invoice status automatically.
+                </p>
+              </div>
+              
               <div className="flex justify-end space-x-3">
                 <Button
                   variant="outline"
@@ -697,28 +771,44 @@ const OrdersPage: React.FC = () => {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Assign To Warehouse</label>
+                {warehousesError && (
+                  <div className="mb-2 p-2 bg-red-50 border border-red-200 rounded text-red-600 text-sm">
+                    Error loading warehouses: {warehousesError.message}
+                  </div>
+                )}
                 <Select
-                  value=""
-                  onChange={(e) => {
-                    if (e.target.value) {
-                      handleAssign(e.target.value);
-                    }
-                  }}
+                  value={selectedWarehouseId}
+                  onChange={(e) => setSelectedWarehouseId(e.target.value)}
+                  disabled={warehousesLoading}
                   options={[
-                    { value: '', label: 'Select Warehouse' },
-                    ...(warehousesData?.data?.map((warehouse: any) => ({
+                    { value: '', label: warehousesLoading ? 'Loading warehouses...' : 'Select Warehouse' },
+                    ...(Array.isArray(warehousesData?.data?.data) ? warehousesData.data.data.map((warehouse: any) => ({
                       value: warehouse._id,
                       label: `${warehouse.name} (${warehouse.code})`
-                    })) || [])
+                    })) : [])
                   ]}
                 />
+                {!warehousesLoading && !warehousesError && Array.isArray(warehousesData?.data?.data) && warehousesData.data.data.length === 0 && (
+                  <div className="mt-2 text-sm text-gray-500">
+                    No warehouses available. Please create warehouses first.
+                  </div>
+                )}
               </div>
               <div className="flex justify-end space-x-3">
                 <Button
                   variant="outline"
-                  onClick={() => setShowAssignModal(false)}
+                  onClick={() => {
+                    setShowAssignModal(false);
+                    setSelectedWarehouseId('');
+                  }}
                 >
                   Cancel
+                </Button>
+                <Button
+                  onClick={handleAssign}
+                  disabled={!selectedWarehouseId || assignOrderMutation.isPending}
+                >
+                  {assignOrderMutation.isPending ? 'Assigning...' : 'Assign to Warehouse'}
                 </Button>
               </div>
             </div>
@@ -728,12 +818,18 @@ const OrdersPage: React.FC = () => {
         {/* Create/Edit Order Modal */}
         <Modal
           isOpen={showCreateModal}
-          onClose={() => setShowCreateModal(false)}
+          onClose={() => {
+            setShowCreateModal(false);
+            setSelectedOrder(null);
+          }}
           title={selectedOrder ? 'Edit Order' : 'Create New Order'}
           size="xl"
         >
           <CreateOrderForm
-            onClose={() => setShowCreateModal(false)}
+            onClose={() => {
+              setShowCreateModal(false);
+              setSelectedOrder(null);
+            }}
             onSuccess={(orderData) => {
               if (selectedOrder) {
                 updateOrderMutation.mutate({ id: selectedOrder._id, data: orderData });

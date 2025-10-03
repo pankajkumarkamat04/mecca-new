@@ -1614,38 +1614,21 @@ const EditJobForm: React.FC<{
     queryFn: () => api.get('/products?limit=100'),
   });
 
-  // Fetch available machines - ADD DEBUGGING
+  // Fetch available machines
   const { data: machinesData, isLoading: machinesLoading, error: machinesError } = useQuery({
     queryKey: ['available-machines'],
-    queryFn: () => {
-      console.log('🔍 EditJobForm: Fetching machines...');
-      return api.get('/workshop/available-machines');
-    },
+    queryFn: () => api.get('/workshop/available-machines'),
   });
 
   const technicians = techniciansData?.data?.technicians || [];
   
-  // Debug tools data
-  console.log('🔍 EditJobForm availableToolsData:', availableToolsData);
-  console.log('🔍 EditJobForm availableToolsData?.data:', availableToolsData?.data);
-  console.log('🔍 EditJobForm availableToolsData?.data?.data:', availableToolsData?.data?.data);
   const availableTools = Array.isArray(availableToolsData?.data?.data) ? availableToolsData.data.data : [];
-  console.log('🔍 EditJobForm availableTools array:', availableTools);
   
   const products = Array.isArray(productsData?.data?.data) ? productsData.data.data : [];
-  
-  // Debug machines data
-  console.log('🔍 EditJobForm machinesData:', machinesData);
-  console.log('🔍 EditJobForm machinesLoading:', machinesLoading);
-  console.log('🔍 EditJobForm machinesError:', machinesError);
-  console.log('🔍 EditJobForm machinesData?.data:', machinesData?.data);
   const availableMachines = Array.isArray(machinesData?.data?.data) ? machinesData.data.data : [];
-  console.log('🔍 EditJobForm availableMachines array length:', availableMachines.length);
-  console.log('🔍 EditJobForm availableMachines array:', availableMachines);
   
   // Get currently assigned machines for this job
   const assignedMachines = Array.isArray(job.resources?.requiredMachines) ? job.resources.requiredMachines : [];
-  console.log('🔍 EditJobForm assignedMachines array:', assignedMachines);
   
   // Combine available and assigned machines, removing duplicates
   const allMachines = [
@@ -1664,13 +1647,6 @@ const EditJobForm: React.FC<{
   const machines = allMachines.filter((machine: any, index: number, self: any[]) => 
     index === self.findIndex((m: any) => m._id === machine._id)
   );
-  
-  console.log('🔍 EditJobForm combined machines array:', machines);
-  
-  // Additional debugging for API response structure
-  if (machinesData) {
-    console.log('🔍 EditJobForm Full API Response:', JSON.stringify(machinesData, null, 2));
-  }
 
   // State for select values
   const [selectedTechnicianId, setSelectedTechnicianId] = useState('');
@@ -1683,7 +1659,6 @@ const EditJobForm: React.FC<{
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('🔍 EditJobForm: Submitting form data:', formData);
     
     try {
       // Update job basic information
@@ -1774,12 +1749,7 @@ const EditJobForm: React.FC<{
   };
 
   const addPart = () => {
-    console.log('🔍 addPart called with selectedProductId:', selectedProductId);
-    console.log('🔍 products array:', products);
-    console.log('🔍 products length:', products.length);
-    
     if (selectedProductId) {
-      console.log('🔍 Adding part with productId:', selectedProductId);
       setFormData(prev => ({
         ...prev,
         parts: {
@@ -1791,7 +1761,6 @@ const EditJobForm: React.FC<{
         }
       }));
       setSelectedProductId(''); // Reset selection
-      console.log('🔍 Part added successfully');
       
       // Show success message
       const selectedProduct = products.find((p: any) => p._id === selectedProductId);
@@ -1799,7 +1768,6 @@ const EditJobForm: React.FC<{
         toast.success(`Added ${selectedProduct.name} to parts list`);
       }
     } else {
-      console.log('🔍 No product selected');
       toast.error('Please select a product first');
     }
   };
@@ -1816,11 +1784,7 @@ const EditJobForm: React.FC<{
 
 
   const addMachine = () => {
-    console.log('🔍 addMachine called with selectedMachineId:', selectedMachineId);
-    console.log('🔍 machineBookingUntil:', machineBookingUntil);
-    
     if (selectedMachineId && machineBookingUntil) {
-      console.log('🔍 Adding machine with machineId:', selectedMachineId);
       setFormData(prev => ({
         ...prev,
         machines: {
@@ -1833,7 +1797,6 @@ const EditJobForm: React.FC<{
       }));
       setSelectedMachineId(''); // Reset selection
       setMachineBookingUntil(''); // Reset booking date
-      console.log('🔍 Machine added successfully');
       
       // Show success message
       const selectedMachine = machines.find((m: any) => m._id === selectedMachineId);
@@ -1841,7 +1804,6 @@ const EditJobForm: React.FC<{
         toast.success(`Booked ${selectedMachine.name} until ${new Date(machineBookingUntil).toLocaleDateString()}`);
       }
     } else {
-      console.log('🔍 Missing machine selection or booking date');
       toast.error('Please select a machine and booking date');
     }
   };
@@ -1967,7 +1929,7 @@ const EditJobForm: React.FC<{
                 {formData.technicians.added.length > 0 && (
                   <span className="ml-2 px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
                     +{formData.technicians.added.length} pending
-                  </span>
+                    </span>
                 )}
               </h4>
               <div className="flex flex-wrap gap-2">
@@ -2003,11 +1965,11 @@ const EditJobForm: React.FC<{
                           {technician?.user?.firstName} {technician?.user?.lastName} {technician?.name}
                         </p>
                         <p className="text-xs text-green-600">{tech.role} (Pending)</p>
-                      </div>
+              </div>
                       <span className="text-xs text-green-600 px-2 py-1 bg-green-100 rounded">
                         New
                       </span>
-                    </div>
+            </div>
                   );
                 })}
                 
@@ -2018,33 +1980,33 @@ const EditJobForm: React.FC<{
               </div>
             </div>
 
-            {/* Add New Technician */}
-            <div>
+          {/* Add New Technician */}
+          <div>
               <h4 className="font-medium text-gray-700 mb-2">Add New Technician</h4>
-              <div className="flex gap-2">
-                <Select
-                  label="Select Technician"
-                  value={selectedTechnicianId}
-                  onChange={(e) => setSelectedTechnicianId(e.target.value)}
-                  disabled={techniciansLoading}
-                  options={[
-                    { value: '', label: techniciansLoading ? 'Loading...' : 'Select Technician...' },
-                    ...(Array.isArray(technicians) ? technicians.map((tech: any) => ({
-                      value: tech._id,
-                      label: tech.user 
-                        ? `${tech.user.firstName} ${tech.user.lastName} - ${tech.position}`
-                        : `${tech.employeeId || 'Tech'} - ${tech.position}`
-                    })) : [])
-                  ]}
-                />
-                <Button
-                  type="button"
-                  onClick={addTechnician}
-                  disabled={!selectedTechnicianId}
-                  className="self-end"
-                >
-                  Add
-                </Button>
+            <div className="flex gap-2">
+              <Select
+                label="Select Technician"
+                value={selectedTechnicianId}
+                onChange={(e) => setSelectedTechnicianId(e.target.value)}
+                disabled={techniciansLoading}
+                options={[
+                  { value: '', label: techniciansLoading ? 'Loading...' : 'Select Technician...' },
+                  ...(Array.isArray(technicians) ? technicians.map((tech: any) => ({
+                    value: tech._id,
+                    label: tech.user 
+                      ? `${tech.user.firstName} ${tech.user.lastName} - ${tech.position}`
+                      : `${tech.employeeId || 'Tech'} - ${tech.position}`
+                  })) : [])
+                ]}
+              />
+              <Button
+                type="button"
+                onClick={addTechnician}
+                disabled={!selectedTechnicianId}
+                className="self-end"
+              >
+                Add
+              </Button>
               </div>
             </div>
           </div>
@@ -2070,7 +2032,7 @@ const EditJobForm: React.FC<{
                 {formData.machines.added.length > 0 && (
                   <span className="ml-2 px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
                     +{formData.machines.added.length} pending
-                  </span>
+                    </span>
                 )}
               </h4>
               <div className="space-y-2">
@@ -2118,8 +2080,8 @@ const EditJobForm: React.FC<{
                           <p className="text-xs text-green-600">
                             Until: {machine.until ? new Date(machine.until).toLocaleDateString() : 'Not set'} (Pending)
                           </p>
-                        </div>
-                      </div>
+              </div>
+            </div>
                       <span className="text-xs text-green-600 px-2 py-1 bg-green-100 rounded">
                         New
                       </span>
@@ -2135,37 +2097,37 @@ const EditJobForm: React.FC<{
             </div>
 
             {/* Book New Machine */}
-            <div>
+          <div>
               <h4 className="font-medium text-gray-700 mb-2">Book New Machine</h4>
-              <div className="flex gap-2">
-                <Select
+            <div className="flex gap-2">
+              <Select
                   label="Select Machine"
                   value={selectedMachineId}
                   onChange={(e) => setSelectedMachineId(e.target.value)}
                   disabled={machinesLoading}
-                  options={[
+                options={[
                     { value: '', label: machinesLoading ? 'Loading...' : 'Select Machine...' },
                     ...(Array.isArray(machines) ? machines.filter((m: any) => !m.isAssigned).map((machine: any) => ({
                       value: machine._id,
                       label: `${machine.name} (${machine.model || 'N/A'} • ${machine.category})`
-                    })) : [])
-                  ]}
-                />
-                <Input
-                  type="datetime-local"
+                  })) : [])
+                ]}
+              />
+              <Input
+                type="datetime-local"
                   label="Book Until"
                   value={machineBookingUntil}
                   onChange={(e) => setMachineBookingUntil(e.target.value)}
-                  className="w-48"
-                />
-                <Button
-                  type="button"
+                className="w-48"
+              />
+              <Button
+                type="button"
                   onClick={addMachine}
                   disabled={!selectedMachineId || !machineBookingUntil}
-                  className="self-end"
-                >
+                className="self-end"
+              >
                   Book
-                </Button>
+              </Button>
               </div>
             </div>
           </div>
@@ -2316,7 +2278,7 @@ const EditJobForm: React.FC<{
                   <svg className="w-2.5 h-2.5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
                   </svg>
-                </div>
+          </div>
                 Assigned Parts
                 {formData.parts.added.length > 0 && (
                   <span className="ml-2 px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
@@ -2334,7 +2296,7 @@ const EditJobForm: React.FC<{
                         <p className="text-xs text-green-600">
                           Quantity: {part.quantity} • Status: {part.isAvailable ? 'Available' : 'Out of Stock'}
                         </p>
-                      </div>
+        </div>
                     </div>
                     <Button
                       variant="ghost"
@@ -2352,10 +2314,10 @@ const EditJobForm: React.FC<{
                     >
                       <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
+              </svg>
                       Remove
                     </Button>
-                  </div>
+            </div>
                 ))}
                 
                 {/* Pending additions */}
@@ -2386,44 +2348,44 @@ const EditJobForm: React.FC<{
             </div>
 
             {/* Add New Tool */}
-            <div>
+          <div>
               <h4 className="font-medium text-gray-700 mb-2">Add Tool</h4>
-              <div className="flex gap-2">
-                <Select
+            <div className="flex gap-2">
+              <Select
                   label="Select Tool"
                   value={selectedToolId}
                   onChange={(e) => setSelectedToolId(e.target.value)}
                   disabled={toolsLoading}
-                  options={[
+                options={[
                     { value: '', label: toolsLoading ? 'Loading...' : 'Select Tool...' },
                     ...(Array.isArray(availableTools) ? availableTools.map((tool: any) => ({
                       value: tool._id,
                       label: tool.toolNumber ? `${tool.name} (${tool.toolNumber})` : tool.name
-                    })) : [])
-                  ]}
-                />
+                  })) : [])
+                ]}
+              />
                 <Input
                   type="datetime-local"
                   value={toolExpectedReturn}
                   onChange={(e) => setToolExpectedReturn(e.target.value)}
                   placeholder="Expected Return"
                   className="w-48"
-                />
-                <Button
-                  type="button"
+              />
+              <Button
+                type="button"
                   onClick={addTool}
                   disabled={!selectedToolId || !toolExpectedReturn}
-                  className="self-end"
-                >
+                className="self-end"
+              >
                   Assign
-                </Button>
-              </div>
+              </Button>
             </div>
+          </div>
 
 
 
             {/* Book Machines */}
-            <div>
+          <div>
               <h4 className="font-medium text-gray-700 mb-2">Book Machine</h4>
               <div className="flex gap-2">
                 <Select
@@ -2439,15 +2401,15 @@ const EditJobForm: React.FC<{
                     })) : [])
                   ]}
                 />
-                <Input
-                  type="datetime-local"
+              <Input
+                type="datetime-local"
                   label="Book Until"
-                  value={machineBookingUntil}
-                  onChange={(e) => setMachineBookingUntil(e.target.value)}
-                  className="w-48"
-                />
-                <Button
-                  type="button"
+                value={machineBookingUntil}
+                onChange={(e) => setMachineBookingUntil(e.target.value)}
+                className="w-48"
+              />
+              <Button
+                type="button"
                   onClick={addMachine}
                   disabled={!selectedMachineId || !machineBookingUntil}
                   className="self-end"
@@ -2476,18 +2438,15 @@ const EditJobForm: React.FC<{
                 />
                 <Button
                   type="button"
-                  onClick={() => {
-                    console.log('🔍 Add button clicked');
-                    addPart();
-                  }}
+                  onClick={addPart}
                   disabled={!selectedProductId}
                   className="self-end"
                 >
                   Add
-                </Button>
-              </div>
+              </Button>
             </div>
           </div>
+        </div>
         </div>
 
       </div>
@@ -2505,8 +2464,8 @@ const EditJobForm: React.FC<{
             <Button type="submit" loading={loading} className="px-6 bg-purple-600 hover:bg-purple-700">
           Update Job & Resources
         </Button>
-          </div>
         </div>
+      </div>
       </div>
     </form>
   );
@@ -2548,13 +2507,10 @@ const ResourceManagementForm: React.FC<{
     queryFn: () => api.get('/technicians/available'),
   });
 
-  // Fetch available machines (use workshop available list for consistency) - ADD DEBUGGING
+  // Fetch available machines
   const { data: machinesData, isLoading: machinesLoading, error: machinesError } = useQuery({
     queryKey: ['available-machines'],
-    queryFn: () => {
-      console.log('🔍 ResourceManagementForm: Fetching machines...');
-      return api.get('/workshop/available-machines');
-    },
+    queryFn: () => api.get('/workshop/available-machines'),
   });
 
   // Fetch available tools
@@ -2571,16 +2527,10 @@ const ResourceManagementForm: React.FC<{
 
   const technicians = techniciansData?.data?.technicians || [];
   
-  // Debug machines data in ResourceManagementForm
-  console.log('🔍 ResourceManagementForm machinesData:', machinesData);
-  console.log('🔍 ResourceManagementForm machinesLoading:', machinesLoading);
-  console.log('🔍 ResourceManagementForm machinesError:', machinesError);
   const availableMachines = Array.isArray(machinesData?.data?.data) ? machinesData.data.data : [];
-  console.log('🔍 ResourceManagementForm availableMachines array:', availableMachines);
   
   // Get currently assigned machines for this job
   const assignedMachines = Array.isArray(job.resources?.requiredMachines) ? job.resources.requiredMachines : [];
-  console.log('🔍 ResourceManagementForm assignedMachines array:', assignedMachines);
   
   // Combine available and assigned machines, removing duplicates
   const allMachines = [
@@ -2599,8 +2549,6 @@ const ResourceManagementForm: React.FC<{
   const uniqueMachines = allMachines.filter((machine: any, index: number, self: any[]) => 
     index === self.findIndex((m: any) => m._id === machine._id)
   );
-  
-  console.log('🔍 ResourceManagementForm combined machines array:', uniqueMachines);
   
   const availableTools = Array.isArray(availableToolsData?.data?.data) ? availableToolsData.data.data : [];
   const availableProducts = Array.isArray(availableProductsData?.data?.products) ? availableProductsData.data.products : [];
@@ -2643,12 +2591,7 @@ const ResourceManagementForm: React.FC<{
   };
 
   const addMachine = () => {
-    console.log('🔍 ResourceManagementForm addMachine called with selectedMachineId:', selectedMachineId);
-    console.log('🔍 ResourceManagementForm machineBookingUntil:', machineBookingUntil);
-    
     if (selectedMachineId && machineBookingUntil) {
-      console.log('🔍 ResourceManagementForm Adding machine with machineId:', selectedMachineId);
-      
       // Call API to book machine
       api.post(`/workshop/${job._id}/assign-machine`, {
         machineId: selectedMachineId,
@@ -2664,7 +2607,6 @@ const ResourceManagementForm: React.FC<{
         console.error('Book machine error:', error);
       });
     } else {
-      console.log('🔍 ResourceManagementForm Missing machine selection or booking date');
       toast.error('Please select a machine and booking date');
     }
   };
@@ -2817,32 +2759,32 @@ const ResourceManagementForm: React.FC<{
                       </p>
                     </div>
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      // Call API to remove part
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        // Call API to remove part
                       api.post(`/workshop/${job._id}/remove-part`, {
                         productId: part.productId
-                      }).then(() => {
-                        toast.success('Part removed successfully');
-                        window.location.reload();
-                      }).catch((error) => {
-                        const errorMessage = error.response?.data?.message || error.message || 'Failed to remove part';
-                        toast.error(errorMessage);
-                        console.error('Remove part error:', error);
-                      });
-                    }}
-                  >
-                    Remove
-                  </Button>
+                        }).then(() => {
+                          toast.success('Part removed successfully');
+                          window.location.reload();
+                        }).catch((error) => {
+                          const errorMessage = error.response?.data?.message || error.message || 'Failed to remove part';
+                          toast.error(errorMessage);
+                          console.error('Remove part error:', error);
+                        });
+                      }}
+                    >
+                      Remove
+                    </Button>
                 </div>
               ))}
               {(!job.resources?.requiredParts || job.resources?.requiredParts?.length === 0) && (
                 <span className="text-gray-500 text-sm">No parts assigned</span>
               )}
-            </div>
-          </div>
+        </div>
+      </div>
 
             </div>
           </div>
@@ -3597,6 +3539,7 @@ const AssignResourcesForm: React.FC<{
 
 // Work Progress Visualization Component
 const WorkProgressVisualizationComponent: React.FC<{ job: any }> = ({ job }) => {
+  const queryClient = useQueryClient();
   const [currentStep, setCurrentStep] = useState(0);
   const [progress, setProgress] = useState(job.progress || 0);
   
@@ -3618,6 +3561,8 @@ const WorkProgressVisualizationComponent: React.FC<{ job: any }> = ({ job }) => 
     api.put(`/workshop/${job._id}/progress`, { progress: newProgress })
       .then(() => {
         toast.success('Progress updated successfully');
+        // Invalidate queries to refresh the data
+        queryClient.invalidateQueries({ queryKey: ['workshop-jobs'] });
       })
       .catch((error) => {
         toast.error('Failed to update progress');
@@ -3736,7 +3681,7 @@ const WorkProgressVisualizationComponent: React.FC<{ job: any }> = ({ job }) => 
         <div className="mb-4">
           <h4 className="font-medium text-gray-700 mb-2">Tools</h4>
           {job.tools?.length > 0 ? (
-            <div className="space-y-2">              
+            <div className="space-y-2">
               {job.tools.map((tool: any, index: number) => (
                 <div key={index} className="flex items-center justify-between p-2 bg-blue-50 rounded">
                   <span className="text-sm font-medium text-blue-800">{tool.name}</span>

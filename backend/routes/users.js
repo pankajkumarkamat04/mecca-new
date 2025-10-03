@@ -47,8 +47,8 @@ router.delete('/:id', auth, authorize('admin'), validateObjectId(), deleteUser);
 
 // @route   POST /api/users
 // @desc    Create new user
-// @access  Private (Admin/Manager)
-router.post('/', auth, authorize('admin', 'manager'), createUserValidation, validate, createUser);
+// @access  Private (Admin/Manager/Warehouse Manager)
+router.post('/', auth, authorize('admin', 'manager', 'warehouse_manager'), createUserValidation, validate, createUser);
 
 // @route   GET /api/users/:id/stats
 // @desc    Get user statistics

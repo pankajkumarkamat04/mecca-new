@@ -340,4 +340,34 @@ warehouseSchema.methods.isEmployee = function(userId) {
   );
 };
 
+// Instance method to update inventory
+warehouseSchema.methods.updateInventory = async function(productId, updateData) {
+  const Product = require('./Product');
+  
+  // Find the product
+  const product = await Product.findById(productId);
+  if (!product) {
+    throw new Error('Product not found');
+  }
+
+  // Update product inventory data
+  if (product.inventory) {
+    product.inventory.currentStock = updateData.currentStock;
+    product.inventory.location = updateData.location;
+    product.inventory.updatedAt = new Date();
+    product.inventory.updatedBy = updateData.updatedBy;
+  } else {
+    product.inventory = {
+      currentStock: updateData.currentStock,
+      location: updateData.location || {},
+      updatedAt: new Date(),
+      updatedBy: updateData.updatedBy
+    };
+  }
+
+  await product.save();
+
+  return product;
+};
+
 module.exports = mongoose.model('Warehouse', warehouseSchema);

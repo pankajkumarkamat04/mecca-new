@@ -51,6 +51,7 @@ const getOrders = async (req, res) => {
       .populate('assignedBy', 'firstName lastName')
       .populate('quotation', 'quotationNumber')
       .populate('invoice', 'invoiceNumber')
+      .populate('items.product', 'name sku')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
@@ -215,7 +216,11 @@ const createOrder = async (req, res) => {
     // Automatically create invoice for the order
     let createdInvoice = null;
     try {
+      const Invoice = require('../models/Invoice');
+      const invoiceNumber = await Invoice.generateInvoiceNumber('sale');
+      
       const invoiceData = {
+        invoiceNumber: invoiceNumber,
         customer: orderData.customer,
         customerName: orderData.customerName,
         customerEmail: orderData.customerEmail,
@@ -455,7 +460,7 @@ const updateOrderStatus = async (req, res) => {
 const updatePaymentStatus = async (req, res) => {
   try {
     const { paymentStatus, paymentMethod, paymentDetails } = req.body;
-    const order = await Order.findById(req.params.id);
+    const order = await Order.findById(req.params.id).populate('invoice');
     
     if (!order) {
       return res.status(404).json({
@@ -469,6 +474,43 @@ const updatePaymentStatus = async (req, res) => {
     if (paymentDetails) order.paymentDetails = { ...order.paymentDetails, ...paymentDetails };
 
     await order.save();
+
+    // Update corresponding invoice status if invoice exists
+    if (order.invoice) {
+      const Invoice = require('../models/Invoice');
+      const invoice = await Invoice.findById(order.invoice._id || order.invoice);
+      
+      if (invoice) {
+        // Map order payment status to invoice status
+        let invoiceStatus = invoice.status;
+        switch (paymentStatus) {
+          case 'pending':
+            invoiceStatus = 'pending';
+            break;
+          case 'partial':
+            invoiceStatus = 'partial';
+            break;
+          case 'paid':
+            invoiceStatus = 'paid';
+            invoice.paid = invoice.total; // Mark as fully paid
+            invoice.balance = 0;
+            break;
+          case 'refunded':
+            invoiceStatus = 'refunded';
+            break;
+          case 'cancelled':
+            invoiceStatus = 'cancelled';
+            break;
+          default:
+            invoiceStatus = 'pending';
+        }
+        
+        invoice.status = invoiceStatus;
+        await invoice.save();
+        
+        console.log(`Invoice ${invoice.invoiceNumber} status updated to ${invoiceStatus} for order ${order.orderNumber}`);
+      }
+    }
 
     res.json({
       success: true,

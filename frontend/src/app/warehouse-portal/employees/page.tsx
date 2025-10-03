@@ -19,6 +19,7 @@ import {
   UserPlusIcon,
   UserMinusIcon,
   BuildingOfficeIcon,
+  ShieldCheckIcon,
 } from '@heroicons/react/24/outline';
 
 interface Employee {
@@ -54,41 +55,17 @@ interface User {
 
 const WarehouseEmployeesInner: React.FC<{ warehouseId: string | null }> = ({ warehouseId }) => {
   const { user: currentUser } = useAuth();
-  const [showAddEmployeeModal, setShowAddEmployeeModal] = useState(false);
   const [showCreateUserModal, setShowCreateUserModal] = useState(false);
-  const [selectedUserId, setSelectedUserId] = useState('');
-  const [selectedPosition, setSelectedPosition] = useState('warehouse_employee');
-
   const queryClient = useQueryClient();
+
+  // Check if current user is warehouse manager or admin
+  const canManageEmployees = currentUser?.role === 'warehouse_manager' || currentUser?.role === 'admin';
 
   // Fetch warehouse employees
   const { data: employeesData, isLoading } = useQuery({
     queryKey: ['warehouse-employees', warehouseId],
     queryFn: () => warehouseAPI.getWarehouseEmployees(warehouseId!),
     enabled: !!warehouseId,
-  });
-
-  // Fetch available users
-  const { data: usersData } = useQuery({
-    queryKey: ['available-users'],
-    queryFn: () => warehouseAPI.getAvailableUsers(),
-    enabled: !!warehouseId,
-  });
-
-  // Add employee mutation
-  const addEmployeeMutation = useMutation({
-    mutationFn: ({ userId, position }: { userId: string; position: string }) =>
-      warehouseAPI.addEmployee(warehouseId!, { userId, position }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['warehouse-employees', warehouseId] });
-      setShowAddEmployeeModal(false);
-      setSelectedUserId('');
-      setSelectedPosition('warehouse_employee');
-      toast.success('Employee added successfully');
-    },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to add employee');
-    },
   });
 
   // Remove employee mutation
@@ -104,10 +81,10 @@ const WarehouseEmployeesInner: React.FC<{ warehouseId: string | null }> = ({ war
     },
   });
 
-  // Create user mutation (for warehouse portal)
+  // Create user mutation (warehouse_employee role)
   const createUserMutation = useMutation({
     mutationFn: (userData: any) => {
-      // Automatically assign to current warehouse
+      // Automatically assign to current warehouse as warehouse_employee
       const payload = {
         ...userData,
         role: 'warehouse_employee',
@@ -119,16 +96,15 @@ const WarehouseEmployeesInner: React.FC<{ warehouseId: string | null }> = ({ war
       queryClient.invalidateQueries({ queryKey: ['warehouse-employees', warehouseId] });
       queryClient.invalidateQueries({ queryKey: ['available-users'] });
       setShowCreateUserModal(false);
-      toast.success('User created and assigned to warehouse successfully');
+      toast.success('Warehouse employee created successfully');
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to create user');
+      toast.error(error.response?.data?.message || 'Failed to create employee');
     },
   });
 
   const employees = employeesData?.data?.data?.employees || [];
   const manager = employeesData?.data?.data?.manager;
-  const availableUsers = usersData?.data?.data || [];
 
   const getPositionColor = (position: string) => {
     switch (position) {
@@ -181,24 +157,23 @@ const WarehouseEmployeesInner: React.FC<{ warehouseId: string | null }> = ({ war
       key: 'actions',
       label: 'Actions',
       render: (row: Employee) => (
-        <button
-          onClick={() => handleRemoveEmployee(row._id)}
-          className="text-red-600 hover:text-red-800"
-          title="Remove Employee"
-        >
-          <UserMinusIcon className="h-4 w-4" />
-        </button>
+        // Only warehouse managers and admins can remove employees
+        canManageEmployees ? (
+          <button
+            onClick={() => handleRemoveEmployee(row._id)}
+            className="text-red-600 hover:text-red-800"
+            title="Remove Employee"
+          >
+            <UserMinusIcon className="h-4 w-4" />
+          </button>
+        ) : (
+          <span className="text-gray-400">
+            <UserMinusIcon className="h-4 w-4" />
+          </span>
+        )
       ),
     },
   ];
-
-  const handleAddEmployee = () => {
-    if (!selectedUserId) return;
-    addEmployeeMutation.mutate({
-      userId: selectedUserId,
-      position: selectedPosition,
-    });
-  };
 
   const handleRemoveEmployee = (employeeId: string) => {
     if (confirm('Are you sure you want to remove this employee?')) {
@@ -215,29 +190,25 @@ const WarehouseEmployeesInner: React.FC<{ warehouseId: string | null }> = ({ war
             <h1 className="text-2xl font-bold text-gray-900">Warehouse Employees</h1>
             <p className="text-gray-600">Manage employees assigned to this warehouse</p>
           </div>
-          <div className="flex space-x-3">
+          {/* Only show create button for warehouse managers and admins */}
+          {canManageEmployees && (
             <Button
               onClick={() => setShowCreateUserModal(true)}
-              variant="outline"
               className="flex items-center"
             >
               <UserPlusIcon className="h-5 w-5 mr-2" />
-              Create User
+              Create Warehouse Employee
             </Button>
-            <Button
-              onClick={() => setShowAddEmployeeModal(true)}
-              className="flex items-center"
-            >
-              <UserPlusIcon className="h-5 w-5 mr-2" />
-              Add Employee
-            </Button>
-          </div>
+          )}
         </div>
 
         {/* Manager Section */}
         {manager && (
           <div className="bg-white p-6 rounded-lg shadow">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Warehouse Manager</h3>
+            <h3 className="text-lg font-medium text-gray-900 mb-4">
+              <ShieldCheckIcon className="h-5 w-5 inline mr-2 text-purple-600" />
+              Warehouse Manager
+            </h3>
             <div className="bg-purple-50 p-4 rounded-lg">
               <div className="flex items-center justify-between">
                 <div>
@@ -256,6 +227,23 @@ const WarehouseEmployeesInner: React.FC<{ warehouseId: string | null }> = ({ war
           </div>
         )}
 
+        {/* Permission Notice */}
+        {!canManageEmployees && (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+            <div className="flex">
+              <ShieldCheckIcon className="h-5 w-5 text-yellow-600 mr-2 mt-0.5" />
+              <div>
+                <h3 className="text-sm font-medium text-yellow-800">
+                  Limited Access
+                </h3>
+                <p className="text-sm text-yellow-700 mt-1">
+                  Only warehouse managers and admins can create new employees or remove existing ones.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Employees Table */}
         <div className="bg-white rounded-lg shadow">
           <div className="px-6 py-4 border-b border-gray-200">
@@ -269,78 +257,21 @@ const WarehouseEmployeesInner: React.FC<{ warehouseId: string | null }> = ({ war
           />
         </div>
 
-        {/* Add Employee Modal */}
-        <Modal
-          isOpen={showAddEmployeeModal}
-          onClose={() => setShowAddEmployeeModal(false)}
-          title="Add Employee"
-        >
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Select Employee
-              </label>
-              <Select
-                value={selectedUserId}
-                onChange={(e) => setSelectedUserId(e.target.value)}
-                options={[
-                  { value: '', label: 'Select an employee...' },
-                  ...availableUsers
-                    .filter((user: User) => 
-                      !user.warehouse?.assignedWarehouse &&
-                      (user.role === 'employee' || 
-                       user.role === 'warehouse_employee')
-                    )
-                    .map((user: User) => ({
-                      value: user._id,
-                      label: `${user.firstName} ${user.lastName} (${user.email})`
-                    }))
-                ]}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Position
-              </label>
-              <Select
-                value={selectedPosition}
-                onChange={(e) => setSelectedPosition(e.target.value)}
-                options={[
-                  { value: 'warehouse_employee', label: 'Warehouse Employee' },
-                ]}
-              />
-            </div>
-            <div className="flex justify-end space-x-3 pt-4">
-              <Button 
-                type="button" 
-                variant="secondary" 
-                onClick={() => setShowAddEmployeeModal(false)}
-              >
-                Cancel
-              </Button>
-              <Button 
-                onClick={handleAddEmployee}
-                disabled={addEmployeeMutation.isPending || !selectedUserId}
-              >
-                {addEmployeeMutation.isPending ? 'Adding...' : 'Add Employee'}
-              </Button>
-            </div>
-          </div>
-        </Modal>
-
-        {/* Create User Modal */}
-        <Modal
-          isOpen={showCreateUserModal}
-          onClose={() => setShowCreateUserModal(false)}
-          title="Create New User"
-          size="lg"
-        >
-          <CreateUserForm 
-            onSuccess={() => setShowCreateUserModal(false)}
-            warehouseId={warehouseId!}
-            mutation={createUserMutation}
-          />
-        </Modal>
+        {/* Create User Modal - Only for warehouse managers and admins */}
+        {canManageEmployees && (
+          <Modal
+            isOpen={showCreateUserModal}
+            onClose={() => setShowCreateUserModal(false)}
+            title="Create Warehouse Employee"
+            size="lg"
+          >
+            <CreateUserForm 
+              onSuccess={() => setShowCreateUserModal(false)}
+              warehouseId={warehouseId!}
+              mutation={createUserMutation}
+            />
+          </Modal>
+        )}
       </div>
     </WarehousePortalLayout>
   );
@@ -373,7 +304,17 @@ const CreateUserForm: React.FC<{
       loading={mutation.isPending}
     >{(methods) => (
       <div className="space-y-6">
-        <FormSection title="User Details">
+        <div className="bg-blue-50 p-4 rounded-lg">
+          <h3 className="text-lg font-medium text-blue-900 mb-2">
+            Create Warehouse Employee
+          </h3>
+          <p className="text-sm text-blue-800">
+            This will create a new user account with <strong>warehouse_employee</strong> role 
+            and automatically assign them to the current warehouse.
+          </p>
+        </div>
+
+        <FormSection title="Employee Details">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField label="First Name" required error={methods.formState.errors.firstName?.message as string}>
               <Input {...methods.register('firstName')} fullWidth />
@@ -390,15 +331,17 @@ const CreateUserForm: React.FC<{
             <FormField label="Password" required error={methods.formState.errors.password?.message as string}>
               <Input type="password" {...methods.register('password')} fullWidth />
             </FormField>
-            <div className="md:col-span-2">
-              <div className="bg-blue-50 p-4 rounded-lg">
-                <p className="text-sm text-blue-800">
-                  <strong>Note:</strong> This user will be automatically assigned to the current warehouse as a warehouse employee.
-                </p>
-              </div>
-            </div>
           </div>
         </FormSection>
+
+        <div className="bg-gray-50 p-4 rounded-lg">
+          <h4 className="text-sm font-medium text-gray-900 mb-2">Assignment Details</h4>
+          <div className="text-sm text-gray-600 space-y-1">
+            <p>• <strong>Role:</strong> warehouse_employee</p>
+            <p>• <strong>Assigned to:</strong> Current warehouse</p>
+            <p>• <strong>Permissions:</strong> Can view and edit inventory</p>
+          </div>
+        </div>
 
         <FormActions
           onCancel={onSuccess}
@@ -413,7 +356,7 @@ const CreateUserForm: React.FC<{
               toast.error('Please fill in all required fields');
             }
           }}
-          submitText={mutation.isPending ? 'Creating...' : 'Create User'}
+          submitText={mutation.isPending ? 'Creating Employee...' : 'Create Employee'}
           loading={mutation.isPending}
         />
       </div>

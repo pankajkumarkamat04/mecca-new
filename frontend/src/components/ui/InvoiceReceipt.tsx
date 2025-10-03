@@ -4,6 +4,7 @@ import React from 'react';
 import { Invoice, InvoiceItem } from '@/types';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { calculatePrice } from '@/lib/priceCalculator';
+import { useSettings } from '@/contexts/SettingsContext';
 import Button from './Button';
 import { PrinterIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
 
@@ -20,12 +21,17 @@ const InvoiceReceipt: React.FC<InvoiceReceiptProps> = ({
   onPrint, 
   onDownload 
 }) => {
+  const { company } = useSettings();
+  
   const companyInfo = {
-    name: 'ABC Company',
-    address: '412 Example South Street, Los Angeles, FL USA - 123',
-    phone: '410-987-89-60',
-    email: 'support@ultimatekode.com',
-    taxId: '23442'
+    name: company?.name || 'MECCA POS',
+    address: company?.address ? 
+      `${company.address.street}, ${company.address.city}, ${company.address.state} ${company.address.zipCode}, ${company.address.country}` : 
+      'Your Company Address',
+    phone: company?.phone || 'Your Phone Number',
+    email: company?.email || 'your@email.com',
+    taxId: company?.taxId || 'Your Tax ID',
+    logo: company?.logo?.url
   };
 
   // Calculate pricing using the universal price calculator
@@ -75,11 +81,19 @@ const InvoiceReceipt: React.FC<InvoiceReceiptProps> = ({
         {/* Header */}
         <div className="mb-4">
           <div className="flex items-center justify-center mb-2">
-            <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-lg mr-2">
-              M
-            </div>
+            {companyInfo.logo ? (
+              <img 
+                src={companyInfo.logo} 
+                alt="Company Logo" 
+                className="w-10 h-10 object-contain mr-2"
+              />
+            ) : (
+              <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-lg mr-2">
+                {companyInfo.name.charAt(0)}
+              </div>
+            )}
             <div>
-              <div className="font-bold text-lg">MECCA POS</div>
+              <div className="font-bold text-lg">{companyInfo.name}</div>
               <div className="text-xs text-gray-600">Your Trusted Retail Partner</div>
             </div>
           </div>
@@ -178,15 +192,23 @@ const InvoiceReceipt: React.FC<InvoiceReceiptProps> = ({
       {/* Header */}
       <div className="flex justify-between items-start mb-6">
         <div className="flex items-center">
-          <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-xl mr-3">
-            M
-          </div>
+          {companyInfo.logo ? (
+            <img 
+              src={companyInfo.logo} 
+              alt="Company Logo" 
+              className="w-12 h-12 object-contain mr-3"
+            />
+          ) : (
+            <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-xl mr-3">
+              {companyInfo.name.charAt(0)}
+            </div>
+          )}
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">MECCA POS</h1>
+            <h1 className="text-2xl font-bold text-gray-900">{companyInfo.name}</h1>
             <p className="text-sm text-gray-600">Your Trusted Retail Partner</p>
             <div className="mt-2 text-xs text-gray-500">
-              <p>123 Business Street, City, State 12345</p>
-              <p>Phone: (123) 456-7890 | Email: info@meccapos.com</p>
+              <p>{companyInfo.address}</p>
+              <p>Phone: {companyInfo.phone} | Email: {companyInfo.email}</p>
             </div>
           </div>
         </div>

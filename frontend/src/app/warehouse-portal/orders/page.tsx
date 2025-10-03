@@ -38,9 +38,9 @@ interface Order {
     };
     quantity: number;
     unitPrice: number;
-    totalPrice: number;
+    total: number;
   }>;
-  status: string;
+  orderStatus: string;
   totalAmount: number;
   warehouse?: {
     _id: string;
@@ -60,6 +60,7 @@ const WarehouseOrders: React.FC = () => {
   const searchParams = useSearchParams();
   const warehouseId = searchParams.get('warehouse');
   const [showOrderModal, setShowOrderModal] = useState(false);
+  const [showStatusModal, setShowStatusModal] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [statusFilter, setStatusFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
@@ -69,8 +70,7 @@ const WarehouseOrders: React.FC = () => {
   // Fetch orders assigned to warehouse
   const { data: ordersData, isLoading } = useQuery({
     queryKey: ['warehouse-orders', warehouseId, statusFilter, searchTerm],
-    queryFn: () => ordersAPI.getOrders({
-      warehouse: warehouseId,
+    queryFn: () => warehouseAPI.getWarehouseOrders(warehouseId!, {
       status: statusFilter === 'all' ? undefined : statusFilter,
       search: searchTerm,
       limit: 50,
@@ -81,7 +81,7 @@ const WarehouseOrders: React.FC = () => {
   // Update order status mutation
   const updateOrderStatusMutation = useMutation({
     mutationFn: ({ orderId, status }: { orderId: string; status: string }) =>
-      ordersAPI.updateOrder(orderId, { status }),
+      ordersAPI.updateOrder(orderId, { orderStatus: status }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['warehouse-orders', warehouseId] });
       toast.success('Order status updated successfully');
@@ -93,7 +93,8 @@ const WarehouseOrders: React.FC = () => {
 
   const orders = ordersData?.data?.data || [];
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: string | undefined) => {
+    if (!status) return 'bg-gray-100 text-gray-800';
     switch (status) {
       case 'pending':
         return 'bg-yellow-100 text-yellow-800';
@@ -112,7 +113,8 @@ const WarehouseOrders: React.FC = () => {
     }
   };
 
-  const getStatusIcon = (status: string) => {
+  const getStatusIcon = (status: string | undefined) => {
+    if (!status) return <ClockIcon className="h-4 w-4" />;
     switch (status) {
       case 'pending':
         return <ClockIcon className="h-4 w-4" />;
@@ -173,7 +175,7 @@ const WarehouseOrders: React.FC = () => {
       label: 'Total',
       render: (row: Order) => (
         <div className="font-medium text-gray-900">
-          ${row.totalAmount.toLocaleString()}
+          ${row.totalAmount?.toLocaleString() || '0'}
         </div>
       ),
     },
@@ -181,9 +183,9 @@ const WarehouseOrders: React.FC = () => {
       key: 'status',
       label: 'Status',
       render: (row: Order) => (
-        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(row.status)}`}>
-          {getStatusIcon(row.status)}
-          <span className="ml-1">{row.status.replace('_', ' ')}</span>
+        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(row.orderStatus)}`}>
+          {getStatusIcon(row.orderStatus)}
+          <span className="ml-1">{row.orderStatus?.replace('_', ' ') || 'Unknown'}</span>
         </span>
       ),
     },
@@ -202,7 +204,19 @@ const WarehouseOrders: React.FC = () => {
           >
             <EyeIcon className="h-4 w-4" />
           </button>
-          {row.status === 'processing' && (
+          {row.orderStatus === 'pending' && (
+            <button
+              onClick={() => updateOrderStatusMutation.mutate({
+                orderId: row._id,
+                status: 'processing'
+              })}
+              className="text-blue-600 hover:text-blue-800"
+              title="Start Processing"
+            >
+              <ExclamationTriangleIcon className="h-4 w-4" />
+            </button>
+          )}
+          {row.orderStatus === 'processing' && (
             <button
               onClick={() => updateOrderStatusMutation.mutate({
                 orderId: row._id,
@@ -214,6 +228,40 @@ const WarehouseOrders: React.FC = () => {
               <CheckCircleIcon className="h-4 w-4" />
             </button>
           )}
+          {row.orderStatus === 'ready_for_pickup' && (
+            <button
+              onClick={() => updateOrderStatusMutation.mutate({
+                orderId: row._id,
+                status: 'shipped'
+              })}
+              className="text-purple-600 hover:text-purple-800"
+              title="Mark as Shipped"
+            >
+              <TruckIcon className="h-4 w-4" />
+            </button>
+          )}
+          {row.orderStatus === 'shipped' && (
+            <button
+              onClick={() => updateOrderStatusMutation.mutate({
+                orderId: row._id,
+                status: 'delivered'
+              })}
+              className="text-green-600 hover:text-green-800"
+              title="Mark as Delivered"
+            >
+              <CheckCircleIcon className="h-4 w-4" />
+            </button>
+          )}
+          <button
+            onClick={() => {
+              setSelectedOrder(row);
+              setShowStatusModal(true);
+            }}
+            className="text-orange-600 hover:text-orange-800"
+            title="Update Status"
+          >
+            <ClipboardDocumentListIcon className="h-4 w-4" />
+          </button>
         </div>
       ),
     },
@@ -296,15 +344,15 @@ const WarehouseOrders: React.FC = () => {
                     <div>
                       <dt className="text-sm font-medium text-gray-500">Status</dt>
                       <dd className="text-sm">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(selectedOrder.status)}`}>
-                          {getStatusIcon(selectedOrder.status)}
-                          <span className="ml-1">{selectedOrder.status.replace('_', ' ')}</span>
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(selectedOrder.orderStatus)}`}>
+                          {getStatusIcon(selectedOrder.orderStatus)}
+                          <span className="ml-1">{selectedOrder.orderStatus?.replace('_', ' ') || 'Unknown'}</span>
                         </span>
                       </dd>
                     </div>
                     <div>
                       <dt className="text-sm font-medium text-gray-500">Total Amount</dt>
-                      <dd className="text-sm text-gray-900">${selectedOrder.totalAmount.toLocaleString()}</dd>
+                      <dd className="text-sm text-gray-900">${selectedOrder.totalAmount?.toLocaleString() || '0'}</dd>
                     </div>
                     <div>
                       <dt className="text-sm font-medium text-gray-500">Created</dt>
@@ -359,19 +407,19 @@ const WarehouseOrders: React.FC = () => {
                       {selectedOrder.items.map((item, index) => (
                         <tr key={index}>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                            {item.product.name}
+                            {item.product?.name || 'Unknown Product'}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {item.product.sku}
+                            {item.product?.sku || 'N/A'}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {item.quantity}
+                            {item.quantity || 0}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            ${item.unitPrice.toFixed(2)}
+                            ${item.unitPrice?.toFixed(2) || '0.00'}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            ${item.totalPrice.toFixed(2)}
+                            ${item.total?.toFixed(2) || '0.00'}
                           </td>
                         </tr>
                       ))}
@@ -408,6 +456,60 @@ const WarehouseOrders: React.FC = () => {
                   </dl>
                 </div>
               )}
+            </div>
+          )}
+        </Modal>
+
+        {/* Status Update Modal */}
+        <Modal
+          isOpen={showStatusModal}
+          onClose={() => setShowStatusModal(false)}
+          title={`Update Order Status - ${selectedOrder?.orderNumber}`}
+          size="md"
+        >
+          {selectedOrder && (
+            <div className="space-y-4">
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h3 className="text-sm font-medium text-gray-900 mb-2">Current Status</h3>
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(selectedOrder.orderStatus)}`}>
+                  {getStatusIcon(selectedOrder.orderStatus)}
+                  <span className="ml-1">{selectedOrder.orderStatus?.replace('_', ' ') || 'Unknown'}</span>
+                </span>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Change Status To</label>
+                <Select
+                  value=""
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      updateOrderStatusMutation.mutate({
+                        orderId: selectedOrder._id,
+                        status: e.target.value
+                      });
+                      setShowStatusModal(false);
+                    }
+                  }}
+                  options={[
+                    { value: '', label: 'Select New Status' },
+                    { value: 'pending', label: 'Pending' },
+                    { value: 'processing', label: 'Processing' },
+                    { value: 'ready_for_pickup', label: 'Ready for Pickup' },
+                    { value: 'shipped', label: 'Shipped' },
+                    { value: 'delivered', label: 'Delivered' },
+                    { value: 'cancelled', label: 'Cancelled' },
+                  ]}
+                />
+              </div>
+              
+              <div className="flex justify-end space-x-3">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowStatusModal(false)}
+                >
+                  Cancel
+                </Button>
+              </div>
             </div>
           )}
         </Modal>

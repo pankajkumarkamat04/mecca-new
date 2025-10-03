@@ -745,10 +745,7 @@ const getWarehouseEmployees = async (req, res) => {
 const getAvailableUsers = async (req, res) => {
   try {
     const users = await User.find({
-      $or: [
-        { role: { $in: ['employee', 'warehouse_manager', 'warehouse_employee'] } },
-        { 'warehouse.assignedWarehouse': null }
-      ],
+      'warehouse.assignedWarehouse': null, // Only users not assigned to any warehouse
       isActive: true
     })
     .select('firstName lastName email phone role warehouse')
@@ -859,6 +856,110 @@ const getWarehouseDashboard = async (req, res) => {
   }
 };
 
+// @desc    Update warehouse inventory
+// @route   PUT /api/warehouses/:id/inventory/:productId
+// @access  Private (Warehouse Employee)
+const updateWarehouseInventory = async (req, res) => {
+  try {
+    const { warehouseId, productId } = req.params;
+    const { currentStock, location, notes } = req.body;
+
+    // Find the product in warehouse inventory
+    const warehouse = await Warehouse.findById(warehouseId);
+    if (!warehouse) {
+      return res.status(404).json({
+        success: false,
+        message: 'Warehouse not found'
+      });
+    }
+
+    // Update the inventory record
+    await warehouse.updateInventory(productId, {
+      currentStock,
+      location,
+      notes,
+      updatedBy: req.user._id,
+      updatedAt: new Date()
+    });
+
+    res.json({
+      success: true,
+      message: 'Inventory updated successfully'
+    });
+  } catch (error) {
+    console.error('Update warehouse inventory error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+};
+
+// @desc    Get orders assigned to warehouse
+// @route   GET /api/warehouses/:id/orders
+// @access  Private (Warehouse Access)
+const getWarehouseOrders = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+    const search = req.query.search || '';
+    const status = req.query.status || '';
+    const fulfillmentStatus = req.query.fulfillmentStatus || '';
+
+    // Build filter
+    const filter = { 
+      warehouse: id,
+      isActive: true  // Only show active orders (exclude deleted ones)
+    };
+    
+    if (search) {
+      filter.$or = [
+        { orderNumber: { $regex: search, $options: 'i' } },
+        { customerName: { $regex: search, $options: 'i' } },
+        { customerEmail: { $regex: search, $options: 'i' } }
+      ];
+    }
+    
+    if (status) filter.orderStatus = status;
+    if (fulfillmentStatus) filter.fulfillmentStatus = fulfillmentStatus;
+
+    const Order = require('../models/Order');
+    
+    const orders = await Order.find(filter)
+      .populate('customer', 'firstName lastName email phone')
+      .populate('createdBy', 'firstName lastName')
+      .populate('assignedTo', 'firstName lastName')
+      .populate('warehouse', 'name code')
+      .populate('assignedBy', 'firstName lastName')
+      .populate('quotation', 'quotationNumber')
+      .populate('invoice', 'invoiceNumber')
+      .populate('items.product', 'name sku')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    const total = await Order.countDocuments(filter);
+
+    res.json({
+      success: true,
+      data: orders,
+      pagination: {
+        current: page,
+        pages: Math.ceil(total / limit),
+        total
+      }
+    });
+  } catch (error) {
+    console.error('Get warehouse orders error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+};
+
 module.exports = {
   getWarehouses,
   getWarehouseById,
@@ -870,11 +971,13 @@ module.exports = {
   removeLocation,
   getWarehouseStats,
   getWarehouseInventory,
+  updateWarehouseInventory,
   transferProducts,
   assignManager,
   addEmployee,
   removeEmployee,
   getWarehouseEmployees,
   getAvailableUsers,
-  getWarehouseDashboard
+  getWarehouseDashboard,
+  getWarehouseOrders
 };

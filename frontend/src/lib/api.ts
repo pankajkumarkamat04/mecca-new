@@ -347,6 +347,9 @@ export const warehouseAPI = {
   getWarehouseEmployees: (id: string) => api.get(`/warehouses/${id}/employees`),
   getAvailableUsers: () => api.get('/warehouses/available-users'),
   getWarehouseDashboard: (id: string) => api.get(`/warehouses/${id}/dashboard`),
+  getWarehouseOrders: (id: string, params?: any) => api.get(`/warehouses/${id}/orders`, { params }),
+  updateInventory: (warehouseId: string, productId: string, data: any) => 
+    api.put(`/warehouses/${warehouseId}/inventory/${productId}`, data),
 };
 
 // Purchase Order API

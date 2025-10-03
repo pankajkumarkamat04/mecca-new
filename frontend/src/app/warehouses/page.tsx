@@ -973,6 +973,7 @@ const EditWarehouseForm: React.FC<{
   onCancel: () => void;
   availableUsers: any[];
 }> = ({ warehouse, mutation, onCancel, availableUsers }) => {
+  const queryClient = useQueryClient();
   const [formData, setFormData] = useState({
     name: warehouse.name,
     code: warehouse.code,
@@ -1056,6 +1057,8 @@ const EditWarehouseForm: React.FC<{
       await warehouseAPI.addEmployee(warehouse._id, { userId: selectedEmployeeId, position: 'warehouse_employee' });
       toast.success('Employee added to warehouse');
       setSelectedEmployeeId('');
+      // Invalidate queries to refresh the data
+      queryClient.invalidateQueries({ queryKey: ['warehouses'] });
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Failed to add employee');
     }
@@ -1104,6 +1107,8 @@ const EditWarehouseForm: React.FC<{
                         try {
                           await warehouseAPI.removeEmployee(warehouse._id, emp._id);
                           toast.success('Employee removed');
+                          // Invalidate queries to refresh the data
+                          queryClient.invalidateQueries({ queryKey: ['warehouses'] });
                         } catch (err: any) {
                           toast.error(err?.response?.data?.message || 'Failed to remove employee');
                         }

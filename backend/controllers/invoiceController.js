@@ -249,6 +249,42 @@ const updateInvoice = async (req, res) => {
       });
     }
 
+    // Update corresponding order payment status if order exists and status was changed
+    if (invoice.order && updateData.status) {
+      const Order = require('../models/Order');
+      const order = await Order.findById(invoice.order);
+      
+      if (order) {
+        // Map invoice status to order payment status
+        let orderPaymentStatus = order.paymentStatus;
+        switch (updateData.status) {
+          case 'pending':
+            orderPaymentStatus = 'pending';
+            break;
+          case 'partial':
+            orderPaymentStatus = 'partial';
+            break;
+          case 'paid':
+            orderPaymentStatus = 'paid';
+            break;
+          case 'refunded':
+            orderPaymentStatus = 'refunded';
+            break;
+          case 'cancelled':
+            orderPaymentStatus = 'cancelled';
+            break;
+          default:
+            orderPaymentStatus = 'pending';
+        }
+        
+        if (order.paymentStatus !== orderPaymentStatus) {
+          order.paymentStatus = orderPaymentStatus;
+          await order.save();
+          console.log(`Order ${order.orderNumber} payment status updated to ${orderPaymentStatus} for invoice ${invoice.invoiceNumber}`);
+        }
+      }
+    }
+
     res.json({
       success: true,
       message: 'Invoice updated successfully',
