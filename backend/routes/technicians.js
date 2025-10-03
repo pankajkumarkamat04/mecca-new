@@ -13,7 +13,8 @@ const {
   assignJob,
   completeJob,
   updatePerformance,
-  getTechnicianStats
+  getTechnicianStats,
+  getAvailableTechnicians
 } = require('../controllers/technicianController');
 const { auth } = require('../middleware/auth');
 
@@ -25,6 +26,16 @@ router.use(auth);
 // @access  Private
 router.get('/stats', getTechnicianStats);
 
+// @route   GET /api/technicians/available
+// @desc    Get available technicians for workshop jobs
+// @access  Private
+router.get('/available', getAvailableTechnicians);
+
+// @route   POST /api/technicians
+// @desc    Create new technician
+// @access  Private
+router.post('/', createTechnician);
+
 // @route   GET /api/technicians
 // @desc    Get all technicians
 // @access  Private
@@ -34,11 +45,6 @@ router.get('/', getTechnicians);
 // @desc    Get technician by ID
 // @access  Private
 router.get('/:id', getTechnicianById);
-
-// @route   POST /api/technicians
-// @desc    Create new technician
-// @access  Private
-router.post('/', createTechnician);
 
 // @route   PUT /api/technicians/:id
 // @desc    Update technician

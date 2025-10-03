@@ -195,7 +195,7 @@ const InvoiceReceipt: React.FC<InvoiceReceiptProps> = ({
           <div className="mt-2 space-y-1 text-sm">
             <div><span className="font-medium">Invoice #:</span> {invoice.invoiceNumber}</div>
             <div><span className="font-medium">Date:</span> {formatDate(invoice.invoiceDate)}</div>
-            <div><span className="font-medium">Status:</span> <span className={`font-medium ${invoice.status === 'paid' ? 'text-green-600' : 'text-yellow-600'}`}>{invoice.status.toUpperCase()}</span></div>
+            <div><span className="font-medium">Status:</span> <span className={`font-medium ${invoice.status === 'paid' ? 'text-green-600' : 'text-yellow-600'}`}>{(invoice.status || 'unknown').toUpperCase()}</span></div>
           </div>
         </div>
       </div>

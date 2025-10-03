@@ -212,6 +212,56 @@ const createOrder = async (req, res) => {
     const order = new Order(orderData);
     await order.save();
 
+    // Automatically create invoice for the order
+    let createdInvoice = null;
+    try {
+      const invoiceData = {
+        customer: orderData.customer,
+        customerName: orderData.customerName,
+        customerEmail: orderData.customerEmail,
+        customerPhone: orderData.customerPhone,
+        customerAddress: orderData.customerAddress,
+        items: orderData.items.map(item => ({
+          product: item.product,
+          name: item.name,
+          sku: item.sku,
+          description: item.description,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          discount: item.discount || 0,
+          taxRate: item.taxRate || 0,
+          total: item.total || (item.quantity * item.unitPrice * (1 - (item.discount || 0) / 100) * (1 + (item.taxRate || 0) / 100))
+        })),
+        subtotal: orderData.subtotal,
+        totalDiscount: orderData.totalDiscount,
+        totalTax: orderData.totalTax,
+        total: orderData.total,
+        invoiceDate: new Date(),
+        dueDate: orderData.expectedDeliveryDate ? new Date(orderData.expectedDeliveryDate) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        paymentMethod: orderData.paymentMethod,
+        shippingMethod: orderData.shippingMethod,
+        notes: orderData.notes,
+        internalNotes: orderData.internalNotes,
+        order: order._id,
+        type: 'sale',
+        status: 'pending',
+        createdBy: req.user._id
+      };
+
+      const invoice = new Invoice(invoiceData);
+      await invoice.save();
+      createdInvoice = invoice;
+
+      // Update order with invoice reference
+      order.invoice = invoice._id;
+      await order.save();
+
+      console.log(`Invoice ${invoice.invoiceNumber} created automatically for order ${order.orderNumber}`);
+    } catch (invoiceError) {
+      console.error('Failed to create automatic invoice:', invoiceError);
+      // Don't fail the order creation if invoice creation fails
+    }
+
     // Notify warehouse of new order
     const notificationResult = await notifyWarehouseOfNewOrder(order, orderData.source || 'direct');
     if (!notificationResult.success) {
@@ -223,12 +273,14 @@ const createOrder = async (req, res) => {
       .populate('createdBy', 'firstName lastName')
       .populate('warehouse', 'name code')
       .populate('assignedBy', 'firstName lastName')
-      .populate('items.product', 'name sku description');
+      .populate('items.product', 'name sku description')
+      .populate('invoice', 'invoiceNumber status total');
 
     res.status(201).json({
       success: true,
       data: populatedOrder,
-      inventoryStatus: inventoryStatus
+      inventoryStatus: inventoryStatus,
+      invoice: createdInvoice
     });
   } catch (error) {
     console.error('Create order error:', error);
@@ -432,12 +484,12 @@ const updatePaymentStatus = async (req, res) => {
   }
 };
 
-// @desc    Assign order to user
+// @desc    Assign order to warehouse
 // @route   PUT /api/orders/:id/assign
 // @access  Private
 const assignOrder = async (req, res) => {
   try {
-    const { assignedTo } = req.body;
+    const { assignedTo, warehouse } = req.body;
     const order = await Order.findById(req.params.id);
     
     if (!order) {
@@ -447,15 +499,26 @@ const assignOrder = async (req, res) => {
       });
     }
 
-    order.assignedTo = assignedTo;
+    // If warehouse is provided, assign to warehouse
+    if (warehouse) {
+      order.warehouse = warehouse;
+      order.assignedAt = new Date();
+      order.assignedBy = req.user._id;
+    } else if (assignedTo) {
+      // Legacy support for user assignment
+      order.assignedTo = assignedTo;
+    }
+    
     await order.save();
 
     const updatedOrder = await Order.findById(order._id)
-      .populate('assignedTo', 'firstName lastName');
+      .populate('assignedTo', 'firstName lastName')
+      .populate('warehouse', 'name code')
+      .populate('assignedBy', 'firstName lastName');
 
     res.json({
       success: true,
-      message: 'Order assigned successfully',
+      message: warehouse ? 'Order assigned to warehouse successfully' : 'Order assigned successfully',
       data: updatedOrder
     });
   } catch (error) {

@@ -252,7 +252,7 @@ const OverviewTab: React.FC<{
 
   if (isEditing) {
     return (
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Input
             label="Work Order Number"
@@ -282,11 +282,11 @@ const OverviewTab: React.FC<{
           <Button type="button" variant="outline" onClick={onCancelEdit}>
             Cancel
           </Button>
-          <Button type="submit" loading={loading}>
+          <Button type="button" onClick={handleSubmit} loading={loading}>
             Update
           </Button>
         </div>
-      </form>
+      </div>
     );
   }
 
@@ -403,7 +403,7 @@ const CostsTab: React.FC<{
 
   if (isEditing) {
     return (
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Input
             label="Estimated Cost"
@@ -438,11 +438,11 @@ const CostsTab: React.FC<{
           <Button type="button" variant="outline" onClick={onCancelEdit}>
             Cancel
           </Button>
-          <Button type="submit" loading={loading}>
+          <Button type="button" onClick={handleSubmit} loading={loading}>
             Update
           </Button>
         </div>
-      </form>
+      </div>
     );
   }
 
@@ -535,7 +535,7 @@ const QualityTab: React.FC<{
 
   if (isEditing) {
     return (
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="space-y-4">
         <div className="space-y-4">
           <div className="flex items-center">
             <input
@@ -584,11 +584,11 @@ const QualityTab: React.FC<{
           <Button type="button" variant="outline" onClick={onCancelEdit}>
             Cancel
           </Button>
-          <Button type="submit" loading={loading}>
+          <Button type="button" onClick={handleSubmit} loading={loading}>
             Update
           </Button>
         </div>
-      </form>
+      </div>
     );
   }
 
@@ -640,7 +640,7 @@ const WarrantyTab: React.FC<{
 
   if (isEditing) {
     return (
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="space-y-4">
         <Input
           label="Warranty Period (days)"
           type="number"
@@ -651,11 +651,11 @@ const WarrantyTab: React.FC<{
           <Button type="button" variant="outline" onClick={onCancelEdit}>
             Cancel
           </Button>
-          <Button type="submit" loading={loading}>
+          <Button type="button" onClick={handleSubmit} loading={loading}>
             Update
           </Button>
         </div>
-      </form>
+      </div>
     );
   }
 
@@ -702,7 +702,7 @@ const CommentsSection: React.FC<{
 
   return (
     <div className="space-y-4">
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="space-y-4">
         <Input
           label="Customer Name"
           value={customerName}
@@ -716,10 +716,10 @@ const CommentsSection: React.FC<{
           rows={3}
           required
         />
-        <Button type="submit" loading={loading}>
+        <Button type="button" onClick={handleSubmit} loading={loading}>
           Add Comment
         </Button>
-      </form>
+      </div>
 
       <div className="space-y-3">
         <h3 className="text-lg font-medium text-gray-900">Comments</h3>

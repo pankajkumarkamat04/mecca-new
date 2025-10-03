@@ -366,9 +366,6 @@ const SuppliersPage: React.FC = () => {
               notes: '',
               isActive: true,
             }}
-            onSubmit={async (values) => {
-              await createSupplierMutation.mutateAsync(values);
-            }}
             loading={createSupplierMutation.isPending}
           >{(methods) => (
             <div className="space-y-6">
@@ -465,6 +462,15 @@ const SuppliersPage: React.FC = () => {
 
               <FormActions
                 onCancel={() => setIsCreateModalOpen(false)}
+                onSubmit={async () => {
+                  const isValid = await methods.trigger();
+                  if (isValid) {
+                    const values = methods.getValues();
+                    await createSupplierMutation.mutateAsync(values);
+                  } else {
+                    toast.error('Please fill in all required fields');
+                  }
+                }}
                 submitText={createSupplierMutation.isPending ? 'Creating...' : 'Create Supplier'}
                 loading={createSupplierMutation.isPending}
               />
@@ -509,9 +515,6 @@ const SuppliersPage: React.FC = () => {
                 rating: (selectedSupplier as any).rating || 5,
                 notes: (selectedSupplier as any).notes || '',
                 isActive: typeof (selectedSupplier as any).isActive === 'boolean' ? (selectedSupplier as any).isActive : (selectedSupplier as any).status === 'active',
-              }}
-              onSubmit={async (values) => {
-                await updateSupplierMutation.mutateAsync({ id: (selectedSupplier as any)._id, data: values });
               }}
               loading={updateSupplierMutation.isPending}
             >{(methods) => (
@@ -609,6 +612,15 @@ const SuppliersPage: React.FC = () => {
 
                 <FormActions
                   onCancel={() => setIsEditModalOpen(false)}
+                  onSubmit={async () => {
+                    const isValid = await methods.trigger();
+                    if (isValid) {
+                      const values = methods.getValues();
+                      await updateSupplierMutation.mutateAsync({ id: (selectedSupplier as any)._id, data: values });
+                    } else {
+                      toast.error('Please fill in all required fields');
+                    }
+                  }}
                   submitText={updateSupplierMutation.isPending ? 'Saving...' : 'Save Changes'}
                   loading={updateSupplierMutation.isPending}
                 />

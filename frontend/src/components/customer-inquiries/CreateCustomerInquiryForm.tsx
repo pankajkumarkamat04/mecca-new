@@ -141,7 +141,7 @@ const CreateCustomerInquiryForm: React.FC<CreateCustomerInquiryFormProps> = ({
   };
 
   return (
-    <Form schema={inquirySchema} onSubmit={handleSubmit} defaultValues={defaultValues}>
+    <Form schema={inquirySchema} defaultValues={defaultValues}>
       {(methods) => (
         <div className="space-y-6">
           <FormSection title="Inquiry Details">
@@ -321,6 +321,16 @@ const CreateCustomerInquiryForm: React.FC<CreateCustomerInquiryFormProps> = ({
 
           <FormActions
             onCancel={onClose}
+            onSubmit={() => {
+              methods.trigger().then((isValid) => {
+                if (isValid) {
+                  const formData = methods.getValues();
+                  handleSubmit(formData);
+                } else {
+                  toast.error('Please fill in all required fields');
+                }
+              });
+            }}
             submitText={initialData ? 'Update Inquiry' : 'Create Inquiry'}
             loading={createMutation.isPending || updateMutation.isPending}
           />

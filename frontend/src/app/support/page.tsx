@@ -662,7 +662,7 @@ const CreateTicketForm: React.FC<{ onClose: () => void; onSuccess: () => void }>
   }));
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -817,13 +817,14 @@ const CreateTicketForm: React.FC<{ onClose: () => void; onSuccess: () => void }>
           Cancel
         </Button>
         <Button
-          type="submit"
+          type="button"
+          onClick={handleSubmit}
           disabled={createTicketMutation.isPending}
         >
           {createTicketMutation.isPending ? 'Creating...' : 'Create Ticket'}
         </Button>
       </div>
-    </form>
+    </div>
   );
 };
 
@@ -868,9 +869,6 @@ const SupportReplyForm: React.FC<{
         message: '',
         isInternal: false
       }}
-      onSubmit={async (values) => {
-        await replyToTicketMutation.mutateAsync(values);
-      }}
       loading={replyToTicketMutation.isPending}
     >{(methods) => (
       <div className="space-y-6">
@@ -911,6 +909,15 @@ const SupportReplyForm: React.FC<{
 
         <FormActions
           onCancel={onSuccess}
+          onSubmit={async () => {
+            const isValid = await methods.trigger();
+            if (isValid) {
+              const values = methods.getValues();
+              await replyToTicketMutation.mutateAsync(values);
+            } else {
+              toast.error('Please fill in all required fields');
+            }
+          }}
           submitText={replyToTicketMutation.isPending ? 'Sending...' : 'Send Reply'}
           loading={replyToTicketMutation.isPending}
         />

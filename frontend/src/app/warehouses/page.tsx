@@ -685,7 +685,7 @@ const CreateWarehouseForm: React.FC<{
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <div className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -906,11 +906,11 @@ const CreateWarehouseForm: React.FC<{
         <Button type="button" variant="secondary" onClick={onCancel}>
           Cancel
         </Button>
-        <Button type="submit" disabled={mutation.isPending}>
+        <Button type="button" onClick={handleSubmit} disabled={mutation.isPending}>
           {mutation.isPending ? 'Creating...' : 'Create Warehouse'}
         </Button>
       </div>
-    </form>
+    </div>
   );
 };
 
@@ -1062,7 +1062,7 @@ const EditWarehouseForm: React.FC<{
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <div className="space-y-4">
       {/* Manager and Employees Section */}
       <div className="border-t pt-6">
         <h3 className="text-lg font-medium text-gray-900 mb-4">Staff</h3>
@@ -1357,11 +1357,11 @@ const EditWarehouseForm: React.FC<{
         <Button type="button" variant="secondary" onClick={onCancel}>
           Cancel
         </Button>
-        <Button type="submit" disabled={mutation.isPending}>
+        <Button type="button" onClick={handleSubmit} disabled={mutation.isPending}>
           {mutation.isPending ? 'Updating...' : 'Update Warehouse'}
         </Button>
       </div>
-    </form>
+    </div>
   );
 };
 

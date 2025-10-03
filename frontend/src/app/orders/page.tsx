@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import Layout from '@/components/layout/Layout';
 import { Order, OrderPayment } from '@/types';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ordersAPI, customersAPI, productsAPI, usersAPI } from '@/lib/api';
+import { ordersAPI, customersAPI, productsAPI, usersAPI, warehouseAPI } from '@/lib/api';
 import { formatDate, formatCurrency, getStatusColor } from '@/lib/utils';
 import { calculatePrice } from '@/lib/priceCalculator';
 import PriceSummary from '@/components/ui/PriceSummary';
@@ -77,6 +77,12 @@ const OrdersPage: React.FC = () => {
     queryFn: () => usersAPI.getUsers({ page: 1, limit: 100 })
   });
 
+  // Fetch warehouses for assign modal
+  const { data: warehousesData } = useQuery({
+    queryKey: ['warehouses-for-assignment'],
+    queryFn: () => warehouseAPI.getWarehouses({ page: 1, limit: 100 })
+  });
+
   // Create order mutation
   const createOrderMutation = useMutation({
     mutationFn: (orderData: Partial<Order>) => ordersAPI.createOrder(orderData),
@@ -145,8 +151,8 @@ const OrdersPage: React.FC = () => {
 
   // Assign order mutation
   const assignOrderMutation = useMutation({
-    mutationFn: ({ id, assignedTo }: { id: string; assignedTo: string }) => 
-      ordersAPI.assignOrder(id, assignedTo),
+    mutationFn: ({ id, assignedTo, warehouse }: { id: string; assignedTo?: string; warehouse?: string }) => 
+      ordersAPI.assignOrder(id, assignedTo, warehouse),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['orders'] });
       setShowAssignModal(false);
@@ -188,9 +194,9 @@ const OrdersPage: React.FC = () => {
     }
   };
 
-  const handleAssign = (assignedTo: string) => {
+  const handleAssign = (warehouseId: string) => {
     if (selectedOrder) {
-      assignOrderMutation.mutate({ id: selectedOrder._id, assignedTo });
+      assignOrderMutation.mutate({ id: selectedOrder._id, warehouse: warehouseId });
     }
   };
 
@@ -232,7 +238,7 @@ const OrdersPage: React.FC = () => {
 
     return (
       <span className={`px-2 py-1 text-xs font-medium rounded-full ${colorClass}`}>
-        {status.charAt(0).toUpperCase() + status.slice(1).replace('_', ' ')}
+        {(status || 'unknown').charAt(0).toUpperCase() + (status || 'unknown').slice(1).replace('_', ' ')}
       </span>
     );
   };
@@ -247,7 +253,7 @@ const OrdersPage: React.FC = () => {
 
     return (
       <span className={`px-2 py-1 text-xs font-medium rounded-full ${priorityColors[priority as keyof typeof priorityColors] || 'bg-gray-100 text-gray-800'}`}>
-        {priority.charAt(0).toUpperCase() + priority.slice(1)}
+        {(priority || 'unknown').charAt(0).toUpperCase() + (priority || 'unknown').slice(1)}
       </span>
     );
   };
@@ -314,6 +320,28 @@ const OrdersPage: React.FC = () => {
       render: (row: any) => getPriorityBadge(row.priority),
     },
     {
+      key: 'invoice',
+      label: 'Invoice',
+      render: (row: any) => (
+        row.invoice ? (
+          <span className="font-medium text-green-600">{row.invoice.invoiceNumber}</span>
+        ) : (
+          <span className="text-gray-400">Not created</span>
+        )
+      ),
+    },
+    {
+      key: 'warehouse',
+      label: 'Warehouse',
+      render: (row: any) => (
+        row.warehouse ? (
+          <span className="font-medium text-blue-600">{row.warehouse.name}</span>
+        ) : (
+          <span className="text-gray-400">Not assigned</span>
+        )
+      ),
+    },
+    {
       key: 'actions',
       label: 'Actions',
       render: (row: any) => (
@@ -329,61 +357,27 @@ const OrdersPage: React.FC = () => {
             <EyeIcon className="h-4 w-4" />
           </button>
           {['pending', 'confirmed'].includes(row.orderStatus) && (
-            <>
-              <button
-                onClick={() => {
-                  setSelectedOrder(row);
-                  setShowCreateModal(true);
-                }}
-                className="text-green-600 hover:text-green-800"
-                title="Edit"
-              >
-                <PencilIcon className="h-4 w-4" />
-              </button>
-              <button
-                onClick={() => {
-                  setSelectedOrder(row);
-                  setShowStatusModal(true);
-                }}
-                className="text-purple-600 hover:text-purple-800"
-                title="Update Status"
-              >
-                <CheckCircleIcon className="h-4 w-4" />
-              </button>
-            </>
+            <button
+              onClick={() => {
+                setSelectedOrder(row);
+                setShowCreateModal(true);
+              }}
+              className="text-green-600 hover:text-green-800"
+              title="Edit"
+            >
+              <PencilIcon className="h-4 w-4" />
+            </button>
           )}
-          <button
-            onClick={() => {
-              setSelectedOrder(row);
-              setShowPaymentModal(true);
-            }}
-            className="text-yellow-600 hover:text-yellow-800"
-            title="Update Payment"
-          >
-            <ClockIcon className="h-4 w-4" />
-          </button>
           <button
             onClick={() => {
               setSelectedOrder(row);
               setShowAssignModal(true);
             }}
             className="text-indigo-600 hover:text-indigo-800"
-            title="Assign"
+            title="Assign to Warehouse"
           >
             <UserIcon className="h-4 w-4" />
           </button>
-          {!row.invoice && ['confirmed', 'processing'].includes(row.orderStatus) && (
-            <button
-              onClick={() => {
-                setSelectedOrder(row);
-                setShowConvertModal(true);
-              }}
-              className="text-purple-600 hover:text-purple-800"
-              title="Convert to Invoice"
-            >
-              <ArrowPathIcon className="h-4 w-4" />
-            </button>
-          )}
           {['pending', 'confirmed'].includes(row.orderStatus) && (
             <button
               onClick={() => handleDelete(row._id)}
@@ -696,13 +690,13 @@ const OrdersPage: React.FC = () => {
         <Modal
           isOpen={showAssignModal}
           onClose={() => setShowAssignModal(false)}
-          title="Assign Order"
+          title="Assign Order to Warehouse"
           size="md"
         >
           {selectedOrder && (
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Assign To</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Assign To Warehouse</label>
                 <Select
                   value=""
                   onChange={(e) => {
@@ -711,10 +705,10 @@ const OrdersPage: React.FC = () => {
                     }
                   }}
                   options={[
-                    { value: '', label: 'Select User' },
-                    ...(usersData?.data?.map((user: any) => ({
-                      value: user._id,
-                      label: `${user.firstName} ${user.lastName}`
+                    { value: '', label: 'Select Warehouse' },
+                    ...(warehousesData?.data?.map((warehouse: any) => ({
+                      value: warehouse._id,
+                      label: `${warehouse.name} (${warehouse.code})`
                     })) || [])
                   ]}
                 />

@@ -195,10 +195,10 @@ const StockAlertsPage: React.FC = () => {
       render: (row: StockAlert) => (
         <div className="flex flex-col space-y-1">
           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getAlertTypeColor(row.alertType)}`}>
-            {row.alertType.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+            {(row.alertType || 'unknown').replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
           </span>
           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getSeverityColor(row.severity)}`}>
-            {row.severity.charAt(0).toUpperCase() + row.severity.slice(1)}
+            {(row.severity || 'unknown').charAt(0).toUpperCase() + (row.severity || 'unknown').slice(1)}
           </span>
         </div>
       ),
@@ -534,11 +534,11 @@ const ViewAlertDetails: React.FC<{ alert: StockAlert }> = ({ alert }) => {
             </div>
             <div>
               <dt className="text-sm font-medium text-gray-500">Alert Type</dt>
-              <dd className="text-sm text-gray-900">{alert.alertType.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}</dd>
+              <dd className="text-sm text-gray-900">{(alert.alertType || 'unknown').replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}</dd>
             </div>
             <div>
               <dt className="text-sm font-medium text-gray-500">Severity</dt>
-              <dd className="text-sm text-gray-900">{alert.severity.charAt(0).toUpperCase() + alert.severity.slice(1)}</dd>
+              <dd className="text-sm text-gray-900">{(alert.severity || 'unknown').charAt(0).toUpperCase() + (alert.severity || 'unknown').slice(1)}</dd>
             </div>
             <div>
               <dt className="text-sm font-medium text-gray-500">Current Stock</dt>
@@ -618,7 +618,7 @@ const ResolveAlertForm: React.FC<{
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <div className="space-y-4">
       <div>
         <h3 className="text-lg font-medium text-gray-900 mb-2">Alert Details</h3>
         <div className="bg-gray-50 p-4 rounded-lg">
@@ -645,11 +645,11 @@ const ResolveAlertForm: React.FC<{
         <Button type="button" variant="secondary" onClick={onCancel}>
           Cancel
         </Button>
-        <Button type="submit" disabled={resolveAlertMutation.isPending}>
+        <Button type="button" onClick={handleSubmit} disabled={resolveAlertMutation.isPending}>
           {resolveAlertMutation.isPending ? 'Resolving...' : 'Resolve Alert'}
         </Button>
       </div>
-    </form>
+    </div>
   );
 };
 

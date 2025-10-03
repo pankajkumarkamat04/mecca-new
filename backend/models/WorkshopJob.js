@@ -175,6 +175,15 @@ const workshopJobSchema = new mongoose.Schema({
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   lastUpdatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   progress: { type: Number, default: 0, min: 0, max: 100 },
+  // Track detailed progress events for visualization and auditing
+  progressHistory: [{
+    progress: { type: Number, min: 0, max: 100, required: true },
+    status: { type: String, enum: ['draft', 'scheduled', 'in_progress', 'on_hold', 'completed', 'cancelled'] },
+    step: { type: String, trim: true }, // e.g., 'assessment', 'resource_assignment', 'work_started', 'quality_check', 'completion'
+    message: { type: String, trim: true },
+    updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    updatedAt: { type: Date, default: Date.now }
+  }],
   isActive: { type: Boolean, default: true },
   links: {
     customerPortalUrl: { type: String, trim: true },
@@ -302,11 +311,11 @@ workshopJobSchema.virtual('isOverdue').get(function() {
 });
 
 workshopJobSchema.virtual('totalEstimatedDuration').get(function() {
-  return this.tasks.reduce((total, task) => total + (task.estimatedDuration || 0), 0);
+  return (this.tasks || []).reduce((total, task) => total + (task.estimatedDuration || 0), 0);
 });
 
 workshopJobSchema.virtual('totalActualDuration').get(function() {
-  return this.tasks.reduce((total, task) => total + (task.actualDuration || 0), 0);
+  return (this.tasks || []).reduce((total, task) => total + (task.actualDuration || 0), 0);
 });
 
 workshopJobSchema.virtual('completionPercentage').get(function() {
@@ -316,7 +325,7 @@ workshopJobSchema.virtual('completionPercentage').get(function() {
 });
 
 workshopJobSchema.virtual('assignedTechnicianNames').get(function() {
-  return this.resources.assignedTechnicians.map(t => t.name).join(', ');
+  return (this.resources?.assignedTechnicians || []).map(t => t.name).join(', ');
 });
 
 // Instance methods
@@ -329,6 +338,13 @@ workshopJobSchema.methods.generateJobCardNumber = async function() {
 };
 
 workshopJobSchema.methods.assignTechnician = function(userId, userName, role = 'technician', assignedBy) {
+  if (!this.resources) {
+    this.resources = { assignedTechnicians: [], requiredMachines: [], requiredTools: [] };
+  }
+  if (!this.resources.assignedTechnicians) {
+    this.resources.assignedTechnicians = [];
+  }
+  
   const existing = this.resources.assignedTechnicians.find(t => t.user.toString() === userId.toString());
   if (!existing) {
     this.resources.assignedTechnicians.push({
@@ -342,9 +358,11 @@ workshopJobSchema.methods.assignTechnician = function(userId, userName, role = '
 };
 
 workshopJobSchema.methods.removeTechnician = function(userId) {
-  this.resources.assignedTechnicians = this.resources.assignedTechnicians.filter(
-    t => t.user.toString() !== userId.toString()
-  );
+  if (this.resources?.assignedTechnicians) {
+    this.resources.assignedTechnicians = this.resources.assignedTechnicians.filter(
+      t => t.user.toString() !== userId.toString()
+    );
+  }
 };
 
 workshopJobSchema.methods.updateProgress = function() {
@@ -382,7 +400,13 @@ workshopJobSchema.methods.checkPartsAvailability = async function() {
 
 // Enhanced job card management methods
 workshopJobSchema.methods.updateJobCardVersion = function(changes, userId) {
+  if (!this.jobCard) {
+    this.jobCard = { version: 0, history: [] };
+  }
   this.jobCard.version += 1;
+  if (!this.jobCard.history) {
+    this.jobCard.history = [];
+  }
   this.jobCard.history.push({
     version: this.jobCard.version,
     changes: changes,
@@ -393,6 +417,12 @@ workshopJobSchema.methods.updateJobCardVersion = function(changes, userId) {
 };
 
 workshopJobSchema.methods.addCustomerComment = function(comment, customerName) {
+  if (!this.customerPortal) {
+    this.customerPortal = { customerComments: [], statusUpdates: [] };
+  }
+  if (!this.customerPortal.customerComments) {
+    this.customerPortal.customerComments = [];
+  }
   this.customerPortal.customerComments.push({
     comment: comment,
     commentedBy: customerName,
@@ -402,6 +432,12 @@ workshopJobSchema.methods.addCustomerComment = function(comment, customerName) {
 };
 
 workshopJobSchema.methods.addStatusUpdate = function(status, message, userId, notifyCustomer = true) {
+  if (!this.customerPortal) {
+    this.customerPortal = { customerComments: [], statusUpdates: [] };
+  }
+  if (!this.customerPortal.statusUpdates) {
+    this.customerPortal.statusUpdates = [];
+  }
   this.customerPortal.statusUpdates.push({
     status: status,
     message: message,
@@ -446,39 +482,43 @@ workshopJobSchema.methods.checkResourceConflicts = async function() {
   const conflicts = [];
   
   // Check technician conflicts
-  for (const tech of this.resources.assignedTechnicians) {
-    const existingJobs = await this.constructor.find({
-      _id: { $ne: this._id },
-      'resources.assignedTechnicians.user': tech.user,
-      status: { $in: ['scheduled', 'in_progress'] },
-      'scheduled.start': { $lt: this.scheduled.end },
-      'scheduled.end': { $gt: this.scheduled.start }
-    });
-    
-    if (existingJobs.length > 0) {
-      conflicts.push({
-        resourceId: tech.user,
-        resourceType: 'technician',
-        conflictReason: 'Technician already assigned to another job',
-        suggestedTime: null,
-        resolved: false
+  if (this.resources?.assignedTechnicians) {
+    for (const tech of this.resources.assignedTechnicians) {
+      const existingJobs = await this.constructor.find({
+        _id: { $ne: this._id },
+        'resources.assignedTechnicians.user': tech.user,
+        status: { $in: ['scheduled', 'in_progress'] },
+        'scheduled.start': { $lt: this.scheduled.end },
+        'scheduled.end': { $gt: this.scheduled.start }
       });
+      
+      if (existingJobs.length > 0) {
+        conflicts.push({
+          resourceId: tech.user,
+          resourceType: 'technician',
+          conflictReason: 'Technician already assigned to another job',
+          suggestedTime: null,
+          resolved: false
+        });
+      }
     }
   }
   
   // Check machine conflicts
-  for (const machine of this.resources.requiredMachines) {
-    const Machine = require('./Machine');
-    const machineDoc = await Machine.findById(machine.machineId);
-    
-    if (machineDoc && !machineDoc.availability.isAvailable) {
-      conflicts.push({
-        resourceId: machine.machineId,
-        resourceType: 'machine',
-        conflictReason: 'Machine is not available',
-        suggestedTime: machineDoc.availability.availableFrom,
-        resolved: false
-      });
+  if (this.resources?.requiredMachines) {
+    for (const machine of this.resources.requiredMachines) {
+      const Machine = require('./Machine');
+      const machineDoc = await Machine.findById(machine.machineId);
+      
+      if (machineDoc && !machineDoc.availability.isAvailable) {
+        conflicts.push({
+          resourceId: machine.machineId,
+          resourceType: 'machine',
+          conflictReason: 'Machine is not available',
+          suggestedTime: machineDoc.availability.availableFrom,
+          resolved: false
+        });
+      }
     }
   }
   
@@ -496,6 +536,16 @@ workshopJobSchema.methods.generateWorkOrderNumber = async function() {
 
 // Pre-save middleware
 workshopJobSchema.pre('save', async function(next) {
+  // Initialize jobCard if not exists
+  if (!this.jobCard) {
+    this.jobCard = { version: 0, history: [] };
+  }
+  
+  // Initialize customerPortal if not exists
+  if (!this.customerPortal) {
+    this.customerPortal = { customerComments: [], statusUpdates: [] };
+  }
+  
   // Generate job card number if not exists
   if (!this.jobCard.cardNumber && this.status !== 'draft') {
     this.jobCard.cardNumber = await this.generateJobCardNumber();
@@ -534,5 +584,3 @@ workshopJobSchema.pre('save', async function(next) {
 });
 
 module.exports = mongoose.model('WorkshopJob', workshopJobSchema);
-
-

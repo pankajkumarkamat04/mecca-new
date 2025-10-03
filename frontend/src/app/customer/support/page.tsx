@@ -194,7 +194,7 @@ const CustomerSupportPage: React.FC = () => {
           'bg-gray-100 text-gray-800'
         }`}>
           {getPriorityIcon(row.priority)}
-          <span className="ml-1">{row.priority.charAt(0).toUpperCase() + row.priority.slice(1)}</span>
+          <span className="ml-1">{(row.priority || 'unknown').charAt(0).toUpperCase() + (row.priority || 'unknown').slice(1)}</span>
         </span>
       ),
     },
@@ -211,7 +211,7 @@ const CustomerSupportPage: React.FC = () => {
           'bg-gray-100 text-gray-800'
         }`}>
           {getStatusIcon(row.status)}
-          <span className="ml-1">{row.status.charAt(0).toUpperCase() + row.status.slice(1).replace('_', ' ')}</span>
+          <span className="ml-1">{(row.status || 'unknown').charAt(0).toUpperCase() + (row.status || 'unknown').slice(1).replace('_', ' ')}</span>
         </span>
       ),
     },

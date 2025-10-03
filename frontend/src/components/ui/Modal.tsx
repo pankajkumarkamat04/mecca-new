@@ -30,7 +30,7 @@ const Modal: React.FC<ModalProps> = ({
     md: 'max-w-lg',
     lg: 'max-w-2xl',
     xl: 'max-w-4xl',
-    full: 'max-w-[95vw] h-[95vh] mx-auto my-4 rounded-lg',
+    full: 'max-w-[90vw] h-[90vh] mx-auto my-4 p-2 rounded-lg',
   };
 
   // Handle escape key
@@ -69,7 +69,8 @@ const Modal: React.FC<ModalProps> = ({
         {/* Modal panel */}
         <div
           className={cn(
-            'relative transform overflow-hidden bg-white text-left shadow-xl transition-all w-full',
+            'relative transform bg-white text-left shadow-xl transition-all w-full',
+            size === 'full' ? 'flex flex-col overflow-hidden' : 'overflow-hidden',
             sizeClasses[size]
           )}
         >
@@ -103,7 +104,9 @@ const Modal: React.FC<ModalProps> = ({
 
           {/* Content */}
           <div className={cn(
-            size === 'full' ? 'h-full flex flex-col' : 'px-4 pb-4 sm:px-6 sm:pb-6'
+            size === 'full' 
+              ? 'flex-1 overflow-y-auto px-6 py-4' 
+              : 'px-4 pb-4 sm:px-6 sm:pb-6'
           )}>
             {children}
           </div>

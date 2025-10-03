@@ -316,7 +316,7 @@ const ReportsPage: React.FC = () => {
         <Modal
           isOpen={isReportModalOpen}
           onClose={() => setIsReportModalOpen(false)}
-          title={`Generate ${selectedReport.charAt(0).toUpperCase() + selectedReport.slice(1)} Report`}
+          title={`Generate ${(selectedReport || 'unknown').charAt(0).toUpperCase() + (selectedReport || 'unknown').slice(1)} Report`}
           size="lg"
         >
           <div className="space-y-6">

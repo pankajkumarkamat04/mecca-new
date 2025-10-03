@@ -373,12 +373,12 @@ const InvoicesPage: React.FC = () => {
             <EyeIcon className="h-4 w-4" />
           </button>
           <div className="relative group">
-            <button
-              className="text-gray-600 hover:text-gray-900"
+          <button
+            className="text-gray-600 hover:text-gray-900"
               title="Print Options"
-            >
-              <PrinterIcon className="h-4 w-4" />
-            </button>
+          >
+            <PrinterIcon className="h-4 w-4" />
+          </button>
             <div className="absolute right-0 top-6 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
               <button
                 onClick={() => handleShowReceipt(row, 'short')}
@@ -524,14 +524,6 @@ const InvoicesPage: React.FC = () => {
               items: [{ product: '', quantity: 1, unitPrice: 0 }],
               notes: '',
             }}
-            onSubmit={async (values) => {
-              const payload: any = { ...values };
-              if (!payload.dueDate) delete payload.dueDate;
-              if (!payload.notes) delete payload.notes;
-              // customerPhone is now required, so we don't delete it
-              // Compute totals on backend; only send raw fields
-              await createInvoiceMutation.mutateAsync(payload);
-            }}
             loading={createInvoiceMutation.isPending}
           >{(methods) => (
             <div className="space-y-6">
@@ -602,7 +594,7 @@ const InvoicesPage: React.FC = () => {
                         <Input type="number" step="0.01" {...methods.register(`items.${idx}.unitPrice` as const)} fullWidth />
                       </FormField>
                       <FormField label="Tax %" error={(methods.formState.errors.items as any)?.[idx]?.taxRate?.message as string}>
-                        <Input type="number" step="0.1" {...methods.register(`items.${idx}.taxRate` as const)} fullWidth />
+                        <Input type="number" step="0.01" {...methods.register(`items.${idx}.taxRate` as const)} fullWidth />
                       </FormField>
                       <div className="flex items-end">
                         <Button
@@ -651,10 +643,10 @@ const InvoicesPage: React.FC = () => {
                           taxRate: item.taxRate || 0
                         }
                       } : undefined,
-                      quantity: item.quantity || 1,
-                      unitPrice: item.unitPrice || 0,
-                      discount: 0,
-                      taxRate: item.taxRate || 0
+                    quantity: item.quantity || 1,
+                    unitPrice: item.unitPrice || 0,
+                    discount: 0,
+                    taxRate: item.taxRate || 0
                     };
                   }).filter(item => item.product);
                   
@@ -672,6 +664,20 @@ const InvoicesPage: React.FC = () => {
 
               <FormActions
                 onCancel={() => setIsCreateModalOpen(false)}
+                onSubmit={async () => {
+                  const isValid = await methods.trigger();
+                  if (isValid) {
+                    const values = methods.getValues();
+                    const payload: any = { ...values };
+                    if (!payload.dueDate) delete payload.dueDate;
+                    if (!payload.notes) delete payload.notes;
+                    // customerPhone is now required, so we don't delete it
+                    // Compute totals on backend; only send raw fields
+                    await createInvoiceMutation.mutateAsync(payload);
+                  } else {
+                    toast.error('Please fill in all required fields');
+                  }
+                }}
                 submitText={createInvoiceMutation.isPending ? 'Creating...' : 'Create Invoice'}
                 loading={createInvoiceMutation.isPending}
               />
@@ -947,11 +953,11 @@ const InvoicesPage: React.FC = () => {
                 )}
 
                 <div className="flex justify-end space-x-3">
-                  <Button
-                    variant="outline"
+                <Button
+                  variant="outline"
                     onClick={() => handleShowReceipt(selectedInvoice, 'short')}
-                    leftIcon={<PrinterIcon className="h-4 w-4" />}
-                  >
+                  leftIcon={<PrinterIcon className="h-4 w-4" />}
+                >
                     Print Short Receipt
                   </Button>
                   <Button
@@ -960,19 +966,19 @@ const InvoicesPage: React.FC = () => {
                     leftIcon={<ArrowDownTrayIcon className="h-4 w-4" />}
                   >
                     Print Full Invoice
-                  </Button>
-                  <Button
-                    onClick={() => handleGenerateQR(selectedInvoice)}
-                    leftIcon={<QrCodeIcon className="h-4 w-4" />}
-                  >
-                    Generate QR
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => setIsViewModalOpen(false)}
-                  >
-                    Close
-                  </Button>
+                </Button>
+                <Button
+                  onClick={() => handleGenerateQR(selectedInvoice)}
+                  leftIcon={<QrCodeIcon className="h-4 w-4" />}
+                >
+                  Generate QR
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setIsViewModalOpen(false)}
+                >
+                  Close
+                </Button>
                 </div>
               </div>
             </div>

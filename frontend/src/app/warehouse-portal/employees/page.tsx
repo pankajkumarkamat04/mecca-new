@@ -370,11 +370,6 @@ const CreateUserForm: React.FC<{
         password: '', 
         phone: '' 
       }}
-      onSubmit={async (values) => {
-        const payload = { ...values } as any;
-        if (!payload.phone) delete payload.phone;
-        await mutation.mutateAsync(payload);
-      }}
       loading={mutation.isPending}
     >{(methods) => (
       <div className="space-y-6">
@@ -407,6 +402,17 @@ const CreateUserForm: React.FC<{
 
         <FormActions
           onCancel={onSuccess}
+          onSubmit={async () => {
+            const isValid = await methods.trigger();
+            if (isValid) {
+              const values = methods.getValues();
+              const payload = { ...values } as any;
+              if (!payload.phone) delete payload.phone;
+              await mutation.mutateAsync(payload);
+            } else {
+              toast.error('Please fill in all required fields');
+            }
+          }}
           submitText={mutation.isPending ? 'Creating...' : 'Create User'}
           loading={mutation.isPending}
         />

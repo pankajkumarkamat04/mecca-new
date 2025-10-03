@@ -14,6 +14,7 @@ const {
   addTask,
   updateTaskStatus,
   bookMachine,
+  releaseMachine,
   bookWorkStation,
   assignTool,
   checkPartsAvailability,
@@ -26,13 +27,26 @@ const {
   addStatusUpdate,
   checkResourceConflicts,
   getJobAnalytics,
-  getWorkshopDashboard
+  getWorkshopDashboard,
+  getAvailableTechnicians,
+  returnTool,
+  getAvailableTools,
+  getAvailableMachines,
+  updateJobResources,
+  updateJobTask,
+  getJobVisualization
 } = require('../controllers/workshopController');
 
 const router = express.Router();
 
 // Statistics and customer portal (must come before /:id routes)
 router.get('/stats', auth, getJobStats);
+router.put('/:id/update-resources', auth, checkPermission('workshop', 'update'), updateJobResources);
+router.put('/:id/update-task', auth, checkPermission('workshop', 'update'), updateJobTask);
+router.get('/available-technicians', auth, getAvailableTechnicians);
+router.get('/available-tools', auth, getAvailableTools);
+router.get('/available-machines', auth, getAvailableMachines);
+router.get('/:id/visualization', auth, getJobVisualization);
 router.get('/customer/:customerId', auth, getCustomerJobs);
 
 // Basic CRUD operations
@@ -49,8 +63,10 @@ router.put('/:id/cancel', auth, checkPermission('workshop', 'update'), cancelJob
 router.put('/:id/assign-technician', auth, checkPermission('workshop', 'update'), assignTechnician);
 router.put('/:id/remove-technician', auth, checkPermission('workshop', 'update'), removeTechnician);
 router.post('/:id/book-machine', auth, checkPermission('workshop', 'update'), bookMachine);
+router.post('/:id/release-machine', auth, checkPermission('workshop', 'update'), releaseMachine);
 router.post('/:id/book-workstation', auth, checkPermission('workshop', 'update'), bookWorkStation);
 router.post('/:id/assign-tool', auth, checkPermission('workshop', 'update'), assignTool);
+router.post('/:id/return-tool', auth, checkPermission('workshop', 'update'), returnTool);
 
 // Task management
 router.post('/:id/tasks', auth, checkPermission('workshop', 'update'), addTask);

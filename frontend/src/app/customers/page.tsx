@@ -285,11 +285,6 @@ const CustomersPage: React.FC = () => {
           <Form
             schema={customerSchema}
             defaultValues={{ firstName: '', lastName: '', email: '', phone: '', type: 'individual', isActive: true }}
-            onSubmit={async (values) => {
-              const payload = { ...values } as any;
-              if (!payload.phone) delete payload.phone;
-              await createCustomerMutation.mutateAsync(payload);
-            }}
             loading={createCustomerMutation.isPending}
           >{(methods) => (
             <div className="space-y-6">
@@ -320,6 +315,17 @@ const CustomersPage: React.FC = () => {
 
               <FormActions
                 onCancel={() => setIsCreateModalOpen(false)}
+                onSubmit={async () => {
+                  const isValid = await methods.trigger();
+                  if (isValid) {
+                    const values = methods.getValues();
+                    const payload = { ...values } as any;
+                    if (!payload.phone) delete payload.phone;
+                    await createCustomerMutation.mutateAsync(payload);
+                  } else {
+                    toast.error('Please fill in all required fields');
+                  }
+                }}
                 submitText={createCustomerMutation.isPending ? 'Creating...' : 'Create Customer'}
                 loading={createCustomerMutation.isPending}
               />
@@ -473,11 +479,6 @@ const CustomerEditForm: React.FC<{
         type: customer.type || 'individual',
         isActive: customer.isActive ?? true
       }}
-      onSubmit={async (values) => {
-        const payload = { ...values } as any;
-        if (!payload.phone) delete payload.phone;
-        await updateCustomerMutation.mutateAsync(payload);
-      }}
       loading={updateCustomerMutation.isPending}
     >{(methods) => (
       <div className="space-y-6">
@@ -526,6 +527,17 @@ const CustomerEditForm: React.FC<{
 
         <FormActions
           onCancel={onSuccess}
+          onSubmit={async () => {
+            const isValid = await methods.trigger();
+            if (isValid) {
+              const values = methods.getValues();
+              const payload = { ...values } as any;
+              if (!payload.phone) delete payload.phone;
+              await updateCustomerMutation.mutateAsync(payload);
+            } else {
+              toast.error('Please fill in all required fields');
+            }
+          }}
           submitText={updateCustomerMutation.isPending ? 'Updating...' : 'Update Customer'}
           loading={updateCustomerMutation.isPending}
         />
@@ -577,9 +589,6 @@ const CustomerWalletForm: React.FC<{
         description: '',
         type: 'credit'
       }}
-      onSubmit={async (values) => {
-        await processWalletTransactionMutation.mutateAsync(values);
-      }}
       loading={processWalletTransactionMutation.isPending}
     >{(methods) => (
       <div className="space-y-6">
@@ -626,6 +635,15 @@ const CustomerWalletForm: React.FC<{
 
         <FormActions
           onCancel={onSuccess}
+          onSubmit={async () => {
+            const isValid = await methods.trigger();
+            if (isValid) {
+              const values = methods.getValues();
+              await processWalletTransactionMutation.mutateAsync(values);
+            } else {
+              toast.error('Please fill in all required fields');
+            }
+          }}
           submitText={processWalletTransactionMutation.isPending ? 'Processing...' : 'Process Transaction'}
           loading={processWalletTransactionMutation.isPending}
         />

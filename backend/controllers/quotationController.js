@@ -454,10 +454,10 @@ const convertQuotationToOrder = async (req, res) => {
       });
     }
 
-    if (quotation.status !== 'accepted') {
+    if (quotation.status !== 'approved') {
       return res.status(400).json({
         success: false,
-        message: 'Only accepted quotations can be converted to orders'
+        message: 'Only approved quotations can be converted to orders'
       });
     }
 
@@ -497,6 +497,57 @@ const convertQuotationToOrder = async (req, res) => {
     const order = new Order(orderData);
     await order.save();
 
+    // Automatically create invoice for the order
+    let createdInvoice = null;
+    try {
+      const invoiceData = {
+        customer: quotation.customer._id,
+        customerName: quotation.customerName,
+        customerEmail: quotation.customerEmail,
+        customerPhone: quotation.customerPhone,
+        customerAddress: quotation.customerAddress,
+        items: quotation.items.map(item => ({
+          product: item.product,
+          name: item.name,
+          sku: item.sku,
+          description: item.description,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          discount: item.discount || 0,
+          taxRate: item.taxRate || 0,
+          total: item.total || (item.quantity * item.unitPrice * (1 - (item.discount || 0) / 100) * (1 + (item.taxRate || 0) / 100))
+        })),
+        subtotal: quotation.subtotal,
+        totalDiscount: quotation.totalDiscount,
+        totalTax: quotation.totalTax,
+        total: quotation.totalAmount,
+        invoiceDate: new Date(),
+        dueDate: quotation.validUntil ? new Date(quotation.validUntil) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        paymentMethod: 'cash',
+        shippingMethod: 'pickup',
+        notes: quotation.notes,
+        terms: quotation.terms,
+        order: order._id,
+        quotation: quotation._id,
+        type: 'sale',
+        status: 'pending',
+        createdBy: req.user._id
+      };
+
+      const invoice = new Invoice(invoiceData);
+      await invoice.save();
+      createdInvoice = invoice;
+
+      // Update order with invoice reference
+      order.invoice = invoice._id;
+      await order.save();
+
+      console.log(`Invoice ${invoice.invoiceNumber} created automatically for order ${order.orderNumber} from quotation ${quotation.quotationNumber}`);
+    } catch (invoiceError) {
+      console.error('Failed to create automatic invoice:', invoiceError);
+      // Don't fail the order creation if invoice creation fails
+    }
+
     // Notify warehouse of new order from quotation conversion
     const notificationResult = await notifyWarehouseOfNewOrder(order, 'quotation');
     if (!notificationResult.success) {
@@ -514,7 +565,8 @@ const convertQuotationToOrder = async (req, res) => {
       message: 'Quotation converted to order successfully',
       data: {
         quotation,
-        order
+        order,
+        invoice: createdInvoice
       }
     });
   } catch (error) {

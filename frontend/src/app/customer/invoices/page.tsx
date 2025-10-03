@@ -133,7 +133,7 @@ const CustomerInvoicesPage: React.FC = () => {
           row.status === 'overdue' ? 'bg-red-100 text-red-800' :
           'bg-gray-100 text-gray-800'
         }`}>
-          {row.status.charAt(0).toUpperCase() + row.status.slice(1)}
+          {(row.status || 'unknown').charAt(0).toUpperCase() + (row.status || 'unknown').slice(1)}
         </span>
       ),
     },
@@ -412,7 +412,7 @@ const CustomerInvoicesPage: React.FC = () => {
                     selectedInvoice.status === 'overdue' ? 'bg-red-100 text-red-800' :
                     'bg-gray-100 text-gray-800'
                   }`}>
-                    {selectedInvoice.status.charAt(0).toUpperCase() + selectedInvoice.status.slice(1)}
+                    {(selectedInvoice.status || 'unknown').charAt(0).toUpperCase() + (selectedInvoice.status || 'unknown').slice(1)}
                   </span>
                 </div>
               </div>

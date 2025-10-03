@@ -412,19 +412,6 @@ const ProductsPage: React.FC = () => {
               },
               isActive: true,
             }}
-            onSubmit={async (values) => {
-              const payload = {
-                ...values,
-                // Clean optional empty strings
-                barcode: values.barcode || undefined,
-                description: values.description || undefined,
-                inventory: {
-                  ...values.inventory,
-                  location: values.inventory.location || undefined,
-                },
-              };
-              await createProductMutation.mutateAsync(payload);
-            }}
             loading={createProductMutation.isPending}
           >{(methods) => (
             <div className="space-y-6">
@@ -572,6 +559,25 @@ const ProductsPage: React.FC = () => {
 
               <FormActions
                 onCancel={() => setIsCreateModalOpen(false)}
+                onSubmit={async () => {
+                  const isValid = await methods.trigger();
+                  if (isValid) {
+                    const values = methods.getValues();
+                    const payload = {
+                      ...values,
+                      // Clean optional empty strings
+                      barcode: values.barcode || undefined,
+                      description: values.description || undefined,
+                      inventory: {
+                        ...values.inventory,
+                        location: values.inventory.location || undefined,
+                      },
+                    };
+                    await createProductMutation.mutateAsync(payload);
+                  } else {
+                    toast.error('Please fill in all required fields');
+                  }
+                }}
                 submitText={createProductMutation.isPending ? 'Creating...' : 'Create Product'}
                 loading={createProductMutation.isPending}
               />
@@ -710,18 +716,6 @@ const ProductsPage: React.FC = () => {
                   },
                 },
                 isActive: selectedProduct.isActive,
-              }}
-              onSubmit={async (values) => {
-                const payload = {
-                  ...values,
-                  barcode: values.barcode || undefined,
-                  description: values.description || undefined,
-                  inventory: {
-                    ...values.inventory,
-                    location: values.inventory.location || undefined,
-                  },
-                };
-                await updateProductMutation.mutateAsync({ id: selectedProduct._id, data: payload });
               }}
               loading={updateProductMutation.isPending}
             >{(methods) => (
@@ -866,6 +860,24 @@ const ProductsPage: React.FC = () => {
 
                 <FormActions
                   onCancel={() => setIsEditModalOpen(false)}
+                  onSubmit={async () => {
+                    const isValid = await methods.trigger();
+                    if (isValid) {
+                      const values = methods.getValues();
+                      const payload = {
+                        ...values,
+                        barcode: values.barcode || undefined,
+                        description: values.description || undefined,
+                        inventory: {
+                          ...values.inventory,
+                          location: values.inventory.location || undefined,
+                        },
+                      };
+                      await updateProductMutation.mutateAsync({ id: selectedProduct._id, data: payload });
+                    } else {
+                      toast.error('Please fill in all required fields');
+                    }
+                  }}
                   submitText={updateProductMutation.isPending ? 'Saving...' : 'Save Changes'}
                   loading={updateProductMutation.isPending}
                 />

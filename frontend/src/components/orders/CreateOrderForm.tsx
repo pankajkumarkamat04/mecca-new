@@ -157,9 +157,7 @@ const CreateOrderForm: React.FC<CreateOrderFormProps> = ({ onClose, onSuccess, i
     return { subtotal, totalDiscount, totalTax, total };
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
+  const handleSubmit = () => {
     // Filter out empty items (items without product selected)
     const validItems = formData.items.filter((item: any) => item.product && item.product.trim() !== '');
     
@@ -186,7 +184,7 @@ const CreateOrderForm: React.FC<CreateOrderFormProps> = ({ onClose, onSuccess, i
   const totals = calculateTotals();
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <div className="space-y-6">
       {/* Customer Selection */}
       <div>
         <CustomerSelector
@@ -326,7 +324,7 @@ const CreateOrderForm: React.FC<CreateOrderFormProps> = ({ onClose, onSuccess, i
                        type="number"
                        min="0"
                        max="100"
-                       step="1"
+                       step="0.01"
                        value={item.discount}
                        onChange={(e) => handleItemChange(index, 'discount', parseFloat(e.target.value) || 0)}
                        className="w-16 min-w-0"
@@ -337,7 +335,7 @@ const CreateOrderForm: React.FC<CreateOrderFormProps> = ({ onClose, onSuccess, i
                        type="number"
                        min="0"
                        max="100"
-                       step="1"
+                       step="0.01"
                        value={item.taxRate}
                        onChange={(e) => handleItemChange(index, 'taxRate', parseFloat(e.target.value) || 0)}
                        className="w-16 min-w-0"
@@ -413,13 +411,14 @@ const CreateOrderForm: React.FC<CreateOrderFormProps> = ({ onClose, onSuccess, i
           Cancel
         </Button>
         <Button
-          type="submit"
+          type="button"
+          onClick={handleSubmit}
           disabled={!formData.customer || !formData.items.some((item: any) => item.product && item.product.trim() !== '')}
         >
           {initialData ? 'Update Order' : 'Create Order'}
         </Button>
       </div>
-    </form>
+    </div>
   );
 };
 

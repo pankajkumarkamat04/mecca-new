@@ -51,6 +51,53 @@ const CustomerSelector: React.FC<CustomerSelectorProps> = ({
   
   const queryClient = useQueryClient();
 
+  // Handle escape key for customer selection modal
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) {
+        setIsOpen(false);
+        setSearchTerm('');
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('keydown', handleEscape);
+      document.body.style.overflow = 'hidden';
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+      document.body.style.overflow = 'unset';
+    };
+  }, [isOpen]);
+
+  // Handle escape key for create customer modal
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && showCreateModal) {
+        setShowCreateModal(false);
+        setCreateFormData({
+          firstName: '',
+          lastName: '',
+          email: '',
+          phone: '',
+          address: '',
+          company: ''
+        });
+      }
+    };
+
+    if (showCreateModal) {
+      document.addEventListener('keydown', handleEscape);
+      document.body.style.overflow = 'hidden';
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+      document.body.style.overflow = 'unset';
+    };
+  }, [showCreateModal]);
+
   // Fetch customers with search
   const { data: customersData, isLoading } = useQuery({
     queryKey: ['customers', searchTerm],
@@ -180,205 +227,278 @@ const CustomerSelector: React.FC<CustomerSelectorProps> = ({
       </div>
 
       {/* Customer Selection Dropdown */}
-      <Modal
-        isOpen={isOpen}
-        onClose={() => {
-          setIsOpen(false);
-          setSearchTerm('');
-        }}
-        title="Select Customer"
-        size="lg"
-      >
-        <div className="space-y-4">
-          {/* Search Input */}
-          <div className="relative">
-            <Input
-              placeholder="Search by name, email, phone, or company..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              fullWidth
-            />
-            <MagnifyingGlassIcon className="absolute right-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-          </div>
+      <div className={isOpen ? 'fixed inset-0 z-[60] overflow-y-auto' : 'hidden'}>
+        <div className="flex min-h-full items-center justify-center text-center p-4 sm:p-0">
+          {/* Overlay */}
+          <div
+            className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+            onClick={() => {
+              setIsOpen(false);
+              setSearchTerm('');
+            }}
+          />
 
-          {/* Create New Customer Button */}
-          <div className="flex justify-end">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowCreateModal(true)}
-              className="flex items-center"
-            >
-              <PlusIcon className="h-4 w-4 mr-2" />
-              Create New Customer
-            </Button>
-          </div>
-
-          {/* Customer List */}
-          <div className="max-h-96 overflow-y-auto">
-            {isLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          {/* Modal panel */}
+          <div className="relative transform overflow-hidden bg-white text-left shadow-xl transition-all w-full max-w-lg">
+            {/* Header */}
+            <div className="bg-white px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <h3 className="text-lg font-medium leading-6 text-gray-900">
+                    Select Customer
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  className="rounded-md bg-white text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  onClick={() => {
+                    setIsOpen(false);
+                    setSearchTerm('');
+                  }}
+                >
+                  <span className="sr-only">Close</span>
+                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
               </div>
-            ) : filteredCustomers.length > 0 ? (
-              <div className="space-y-2">
-                {filteredCustomers.map((customer: any) => (
-                  <div
-                    key={customer._id}
-                    onClick={() => handleCustomerSelect(customer)}
-                    className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
+            </div>
+
+            {/* Content */}
+            <div className="px-4 pb-4 sm:px-6 sm:pb-6">
+              <div className="space-y-4">
+                {/* Search Input */}
+                <div className="relative">
+                  <Input
+                    placeholder="Search by name, email, phone, or company..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    fullWidth
+                  />
+                  <MagnifyingGlassIcon className="absolute right-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                </div>
+
+                {/* Create New Customer Button */}
+                <div className="flex justify-end">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowCreateModal(true)}
+                    className="flex items-center"
                   >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center">
-                          <UserIcon className="h-5 w-5 text-gray-400 mr-2" />
-                          <div>
-                            <h4 className="font-medium text-gray-900">
-                              {typeof customer.firstName === 'string' ? customer.firstName : ''} {typeof customer.lastName === 'string' ? customer.lastName : ''}
-                            </h4>
-                            {customer.company && (
-                              <p className="text-sm text-gray-600">{typeof customer.company === 'string' ? customer.company : ''}</p>
+                    <PlusIcon className="h-4 w-4 mr-2" />
+                    Create New Customer
+                  </Button>
+                </div>
+
+                {/* Customer List */}
+                <div className="max-h-96 overflow-y-auto">
+                  {isLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                    </div>
+                  ) : filteredCustomers.length > 0 ? (
+                    <div className="space-y-2">
+                      {filteredCustomers.map((customer: any) => (
+                        <div
+                          key={customer._id}
+                          onClick={() => handleCustomerSelect(customer)}
+                          className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
+                        >
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center">
+                                <UserIcon className="h-5 w-5 text-gray-400 mr-2" />
+                                <div>
+                                  <h4 className="font-medium text-gray-900">
+                                    {typeof customer.firstName === 'string' ? customer.firstName : ''} {typeof customer.lastName === 'string' ? customer.lastName : ''}
+                                  </h4>
+                                  {customer.company && (
+                                    <p className="text-sm text-gray-600">{typeof customer.company === 'string' ? customer.company : ''}</p>
+                                  )}
+                                </div>
+                              </div>
+                              
+                              <div className="mt-2 space-y-1">
+                                {customer.email && (
+                                  <div className="flex items-center text-sm text-gray-600">
+                                    <EnvelopeIcon className="h-4 w-4 mr-2" />
+                                    {typeof customer.email === 'string' ? customer.email : ''}
+                                  </div>
+                                )}
+                                {customer.phone && (
+                                  <div className="flex items-center text-sm text-gray-600">
+                                    <PhoneIcon className="h-4 w-4 mr-2" />
+                                    {typeof customer.phone === 'string' ? customer.phone : ''}
+                                  </div>
+                                )}
+                                {customer.address && (
+                                  <div className="text-sm text-gray-600">
+                                    {typeof customer.address === 'string' ? customer.address : ''}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            
+                            {value === customer._id && (
+                              <div className="ml-4">
+                                <div className="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center">
+                                  <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                  </svg>
+                                </div>
+                              </div>
                             )}
                           </div>
                         </div>
-                        
-                        <div className="mt-2 space-y-1">
-                          {customer.email && (
-                            <div className="flex items-center text-sm text-gray-600">
-                              <EnvelopeIcon className="h-4 w-4 mr-2" />
-                              {typeof customer.email === 'string' ? customer.email : ''}
-                            </div>
-                          )}
-                          {customer.phone && (
-                            <div className="flex items-center text-sm text-gray-600">
-                              <PhoneIcon className="h-4 w-4 mr-2" />
-                              {typeof customer.phone === 'string' ? customer.phone : ''}
-                            </div>
-                          )}
-                          {customer.address && (
-                            <div className="text-sm text-gray-600">
-                              {typeof customer.address === 'string' ? customer.address : ''}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      
-                      {value === customer._id && (
-                        <div className="ml-4">
-                          <div className="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center">
-                            <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                            </svg>
-                          </div>
-                        </div>
-                      )}
+                      ))}
                     </div>
-                  </div>
-                ))}
+                  ) : (
+                    <div className="text-center py-8">
+                      <UserIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                      <p className="text-gray-500 mb-4">
+                        {searchTerm ? 'No customers found matching your search' : 'No customers available'}
+                      </p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowCreateModal(true)}
+                        className="flex items-center mx-auto"
+                      >
+                        <PlusIcon className="h-4 w-4 mr-2" />
+                        Create New Customer
+                      </Button>
+                    </div>
+                  )}
+                </div>
               </div>
-            ) : (
-              <div className="text-center py-8">
-                <UserIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-500 mb-4">
-                  {searchTerm ? 'No customers found matching your search' : 'No customers available'}
-                </p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowCreateModal(true)}
-                  className="flex items-center mx-auto"
-                >
-                  <PlusIcon className="h-4 w-4 mr-2" />
-                  Create New Customer
-                </Button>
-              </div>
-            )}
+            </div>
           </div>
         </div>
-      </Modal>
+      </div>
 
       {/* Create Customer Modal */}
-      <Modal
-        isOpen={showCreateModal}
-        onClose={() => {
-          setShowCreateModal(false);
-          setCreateFormData({
-            firstName: '',
-            lastName: '',
-            email: '',
-            phone: '',
-            address: '',
-            company: ''
-          });
-        }}
-        title="Create New Customer"
-        size="md"
-      >
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Input
-              label="First Name"
-              value={createFormData.firstName}
-              onChange={(e) => setCreateFormData(prev => ({ ...prev, firstName: e.target.value }))}
-              required
-              fullWidth
-            />
-            <Input
-              label="Last Name"
-              value={createFormData.lastName}
-              onChange={(e) => setCreateFormData(prev => ({ ...prev, lastName: e.target.value }))}
-              required
-              fullWidth
-            />
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Input
-              label="Email"
-              type="email"
-              value={createFormData.email}
-              onChange={(e) => setCreateFormData(prev => ({ ...prev, email: e.target.value }))}
-              fullWidth
-            />
-            <Input
-              label="Phone"
-              value={createFormData.phone}
-              onChange={(e) => setCreateFormData(prev => ({ ...prev, phone: e.target.value }))}
-              fullWidth
-            />
-          </div>
-          
-          <Input
-            label="Company"
-            value={createFormData.company}
-            onChange={(e) => setCreateFormData(prev => ({ ...prev, company: e.target.value }))}
-            fullWidth
-          />
-          
-          <Input
-            label="Address"
-            value={createFormData.address}
-            onChange={(e) => setCreateFormData(prev => ({ ...prev, address: e.target.value }))}
-            fullWidth
+      <div className={showCreateModal ? 'fixed inset-0 z-[70] overflow-y-auto' : 'hidden'}>
+        <div className="flex min-h-full items-center justify-center text-center p-4 sm:p-0">
+          {/* Overlay */}
+          <div
+            className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+            onClick={() => {
+              setShowCreateModal(false);
+              setCreateFormData({
+                firstName: '',
+                lastName: '',
+                email: '',
+                phone: '',
+                address: '',
+                company: ''
+              });
+            }}
           />
 
-          <div className="flex justify-end space-x-3 pt-4">
-            <Button
-              variant="outline"
-              onClick={() => setShowCreateModal(false)}
-              disabled={createCustomerMutation.isPending}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleCreateCustomer}
-              disabled={createCustomerMutation.isPending || !createFormData.firstName || !createFormData.lastName}
-            >
-              {createCustomerMutation.isPending ? 'Creating...' : 'Create Customer'}
-            </Button>
+          {/* Modal panel */}
+          <div className="relative transform overflow-hidden bg-white text-left shadow-xl transition-all w-full max-w-md">
+            {/* Header */}
+            <div className="bg-white px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <h3 className="text-lg font-medium leading-6 text-gray-900">
+                    Create New Customer
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  className="rounded-md bg-white text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  onClick={() => {
+                    setShowCreateModal(false);
+                    setCreateFormData({
+                      firstName: '',
+                      lastName: '',
+                      email: '',
+                      phone: '',
+                      address: '',
+                      company: ''
+                    });
+                  }}
+                >
+                  <span className="sr-only">Close</span>
+                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="px-4 pb-4 sm:px-6 sm:pb-6">
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Input
+                    label="First Name"
+                    value={createFormData.firstName}
+                    onChange={(e) => setCreateFormData(prev => ({ ...prev, firstName: e.target.value }))}
+                    required
+                    fullWidth
+                  />
+                  <Input
+                    label="Last Name"
+                    value={createFormData.lastName}
+                    onChange={(e) => setCreateFormData(prev => ({ ...prev, lastName: e.target.value }))}
+                    required
+                    fullWidth
+                  />
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Input
+                    label="Email"
+                    type="email"
+                    value={createFormData.email}
+                    onChange={(e) => setCreateFormData(prev => ({ ...prev, email: e.target.value }))}
+                    fullWidth
+                  />
+                  <Input
+                    label="Phone"
+                    value={createFormData.phone}
+                    onChange={(e) => setCreateFormData(prev => ({ ...prev, phone: e.target.value }))}
+                    fullWidth
+                  />
+                </div>
+                
+                <Input
+                  label="Company"
+                  value={createFormData.company}
+                  onChange={(e) => setCreateFormData(prev => ({ ...prev, company: e.target.value }))}
+                  fullWidth
+                />
+                
+                <Input
+                  label="Address"
+                  value={createFormData.address}
+                  onChange={(e) => setCreateFormData(prev => ({ ...prev, address: e.target.value }))}
+                  fullWidth
+                />
+
+                <div className="flex justify-end space-x-3 pt-4">
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowCreateModal(false)}
+                    disabled={createCustomerMutation.isPending}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleCreateCustomer}
+                    disabled={createCustomerMutation.isPending || !createFormData.firstName || !createFormData.lastName}
+                  >
+                    {createCustomerMutation.isPending ? 'Creating...' : 'Create Customer'}
+                  </Button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-      </Modal>
+      </div>
     </div>
   );
 };

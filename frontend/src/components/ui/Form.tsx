@@ -10,7 +10,7 @@ import Button from './Button';
 interface FormProps<T extends FieldValues> {
   schema: z.ZodSchema<T>;
   defaultValues?: Partial<T>;
-  onSubmit: (data: T) => void | Promise<void>;
+  onSubmit?: (data: T) => void | Promise<void>;
   children: (methods: UseFormReturn<T>) => React.ReactNode;
   className?: string;
   loading?: boolean;
@@ -31,7 +31,9 @@ function Form<T extends FieldValues>({
 
   const handleSubmit = async (data: T) => {
     try {
-      await onSubmit(data);
+      if (onSubmit) {
+        await onSubmit(data);
+      }
     } catch (error) {
       console.error('Form submission error:', error);
     }
@@ -143,7 +145,8 @@ function FormActions({
         </Button>
       )}
       <Button
-        type="submit"
+        type="button"
+        onClick={onSubmit}
         loading={loading}
       >
         {submitText}

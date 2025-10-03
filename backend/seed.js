@@ -31,6 +31,10 @@ const Transaction = require('./models/Transaction');
 const Account = require('./models/Account');
 const Support = require('./models/Support');
 const WorkshopJob = require('./models/WorkshopJob');
+const Machine = require('./models/Machine');
+const Tool = require('./models/Tool');
+const Technician = require('./models/Technician');
+const WorkStation = require('./models/WorkStation');
 const Setting = require('./models/Setting');
 const CustomerInquiry = require('./models/CustomerInquiry');
 const Quotation = require('./models/Quotation');
@@ -58,6 +62,10 @@ async function clearCollections() {
     Account.deleteMany({}),
     Support.deleteMany({}),
     WorkshopJob.deleteMany({}),
+    Machine.deleteMany({}),
+    Tool.deleteMany({}),
+    Technician.deleteMany({}),
+    WorkStation.deleteMany({}),
     Setting.deleteMany({}),
     CustomerInquiry.deleteMany({}),
     Quotation.deleteMany({}),
@@ -886,6 +894,359 @@ async function seed() {
         { user: users[9]._id, position: 'warehouse_employee', assignedBy: users[0]._id, assignedAt: new Date(), isActive: true },
         { user: users[10]._id, position: 'warehouse_employee', assignedBy: users[0]._id, assignedAt: new Date(), isActive: true }
       ]
+    }
+  ]);
+
+  // Workshop Resources - Machines
+  const machines = await Machine.insertMany([
+    {
+      name: 'Hydraulic Press',
+      model: 'HP-200',
+      manufacturer: 'TechCorp',
+      category: 'machining',
+      status: 'operational',
+      location: {
+        building: 'Workshop A',
+        floor: 'Ground Floor',
+        room: 'Machine Shop',
+        bay: 'A1'
+      },
+      specifications: {
+        powerRating: '15 HP',
+        dimensions: '4x3x2 meters',
+        weight: 2500,
+        capacity: '200 tons',
+        operatingPressure: '1000 PSI'
+      },
+      availability: {
+        isAvailable: true
+      },
+      isActive: true,
+      createdBy: users[0]._id
+    },
+    {
+      name: 'Welding Station',
+      model: 'WS-100',
+      manufacturer: 'WeldTech',
+      category: 'welding',
+      status: 'operational',
+      location: {
+        building: 'Workshop A',
+        floor: 'Ground Floor',
+        room: 'Welding Bay',
+        bay: 'A2'
+      },
+      specifications: {
+        powerRating: '10 HP',
+        dimensions: '3x2x2 meters',
+        weight: 800,
+        capacity: 'Steel up to 1 inch',
+        operatingTemperature: '3000°F'
+      },
+      availability: {
+        isAvailable: true
+      },
+      isActive: true,
+      createdBy: users[0]._id
+    },
+    {
+      name: 'Diagnostic Scanner',
+      model: 'DS-500',
+      manufacturer: 'DiagnoTech',
+      category: 'diagnostic',
+      status: 'operational',
+      location: {
+        building: 'Workshop B',
+        floor: 'First Floor',
+        room: 'Diagnostic Lab',
+        bay: 'B1'
+      },
+      specifications: {
+        powerRating: '2 HP',
+        dimensions: '1x1x1 meters',
+        weight: 150,
+        capacity: 'Multi-brand compatibility'
+      },
+      availability: {
+        isAvailable: true
+      },
+      isActive: true,
+      createdBy: users[0]._id
+    },
+    {
+      name: 'Lifting Equipment',
+      model: 'LE-300',
+      manufacturer: 'LiftMaster',
+      category: 'lifting',
+      status: 'operational',
+      location: {
+        building: 'Workshop A',
+        floor: 'Ground Floor',
+        room: 'Service Bay',
+        bay: 'A3'
+      },
+      specifications: {
+        powerRating: '5 HP',
+        dimensions: '2x2x3 meters',
+        weight: 1200,
+        capacity: '3000 lbs'
+      },
+      availability: {
+        isAvailable: true
+      },
+      isActive: true,
+      createdBy: users[0]._id
+    }
+  ]);
+
+  // Workshop Resources - Tools
+  const tools = await Tool.insertMany([
+    {
+      name: 'Impact Wrench Set',
+      category: 'hand_tool',
+      condition: 'excellent',
+      location: {
+        building: 'Workshop A',
+        floor: 'Ground Floor',
+        room: 'Tool Storage',
+        bay: 'T1'
+      },
+      specifications: {
+        torque: '500 ft-lbs',
+        voltage: '18V',
+        weight: 3.2
+      },
+      availability: {
+        isAvailable: true
+      },
+      status: 'available',
+      isActive: true,
+      createdBy: users[0]._id
+    },
+    {
+      name: 'Digital Multimeter',
+      category: 'measuring_tool',
+      condition: 'good',
+      location: {
+        building: 'Workshop B',
+        floor: 'First Floor',
+        room: 'Diagnostic Lab',
+        bay: 'T2'
+      },
+      specifications: {
+        accuracy: '0.025%',
+        voltageRange: '1000V',
+        currentRange: '10A'
+      },
+      availability: {
+        isAvailable: true
+      },
+      status: 'available',
+      isActive: true,
+      createdBy: users[0]._id
+    },
+    {
+      name: 'Oscilloscope',
+      category: 'diagnostic_tool',
+      condition: 'excellent',
+      location: {
+        building: 'Workshop B',
+        floor: 'First Floor',
+        room: 'Diagnostic Lab',
+        bay: 'T3'
+      },
+      specifications: {
+        bandwidth: '200 MHz',
+        channels: '4',
+        sampleRate: '2 GS/s'
+      },
+      availability: {
+        isAvailable: true
+      },
+      status: 'available',
+      isActive: true,
+      createdBy: users[0]._id
+    },
+    {
+      name: 'Torque Wrench',
+      category: 'hand_tool',
+      condition: 'good',
+      location: {
+        building: 'Workshop A',
+        floor: 'Ground Floor',
+        room: 'Tool Storage',
+        bay: 'T4'
+      },
+      specifications: {
+        torqueRange: '5-100 ft-lbs',
+        accuracy: '±3%',
+        driveSize: '1/2 inch'
+      },
+      availability: {
+        isAvailable: true
+      },
+      status: 'available',
+      isActive: true,
+      createdBy: users[0]._id
+    }
+  ]);
+
+  // Workshop Resources - Technicians
+  const technicians = await Technician.insertMany([
+    {
+      name: 'John Smith',
+      employeeId: 'TECH001',
+      department: 'workshop',
+      position: 'senior_technician',
+      skills: [
+        { name: 'Electronics Repair', category: 'electrical', level: 'expert', yearsExperience: 8, isActive: true },
+        { name: 'Diagnostic Testing', category: 'diagnostic', level: 'expert', yearsExperience: 8, isActive: true },
+        { name: 'Circuit Analysis', category: 'electrical', level: 'advanced', yearsExperience: 6, isActive: true }
+      ],
+      certifications: [
+        {
+          name: 'Electronics Technician Certification',
+          issuingBody: 'ETA International',
+          certificateNumber: 'ETA-ET-001',
+          issuedDate: new Date('2020-01-15'),
+          expiryDate: new Date('2025-01-15'),
+          isActive: true
+        }
+      ],
+      employmentStatus: 'active',
+      isActive: true,
+      createdBy: users[0]._id
+    },
+    {
+      name: 'Sarah Johnson',
+      employeeId: 'TECH002',
+      department: 'workshop',
+      position: 'technician',
+      skills: [
+        { name: 'Mechanical Repair', category: 'mechanical', level: 'advanced', yearsExperience: 5, isActive: true },
+        { name: 'Hydraulic Systems', category: 'mechanical', level: 'intermediate', yearsExperience: 3, isActive: true },
+        { name: 'Welding', category: 'welding', level: 'intermediate', yearsExperience: 4, isActive: true }
+      ],
+      certifications: [
+        {
+          name: 'Mechanical Technician Certification',
+          issuingBody: 'NATE',
+          certificateNumber: 'NATE-MT-002',
+          issuedDate: new Date('2021-06-10'),
+          expiryDate: new Date('2026-06-10'),
+          isActive: true
+        }
+      ],
+      employmentStatus: 'active',
+      isActive: true,
+      createdBy: users[0]._id
+    },
+    {
+      name: 'Mike Chen',
+      employeeId: 'TECH003',
+      department: 'workshop',
+      position: 'junior_technician',
+      skills: [
+        { name: 'Basic Electronics', category: 'electrical', level: 'intermediate', yearsExperience: 2, isActive: true },
+        { name: 'Soldering', category: 'electrical', level: 'intermediate', yearsExperience: 2, isActive: true },
+        { name: 'Component Testing', category: 'diagnostic', level: 'beginner', yearsExperience: 1, isActive: true }
+      ],
+      employmentStatus: 'active',
+      isActive: true,
+      createdBy: users[0]._id
+    }
+  ]);
+
+  // Workshop Resources - WorkStations
+  const workstations = await WorkStation.insertMany([
+    {
+      name: 'Diagnostic Station 1',
+      type: 'diagnostic_bay',
+      capacity: {
+        maxVehicleSize: 'medium',
+        maxWeight: 2000,
+        maxHeight: 200,
+        maxLength: 500,
+        maxWidth: 300
+      },
+      location: {
+        building: 'Workshop B',
+        floor: 'First Floor',
+        room: 'Diagnostic Lab',
+        bay: 'WS1'
+      },
+      specifications: {
+        powerOutlets: 8,
+        networkPorts: 4,
+        lighting: 'LED',
+        ventilation: 'Yes'
+      },
+      availability: {
+        isAvailable: true
+      },
+      status: 'available',
+      isActive: true,
+      createdBy: users[0]._id
+    },
+    {
+      name: 'Repair Station 1',
+      type: 'repair_bay',
+      capacity: {
+        maxVehicleSize: 'large',
+        maxWeight: 3000,
+        maxHeight: 250,
+        maxLength: 600,
+        maxWidth: 350
+      },
+      location: {
+        building: 'Workshop A',
+        floor: 'Ground Floor',
+        room: 'Repair Bay',
+        bay: 'WS2'
+      },
+      specifications: {
+        powerOutlets: 6,
+        networkPorts: 2,
+        lighting: 'LED',
+        ventilation: 'Yes',
+        toolStorage: 'Yes'
+      },
+      availability: {
+        isAvailable: true
+      },
+      status: 'available',
+      isActive: true,
+      createdBy: users[0]._id
+    },
+    {
+      name: 'Assembly Station 1',
+      type: 'assembly_station',
+      capacity: {
+        maxVehicleSize: 'extra_large',
+        maxWeight: 5000,
+        maxHeight: 300,
+        maxLength: 800,
+        maxWidth: 400
+      },
+      location: {
+        building: 'Workshop A',
+        floor: 'Ground Floor',
+        room: 'Assembly Area',
+        bay: 'WS3'
+      },
+      specifications: {
+        powerOutlets: 4,
+        networkPorts: 2,
+        lighting: 'LED',
+        ventilation: 'Yes',
+        toolStorage: 'Yes'
+      },
+      availability: {
+        isAvailable: true
+      },
+      status: 'available',
+      isActive: true,
+      createdBy: users[0]._id
     }
   ]);
 
@@ -2475,6 +2836,10 @@ async function seed() {
   console.log(`📦 Seeded ${[catElectronics, catOffice, catGaming, catNetworking, catAudio, catComputers, catPeripherals, catMobile, catFurniture, catSupplies, catMice, catKeyboards, catMonitors, catGamingPeripherals, catGamingConsoles, catHeadphones, catSpeakers].length} categories`);
   console.log(`🏢 Seeded ${suppliers.length} suppliers`);
   console.log(`🏭 Seeded ${warehouses.length} warehouses`);
+  console.log(`🔧 Seeded ${machines.length} machines`);
+  console.log(`🛠️ Seeded ${tools.length} tools`);
+  console.log(`👨‍🔧 Seeded ${technicians.length} technicians`);
+  console.log(`🏗️ Seeded ${workstations.length} workstations`);
   console.log(`👤 Seeded ${customers.length} customers`);
   console.log(`📦 Seeded ${products.length} products`);
   console.log(`💰 Seeded ${accounts.length} accounts`);
@@ -2552,6 +2917,13 @@ async function seed() {
     console.log(`  Contact: ${warehouse.contact.phone}`);
     console.log('');
   });
+  console.log('🔧 WORKSHOP RESOURCES:');
+  console.log('─'.repeat(30));
+  console.log(`Machines (${machines.length}): ${machines.map(m => m.name).join(', ')}`);
+  console.log(`Tools (${tools.length}): ${tools.map(t => t.name).join(', ')}`);
+  console.log(`Technicians (${technicians.length}): ${technicians.map(t => t.name).join(', ')}`);
+  console.log(`Workstations (${workstations.length}): ${workstations.map(w => w.name).join(', ')}`);
+  console.log('');
   console.log('📈 TECHFLOW SOLUTIONS BUSINESS FLOW:');
   console.log('─'.repeat(30));
   console.log('• Modern Tech Products: Premium electronics, gaming gear, and office equipment');
@@ -2559,6 +2931,7 @@ async function seed() {
   console.log('• Quotations: Generate quotes with inventory checking and approval workflow');
   console.log('• Orders: Convert approved quotations to confirmed orders');
   console.log('• Warehouse Management: Multi-location inventory tracking and operations');
+  console.log('• Workshop Management: Resource allocation, job tracking, and technician scheduling');
   console.log('• Deliveries: Track order fulfillment and delivery status');
   console.log('• Stock Alerts: Monitor inventory levels and generate replenishment suggestions');
   console.log('• Operations Dashboard: Monitor sales, inventory, and customer satisfaction');

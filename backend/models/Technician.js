@@ -69,7 +69,13 @@ const performanceSchema = new mongoose.Schema({
 });
 
 const technicianSchema = new mongoose.Schema({
-  user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, unique: true },
+  user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: false },
+  name: { 
+    type: String, 
+    required: [true, 'Technician name is required'],
+    trim: true,
+    maxlength: [100, 'Name cannot exceed 100 characters']
+  },
   employeeId: { type: String, unique: true, sparse: true },
   department: { 
     type: String, 
@@ -81,7 +87,7 @@ const technicianSchema = new mongoose.Schema({
     enum: ['junior_technician', 'technician', 'senior_technician', 'lead_technician', 'specialist', 'supervisor'],
     default: 'technician' 
   },
-  hireDate: { type: Date, required: true },
+  hireDate: { type: Date, default: Date.now },
   employmentStatus: { 
     type: String, 
     enum: ['active', 'on_leave', 'terminated', 'retired'],
@@ -147,15 +153,18 @@ const technicianSchema = new mongoose.Schema({
 });
 
 // Indexes
-technicianSchema.index({ user: 1 });
-technicianSchema.index({ employeeId: 1 });
+technicianSchema.index({ user: 1 }, { unique: true, partialFilterExpression: { user: { $exists: true, $type: "objectId" } } });
+technicianSchema.index({ employeeId: 1 }, { unique: true, sparse: true });
 technicianSchema.index({ department: 1, position: 1 });
 technicianSchema.index({ employmentStatus: 1, isActive: 1 });
 technicianSchema.index({ 'skills.name': 1, 'skills.level': 1 });
 
 // Virtual fields
 technicianSchema.virtual('fullName').get(function() {
-  return this.user ? `${this.user.firstName} ${this.user.lastName}` : 'Unknown';
+  if (this.user) {
+    return `${this.user.firstName} ${this.user.lastName}`;
+  }
+  return this.name || 'Unknown';
 });
 
 technicianSchema.virtual('email').get(function() {
@@ -180,6 +189,11 @@ technicianSchema.virtual('isCurrentlyAvailable').get(function() {
   );
   
   if (currentLeave) {
+    return false;
+  }
+  
+  // Check if currently assigned to any job
+  if (this.currentJobs && this.currentJobs.length > 0) {
     return false;
   }
   
@@ -262,6 +276,11 @@ technicianSchema.methods.completeJob = function(jobId, rating = 0) {
     const totalRating = this.statistics.averageJobRating * (this.statistics.totalJobsCompleted - 1) + rating;
     this.statistics.averageJobRating = totalRating / this.statistics.totalJobsCompleted;
   }
+};
+
+technicianSchema.methods.removeJob = function(jobId) {
+  this.currentJobs = this.currentJobs.filter(job => job.job.toString() !== jobId.toString());
+  this.statistics.currentWorkload = Math.max(0, this.statistics.currentWorkload - 1);
 };
 
 technicianSchema.methods.requestLeave = function(type, startDate, endDate, reason) {

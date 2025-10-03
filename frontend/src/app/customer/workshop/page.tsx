@@ -18,13 +18,15 @@ import {
   UserIcon,
   WrenchScrewdriverIcon,
   CogIcon,
-  BuildingOfficeIcon
+  BuildingOfficeIcon,
+  ChartBarIcon
 } from '@heroicons/react/24/outline';
 
 const CustomerWorkshopPage: React.FC = () => {
   const { user } = useAuth();
   const [selectedJob, setSelectedJob] = useState<WorkshopJob | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [isProgressOpen, setIsProgressOpen] = useState(false);
 
   // Fetch customer's jobs
   const { data: jobsData, isLoading } = useQuery({
@@ -164,12 +166,23 @@ const CustomerWorkshopPage: React.FC = () => {
                     )}
                   </div>
 
-                  <div className="ml-4">
+                  <div className="ml-4 flex gap-2">
                     <Button
                       variant="outline"
                       onClick={() => handleViewDetails(job)}
                     >
                       View Details
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setSelectedJob(job);
+                        setIsProgressOpen(true);
+                      }}
+                      className="flex items-center gap-2"
+                    >
+                      <ChartBarIcon className="h-4 w-4" />
+                      View Progress
                     </Button>
                   </div>
                 </div>
@@ -197,6 +210,21 @@ const CustomerWorkshopPage: React.FC = () => {
               setSelectedJob(null);
             }}
           />
+        )}
+      </Modal>
+
+      {/* Work Progress Visualization Modal */}
+      <Modal
+        isOpen={isProgressOpen}
+        onClose={() => {
+          setIsProgressOpen(false);
+          setSelectedJob(null);
+        }}
+        title="Work Progress Visualization"
+        size="xl"
+      >
+        {selectedJob && (
+          <CustomerWorkProgressVisualization job={selectedJob} />
         )}
       </Modal>
     </Layout>
@@ -387,6 +415,248 @@ const JobDetailsView: React.FC<{
         <Button variant="outline" onClick={onClose}>
           Close
         </Button>
+      </div>
+    </div>
+  );
+};
+
+// Customer Work Progress Visualization Component
+const CustomerWorkProgressVisualization: React.FC<{ job: any }> = ({ job }) => {
+  const workSteps = [
+    { 
+      id: 1, 
+      name: 'Job Received', 
+      description: 'Your job request has been received and logged into our system', 
+      status: 'completed',
+      icon: ClipboardDocumentListIcon
+    },
+    { 
+      id: 2, 
+      name: 'Assessment', 
+      description: 'Our technicians have completed the initial assessment and diagnosis', 
+      status: 'completed',
+      icon: CogIcon
+    },
+    { 
+      id: 3, 
+      name: 'Resource Assignment', 
+      description: 'Technicians and tools have been assigned to your job', 
+      status: job.resources?.assignedTechnicians?.length > 0 ? 'completed' : 'pending',
+      icon: UserIcon
+    },
+    { 
+      id: 4, 
+      name: 'Work Started', 
+      description: 'Work is currently in progress on your vehicle', 
+      status: job.status === 'in_progress' ? 'in_progress' : 'pending',
+      icon: WrenchScrewdriverIcon
+    },
+    { 
+      id: 5, 
+      name: 'Quality Check', 
+      description: 'Quality inspection and testing is being performed', 
+      status: 'pending',
+      icon: CheckCircleIcon
+    },
+    { 
+      id: 6, 
+      name: 'Completion', 
+      description: 'Your vehicle is ready for pickup', 
+      status: job.status === 'completed' ? 'completed' : 'pending',
+      icon: BuildingOfficeIcon
+    }
+  ];
+
+  const getStepColor = (status: string) => {
+    switch (status) {
+      case 'completed': return 'bg-green-500';
+      case 'in_progress': return 'bg-blue-500';
+      case 'pending': return 'bg-gray-300';
+      default: return 'bg-gray-300';
+    }
+  };
+
+  const getStepTextColor = (status: string) => {
+    switch (status) {
+      case 'completed': return 'text-green-700';
+      case 'in_progress': return 'text-blue-700';
+      case 'pending': return 'text-gray-500';
+      default: return 'text-gray-500';
+    }
+  };
+
+  const getStepBorderColor = (status: string) => {
+    switch (status) {
+      case 'completed': return 'border-green-200';
+      case 'in_progress': return 'border-blue-200';
+      case 'pending': return 'border-gray-200';
+      default: return 'border-gray-200';
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Job Overview */}
+      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-lg border border-blue-200">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">Job: {job.jobNumber}</h3>
+            <p className="text-gray-600">Status: <span className="font-medium capitalize">{job.status?.replace('_', ' ')}</span></p>
+            <p className="text-gray-600">Priority: <span className="font-medium capitalize">{job.priority}</span></p>
+          </div>
+          <div className="text-right">
+            <div className="text-3xl font-bold text-blue-600">{job.progress || 0}%</div>
+            <p className="text-sm text-gray-600">Complete</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Progress Overview */}
+      <div className="bg-white p-6 rounded-lg border shadow-sm">
+        <h3 className="text-lg font-medium text-gray-900 mb-4">Overall Progress</h3>
+        <div className="w-full bg-gray-200 rounded-full h-4">
+          <div 
+            className="bg-gradient-to-r from-blue-500 to-blue-600 h-4 rounded-full transition-all duration-1000 ease-out" 
+            style={{ width: `${job.progress || 0}%` }}
+          ></div>
+        </div>
+        <p className="text-sm text-gray-600 mt-2">
+          Your job is {job.progress || 0}% complete. We'll keep you updated as work progresses.
+        </p>
+      </div>
+
+      {/* Work Steps */}
+      <div className="space-y-4">
+        <h3 className="text-lg font-medium text-gray-900">Work Progress Steps</h3>
+        {workSteps.map((step, index) => {
+          const IconComponent = step.icon;
+          return (
+            <div key={step.id} className={`flex items-center space-x-4 p-6 bg-white rounded-lg border-2 ${getStepBorderColor(step.status)} shadow-sm transition-all duration-300 hover:shadow-md`}>
+              {/* Step Icon */}
+              <div className={`w-12 h-12 rounded-full flex items-center justify-center ${getStepColor(step.status)}`}>
+                <IconComponent className="h-6 w-6 text-white" />
+              </div>
+              
+              {/* Step Content */}
+              <div className="flex-1">
+                <h4 className={`text-lg font-semibold ${getStepTextColor(step.status)}`}>
+                  {step.name}
+                </h4>
+                <p className="text-gray-600 mt-1">{step.description}</p>
+                {step.status === 'in_progress' && (
+                  <div className="mt-2">
+                    <div className="flex items-center text-blue-600">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
+                      <span className="text-sm font-medium">Currently in progress...</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+              
+              {/* Status Badge */}
+              <div className="flex items-center">
+                <Badge 
+                  color={
+                    step.status === 'completed' ? 'green' : 
+                    step.status === 'in_progress' ? 'blue' : 'gray'
+                  }
+                  size="lg"
+                >
+                  {step.status === 'completed' ? '✓ Completed' : 
+                   step.status === 'in_progress' ? 'In Progress' : 'Pending'}
+                </Badge>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Resource Status */}
+      <div className="bg-white p-6 rounded-lg border shadow-sm">
+        <h3 className="text-lg font-medium text-gray-900 mb-4">Your Team</h3>
+        
+        {/* Assigned Technicians */}
+        <div className="mb-6">
+          <h4 className="font-semibold text-gray-700 mb-3 flex items-center">
+            <UserIcon className="h-5 w-5 mr-2 text-blue-600" />
+            Assigned Technicians
+          </h4>
+          {job.resources?.assignedTechnicians?.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {job.resources.assignedTechnicians.map((tech: any, index: number) => (
+                <div key={index} className="flex items-center p-3 bg-green-50 rounded-lg border border-green-200">
+                  <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center mr-3">
+                    <UserIcon className="h-4 w-4 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-green-800">{tech.name}</p>
+                    <p className="text-xs text-green-600">{tech.role}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-4 text-gray-500">
+              <UserIcon className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+              <p className="text-sm">Technicians will be assigned soon</p>
+            </div>
+          )}
+        </div>
+
+        {/* Assigned Tools */}
+        <div>
+          <h4 className="font-semibold text-gray-700 mb-3 flex items-center">
+            <WrenchScrewdriverIcon className="h-5 w-5 mr-2 text-blue-600" />
+            Tools & Equipment
+          </h4>
+          {job.tools?.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {job.tools.map((tool: any, index: number) => (
+                <div key={index} className="flex items-center p-3 bg-blue-50 rounded-lg border border-blue-200">
+                  <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center mr-3">
+                    <WrenchScrewdriverIcon className="h-4 w-4 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-blue-800">{tool.name}</p>
+                    <p className="text-xs text-blue-600">In use for your job</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-4 text-gray-500">
+              <WrenchScrewdriverIcon className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+              <p className="text-sm">Tools will be assigned as needed</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Real-time Updates */}
+      <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg p-6">
+        <div className="flex items-center">
+          <div className="flex-shrink-0">
+            <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
+              <CheckCircleIcon className="h-5 w-5 text-white" />
+            </div>
+          </div>
+          <div className="ml-4">
+            <h4 className="text-lg font-medium text-green-800">Real-time Updates</h4>
+            <p className="text-green-700 mt-1">
+              This progress visualization updates automatically as our team works on your vehicle. 
+              You'll see changes in real-time as each step is completed.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Contact Information */}
+      <div className="bg-gray-50 p-4 rounded-lg">
+        <h4 className="font-medium text-gray-900 mb-2">Need to Contact Us?</h4>
+        <p className="text-sm text-gray-600">
+          If you have any questions about your job progress, please don't hesitate to contact us. 
+          We're here to keep you informed every step of the way.
+        </p>
       </div>
     </div>
   );

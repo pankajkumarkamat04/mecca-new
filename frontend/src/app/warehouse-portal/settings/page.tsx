@@ -211,7 +211,7 @@ const WarehouseSettings: React.FC = () => {
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-8">
+        <div className="space-y-8">
           {/* Basic Information */}
           <div className="bg-white p-6 rounded-lg shadow">
             <h3 className="text-lg font-medium text-gray-900 mb-4">Basic Information</h3>
@@ -484,13 +484,14 @@ const WarehouseSettings: React.FC = () => {
           {/* Submit Button */}
           <div className="flex justify-end">
             <Button
-              type="submit"
+              type="button"
+              onClick={handleSubmit}
               disabled={updateWarehouseMutation.isPending}
             >
               {updateWarehouseMutation.isPending ? 'Updating...' : 'Update Settings'}
             </Button>
           </div>
-        </form>
+        </div>
       </div>
     </WarehousePortalLayout>
   );

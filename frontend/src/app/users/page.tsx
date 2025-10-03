@@ -384,12 +384,6 @@ const UserEditForm: React.FC<{
         isActive: user.isActive ?? true,
         warehouse: (user as any).warehouse?.assignedWarehouse || ''
       }}
-      onSubmit={async (values) => {
-        const payload = { ...values } as any;
-        if (!payload.phone) delete payload.phone;
-        if (!payload.warehouse) delete payload.warehouse;
-        await updateUserMutation.mutateAsync(payload);
-      }}
       loading={updateUserMutation.isPending}
     >{(methods) => (
       <div className="space-y-6">
@@ -458,6 +452,18 @@ const UserEditForm: React.FC<{
 
         <FormActions
           onCancel={onSuccess}
+          onSubmit={async () => {
+            const isValid = await methods.trigger();
+            if (isValid) {
+              const values = methods.getValues();
+              const payload = { ...values } as any;
+              if (!payload.phone) delete payload.phone;
+              if (!payload.warehouse) delete payload.warehouse;
+              await updateUserMutation.mutateAsync(payload);
+            } else {
+              toast.error('Please fill in all required fields');
+            }
+          }}
           submitText={updateUserMutation.isPending ? 'Updating...' : 'Update User'}
           loading={updateUserMutation.isPending}
         />
@@ -539,12 +545,6 @@ const UserCreateForm: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => {
     <Form
       schema={createUserSchema}
       defaultValues={{ firstName: '', lastName: '', email: '', password: '', role: (roleOptions[0]?.value as any) || 'employee', phone: '', isActive: true, warehouse: '' }}
-      onSubmit={async (values) => {
-        const payload = { ...values } as any;
-        if (!payload.phone) delete payload.phone;
-        if (!payload.warehouse) delete payload.warehouse;
-        await createUserMutation.mutateAsync(payload);
-      }}
       loading={createUserMutation.isPending}
     >{(methods) => (
       <div className="space-y-6">
@@ -616,6 +616,18 @@ const UserCreateForm: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => {
 
         <FormActions
           onCancel={onSuccess}
+          onSubmit={async () => {
+            const isValid = await methods.trigger();
+            if (isValid) {
+              const values = methods.getValues();
+              const payload = { ...values } as any;
+              if (!payload.phone) delete payload.phone;
+              if (!payload.warehouse) delete payload.warehouse;
+              await createUserMutation.mutateAsync(payload);
+            } else {
+              toast.error('Please fill in all required fields');
+            }
+          }}
           submitText={createUserMutation.isPending ? 'Creating...' : 'Create User'}
           loading={createUserMutation.isPending}
         />

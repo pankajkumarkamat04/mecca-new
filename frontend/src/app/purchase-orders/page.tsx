@@ -186,10 +186,10 @@ const PurchaseOrdersPage: React.FC = () => {
       render: (row: PurchaseOrder) => (
         <div className="flex flex-col space-y-1">
           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(row.status)}`}>
-            {row.status.charAt(0).toUpperCase() + row.status.slice(1)}
+            {(row.status || 'unknown').charAt(0).toUpperCase() + (row.status || 'unknown').slice(1)}
           </span>
           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getPriorityColor(row.priority)}`}>
-            {row.priority.charAt(0).toUpperCase() + row.priority.slice(1)}
+            {(row.priority || 'unknown').charAt(0).toUpperCase() + (row.priority || 'unknown').slice(1)}
           </span>
         </div>
       ),
@@ -534,7 +534,7 @@ const CreatePurchaseOrderForm: React.FC<{
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <div className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -625,11 +625,11 @@ const CreatePurchaseOrderForm: React.FC<{
         <Button type="button" variant="secondary" onClick={onCancel}>
           Cancel
         </Button>
-        <Button type="submit" disabled={createOrderMutation.isPending}>
+        <Button type="button" onClick={handleSubmit} disabled={createOrderMutation.isPending}>
           {createOrderMutation.isPending ? 'Creating...' : 'Create Order'}
         </Button>
       </div>
-    </form>
+    </div>
   );
 };
 
@@ -769,7 +769,7 @@ const EditPurchaseOrderForm: React.FC<{
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <div className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -814,11 +814,11 @@ const EditPurchaseOrderForm: React.FC<{
         <Button type="button" variant="secondary" onClick={onCancel}>
           Cancel
         </Button>
-        <Button type="submit" disabled={updateOrderMutation.isPending}>
+        <Button type="button" onClick={handleSubmit} disabled={updateOrderMutation.isPending}>
           {updateOrderMutation.isPending ? 'Updating...' : 'Update Order'}
         </Button>
       </div>
-    </form>
+    </div>
   );
 };
 

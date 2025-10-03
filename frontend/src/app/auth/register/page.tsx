@@ -81,7 +81,7 @@ export default function RegisterPage() {
           </p>
         </div>
         
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit(onSubmit)}>
+        <div className="mt-8 space-y-6">
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md">
               {error}
@@ -238,7 +238,8 @@ export default function RegisterPage() {
 
           <div>
             <button
-              type="submit"
+              type="button"
+              onClick={handleSubmit(onSubmit)}
               disabled={isLoading}
               className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
@@ -265,7 +266,7 @@ export default function RegisterPage() {
               </Link>
             </p>
           </div>
-        </form>
+        </div>
       </div>
     </div>
   )

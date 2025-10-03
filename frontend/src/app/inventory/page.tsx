@@ -686,18 +686,6 @@ const InventoryPage: React.FC = () => {
               supplier: '',
               notes: '',
             }}
-            onSubmit={async (values) => {
-              const payload: any = {
-                ...values,
-                totalCost: values.quantity * values.unitCost,
-              };
-              if (!payload.reference) delete payload.reference;
-              if (!payload.reason) delete payload.reason;
-              if (!payload.supplier) delete payload.supplier;
-              if (!payload.notes) delete payload.notes;
-              await createMovementMutation.mutateAsync(payload);
-              setIsMovementModalOpen(false);
-            }}
             loading={createMovementMutation.isPending}
           >{(methods) => (
             <div className="space-y-6">
@@ -742,6 +730,24 @@ const InventoryPage: React.FC = () => {
 
               <FormActions
                 onCancel={() => setIsMovementModalOpen(false)}
+                onSubmit={async () => {
+                  const isValid = await methods.trigger();
+                  if (isValid) {
+                    const values = methods.getValues();
+                    const payload: any = {
+                      ...values,
+                      totalCost: values.quantity * values.unitCost,
+                    };
+                    if (!payload.reference) delete payload.reference;
+                    if (!payload.reason) delete payload.reason;
+                    if (!payload.supplier) delete payload.supplier;
+                    if (!payload.notes) delete payload.notes;
+                    await createMovementMutation.mutateAsync(payload);
+                    setIsMovementModalOpen(false);
+                  } else {
+                    toast.error('Please fill in all required fields');
+                  }
+                }}
                 submitText={createMovementMutation.isPending ? 'Recording...' : 'Record Movement'}
                 loading={createMovementMutation.isPending}
               />
@@ -763,13 +769,6 @@ const InventoryPage: React.FC = () => {
               newQuantity: 0,
               reason: '',
               notes: '',
-            }}
-            onSubmit={async (values) => {
-              const payload: any = { ...values };
-              if (!payload.reason) delete payload.reason;
-              if (!payload.notes) delete payload.notes;
-              await adjustmentMutation.mutateAsync(payload);
-              setIsAdjustmentModalOpen(false);
             }}
             loading={adjustmentMutation.isPending}
           >{(methods) => (
@@ -798,6 +797,19 @@ const InventoryPage: React.FC = () => {
 
               <FormActions
                 onCancel={() => setIsAdjustmentModalOpen(false)}
+                onSubmit={async () => {
+                  const isValid = await methods.trigger();
+                  if (isValid) {
+                    const values = methods.getValues();
+                    const payload: any = { ...values };
+                    if (!payload.reason) delete payload.reason;
+                    if (!payload.notes) delete payload.notes;
+                    await adjustmentMutation.mutateAsync(payload);
+                    setIsAdjustmentModalOpen(false);
+                  } else {
+                    toast.error('Please fill in all required fields');
+                  }
+                }}
                 submitText={adjustmentMutation.isPending ? 'Adjusting...' : 'Adjust Stock'}
                 loading={adjustmentMutation.isPending}
               />

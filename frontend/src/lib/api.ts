@@ -290,8 +290,8 @@ export const ordersAPI = {
     api.put(`/orders/${id}/status`, { status, notes }),
   updatePaymentStatus: (id: string, paymentData: any) => 
     api.put(`/orders/${id}/payment`, paymentData),
-  assignOrder: (id: string, assignedTo: string) => 
-    api.put(`/orders/${id}/assign`, { assignedTo }),
+  assignOrder: (id: string, assignedTo?: string, warehouse?: string) => 
+    api.put(`/orders/${id}/assign`, { assignedTo, warehouse }),
   convertToInvoice: (id: string) => api.post(`/orders/${id}/convert-to-invoice`),
   getOrderStats: () => api.get('/orders/stats'),
   getOrdersByCustomer: (customerId: string, params?: any) => 
@@ -482,6 +482,9 @@ export const enhancedWorkshopAPI = {
   updateJobProgress: (id: string, data: any) => api.put(`/workshop/${id}/progress`, data),
   completeJob: (id: string) => api.post(`/workshop/${id}/complete`),
   cancelJob: (id: string) => api.put(`/workshop/${id}/cancel`),
+  deleteJob: (id: string) => api.delete(`/workshop/${id}`),
+  updateJobResources: (id: string, data: any) => api.put(`/workshop/${id}/update-resources`, data),
+  updateJobTask: (id: string, data: any) => api.put(`/workshop/${id}/update-task`, data),
   
   // Resource management
   assignTechnician: (id: string, data: any) => api.put(`/workshop/${id}/assign-technician`, data),

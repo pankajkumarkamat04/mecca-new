@@ -134,6 +134,10 @@ const CreateQuotationForm: React.FC<CreateQuotationFormProps> = ({
   };
 
   const handleSubmit = (data: QuotationFormData) => {
+    console.log('CreateQuotationForm handleSubmit called with data:', data);
+    console.log('Items:', items);
+    console.log('Taxes:', taxes);
+    
     // Validate that at least one item is selected
     const validItems = items.filter(item => item.product);
     if (validItems.length === 0) {
@@ -149,6 +153,8 @@ const CreateQuotationForm: React.FC<CreateQuotationFormProps> = ({
       quotationDate: new Date().toISOString(),
       status: 'draft',
     };
+
+    console.log('Submitting quotation data:', submitData);
 
     if (initialData) {
       updateMutation.mutate({ id: initialData._id, data: submitData });
@@ -198,7 +204,7 @@ const CreateQuotationForm: React.FC<CreateQuotationFormProps> = ({
   };
 
   return (
-    <Form schema={quotationSchema} onSubmit={handleSubmit} defaultValues={defaultValues}>
+    <Form schema={quotationSchema} defaultValues={defaultValues}>
       {(methods) => (
         <div className="space-y-6">
           <FormSection title="Quotation Details">
@@ -227,6 +233,7 @@ const CreateQuotationForm: React.FC<CreateQuotationFormProps> = ({
                 </label>
                 <input
                   {...methods.register('validUntil')}
+                  name="validUntil"
                   type="date"
                   className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
                 />
@@ -245,6 +252,7 @@ const CreateQuotationForm: React.FC<CreateQuotationFormProps> = ({
                 </label>
                 <textarea
                   {...methods.register('notes')}
+                  name="notes"
                   rows={3}
                   className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
                   placeholder="Quotation notes"
@@ -257,6 +265,7 @@ const CreateQuotationForm: React.FC<CreateQuotationFormProps> = ({
                 </label>
                 <textarea
                   {...methods.register('terms')}
+                  name="terms"
                   rows={3}
                   className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
                   placeholder="Terms and conditions"
@@ -275,9 +284,11 @@ const CreateQuotationForm: React.FC<CreateQuotationFormProps> = ({
                         Product *
                       </label>
                       <select
+                        name={`product-${index}`}
                         value={item.product}
                         onChange={(e) => updateItem(index, 'product', e.target.value)}
                         className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                        required
                       >
                         <option value="">Select a product</option>
                         {Array.isArray(products) ? products.map((product: any) => (
@@ -293,11 +304,13 @@ const CreateQuotationForm: React.FC<CreateQuotationFormProps> = ({
                         Quantity *
                       </label>
                       <input
+                        name={`quantity-${index}`}
                         type="number"
                         min="1"
                         value={item.quantity}
                         onChange={(e) => updateItem(index, 'quantity', parseInt(e.target.value) || 1)}
                         className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                        required
                       />
                     </div>
 
@@ -306,12 +319,14 @@ const CreateQuotationForm: React.FC<CreateQuotationFormProps> = ({
                         Unit Price *
                       </label>
                       <input
+                        name={`unitPrice-${index}`}
                         type="number"
                         min="0"
                         step="0.01"
                         value={item.unitPrice}
                         onChange={(e) => updateItem(index, 'unitPrice', parseFloat(e.target.value) || 0)}
                         className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                        required
                       />
                     </div>
 
@@ -444,6 +459,17 @@ const CreateQuotationForm: React.FC<CreateQuotationFormProps> = ({
 
           <FormActions
             onCancel={onClose}
+            onSubmit={() => {
+              // Validate form first
+              methods.trigger().then((isValid) => {
+                if (isValid) {
+                  const formData = methods.getValues();
+                  handleSubmit(formData);
+                } else {
+                  toast.error('Please fill in all required fields');
+                }
+              });
+            }}
             submitText={initialData ? 'Update Quotation' : 'Create Quotation'}
             loading={createMutation.isPending || updateMutation.isPending}
           />

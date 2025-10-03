@@ -102,35 +102,76 @@ const getTechnicianById = async (req, res) => {
 // @access  Private
 const createTechnician = async (req, res) => {
   try {
-    const { userId, employeeId, department, position, hireDate, ...otherData } = req.body;
+    console.log('Create technician request body:', req.body);
+    const { userId, name, employeeId, department, position, hireDate, user: userField, ...otherData } = req.body;
 
-    // Check if user exists
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found'
-      });
-    }
-
-    // Check if technician already exists for this user
-    const existingTechnician = await Technician.findOne({ user: userId });
-    if (existingTechnician) {
+    // Validate required fields
+    if (!name || name.trim() === '') {
       return res.status(400).json({
         success: false,
-        message: 'Technician profile already exists for this user'
+        message: 'Technician name is required'
       });
     }
 
+    // Check if user exists
+    let user = null;
+    if (userId && userId.trim() !== '') {
+      user = await User.findById(userId);
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          message: 'User not found'
+        });
+      }
+
+      // Check if technician already exists for this user
+      const existingTechnician = await Technician.findOne({ user: userId });
+      if (existingTechnician) {
+        return res.status(400).json({
+          success: false,
+          message: 'Technician profile already exists for this user'
+        });
+      }
+    }
+
+    // Handle hireDate - use current date if not provided or invalid
+    let validHireDate = new Date();
+    if (hireDate && !isNaN(new Date(hireDate).getTime())) {
+      validHireDate = new Date(hireDate);
+    }
+
+    // Clean up otherData to remove invalid fields
+    const cleanedOtherData = { ...otherData };
+    
+    // Remove fields that should be arrays but are strings
+    const arrayFields = ['skills', 'availability', 'currentLeave', 'performance', 'currentJobs'];
+    arrayFields.forEach(field => {
+      if (cleanedOtherData[field] && typeof cleanedOtherData[field] === 'string') {
+        delete cleanedOtherData[field];
+      }
+      if (cleanedOtherData[field] === '') {
+        delete cleanedOtherData[field];
+      }
+    });
+
+    // Note: user field is already extracted separately above, so it won't be in cleanedOtherData
+
+    console.log('Cleaned otherData:', cleanedOtherData);
+
     const technicianData = {
-      user: userId,
-      employeeId,
-      department,
-      position,
-      hireDate: new Date(hireDate),
-      ...otherData,
+      name: name.trim(),
+      employeeId: employeeId || null,
+      department: department || 'workshop',
+      position: position || 'technician',
+      hireDate: validHireDate,
+      ...cleanedOtherData,
       createdBy: req.user._id
     };
+
+    // Only add user field if it's a valid ObjectId and user exists
+    if (userId && userId.trim() !== '' && user) {
+      technicianData.user = userId;
+    }
 
     const technician = new Technician(technicianData);
     await technician.save();
@@ -152,9 +193,28 @@ const createTechnician = async (req, res) => {
         message: 'Technician with this employee ID already exists'
       });
     }
+    
+    // Handle validation errors
+    if (error.name === 'ValidationError') {
+      const errors = Object.values(error.errors).map(err => err.message);
+      return res.status(400).json({
+        success: false,
+        message: 'Validation failed',
+        errors: errors
+      });
+    }
+    
+    // Handle cast errors (like invalid ObjectId)
+    if (error.name === 'CastError') {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid ${error.path}: ${error.message}`
+      });
+    }
+    
     res.status(500).json({
       success: false,
-      message: 'Server error'
+      message: error.message || 'Server error'
     });
   }
 };
@@ -173,7 +233,20 @@ const updateTechnician = async (req, res) => {
       });
     }
 
-    Object.assign(technician, req.body);
+    // Handle name field separately if provided
+    if (req.body.name !== undefined) {
+      if (!req.body.name || req.body.name.trim() === '') {
+        return res.status(400).json({
+          success: false,
+          message: 'Technician name is required'
+        });
+      }
+      technician.name = req.body.name.trim();
+    }
+
+    // Update other fields
+    const { name, ...updateData } = req.body;
+    Object.assign(technician, updateData);
     technician.lastUpdatedBy = req.user._id;
     await technician.save();
 
@@ -609,6 +682,52 @@ const getTechnicianStats = async (req, res) => {
   }
 };
 
+// @desc    Get available technicians for workshop jobs
+// @route   GET /api/technicians/available
+// @access  Private
+const getAvailableTechnicians = async (req, res) => {
+  try {
+    const technicians = await Technician.find({
+      employmentStatus: 'active'
+    })
+    .populate('user', 'firstName lastName email phone')
+    .select('user employeeId name department position statistics preferences currentJobs currentLeave employmentStatus isActive');
+
+    // Filter technicians who are currently available using the virtual field
+    const availableTechnicians = technicians.filter(tech => {
+      // Ensure isActive has a value (fallback to true if undefined)
+      if (tech.isActive === undefined) {
+        tech.isActive = true;
+      }
+      
+      // Use the virtual field to check availability for all technicians
+      return tech.isCurrentlyAvailable;
+    });
+
+    res.json({
+      success: true,
+      technicians: availableTechnicians.map(tech => ({
+        _id: tech._id,
+        user: tech.user,
+        name: tech.name,
+        employeeId: tech.employeeId,
+        department: tech.department,
+        position: tech.position,
+        isAvailable: tech.isCurrentlyAvailable,
+        currentJobs: tech.currentJobs?.length || 0,
+        completedJobs: tech.statistics?.completedJobs || 0,
+        averageRating: tech.statistics?.averageRating || 0
+      }))
+    });
+  } catch (error) {
+    console.error('Get available technicians error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+};
+
 module.exports = {
   getTechnicians,
   getTechnicianById,
@@ -622,5 +741,6 @@ module.exports = {
   assignJob,
   completeJob,
   updatePerformance,
-  getTechnicianStats
+  getTechnicianStats,
+  getAvailableTechnicians
 };
