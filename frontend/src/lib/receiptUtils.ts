@@ -1,6 +1,36 @@
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 
+// Helper function to convert images to base64
+const convertImagesToBase64 = async (element: HTMLElement): Promise<void> => {
+  const images = element.querySelectorAll('img');
+  const promises = Array.from(images).map(async (img) => {
+    try {
+      // If image is already base64, skip
+      if (img.src.startsWith('data:')) return;
+      
+      // Create a canvas to convert image to base64
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      
+      canvas.width = img.naturalWidth || img.width;
+      canvas.height = img.naturalHeight || img.height;
+      
+      // Draw image to canvas
+      ctx.drawImage(img, 0, 0);
+      
+      // Convert to base64
+      const base64 = canvas.toDataURL('image/png');
+      img.src = base64;
+    } catch (error) {
+      console.warn('Failed to convert image to base64:', error);
+    }
+  });
+  
+  await Promise.all(promises);
+};
+
 export const generatePDF = async (elementId: string, filename: string = 'invoice.pdf') => {
   const element = document.getElementById(elementId);
   if (!element) {
@@ -14,6 +44,9 @@ export const generatePDF = async (elementId: string, filename: string = 'invoice
   }
 
   try {
+    // Convert all images to base64 before generating PDF
+    await convertImagesToBase64(element);
+    
     const canvas = await html2canvas(element, {
       scale: 1.5, // Reduced scale for smaller file size
       useCORS: true,
@@ -58,7 +91,7 @@ export const generatePDF = async (elementId: string, filename: string = 'invoice
   }
 };
 
-export const printElement = (elementId: string) => {
+export const printElement = async (elementId: string) => {
   const element = document.getElementById(elementId);
   if (!element) {
     throw new Error('Element not found');
@@ -69,6 +102,9 @@ export const printElement = (elementId: string) => {
   if (actionButtons) {
     (actionButtons as HTMLElement).style.display = 'none';
   }
+
+  // Convert all images to base64 before printing
+  await convertImagesToBase64(element);
 
   const printWindow = window.open('', '_blank');
   if (!printWindow) {
@@ -135,6 +171,6 @@ export const downloadReceipt = async (elementId: string, type: 'short' | 'full')
   await generatePDF(elementId, filename);
 };
 
-export const printReceipt = (elementId: string) => {
-  printElement(elementId);
+export const printReceipt = async (elementId: string) => {
+  await printElement(elementId);
 };
