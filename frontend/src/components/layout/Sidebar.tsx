@@ -34,6 +34,7 @@ import {
   TruckIcon as DeliveryIcon,
   ChevronDownIcon,
   ChevronRightIcon,
+  CurrencyDollarIcon,
 } from '@heroicons/react/24/outline';
 
 interface SidebarItem {
@@ -72,7 +73,7 @@ const getWarehouseSidebarItems = (userRole: string): SidebarItem[] => {
           href: '/warehouse-portal/inventory',
           icon: ArchiveBoxIcon,
         },
-        // Deliveries visible for manager; for employees it can be hidden if not permitted
+        // Deliveries visible for manager only
         ...(userRole === 'warehouse_manager'
           ? [
               {
@@ -93,7 +94,7 @@ const getWarehouseSidebarItems = (userRole: string): SidebarItem[] => {
       icon: CogIcon,
       children: [
         {
-          name: 'Employees',
+          name: 'Staff',
           href: '/warehouse-portal/employees',
           icon: UserGroupIcon,
         },
@@ -115,11 +116,103 @@ const getWarehouseSidebarItems = (userRole: string): SidebarItem[] => {
   return groups;
 };
 
+// Sales-specific sidebar configuration
+const getSalesSidebarItems = (userRole: string): SidebarItem[] => {
+  return [
+    {
+      name: 'Dashboard',
+      href: '/dashboard',
+      icon: HomeIcon,
+    },
+    {
+      name: 'Point of Sale',
+      href: '/pos',
+      icon: CurrencyDollarIcon,
+    },
+    {
+      name: 'Sales',
+      href: '#',
+      icon: ShoppingBagIcon,
+      children: [
+        {
+          name: 'Customers',
+          href: '/customers',
+          icon: UserGroupIcon,
+        },
+        {
+          name: 'Invoices',
+          href: '/invoices',
+          icon: DocumentTextIcon,
+        },
+        {
+          name: 'Customer Inquiries',
+          href: '/customer-inquiries',
+          icon: ChatBubbleLeftRightIcon,
+        },
+        {
+          name: 'Quotations',
+          href: '/quotations',
+          icon: ClipboardDocumentListIcon,
+        },
+        {
+          name: 'Orders',
+          href: '/orders',
+          icon: ShoppingBagIcon,
+        },
+      ],
+    },
+    {
+      name: 'Support',
+      href: '/support',
+      icon: LifebuoyIcon,
+    },
+    {
+      name: 'Profile',
+      href: '/profile',
+      icon: UserIcon,
+    },
+  ];
+};
+
+// Workshop-specific sidebar configuration
+const getWorkshopSidebarItems = (userRole: string): SidebarItem[] => {
+  return [
+    {
+      name: 'Workshop',
+      href: '/workshop',
+      icon: WrenchScrewdriverIcon,
+    },
+    {
+      name: 'Customers',
+      href: '/customers',
+      icon: UserGroupIcon,
+    },
+    {
+      name: 'Support',
+      href: '/support',
+      icon: LifebuoyIcon,
+    },
+    {
+      name: 'Profile',
+      href: '/profile',
+      icon: UserIcon,
+    },
+  ];
+};
+
 // Role-based sidebar configuration
 const getSidebarItems = (userRole: string): SidebarItem[] => {
-  // Warehouse roles get a different base structure
+  // Department-specific roles get their own sidebar structure
   if (['warehouse_manager', 'warehouse_employee'].includes(userRole)) {
     return getWarehouseSidebarItems(userRole);
+  }
+  
+  if (userRole === 'sales_person') {
+    return getSalesSidebarItems(userRole);
+  }
+  
+  if (userRole === 'workshop_employee') {
+    return getWorkshopSidebarItems(userRole);
   }
 
   const baseItems: SidebarItem[] = [
@@ -155,7 +248,7 @@ const getSidebarItems = (userRole: string): SidebarItem[] => {
   }
 
   // Sales and Operations items
-  if (['admin', 'manager', 'employee'].includes(userRole)) {
+  if (['admin', 'manager'].includes(userRole)) {
     baseItems.push(
       {
         name: 'Sales',
@@ -263,7 +356,7 @@ const getSidebarItems = (userRole: string): SidebarItem[] => {
   }
 
   // Workshop
-  if (['admin', 'manager', 'employee'].includes(userRole)) {
+  if (['admin', 'manager'].includes(userRole)) {
     baseItems.push({
       name: 'Workshop',
       href: '#',
@@ -286,23 +379,16 @@ const getSidebarItems = (userRole: string): SidebarItem[] => {
   }
 
   // Reports and Analytics
-  if (['admin', 'manager', 'employee'].includes(userRole)) {
+  if (['admin', 'manager'].includes(userRole)) {
     baseItems.push({
       name: 'Reports & Analytics',
       href: '#',
       icon: ChartBarIcon,
       children: [
         {
-          name: 'Reports',
-          href: '/reports',
+          name: 'Reports & Analytics',
+          href: '/reports-analytics',
           icon: ChartBarIcon,
-          permission: { module: 'reports', action: 'read' },
-        },
-        {
-          name: 'Analytics',
-          href: '/analytics',
-          icon: ChartBarIcon,
-          permission: { module: 'reports', action: 'read' },
         },
       ],
     });
@@ -383,7 +469,7 @@ const getSidebarItems = (userRole: string): SidebarItem[] => {
   }
 
   // Merge Warehouse Portal and Warehouses under one group
-  if (['admin', 'manager', 'employee'].includes(userRole)) {
+  if (['admin', 'manager'].includes(userRole)) {
     baseItems.push({
       name: 'Warehouse',
       href: '#',
@@ -399,7 +485,7 @@ const getSidebarItems = (userRole: string): SidebarItem[] => {
           name: 'Warehouse Portal',
           href: '/warehouse-portal',
           icon: BuildingOfficeIcon,
-          roles: ['admin', 'manager', 'employee'],
+          roles: ['admin', 'manager'],
         },
       ],
     });

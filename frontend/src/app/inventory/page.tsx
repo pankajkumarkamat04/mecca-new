@@ -1426,13 +1426,13 @@ const InventoryPage: React.FC = () => {
               </Button>
             )}
             {hasPermission('inventory', 'update') && (
-                <Button
-                  onClick={() => setIsStockTakingModalOpen(true)}
-                  leftIcon={<ClipboardDocumentListIcon className="h-4 w-4" />}
-                  variant="secondary"
-                >
-                  Stock Taking
-                </Button>
+              <Button
+                onClick={() => setIsStockTakingModalOpen(true)}
+                leftIcon={<ClipboardDocumentListIcon className="h-4 w-4" />}
+                variant="secondary"
+              >
+                Stock Taking
+              </Button>
             )}
             {hasPermission('inventory', 'create') && (
               <Button
@@ -1831,9 +1831,9 @@ const InventoryPage: React.FC = () => {
                 </div>
               )}
               
-              <div className="text-center py-8">
-                <ClipboardDocumentListIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">Stock Taking Operations</h3>
+            <div className="text-center py-8">
+              <ClipboardDocumentListIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Stock Taking Operations</h3>
                 <p className="text-gray-500 mb-4">Click "New Stock Taking" to start a cycle count and adjust inventory levels.</p>
               </div>
             </div>
@@ -1906,9 +1906,9 @@ const InventoryPage: React.FC = () => {
                 </div>
               )}
               
-              <div className="text-center py-8">
-                <TruckIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">Receiving Operations</h3>
+            <div className="text-center py-8">
+              <TruckIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Receiving Operations</h3>
                 <p className="text-gray-500 mb-4">Click "New Receiving" to process incoming goods and update inventory levels.</p>
               </div>
             </div>
@@ -1981,9 +1981,9 @@ const InventoryPage: React.FC = () => {
                 </div>
               )}
               
-              <div className="text-center py-8">
-                <ShoppingCartIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">Picking Operations</h3>
+            <div className="text-center py-8">
+              <ShoppingCartIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Picking Operations</h3>
                 <p className="text-gray-500 mb-4">Click "New Picking" to process order picking and update inventory levels.</p>
               </div>
             </div>

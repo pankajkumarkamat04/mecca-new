@@ -6,7 +6,7 @@ A comprehensive Point of Sale (POS) system backend built with Node.js, Express.j
 
 ### Core Business Modules
 - **User Management** - Authentication, authorization, role-based access control
-- **Store Management** - Multi-store support, employee assignment, store-specific settings
+- **Store Management** - Multi-store support, user assignment, store-specific settings
 - **Product Management** - Inventory tracking, pricing, categories, variations
 - **Customer Management** - Customer profiles, account management
 - **Supplier Management** - Vendor relationships, purchase tracking, ratings
@@ -32,7 +32,7 @@ A comprehensive Point of Sale (POS) system backend built with Node.js, Express.j
 - **Tasks** - Task assignment, time tracking, comments, dependencies
 
 ### Support System
-- **Tickets** - Customer and employee support tickets
+- **Tickets** - Customer and user support tickets
 - **Conversations** - Ticket conversations, SLA management
 - **Satisfaction** - Customer feedback and rating system
 
@@ -235,14 +235,17 @@ Authorization: Bearer <your-jwt-token>
 
 - **admin** - Full system access
 - **manager** - Store management access
-- **employee** - Basic operational access
+- **sales_person** - Sales operations access
+- **workshop_employee** - Workshop operations access
+- **warehouse_manager** - Warehouse management access
+- **warehouse_employee** - Warehouse operations access
 - **customer** - Customer portal access
 
 ## 📊 Database Schema
 
 ### Key Models
 
-- **User** - System users and employees
+- **User** - System users and staff
 - **Store** - Business locations
 - **Product** - Inventory items
 - **Customer** - Customer information

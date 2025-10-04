@@ -208,6 +208,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         inventory: ['read', 'create', 'update', 'delete'],
         pos: ['read', 'create', 'update', 'delete'],
         reports: ['read'],
+        reportsAnalytics: ['read'],
         support: ['read', 'create', 'update', 'delete'],
         accounts: ['read', 'create', 'update', 'delete'],
         transactions: ['read', 'create', 'update', 'delete'],
@@ -232,6 +233,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         inventory: ['read', 'create', 'update'],
         pos: ['read', 'create', 'update'],
         reports: ['read'],
+        reportsAnalytics: ['read'],
         support: ['read', 'create', 'update'],
         accounts: ['read'],
         transactions: ['read', 'create'],
@@ -247,34 +249,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         purchaseOrders: ['read', 'create', 'update', 'delete'],
         resources: ['read', 'create', 'update', 'delete'],
       },
-      employee: {
-        users: ['read'],
-        products: ['read', 'update'],
-        customers: ['read', 'create', 'update'],
-        suppliers: ['read'],
-        invoices: ['read', 'create', 'update'],
-        inventory: ['read', 'create', 'update'],
-        pos: ['read', 'create', 'update'],
-        reports: ['read'],
-        support: ['read', 'create', 'update'],
-        accounts: ['read'],
-        transactions: ['read', 'create'],
-        workshop: ['read', 'create', 'update'],
-        settings: ['read'],
-        // New Sales & Warehouse Modules
-        customerInquiries: ['read', 'create', 'update'],
-        quotations: ['read', 'create', 'update'],
-        orders: ['read', 'create', 'update'],
-        deliveries: ['read', 'create', 'update'],
-        warehouses: ['read'],
-        stockAlerts: ['read', 'update'],
-        purchaseOrders: ['read'],
-        resources: ['read', 'create', 'update'],
-      },
       customer: {
         users: ['read'],
         products: ['read'],
-        customers: ['read', 'update'],
+        customers: ['read', 'create', 'update'],
         invoices: ['read'],
         support: ['read', 'create', 'update'],
         settings: ['read'],
@@ -297,6 +275,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         purchaseOrders: ['read', 'create', 'update'],
         // Basic user permissions
         users: ['read'],
+        // Customer creation allowed for all roles
+        customers: ['read', 'create', 'update'],
+        reportsAnalytics: ['read'],
       },
       warehouse_employee: {
         // Only warehouse-related permissions
@@ -306,6 +287,31 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         warehouses: ['read'],
         stockAlerts: ['read', 'update'],
         purchaseOrders: ['read'],
+        // Customer creation allowed for all roles
+        customers: ['read', 'create', 'update'],
+        reportsAnalytics: ['read'],
+      },
+      sales_person: {
+        // Sales-specific permissions only
+        customers: ['read', 'create', 'update'],
+        invoices: ['read', 'create'],
+        pos: ['read', 'create'],
+        support: ['read', 'create', 'update'],
+        customerInquiries: ['read', 'create', 'update'],
+        quotations: ['read', 'create', 'update'],
+        orders: ['read', 'create', 'update'],
+        // Read-only access to products for POS
+        products: ['read'],
+        // No access to inventory, warehouse, workshop, etc.
+        reportsAnalytics: ['read'],
+      },
+      workshop_employee: {
+        // Workshop-specific permissions only
+        workshop: ['read', 'create', 'update'],
+        customers: ['read', 'create', 'update'], // Can create customers for workshop jobs
+        support: ['read', 'create', 'update'],
+        // No access to sales, inventory management, etc.
+        reportsAnalytics: ['read'],
       },
     };
 

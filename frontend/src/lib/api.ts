@@ -231,32 +231,7 @@ export const transactionsAPI = {
   getTransactionStats: (params?: any) => api.get('/transactions/stats', { params }),
 };
 
-// Reports API
-export const reportsAPI = {
-  getDashboardStats: () => api.get('/reports/dashboard'),
-  getSalesReport: (params?: any) => api.get('/reports/sales', { params }),
-  getPurchaseReport: (params?: any) => api.get('/reports/purchases', { params }),
-  getProfitLossReport: (params?: any) => api.get('/reports/profit-loss', { params }),
-  getBalanceSheetReport: (params?: any) =>
-    api.get('/reports/balance-sheet', { params }),
-  getInventoryReport: (params?: any) => api.get('/reports/inventory', { params }),
-  
-  // Saved Reports
-  saveReport: (data: any) => api.post('/reports/save', data),
-  getSavedReports: (params?: any) => api.get('/reports/saved', { params }),
-  getSavedReportById: (id: string) => api.get(`/reports/saved/${id}`),
-  deleteSavedReport: (id: string) => api.delete(`/reports/saved/${id}`),
-};
 
-// Analytics API (deprecated) - removed in favor of insightsAPI
-
-// Insights API (Unified Reports + Analytics)
-export const insightsAPI = {
-  getOverview: () => api.get('/insights/overview'),
-  getSales: (params?: any) => api.get('/insights/sales', { params }),
-  getInventory: (params?: any) => api.get('/insights/inventory', { params }),
-  getWorkshop: (params?: any) => api.get('/insights/workshop', { params }),
-};
 
 // Quotations API
 export const quotationsAPI = {
@@ -519,6 +494,24 @@ export const enhancedWorkshopAPI = {
   // Analytics and insights
   getJobAnalytics: (id: string) => api.get(`/workshop/${id}/analytics`),
   getWorkshopDashboard: (params?: any) => api.get('/workshop/dashboard', { params }),
+};
+
+// Reports & Analytics API
+export const reportsAnalyticsAPI = {
+  // Dashboard Summary
+  getDashboardSummary: () => api.get('/reports-analytics/dashboard'),
+  
+  // Order Analytics
+  getOrderAnalytics: (params?: any) => api.get('/reports-analytics/orders', { params }),
+  
+  // POS Sales Analytics
+  getPOSSalesAnalytics: (params?: any) => api.get('/reports-analytics/pos-sales', { params }),
+  
+  // Workshop Analytics
+  getWorkshopAnalytics: (params?: any) => api.get('/reports-analytics/workshop', { params }),
+  
+  // Inventory Analytics
+  getInventoryAnalytics: (params?: any) => api.get('/reports-analytics/inventory', { params }),
 };
 
 export default api;

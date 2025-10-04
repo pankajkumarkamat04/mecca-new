@@ -5,7 +5,7 @@ export interface User {
   lastName: string;
   email: string;
   phone: string;
-  role: 'admin' | 'manager' | 'employee' | 'customer' | 'warehouse_manager' | 'warehouse_employee';
+  role: 'admin' | 'manager' | 'customer' | 'warehouse_manager' | 'warehouse_employee' | 'sales_person' | 'workshop_employee';
   avatar?: string;
   isActive: boolean;
   lastLogin?: string;

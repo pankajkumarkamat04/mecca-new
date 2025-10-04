@@ -115,10 +115,6 @@ const deliverySchema = new mongoose.Schema({
     instructions: String
   },
   items: [deliveryItemSchema],
-  totalAmount: {
-    type: Number,
-    required: true
-  },
   deliveryFee: {
     type: Number,
     default: 0
@@ -280,7 +276,8 @@ deliverySchema.methods.getProgressPercentage = function() {
 
 // Check if delivery requires signature
 deliverySchema.methods.requiresSignature = function() {
-  return this.totalAmount > 100; // Require signature for orders over $100
+  const totalAmount = this.items.reduce((sum, item) => sum + item.total, 0);
+  return totalAmount > 100; // Require signature for orders over $100
 };
 
 module.exports = mongoose.model('Delivery', deliverySchema);

@@ -3,22 +3,22 @@ import type { NextRequest } from 'next/server';
 
 // Define protected routes and their required roles
 const protectedRoutes = {
-  '/dashboard': ['admin', 'manager', 'employee'],
+  '/dashboard': ['admin', 'manager', 'sales_person'],
   '/admin': ['admin'],
-  '/users': ['admin', 'manager'],
-  '/products': ['admin', 'manager', 'employee'],
-  '/customers': ['admin', 'manager', 'employee'],
-  '/suppliers': ['admin', 'manager', 'employee'],
-  '/invoices': ['admin', 'manager', 'employee'],
-  '/inventory': ['admin', 'manager', 'employee'],
-  '/pos': ['admin', 'manager', 'employee'],
-  '/support': ['admin', 'manager', 'employee'],
+  '/users': ['admin', 'manager', 'sales_person', 'workshop_employee', 'warehouse_manager', 'warehouse_employee'],
+  '/products': ['admin', 'manager'],
+  '/customers': ['admin', 'manager', 'sales_person'],
+  '/suppliers': ['admin', 'manager'],
+  '/invoices': ['admin', 'manager', 'sales_person'],
+  '/inventory': ['admin', 'manager', 'warehouse_manager', 'warehouse_employee'],
+  '/pos': ['admin', 'manager', 'sales_person'],
+  '/support': ['admin', 'manager', 'sales_person', 'workshop_employee'],
   '/accounts': ['admin', 'manager'],
-  '/transactions': ['admin', 'manager', 'employee'],
-  '/workshop': ['admin', 'manager', 'employee'],
-  '/reports': ['admin', 'manager', 'employee'],
+  '/transactions': ['admin', 'manager'],
+  '/workshop': ['admin', 'manager', 'workshop_employee'],
+  '/reports': ['admin', 'manager'],
+  '/reports-analytics': ['admin', 'manager', 'sales_person', 'warehouse_manager', 'warehouse_employee', 'workshop_employee'],
   '/settings': ['admin', 'manager'],
-  '/analytics': ['admin'],
 };
 
 // Define customer routes
@@ -28,6 +28,14 @@ const customerRoutes = [
   '/customer/purchases',
   '/customer/support',
 ];
+
+// Define department-specific routes
+const departmentRoutes = {
+  sales_person: ['/dashboard', '/pos', '/customers', '/invoices', '/customer-inquiries', '/quotations', '/orders', '/support', '/profile'],
+  workshop_employee: ['/workshop', '/customers', '/support', '/profile'],
+  warehouse_manager: ['/warehouse-portal', '/inventory', '/deliveries', '/profile'],
+  warehouse_employee: ['/warehouse-portal', '/inventory', '/deliveries', '/profile'],
+};
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -52,9 +60,14 @@ export function middleware(request: NextRequest) {
     pathname.startsWith(route)
   );
 
-  // If it's a protected route or customer route, redirect to login
+  // Check if it's a department-specific route
+  const isDepartmentRoute = Object.values(departmentRoutes).some(routes =>
+    routes.some(route => pathname.startsWith(route))
+  );
+
+  // If it's a protected route, customer route, or department route, redirect to login
   // The actual role checking will be handled by the RouteProtection component
-  if (isProtectedRoute || isCustomerRoute) {
+  if (isProtectedRoute || isCustomerRoute || isDepartmentRoute) {
     // Store the intended path for redirect after login
     const response = NextResponse.next();
     response.cookies.set('intendedPath', pathname);

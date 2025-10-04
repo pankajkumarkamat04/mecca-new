@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { customersAPI } from '@/lib/api';
+import { useAuth } from '@/contexts/AuthContext';
 import Input from './Input';
 import Button from './Button';
 import Modal from './Modal';
@@ -36,6 +37,7 @@ const CustomerSelector: React.FC<CustomerSelectorProps> = ({
   required = false,
   disabled = false
 }) => {
+  const { hasPermission } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
@@ -50,6 +52,9 @@ const CustomerSelector: React.FC<CustomerSelectorProps> = ({
   });
   
   const queryClient = useQueryClient();
+  
+  // Check if user can create customers
+  const canCreateCustomer = hasPermission('customers', 'create');
 
   // Handle escape key for customer selection modal
   useEffect(() => {
@@ -278,18 +283,20 @@ const CustomerSelector: React.FC<CustomerSelectorProps> = ({
                   <MagnifyingGlassIcon className="absolute right-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
                 </div>
 
-                {/* Create New Customer Button */}
-                <div className="flex justify-end">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowCreateModal(true)}
-                    className="flex items-center"
-                  >
-                    <PlusIcon className="h-4 w-4 mr-2" />
-                    Create New Customer
-                  </Button>
-                </div>
+                {/* Create New Customer Button - Only show if user has permission */}
+                {canCreateCustomer && (
+                  <div className="flex justify-end">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowCreateModal(true)}
+                      className="flex items-center"
+                    >
+                      <PlusIcon className="h-4 w-4 mr-2" />
+                      Create New Customer
+                    </Button>
+                  </div>
+                )}
 
                 {/* Customer List */}
                 <div className="max-h-96 overflow-y-auto">
@@ -359,15 +366,17 @@ const CustomerSelector: React.FC<CustomerSelectorProps> = ({
                       <p className="text-gray-500 mb-4">
                         {searchTerm ? 'No customers found matching your search' : 'No customers available'}
                       </p>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setShowCreateModal(true)}
-                        className="flex items-center mx-auto"
-                      >
-                        <PlusIcon className="h-4 w-4 mr-2" />
-                        Create New Customer
-                      </Button>
+                      {canCreateCustomer && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setShowCreateModal(true)}
+                          className="flex items-center mx-auto"
+                        >
+                          <PlusIcon className="h-4 w-4 mr-2" />
+                          Create New Customer
+                        </Button>
+                      )}
                     </div>
                   )}
                 </div>

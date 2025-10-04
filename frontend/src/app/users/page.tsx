@@ -106,11 +106,39 @@ const UsersPage: React.FC = () => {
       key: 'role',
       label: 'Role',
       sortable: true,
-      render: (row: User) => (
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 capitalize">
-          {row.role.replace('_', ' ')}
-        </span>
-      ),
+      render: (row: User) => {
+        const getRoleLabel = (role: string) => {
+          const roleLabels: Record<string, string> = {
+            'admin': 'Admin',
+            'manager': 'Manager',
+            'sales_person': 'Sales Person',
+            'workshop_employee': 'Workshop Employee',
+            'warehouse_manager': 'Warehouse Manager',
+            'warehouse_employee': 'Warehouse Employee',
+            'customer': 'Customer'
+          };
+          return roleLabels[role] || role.replace('_', ' ');
+        };
+
+        const getRoleColor = (role: string) => {
+          const roleColors: Record<string, string> = {
+            'admin': 'bg-red-100 text-red-800',
+            'manager': 'bg-purple-100 text-purple-800',
+            'sales_person': 'bg-blue-100 text-blue-800',
+            'workshop_employee': 'bg-green-100 text-green-800',
+            'warehouse_manager': 'bg-yellow-100 text-yellow-800',
+            'warehouse_employee': 'bg-orange-100 text-orange-800',
+            'customer': 'bg-gray-100 text-gray-800'
+          };
+          return roleColors[role] || 'bg-blue-100 text-blue-800';
+        };
+
+        return (
+          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getRoleColor(row.role)}`}>
+            {getRoleLabel(row.role)}
+          </span>
+        );
+      },
     },
     {
       key: 'isActive',
@@ -147,25 +175,31 @@ const UsersPage: React.FC = () => {
           >
             <EyeIcon className="h-4 w-4" />
           </button>
-          <button
-            onClick={() => handleEditUser(row)}
-            className="text-gray-600 hover:text-gray-900"
-          >
-            <PencilIcon className="h-4 w-4" />
-          </button>
-          <button
-            onClick={() => handleDeleteUser(row)}
-            className="text-red-600 hover:text-red-900"
-          >
-            <TrashIcon className="h-4 w-4" />
-          </button>
+          {/* Only admins and managers can edit/delete users */}
+          {(currentUser?.role === 'admin' || currentUser?.role === 'manager') && (
+            <>
+              <button
+                onClick={() => handleEditUser(row)}
+                className="text-gray-600 hover:text-gray-900"
+              >
+                <PencilIcon className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => handleDeleteUser(row)}
+                className="text-red-600 hover:text-red-900"
+              >
+                <TrashIcon className="h-4 w-4" />
+              </button>
+            </>
+          )}
         </div>
       ),
     },
   ];
 
   // Check if user has permission to access this page
-  if (!hasRole('admin') && !hasRole('manager')) {
+  // All roles can access users page to create customer accounts
+  if (!hasRole('admin') && !hasRole('manager') && !hasRole('sales_person') && !hasRole('workshop_employee') && !hasRole('warehouse_manager') && !hasRole('warehouse_employee')) {
     return (
       <Layout title="Users">
         <div className="text-center py-12">
@@ -185,14 +219,13 @@ const UsersPage: React.FC = () => {
             <h1 className="text-2xl font-bold text-gray-900">Users</h1>
             <p className="text-gray-600">Manage system users and their permissions</p>
           </div>
-          {(hasRole('admin') || hasRole('manager')) && (
-            <Button
-              onClick={() => setIsCreateModalOpen(true)}
-              leftIcon={<UserPlusIcon className="h-4 w-4" />}
-            >
-              Add User
-            </Button>
-          )}
+          {/* All roles can create customer accounts */}
+          <Button
+            onClick={() => setIsCreateModalOpen(true)}
+            leftIcon={<UserPlusIcon className="h-4 w-4" />}
+          >
+            Add User
+          </Button>
         </div>
 
         {/* Search and Filters */}
@@ -227,30 +260,30 @@ const UsersPage: React.FC = () => {
           emptyMessage="No users found"
         />
 
-        {/* Create User Modal */}
-        {(hasRole('admin') || hasRole('manager')) && (
-          <Modal
-            isOpen={isCreateModalOpen}
-            onClose={() => setIsCreateModalOpen(false)}
-            title="Create New User"
-            size="lg"
-          >
-            <UserCreateForm onSuccess={() => setIsCreateModalOpen(false)} />
-          </Modal>
-        )}
-
-        {/* Edit User Modal */}
+        {/* Create User Modal - Available to all roles for customer creation */}
         <Modal
-          isOpen={isEditModalOpen}
-          onClose={() => setIsEditModalOpen(false)}
-          title="Edit User"
+          isOpen={isCreateModalOpen}
+          onClose={() => setIsCreateModalOpen(false)}
+          title="Create New User"
           size="lg"
         >
-          <UserEditForm 
-            user={selectedUser}
-            onSuccess={() => setIsEditModalOpen(false)}
-          />
+          <UserCreateForm onSuccess={() => setIsCreateModalOpen(false)} />
         </Modal>
+
+        {/* Edit User Modal - Only admins and managers can edit users */}
+        {(hasRole('admin') || hasRole('manager')) && (
+          <Modal
+            isOpen={isEditModalOpen}
+            onClose={() => setIsEditModalOpen(false)}
+            title="Edit User"
+            size="lg"
+          >
+            <UserEditForm 
+              user={selectedUser}
+              onSuccess={() => setIsEditModalOpen(false)}
+            />
+          </Modal>
+        )}
 
         {/* View User Modal */}
         <Modal
@@ -274,8 +307,19 @@ const UsersPage: React.FC = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Role</label>
-                  <p className="mt-1 text-sm text-gray-900 capitalize">
-                    {selectedUser.role.replace('_', ' ')}
+                  <p className="mt-1 text-sm text-gray-900">
+                    {(() => {
+                      const roleLabels: Record<string, string> = {
+                        'admin': 'Admin',
+                        'manager': 'Manager',
+                        'sales_person': 'Sales Person',
+                        'workshop_employee': 'Workshop Employee',
+                        'warehouse_manager': 'Warehouse Manager',
+                        'warehouse_employee': 'Warehouse Employee',
+                        'customer': 'Customer'
+                      };
+                      return roleLabels[selectedUser.role] || selectedUser.role.replace('_', ' ');
+                    })()}
                   </p>
                 </div>
                 <div>
@@ -320,7 +364,7 @@ const UserEditForm: React.FC<{
     firstName: z.string().min(2, 'First name is required'),
     lastName: z.string().min(2, 'Last name is required'),
     email: z.string().email('Valid email is required'),
-    role: z.enum(['admin','manager','employee','customer','warehouse_manager','warehouse_employee']).default('employee'),
+    role: z.enum(['admin','manager','customer','warehouse_manager','warehouse_employee','sales_person','workshop_employee']).default('sales_person'),
     phone: z.string().optional().or(z.literal('')),
     isActive: z.boolean().default(true),
     warehouse: z.string().optional(),
@@ -352,16 +396,23 @@ const UserEditForm: React.FC<{
     if (hasRole('admin')) {
       return [
         { value: 'manager', label: 'Manager' },
-        { value: 'employee', label: 'Employee' },
+        { value: 'sales_person', label: 'Sales Person' },
+        { value: 'workshop_employee', label: 'Workshop Employee' },
         { value: 'customer', label: 'Customer' },
         { value: 'warehouse_manager', label: 'Warehouse Manager' },
         { value: 'warehouse_employee', label: 'Warehouse Employee' },
       ];
     } else if (hasRole('manager')) {
       return [
-        { value: 'employee', label: 'Employee' },
+        { value: 'sales_person', label: 'Sales Person' },
+        { value: 'workshop_employee', label: 'Workshop Employee' },
         { value: 'customer', label: 'Customer' },
         { value: 'warehouse_employee', label: 'Warehouse Employee' },
+      ];
+    } else if (hasRole('sales_person') || hasRole('workshop_employee') || hasRole('warehouse_manager') || hasRole('warehouse_employee')) {
+      // All other roles can create customer accounts
+      return [
+        { value: 'customer', label: 'Customer' },
       ];
     }
     return [];
@@ -379,7 +430,7 @@ const UserEditForm: React.FC<{
         firstName: user.firstName || '', 
         lastName: user.lastName || '', 
         email: user.email || '', 
-        role: user.role || 'employee', 
+        role: user.role || 'sales_person', 
         phone: user.phone || '', 
         isActive: user.isActive ?? true,
         warehouse: (user as any).warehouse?.assignedWarehouse || ''
@@ -491,7 +542,7 @@ const UserCreateForm: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => {
     lastName: z.string().min(2, 'Last name is required'),
     email: z.string().email('Valid email is required'),
     password: z.string().min(6, 'Min 6 characters'),
-    role: z.enum(['admin','manager','employee','customer','warehouse_manager','warehouse_employee']).default('employee'),
+    role: z.enum(['admin','manager','customer','warehouse_manager','warehouse_employee','sales_person','workshop_employee']).default('sales_person'),
     phone: z.string().optional().or(z.literal('')),
     isActive: z.boolean().default(true),
     warehouse: z.string().optional(),
@@ -523,16 +574,23 @@ const UserCreateForm: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => {
     if (hasRole('admin')) {
       return [
         { value: 'manager', label: 'Manager' },
-        { value: 'employee', label: 'Employee' },
+        { value: 'sales_person', label: 'Sales Person' },
+        { value: 'workshop_employee', label: 'Workshop Employee' },
         { value: 'customer', label: 'Customer' },
         { value: 'warehouse_manager', label: 'Warehouse Manager' },
         { value: 'warehouse_employee', label: 'Warehouse Employee' },
       ];
     } else if (hasRole('manager')) {
       return [
-        { value: 'employee', label: 'Employee' },
+        { value: 'sales_person', label: 'Sales Person' },
+        { value: 'workshop_employee', label: 'Workshop Employee' },
         { value: 'customer', label: 'Customer' },
         { value: 'warehouse_employee', label: 'Warehouse Employee' },
+      ];
+    } else if (hasRole('sales_person') || hasRole('workshop_employee') || hasRole('warehouse_manager') || hasRole('warehouse_employee')) {
+      // All other roles can create customer accounts
+      return [
+        { value: 'customer', label: 'Customer' },
       ];
     }
     return [];
@@ -544,7 +602,7 @@ const UserCreateForm: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => {
   return (
     <Form
       schema={createUserSchema}
-      defaultValues={{ firstName: '', lastName: '', email: '', password: '', role: (roleOptions[0]?.value as any) || 'employee', phone: '', isActive: true, warehouse: '' }}
+      defaultValues={{ firstName: '', lastName: '', email: '', password: '', role: (roleOptions[0]?.value as any) || 'sales_person', phone: '', isActive: true, warehouse: '' }}
       loading={createUserMutation.isPending}
     >{(methods) => (
       <div className="space-y-6">

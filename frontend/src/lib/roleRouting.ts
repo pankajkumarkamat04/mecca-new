@@ -3,7 +3,7 @@
  * Handles redirection based on user roles
  */
 
-export type UserRole = 'admin' | 'manager' | 'employee' | 'customer' | 'warehouse_manager' | 'warehouse_employee';
+export type UserRole = 'admin' | 'manager' | 'customer' | 'warehouse_manager' | 'warehouse_employee' | 'sales_person' | 'workshop_employee';
 
 export interface RoleRoute {
   role: UserRole;
@@ -15,17 +15,22 @@ export const ROLE_ROUTES: Record<UserRole, RoleRoute> = {
   admin: {
     role: 'admin',
     defaultPath: '/dashboard',
-    allowedPaths: ['/dashboard', '/users', '/products', '/customers', '/suppliers', '/invoices', '/inventory', '/pos', '/support', '/accounts', '/transactions', '/workshop', '/reports', '/settings', '/analytics', '/customer-inquiries', '/quotations', '/orders', '/deliveries', '/warehouses', '/warehouse-portal', '/stock-alerts', '/purchase-orders', '/resources', '/profile']
+    allowedPaths: ['/dashboard', '/users', '/products', '/customers', '/suppliers', '/invoices', '/inventory', '/pos', '/support', '/accounts', '/transactions', '/workshop', '/reports', '/reports-analytics', '/settings', '/analytics', '/customer-inquiries', '/quotations', '/orders', '/deliveries', '/warehouses', '/warehouse-portal', '/stock-alerts', '/purchase-orders', '/resources', '/profile']
   },
   manager: {
     role: 'manager',
     defaultPath: '/dashboard',
-    allowedPaths: ['/dashboard', '/users', '/products', '/customers', '/suppliers', '/invoices', '/inventory', '/pos', '/support', '/accounts', '/transactions', '/workshop', '/reports', '/settings', '/customer-inquiries', '/quotations', '/orders', '/deliveries', '/warehouses', '/warehouse-portal', '/stock-alerts', '/purchase-orders', '/resources', '/profile']
+    allowedPaths: ['/dashboard', '/users', '/products', '/customers', '/suppliers', '/invoices', '/inventory', '/pos', '/support', '/accounts', '/transactions', '/workshop', '/reports', '/reports-analytics', '/settings', '/customer-inquiries', '/quotations', '/orders', '/deliveries', '/warehouses', '/warehouse-portal', '/stock-alerts', '/purchase-orders', '/resources', '/profile']
   },
-  employee: {
-    role: 'employee',
-    defaultPath: '/dashboard',
-    allowedPaths: ['/dashboard', '/products', '/customers', '/invoices', '/inventory', '/pos', '/support', '/accounts', '/transactions', '/workshop', '/reports', '/customer-inquiries', '/quotations', '/orders', '/deliveries', '/warehouse-portal', '/resources', '/profile']
+  sales_person: {
+    role: 'sales_person',
+    defaultPath: '/pos',
+    allowedPaths: ['/dashboard', '/pos', '/customers', '/invoices', '/customer-inquiries', '/quotations', '/orders', '/support', '/reports-analytics', '/profile']
+  },
+  workshop_employee: {
+    role: 'workshop_employee',
+    defaultPath: '/workshop',
+    allowedPaths: ['/workshop', '/customers', '/support', '/reports-analytics', '/profile']
   },
   customer: {
     role: 'customer',
@@ -35,12 +40,12 @@ export const ROLE_ROUTES: Record<UserRole, RoleRoute> = {
   warehouse_manager: {
     role: 'warehouse_manager',
     defaultPath: '/warehouse-portal',
-    allowedPaths: ['/warehouse-portal', '/warehouse-portal/dashboard', '/warehouse-portal/orders', '/warehouse-portal/inventory', '/warehouse-portal/employees', '/warehouse-portal/deliveries', '/warehouse-portal/settings', '/profile']
+    allowedPaths: ['/warehouse-portal', '/warehouse-portal/dashboard', '/warehouse-portal/orders', '/warehouse-portal/inventory', '/warehouse-portal/employees', '/warehouse-portal/deliveries', '/warehouse-portal/settings', '/inventory', '/deliveries', '/reports-analytics', '/profile']
   },
   warehouse_employee: {
     role: 'warehouse_employee',
     defaultPath: '/warehouse-portal',
-    allowedPaths: ['/warehouse-portal', '/warehouse-portal/dashboard', '/warehouse-portal/orders', '/warehouse-portal/inventory', '/profile']
+    allowedPaths: ['/warehouse-portal', '/warehouse-portal/dashboard', '/warehouse-portal/orders', '/warehouse-portal/inventory', '/inventory', '/deliveries', '/reports-analytics', '/profile']
   }
 };
 
@@ -100,8 +105,10 @@ export const getDashboardTitle = (role: UserRole): string => {
       return 'Admin Dashboard';
     case 'manager':
       return 'Manager Dashboard';
-    case 'employee':
-      return 'Employee Dashboard';
+    case 'sales_person':
+      return 'Sales Dashboard';
+    case 'workshop_employee':
+      return 'Workshop Dashboard';
     case 'customer':
       return 'Customer Dashboard';
     case 'warehouse_manager':

@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import Layout from '@/components/layout/Layout';
 import DashboardStats from '@/components/dashboard/DashboardStats';
-import { reportsAPI, warehouseAPI } from '@/lib/api';
+import { reportsAnalyticsAPI, warehouseAPI } from '@/lib/api';
 import SalesChart from '@/components/charts/SalesChart';
 import BarChart from '@/components/charts/BarChart';
 import { DashboardStats as DashboardStatsType } from '@/types';
@@ -43,7 +43,7 @@ const DashboardPage: React.FC = () => {
 
   const { data: dashboardData, isLoading, error } = useQuery({
     queryKey: ['dashboard-stats'],
-    queryFn: () => reportsAPI.getDashboardStats(),
+    queryFn: () => reportsAnalyticsAPI.getDashboardSummary(),
     refetchInterval: 30000, // Refetch every 30 seconds
   });
 
@@ -63,8 +63,31 @@ const DashboardPage: React.FC = () => {
   }, [error]);
 
   useEffect(() => {
-    if (dashboardData?.data?.data) {
-      setStats(dashboardData.data.data);
+    if (dashboardData?.data) {
+      const apiData = dashboardData.data;
+      // Transform the new API response to match the expected structure
+      setStats({
+        sales: {
+          monthlyTotal: apiData.orders?.revenue || 0,
+          monthlyInvoices: apiData.invoices?.total || apiData.orders?.total || 0,
+        },
+        customers: {
+          total: apiData.customers?.total || 0,
+          newThisMonth: apiData.customers?.newThisMonth || 0,
+        },
+        products: {
+          total: apiData.inventory?.total || 0,
+          lowStock: apiData.inventory?.lowStock || 0,
+        },
+        support: {
+          openTickets: apiData.support?.openTickets || 0,
+          overdueTickets: apiData.support?.overdueTickets || 0,
+        },
+        employees: {
+          total: 0, // Not available in new API
+          presentToday: 0, // Not available in new API
+        },
+      });
     }
   }, [dashboardData]);
 
@@ -80,7 +103,7 @@ const DashboardPage: React.FC = () => {
         icon: '📊',
         title: 'View Reports',
         description: 'Business analytics',
-        href: '/reports',
+        href: '/reports-analytics',
         color: 'yellow'
       }
     ];
@@ -113,7 +136,7 @@ const DashboardPage: React.FC = () => {
           ...baseActions
         ];
 
-      case 'employee':
+      case 'sales_person':
         return [
           {
             icon: '📄',

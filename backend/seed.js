@@ -199,10 +199,10 @@ async function seed() {
       lastName: 'Kim',
       email: 'jennifer.kim@techflowsolutions.com',
       password: 'password123',
-      role: 'employee',
+      role: 'sales_person',
       phone: '+1-512-555-0102',
-      department: 'Customer Service',
-      position: 'Customer Success Specialist',
+      department: 'Sales',
+      position: 'Sales Representative',
       salary: { amount: 52000, currency: 'USD', paymentType: 'monthly' },
       hireDate: new Date('2023-02-20'),
       address: {
@@ -237,7 +237,7 @@ async function seed() {
       lastName: 'Patel',
       email: 'priya.patel@techflowsolutions.com',
       password: 'password123',
-      role: 'employee',
+      role: 'manager',
       phone: '+1-512-555-0104',
       department: 'Finance',
       position: 'Financial Analyst',
@@ -256,10 +256,10 @@ async function seed() {
       lastName: 'Wilson',
       email: 'james.wilson@techflowsolutions.com',
       password: 'password123',
-      role: 'employee',
+      role: 'workshop_employee',
       phone: '+1-512-555-0105',
-      department: 'Technical Support',
-      position: 'Technical Support Specialist',
+      department: 'Workshop',
+      position: 'Senior Technician',
       salary: { amount: 48000, currency: 'USD', paymentType: 'monthly' },
       hireDate: new Date('2023-04-01'),
       address: {
@@ -2443,6 +2443,8 @@ async function seed() {
           sku: products[0].sku,
           quantity: 5,
           unitPrice: products[0].pricing.sellingPrice,
+          discount: 0,
+          taxRate: 10,
           total: products[0].pricing.sellingPrice * 5
         }
       ],
@@ -2513,6 +2515,8 @@ async function seed() {
           sku: products[3].sku,
           quantity: 1,
           unitPrice: products[3].pricing.sellingPrice,
+          discount: 0,
+          taxRate: 10,
           total: products[3].pricing.sellingPrice
         }
       ],
@@ -2540,6 +2544,8 @@ async function seed() {
           sku: products[3].sku,
           quantity: 2,
           unitPrice: products[3].pricing.sellingPrice,
+          discount: 0,
+          taxRate: 10,
           total: products[3].pricing.sellingPrice * 2
         }
       ],
@@ -2554,9 +2560,8 @@ async function seed() {
     }
   ]);
 
-  // Orders
-  const orders = await Order.insertMany([
-    {
+  // Orders - using save() instead of insertMany() to trigger pre-save middleware
+  const order1 = new Order({
       orderNumber: 'ORD-2024-001',
       customer: customers[0]._id,
       customerName: `${customers[0].firstName} ${customers[0].lastName}`,
@@ -2571,21 +2576,21 @@ async function seed() {
           sku: products[0].sku,
           quantity: 5,
           unitPrice: products[0].pricing.sellingPrice,
+          discount: 0,
+          taxRate: 10,
           total: products[0].pricing.sellingPrice * 5
         }
       ],
-      subtotal: products[0].pricing.sellingPrice * 5,
-      taxRate: 10,
-      taxAmount: (products[0].pricing.sellingPrice * 5) * 0.1,
-      total: (products[0].pricing.sellingPrice * 5) * 1.1,
-      status: 'confirmed',
+      shippingCost: 5.00,
       paymentStatus: 'pending',
       shippingAddress: customers[0].address.billing,
       notes: 'Order confirmed from quotation',
       createdBy: users[1]._id,
-      assignedTo: users[4]._id // Warehouse Manager
-    },
-    {
+      assignedTo: users[4]._id
+    });
+  await order1.save();
+
+  const order2 = new Order({
       orderNumber: 'ORD-2024-002',
       customer: customers[1]._id,
       customerName: `${customers[1].firstName} ${customers[1].lastName}`,
@@ -2600,21 +2605,21 @@ async function seed() {
           sku: products[2].sku,
           quantity: 10,
           unitPrice: products[2].pricing.sellingPrice,
+          discount: 0,
+          taxRate: 10,
           total: products[2].pricing.sellingPrice * 10
         }
       ],
-      subtotal: products[2].pricing.sellingPrice * 10,
-      taxRate: 10,
-      taxAmount: (products[2].pricing.sellingPrice * 10) * 0.1,
-      total: (products[2].pricing.sellingPrice * 10) * 1.1,
-      status: 'processing',
+      shippingCost: 10.00,
       paymentStatus: 'paid',
       shippingAddress: customers[1].address.billing,
       notes: 'Corporate order - priority shipping',
       createdBy: users[1]._id,
       assignedTo: users[4]._id
-    },
-    {
+    });
+  await order2.save();
+
+  const order3 = new Order({
       orderNumber: 'ORD-2024-003',
       customer: customers[2]._id,
       customerName: `${customers[2].firstName} ${customers[2].lastName}`,
@@ -2629,21 +2634,23 @@ async function seed() {
           sku: products[3].sku,
           quantity: 1,
           unitPrice: products[3].pricing.sellingPrice,
+          discount: 0,
+          taxRate: 10,
           total: products[3].pricing.sellingPrice
         }
       ],
-      subtotal: products[3].pricing.sellingPrice,
-      taxRate: 10,
-      taxAmount: products[3].pricing.sellingPrice * 0.1,
-      total: products[3].pricing.sellingPrice * 1.1,
-      status: 'shipped',
+      shippingCost: 15.00,
       paymentStatus: 'paid',
       shippingAddress: customers[2].address.billing,
-      notes: 'Express delivery requested',
-      createdBy: users[2]._id,
+      notes: 'Express shipping for VIP customer',
+      createdBy: users[1]._id,
       assignedTo: users[4]._id
-    }
-  ]);
+    });
+  await order3.save();
+
+  // Create orders array for deliveries to reference
+  const orders = [order1, order2, order3];
+     
 
   // Deliveries
   const deliveries = await Delivery.insertMany([
@@ -2662,11 +2669,15 @@ async function seed() {
           sku: products[0].sku,
           quantity: 5,
           unitPrice: products[0].pricing.sellingPrice,
+          discount: 0,
+          taxRate: 10,
           total: products[0].pricing.sellingPrice * 5
         }
       ],
       subtotal: products[0].pricing.sellingPrice * 5,
-      taxAmount: (products[0].pricing.sellingPrice * 5) * 0.1,
+      totalDiscount: 0,
+      totalTax: (products[0].pricing.sellingPrice * 5) * 0.1,
+      shippingCost: 0,
       totalAmount: (products[0].pricing.sellingPrice * 5) * 1.1,
       status: 'preparing',
       assignedTo: users[2]._id,
@@ -2690,11 +2701,15 @@ async function seed() {
           sku: products[2].sku,
           quantity: 10,
           unitPrice: products[2].pricing.sellingPrice,
+          discount: 0,
+          taxRate: 10,
           total: products[2].pricing.sellingPrice * 10
         }
       ],
       subtotal: products[2].pricing.sellingPrice * 10,
-      taxAmount: (products[2].pricing.sellingPrice * 10) * 0.1,
+      totalDiscount: 0,
+      totalTax: (products[2].pricing.sellingPrice * 10) * 0.1,
+      shippingCost: 0,
       totalAmount: (products[2].pricing.sellingPrice * 10) * 1.1,
       status: 'in_transit',
       assignedTo: users[4]._id,
@@ -2718,11 +2733,15 @@ async function seed() {
           sku: products[3].sku,
           quantity: 1,
           unitPrice: products[3].pricing.sellingPrice,
+          discount: 0,
+          taxRate: 10,
           total: products[3].pricing.sellingPrice
         }
       ],
       subtotal: products[3].pricing.sellingPrice,
-      taxAmount: products[3].pricing.sellingPrice * 0.1,
+      totalDiscount: 0,
+      totalTax: products[3].pricing.sellingPrice * 0.1,
+      shippingCost: 0,
       totalAmount: products[3].pricing.sellingPrice * 1.1,
       status: 'delivered',
       assignedTo: users[4]._id,
@@ -2798,12 +2817,12 @@ async function seed() {
   console.log('📋 ROLE PERMISSIONS:');
   console.log('─'.repeat(30));
   console.log('CTO (Admin): Full access to all features and system administration');
-  console.log('Sales Manager: Can create employees and customers, manage sales processes');
-  console.log('Customer Success Specialist: Handle customer support and inquiries');
+  console.log('Sales Manager: Can create users and customers, manage sales processes');
+  console.log('Sales Representative: Handle sales, POS, customer inquiries, quotations, and orders');
+  console.log('Workshop Employee: Handle workshop jobs and customer service');
   console.log('Operations Manager: Manage inventory, warehouse, and delivery operations');
   console.log('Warehouse Manager: Full access to warehouse operations, inventory, and staff management');
   console.log('Financial Analyst: Access to financial reports, transactions, and accounting');
-  console.log('Technical Support Specialist: Handle technical issues and system support');
   console.log('Customer: Access to customer dashboard, purchases, support');
   console.log('');
   console.log('🔗 PHONE-BASED LINKING:');
