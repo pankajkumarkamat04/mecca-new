@@ -2,7 +2,6 @@ const PurchaseOrder = require('../models/PurchaseOrder');
 const Product = require('../models/Product');
 const Supplier = require('../models/Supplier');
 const StockMovement = require('../models/StockMovement');
-const StockAlert = require('../models/StockAlert');
 
 // Email function for purchase orders
 const sendPurchaseOrderEmail = async (purchaseOrder) => {
@@ -437,12 +436,8 @@ const receivePurchaseOrder = async (req, res) => {
       const orderItem = purchaseOrder.items.id(receivedItem.itemId);
       if (orderItem) {
         const product = await Product.findById(orderItem.product);
-        if (product && product.inventory.alertOnLowStock) {
-          // Check if still low stock after receiving
-          if (product.inventory.currentStock <= product.inventory.minStock) {
-            await StockAlert.createLowStockAlert(product, purchaseOrder.warehouse);
-          }
-        }
+        // Note: Stock alerts are now calculated in real-time based on inventory data
+        // No need to create static alerts when receiving purchase orders
       }
     }
 

@@ -20,6 +20,11 @@ const router = express.Router();
 // @access  Private (Admin/Manager)
 router.get('/', auth, authorize('admin', 'manager'), validatePagination(), getUsers);
 
+// @route   POST /api/users
+// @desc    Create new user
+// @access  Private (Admin/Manager/Warehouse Manager)
+router.post('/', auth, authorize('admin', 'manager', 'warehouse_manager'), validate(createUserValidation), createUser);
+
 // @route   GET /api/users/profile
 // @desc    Get user profile
 // @access  Private
@@ -29,6 +34,11 @@ router.get('/profile', auth, getUserProfile);
 // @desc    Update user profile
 // @access  Private
 router.put('/profile', auth, updateProfileValidation, validate, updateUserProfile);
+
+// @route   GET /api/users/:id/stats
+// @desc    Get user statistics
+// @access  Private
+router.get('/:id/stats', auth, validateObjectId(), getUserStats);
 
 // @route   GET /api/users/:id
 // @desc    Get user by ID
@@ -44,15 +54,5 @@ router.put('/:id', auth, validateObjectId(), updateUserValidation, validate, upd
 // @desc    Delete user
 // @access  Private (Admin)
 router.delete('/:id', auth, authorize('admin'), validateObjectId(), deleteUser);
-
-// @route   POST /api/users
-// @desc    Create new user
-// @access  Private (Admin/Manager/Warehouse Manager)
-router.post('/', auth, authorize('admin', 'manager', 'warehouse_manager'), createUserValidation, validate, createUser);
-
-// @route   GET /api/users/:id/stats
-// @desc    Get user statistics
-// @access  Private
-router.get('/:id/stats', auth, validateObjectId(), getUserStats);
 
 module.exports = router;

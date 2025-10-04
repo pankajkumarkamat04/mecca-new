@@ -171,6 +171,19 @@ const WorkshopPage: React.FC = () => {
     },
   });
 
+  // Update task status mutation
+  const updateTaskStatusMutation = useMutation({
+    mutationFn: ({ jobId, taskId, data }: { jobId: string; taskId: string; data: any }) => 
+      enhancedWorkshopAPI.updateTaskStatus(jobId, taskId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['workshop-jobs'] });
+      toast.success('Task status updated successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to update task status');
+    },
+  });
+
   // Check parts availability mutation
   const checkPartsMutation = useMutation({
     mutationFn: (jobId: string) => enhancedWorkshopAPI.checkPartsAvailability(jobId),
@@ -730,13 +743,14 @@ const WorkshopPage: React.FC = () => {
         size="lg"
       >
         {selectedJob && (
-          <JobDetailsView
-            job={selectedJob}
-            onClose={() => {
-              setIsDetailsOpen(false);
-              setSelectedJob(null);
-            }}
-          />
+        <JobDetailsView 
+          job={selectedJob} 
+          onClose={() => {
+            setIsDetailsOpen(false);
+            setSelectedJob(null);
+          }}
+          updateTaskStatusMutation={updateTaskStatusMutation}
+        />
         )}
       </Modal>
 
@@ -2877,7 +2891,8 @@ const AddTaskForm: React.FC<{
 const JobDetailsView: React.FC<{
   job: any;
   onClose: () => void;
-}> = ({ job, onClose }) => {
+  updateTaskStatusMutation: any;
+}> = ({ job, onClose, updateTaskStatusMutation }) => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'draft': return 'gray';
@@ -3026,13 +3041,61 @@ const JobDetailsView: React.FC<{
               <div key={index} className="border border-gray-200 p-3 rounded-lg">
                 <div className="flex items-center justify-between mb-2">
                   <h4 className="text-sm font-medium text-gray-900">{task.title}</h4>
-                  <Badge color={
-                    task.status === 'completed' ? 'green' :
-                    task.status === 'in_progress' ? 'orange' :
-                    task.status === 'todo' ? 'gray' : 'blue'
-                  }>
-                    {task.status.replace('_', ' ')}
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    <Badge color={
+                      task.status === 'completed' ? 'green' :
+                      task.status === 'in_progress' ? 'orange' :
+                      task.status === 'todo' ? 'gray' : 'blue'
+                    }>
+                      {task.status.replace('_', ' ')}
+                    </Badge>
+                    
+                    {/* Task Status Update Buttons */}
+                    <div className="flex gap-1">
+                      {task.status === 'todo' && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => updateTaskStatusMutation.mutate({
+                            jobId: job._id,
+                            taskId: task._id,
+                            data: { status: 'in_progress' }
+                          })}
+                          className="text-xs px-2 py-1"
+                        >
+                          Start
+                        </Button>
+                      )}
+                      {task.status === 'in_progress' && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => updateTaskStatusMutation.mutate({
+                            jobId: job._id,
+                            taskId: task._id,
+                            data: { status: 'completed' }
+                          })}
+                          className="text-xs px-2 py-1 text-green-600 hover:text-green-700"
+                        >
+                          Complete
+                        </Button>
+                      )}
+                      {task.status === 'completed' && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => updateTaskStatusMutation.mutate({
+                            jobId: job._id,
+                            taskId: task._id,
+                            data: { status: 'in_progress' }
+                          })}
+                          className="text-xs px-2 py-1 text-orange-600 hover:text-orange-700"
+                        >
+                          Reopen
+                        </Button>
+                      )}
+                    </div>
+                  </div>
                 </div>
                 {task.description && (
                   <p className="text-sm text-gray-600">{task.description}</p>

@@ -6,7 +6,8 @@ import Layout from '@/components/layout/Layout';
 import Button from '@/components/ui/Button';
 import Modal from '@/components/ui/Modal';
 import Input from '@/components/ui/Input';
-import { posAPI, productsAPI } from '@/lib/api';
+import CustomerSelector from '@/components/ui/CustomerSelector';
+import { posAPI, productsAPI, customersAPI } from '@/lib/api';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { formatCurrency } from '@/lib/utils';
 import { calculatePrice } from '@/lib/priceCalculator';
@@ -42,6 +43,7 @@ const POSPage: React.FC = () => {
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [linkedCustomer, setLinkedCustomer] = useState<Customer | null>(null);
+  const [selectedCustomerId, setSelectedCustomerId] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [tenderedAmount, setTenderedAmount] = useState(0);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -78,6 +80,7 @@ const POSPage: React.FC = () => {
       setCustomerName('');
       setCustomerPhone('');
       setLinkedCustomer(null);
+      setSelectedCustomerId('');
       setTenderedAmount(0);
     },
     onError: (error: any) => {
@@ -242,7 +245,7 @@ const POSPage: React.FC = () => {
           quantity: item.quantity,
           price: item.price,
         })),
-        customer: undefined,
+        customer: selectedCustomerId || undefined,
         customerName: customerName || undefined,
         customerPhone: customerPhone,
         paymentMethod,
@@ -260,6 +263,52 @@ const POSPage: React.FC = () => {
     setCustomerPhone('');
     setCustomerName('');
     setLinkedCustomer(null);
+    setSelectedCustomerId('');
+  };
+
+  // Handle customer selection from CustomerSelector
+  const handleCustomerSelect = (customerId: string, customer?: any) => {
+    setSelectedCustomerId(customerId);
+    if (customer) {
+      setLinkedCustomer(customer);
+      setCustomerName(`${customer.firstName} ${customer.lastName}`.trim());
+      setCustomerPhone(customer.phone || '');
+    } else {
+      setLinkedCustomer(null);
+      setCustomerName('');
+      setCustomerPhone('');
+    }
+  };
+
+  // Handle phone number lookup for existing customers
+  const handlePhoneChange = async (phone: string) => {
+    setCustomerPhone(phone);
+    
+    // If phone number is provided and we don't have a selected customer, try to find one
+    if (phone.trim() && phone.length >= 10 && !selectedCustomerId) {
+      try {
+        const response = await customersAPI.getCustomerByPhone(phone);
+        const customer = response.data.data;
+        if (customer) {
+          setLinkedCustomer(customer);
+          setCustomerName(`${customer.firstName} ${customer.lastName}`.trim());
+          setSelectedCustomerId(customer._id);
+        } else {
+          setLinkedCustomer(null);
+          setCustomerName('');
+        }
+      } catch (error) {
+        // Customer not found by phone, clear linked customer
+        setLinkedCustomer(null);
+        setCustomerName('');
+      }
+    } else if (!phone.trim()) {
+      // If phone is cleared and no customer selected, clear everything
+      if (!selectedCustomerId) {
+        setLinkedCustomer(null);
+        setCustomerName('');
+      }
+    }
   };
 
   // Quick add products removed in favor of using real products from the catalog
@@ -399,20 +448,43 @@ const POSPage: React.FC = () => {
 
           {/* Customer Info */}
           <div className="mb-6 space-y-4">
+            <CustomerSelector
+              label="Customer"
+              placeholder="Search for existing customer or create new..."
+              value={selectedCustomerId}
+              onChange={handleCustomerSelect}
+              required={false}
+            />
+            
+            {/* Show linked customer info if selected */}
+            {linkedCustomer && (
+              <div className="bg-blue-50 p-3 rounded-lg">
+                <div className="text-sm text-blue-600 mb-1">Selected Customer</div>
+                <div className="font-medium text-blue-900">
+                  {linkedCustomer.firstName} {linkedCustomer.lastName}
+                </div>
+                {linkedCustomer.phone && (
+                  <div className="text-sm text-blue-700">Phone: {linkedCustomer.phone}</div>
+                )}
+                {linkedCustomer.email && (
+                  <div className="text-sm text-blue-700">Email: {linkedCustomer.email}</div>
+                )}
+              </div>
+            )}
+
+            {/* Manual phone input for walk-in customers */}
             <div>
               <Input
                 label="Phone Number"
                 placeholder="Enter customer phone number"
                 value={customerPhone}
-                onChange={(e) => setCustomerPhone(e.target.value)}
+                onChange={(e) => handlePhoneChange(e.target.value)}
                 fullWidth
                 required
               />
-            {/* Customer lookup removed - phone is used directly for linking on backend */}
             </div>
             
-          {/* Linked customer preview removed */}
-            
+            {/* Manual name input for walk-in customers */}
             <Input
               label="Customer Name"
               placeholder="Enter customer name (optional)"
@@ -509,6 +581,7 @@ const POSPage: React.FC = () => {
                 setCustomerName('');
                 setCustomerPhone('');
                 setLinkedCustomer(null);
+                setSelectedCustomerId('');
                 setTenderedAmount(0);
               }}
             >

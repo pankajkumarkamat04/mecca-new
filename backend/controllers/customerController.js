@@ -360,6 +360,45 @@ const getTopCustomers = async (req, res) => {
   }
 };
 
+// @desc    Find customer by phone number (for POS)
+// @route   GET /api/customers/by-phone/:phone
+// @access  Private
+const getCustomerByPhone = async (req, res) => {
+  try {
+    const { phone } = req.params;
+    
+    if (!phone) {
+      return res.status(400).json({
+        success: false,
+        message: 'Phone number is required'
+      });
+    }
+
+    const customer = await Customer.findOne({ 
+      phone: phone,
+      isActive: true 
+    }).select('firstName lastName email phone address businessInfo customerCode');
+
+    if (!customer) {
+      return res.status(404).json({
+        success: false,
+        message: 'Customer not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: customer
+    });
+  } catch (error) {
+    console.error('Get customer by phone error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+};
+
 module.exports = {
   getCustomers,
   getCustomerById,
@@ -369,5 +408,6 @@ module.exports = {
   addWalletTransaction,
   getWalletTransactions,
   getCustomerStats,
-  getTopCustomers
+  getTopCustomers,
+  getCustomerByPhone
 };

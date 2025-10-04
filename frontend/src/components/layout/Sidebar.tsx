@@ -206,12 +206,6 @@ const getSidebarItems = (userRole: string): SidebarItem[] => {
             permission: { module: 'inventory', action: 'read' },
           },
           {
-            name: 'Stock Alerts',
-            href: '/stock-alerts',
-            icon: ExclamationTriangleIcon,
-            permission: { module: 'stockAlerts', action: 'read' },
-          },
-          {
             name: 'Purchase Orders',
             href: '/purchase-orders',
             icon: ShoppingCartIcon,

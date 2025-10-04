@@ -1,7 +1,6 @@
 const Warehouse = require('../models/Warehouse');
 const Product = require('../models/Product');
 const StockMovement = require('../models/StockMovement');
-const StockAlert = require('../models/StockAlert');
 const PurchaseOrder = require('../models/PurchaseOrder');
 const User = require('../models/User');
 

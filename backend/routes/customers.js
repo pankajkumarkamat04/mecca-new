@@ -11,7 +11,8 @@ const {
   addWalletTransaction,
   getWalletTransactions,
   getCustomerStats,
-  getTopCustomers
+  getTopCustomers,
+  getCustomerByPhone
 } = require('../controllers/customerController');
 
 const router = express.Router();
@@ -25,6 +26,11 @@ router.get('/', auth, validatePagination(), getCustomers);
 // @desc    Get top customers
 // @access  Private
 router.get('/top', auth, getTopCustomers);
+
+// @route   GET /api/customers/by-phone/:phone
+// @desc    Find customer by phone number (for POS)
+// @access  Private
+router.get('/by-phone/:phone', auth, getCustomerByPhone);
 
 // @route   POST /api/customers
 // @desc    Create new customer

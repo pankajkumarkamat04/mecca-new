@@ -15,7 +15,10 @@ const {
   processPicking,
   getWarehouseDashboard,
   processGoodsReceiving,
-  getReceivingNotes
+  getReceivingNotes,
+  getStockAlerts,
+  getStockAlertStats,
+  checkLowStock
 } = require('../controllers/inventoryController');
 
 const router = express.Router();
@@ -89,5 +92,20 @@ router.get('/receiving-notes', auth, getReceivingNotes);
 // @desc    Process goods receiving with receiving note
 // @access  Private
 router.post('/goods-receiving', auth, checkPermission('inventory', 'create'), processGoodsReceiving);
+
+// @route   GET /api/inventory/stock-alerts
+// @desc    Get real-time stock alerts
+// @access  Private
+router.get('/stock-alerts', auth, getStockAlerts);
+
+// @route   GET /api/inventory/stock-alert-stats
+// @desc    Get stock alert statistics
+// @access  Private
+router.get('/stock-alert-stats', auth, getStockAlertStats);
+
+// @route   POST /api/inventory/check-low-stock
+// @desc    Check for low stock products
+// @access  Private
+router.post('/check-low-stock', auth, checkPermission('inventory', 'read'), checkLowStock);
 
 module.exports = router;

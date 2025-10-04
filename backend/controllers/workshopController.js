@@ -564,6 +564,10 @@ const addTask = async (req, res) => {
     };
 
     job.tasks.push(newTask);
+    
+    // Update job progress based on task completion
+    job.updateProgress();
+    
     job.lastUpdatedBy = req.user._id;
     await job.save();
 
@@ -624,6 +628,9 @@ const updateTaskStatus = async (req, res) => {
       task.completedAt = new Date();
     }
 
+    // Update job progress based on task completion
+    job.updateProgress();
+    
     job.lastUpdatedBy = req.user._id;
     await job.save();
 

@@ -116,6 +116,7 @@ export const customersAPI = {
   deleteCustomer: (id: string) => api.delete(`/customers/${id}`),
   getTopCustomers: () => api.get('/customers/top'),
   getCustomerStats: (id: string) => api.get(`/customers/${id}/stats`),
+  getCustomerByPhone: (phone: string) => api.get(`/customers/by-phone/${phone}`),
   addWalletTransaction: (id: string, transactionData: any) =>
     api.post(`/customers/${id}/wallet`, transactionData),
   getWalletTransactions: (id: string, params?: any) =>
@@ -366,20 +367,20 @@ export const purchaseOrderAPI = {
   getPurchaseOrderStats: () => api.get('/purchase-orders/stats'),
 };
 
-// Stock Alert API
+// Stock Alert API (Real-time based on inventory data)
 export const stockAlertAPI = {
-  getStockAlerts: (params?: any) => api.get('/stock-alerts', { params }),
-  getUnresolvedAlerts: (params?: any) => api.get('/stock-alerts/unresolved', { params }),
-  getStockAlertById: (id: string) => api.get(`/stock-alerts/${id}`),
-  createStockAlert: (data: any) => api.post('/stock-alerts', data),
-  markAlertAsRead: (id: string) => api.put(`/stock-alerts/${id}/read`),
-  resolveAlert: (id: string, data: any) => api.put(`/stock-alerts/${id}/resolve`, data),
-  bulkResolveAlerts: (data: any) => api.put('/stock-alerts/bulk-resolve', data),
-  checkLowStock: (data: any) => api.post('/stock-alerts/check-low-stock', data),
-  getStockAlertStats: () => api.get('/stock-alerts/stats'),
-  getReplenishmentSuggestions: (params?: any) => api.get('/stock-alerts/replenishment-suggestions', { params }),
-  createPurchaseOrdersFromSuggestions: (data: any) => api.post('/stock-alerts/create-purchase-orders', data),
-  updateInventoryLevels: (data: any) => api.post('/stock-alerts/update-inventory-levels', data),
+  getStockAlerts: (params?: any) => api.get('/inventory/stock-alerts', { params }),
+  getUnresolvedAlerts: (params?: any) => api.get('/inventory/stock-alerts', { params: { ...params, isResolved: false } }),
+  getStockAlertById: (id: string) => api.get(`/inventory/stock-alerts/${id}`),
+  createStockAlert: (data: any) => api.post('/inventory/stock-alerts', data),
+  markAlertAsRead: (id: string) => api.put(`/inventory/stock-alerts/${id}/read`),
+  resolveAlert: (id: string, data: any) => api.put(`/inventory/stock-alerts/${id}/resolve`, data),
+  bulkResolveAlerts: (data: any) => api.put('/inventory/stock-alerts/bulk-resolve', data),
+  checkLowStock: (data: any) => api.post('/inventory/check-low-stock', data),
+  getStockAlertStats: () => api.get('/inventory/stock-alert-stats'),
+  getReplenishmentSuggestions: (params?: any) => api.get('/inventory/stock-alerts', { params }),
+  createPurchaseOrdersFromSuggestions: (data: any) => api.post('/inventory/stock-alerts/create-purchase-orders', data),
+  updateInventoryLevels: (data: any) => api.post('/inventory/stock-alerts/update-inventory-levels', data),
 };
 
 // Enhanced Inventory API

@@ -20,6 +20,7 @@ const TransactionsPage: React.FC = () => {
   const [endDate, setEndDate] = useState('');
   const [viewOpen, setViewOpen] = useState(false);
   const [selectedTx, setSelectedTx] = useState<any>(null);
+  const [loadingTransaction, setLoadingTransaction] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState<any>({
@@ -71,7 +72,9 @@ const TransactionsPage: React.FC = () => {
       label: 'Actions',
       render: (row: any) => (
         <div className="flex gap-2">
-          <Button size="sm" variant="outline" onClick={() => { setSelectedTx(row); setViewOpen(true); }}>View</Button>
+          <Button size="sm" variant="outline" onClick={() => handleViewTransaction(row)} disabled={loadingTransaction}>
+            {loadingTransaction ? 'Loading...' : 'View'}
+          </Button>
           <Button size="sm" variant="outline" onClick={() => openEdit(row)}>Edit</Button>
           {row.status === 'draft' && (
             <Button size="sm" onClick={() => handleApprove(row._id)}>Approve</Button>
@@ -193,6 +196,21 @@ const TransactionsPage: React.FC = () => {
     queryClient.invalidateQueries({ queryKey: ['transactions'] });
   };
 
+  const handleViewTransaction = async (transaction: any) => {
+    setLoadingTransaction(true);
+    try {
+      const response = await transactionsAPI.getTransactionById(transaction._id);
+      setSelectedTx(response.data.data);
+      setViewOpen(true);
+    } catch (error) {
+      console.error('Error fetching transaction details:', error);
+      setSelectedTx(transaction); // Fallback to basic transaction data
+      setViewOpen(true);
+    } finally {
+      setLoadingTransaction(false);
+    }
+  };
+
   const exportCsv = () => {
     const rows = Array.isArray(data?.data?.data) ? data.data.data : [];
     const headers = ['Transaction','Date','Type','Amount','Description'];
@@ -268,34 +286,332 @@ const TransactionsPage: React.FC = () => {
           emptyMessage="No transactions found"
         />
 
-        <Modal isOpen={viewOpen} onClose={() => setViewOpen(false)} title="Transaction Details" size="lg">
+        <Modal isOpen={viewOpen} onClose={() => setViewOpen(false)} title="Transaction Details" size="full">
           {selectedTx ? (
-            <div className="space-y-3">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-6">
+              {/* Header Information */}
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div>
+                    <div className="text-sm text-gray-500 mb-1">Transaction Number</div>
+                    <div className="font-semibold text-lg">{selectedTx.transactionNumber}</div>
+                  </div>
                 <div>
-                  <div className="text-sm text-gray-500">Transaction</div>
-                  <div className="font-medium">{selectedTx.transactionNumber}</div>
+                    <div className="text-sm text-gray-500 mb-1">Date</div>
+                    <div className="font-medium">{new Date(selectedTx.date).toLocaleDateString()}</div>
                 </div>
                 <div>
-                  <div className="text-sm text-gray-500">Date</div>
-                  <div className="font-medium">{new Date(selectedTx.date).toLocaleString()}</div>
+                    <div className="text-sm text-gray-500 mb-1">Time</div>
+                    <div className="font-medium">{new Date(selectedTx.date).toLocaleTimeString()}</div>
                 </div>
                 <div>
-                  <div className="text-sm text-gray-500">Type</div>
-                  <div className="font-medium capitalize">{selectedTx.type}</div>
+                    <div className="text-sm text-gray-500 mb-1">Type</div>
+                    <div className="font-medium capitalize">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        selectedTx.type === 'sale' ? 'bg-green-100 text-green-800' :
+                        selectedTx.type === 'purchase' ? 'bg-red-100 text-red-800' :
+                        selectedTx.type === 'payment' ? 'bg-blue-100 text-blue-800' :
+                        selectedTx.type === 'receipt' ? 'bg-green-100 text-green-800' :
+                        selectedTx.type === 'expense' ? 'bg-orange-100 text-orange-800' :
+                        selectedTx.type === 'income' ? 'bg-purple-100 text-purple-800' :
+                        selectedTx.type === 'transfer' ? 'bg-blue-100 text-blue-800' :
+                        selectedTx.type === 'adjustment' ? 'bg-yellow-100 text-yellow-800' :
+                        'bg-gray-100 text-gray-800'
+                      }`}>
+                        {selectedTx.type}
+                      </span>
+                    </div>
                 </div>
                 <div>
-                  <div className="text-sm text-gray-500">Amount</div>
-                  <div className="font-medium">{selectedTx.amount}</div>
+                    <div className="text-sm text-gray-500 mb-1">Status</div>
+                    <div className="font-medium">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        selectedTx.status === 'draft' ? 'bg-gray-100 text-gray-800' :
+                        selectedTx.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                        selectedTx.status === 'approved' ? 'bg-blue-100 text-blue-800' :
+                        selectedTx.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                        selectedTx.status === 'posted' ? 'bg-green-100 text-green-800' :
+                        'bg-gray-100 text-gray-800'
+                      }`}>
+                        {selectedTx.status}
+                      </span>
                 </div>
               </div>
               <div>
-                <div className="text-sm text-gray-500">Description</div>
-                <div className="font-medium">{selectedTx.description}</div>
+                    <div className="text-sm text-gray-500 mb-1">Amount</div>
+                    <div className="font-semibold text-lg">
+                      {selectedTx.currency || 'USD'} {selectedTx.amount?.toLocaleString()}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Description and Reference */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <div className="text-sm text-gray-500 mb-2">Description</div>
+                  <div className="font-medium bg-gray-50 p-3 rounded-lg">{selectedTx.description || 'No description'}</div>
+                </div>
+                <div>
+                  <div className="text-sm text-gray-500 mb-2">Reference</div>
+                  <div className="font-medium bg-gray-50 p-3 rounded-lg">{selectedTx.reference || 'No reference'}</div>
+                </div>
+              </div>
+
+              {/* Related Entities */}
+              {(selectedTx.customer || selectedTx.supplier || selectedTx.invoice) && (
+                <div>
+                  <h3 className="text-lg font-semibold mb-3">Related Entities</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {selectedTx.customer && (
+                      <div className="bg-blue-50 p-4 rounded-lg">
+                        <div className="text-sm text-blue-600 mb-1">Customer</div>
+                        <div className="font-medium">
+                          {typeof selectedTx.customer === 'object' 
+                            ? `${selectedTx.customer.firstName || ''} ${selectedTx.customer.lastName || ''}`.trim()
+                            : selectedTx.customer
+                          }
+                        </div>
+                        {typeof selectedTx.customer === 'object' && selectedTx.customer.email && (
+                          <div className="text-sm text-gray-600">{selectedTx.customer.email}</div>
+                        )}
+                      </div>
+                    )}
+                    {selectedTx.supplier && (
+                      <div className="bg-green-50 p-4 rounded-lg">
+                        <div className="text-sm text-green-600 mb-1">Supplier</div>
+                        <div className="font-medium">
+                          {typeof selectedTx.supplier === 'object' 
+                            ? selectedTx.supplier.name
+                            : selectedTx.supplier
+                          }
+                        </div>
+                        {typeof selectedTx.supplier === 'object' && selectedTx.supplier.email && (
+                          <div className="text-sm text-gray-600">{selectedTx.supplier.email}</div>
+                        )}
+                      </div>
+                    )}
+                    {selectedTx.invoice && (
+                      <div className="bg-purple-50 p-4 rounded-lg">
+                        <div className="text-sm text-purple-600 mb-1">Invoice</div>
+                        <div className="font-medium">
+                          {typeof selectedTx.invoice === 'object' 
+                            ? selectedTx.invoice.invoiceNumber
+                            : selectedTx.invoice
+                          }
+                        </div>
+                        {typeof selectedTx.invoice === 'object' && selectedTx.invoice.totalAmount && (
+                          <div className="text-sm text-gray-600">Amount: {selectedTx.invoice.totalAmount}</div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Transaction Entries */}
+              {selectedTx.entries && selectedTx.entries.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold mb-3">Transaction Entries</h3>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Account</th>
+                          <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Debit</th>
+                          <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Credit</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {selectedTx.entries.map((entry: any, index: number) => (
+                          <tr key={index}>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <div className="font-medium">
+                                {typeof entry.account === 'object' 
+                                  ? `${entry.account.code || ''} - ${entry.account.name || ''}`.trim()
+                                  : entry.account
+                                }
+                              </div>
+                              {typeof entry.account === 'object' && entry.account.type && (
+                                <div className="text-sm text-gray-500">{entry.account.type}</div>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap text-right">
+                              {entry.debit > 0 && (
+                                <span className="font-medium text-red-600">
+                                  {selectedTx.currency || 'USD'} {entry.debit.toLocaleString()}
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap text-right">
+                              {entry.credit > 0 && (
+                                <span className="font-medium text-green-600">
+                                  {selectedTx.currency || 'USD'} {entry.credit.toLocaleString()}
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="text-sm text-gray-900">{entry.description || '-'}</div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot className="bg-gray-50">
+                        <tr className="font-semibold">
+                          <td className="px-4 py-3">Total</td>
+                          <td className="px-4 py-3 text-right text-red-600">
+                            {selectedTx.currency || 'USD'} {selectedTx.entries.reduce((sum: number, entry: any) => sum + (entry.debit || 0), 0).toLocaleString()}
+                          </td>
+                          <td className="px-4 py-3 text-right text-green-600">
+                            {selectedTx.currency || 'USD'} {selectedTx.entries.reduce((sum: number, entry: any) => sum + (entry.credit || 0), 0).toLocaleString()}
+                          </td>
+                          <td className="px-4 py-3">
+                            {selectedTx.entries.reduce((sum: number, entry: any) => sum + (entry.debit || 0), 0) === 
+                             selectedTx.entries.reduce((sum: number, entry: any) => sum + (entry.credit || 0), 0) ? 
+                             '✓ Balanced' : '⚠ Not Balanced'}
+                          </td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* Payment Information */}
+              {(selectedTx.paymentMethod || selectedTx.bankAccount) && (
+                <div>
+                  <h3 className="text-lg font-semibold mb-3">Payment Information</h3>
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {selectedTx.paymentMethod && (
+                        <div>
+                          <div className="text-sm text-gray-500 mb-1">Payment Method</div>
+                          <div className="font-medium capitalize">{selectedTx.paymentMethod.replace('_', ' ')}</div>
+                        </div>
+                      )}
+                      {selectedTx.bankAccount && (
+                        <div>
+                          <div className="text-sm text-gray-500 mb-1">Bank Account</div>
+                          <div className="space-y-1">
+                            {selectedTx.bankAccount.bankName && (
+                              <div className="font-medium">{selectedTx.bankAccount.bankName}</div>
+                            )}
+                            {selectedTx.bankAccount.accountNumber && (
+                              <div className="text-sm text-gray-600">Account: {selectedTx.bankAccount.accountNumber}</div>
+                            )}
+                            {selectedTx.bankAccount.routingNumber && (
+                              <div className="text-sm text-gray-600">Routing: {selectedTx.bankAccount.routingNumber}</div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Attachments */}
+              {selectedTx.attachments && selectedTx.attachments.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold mb-3">Attachments</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {selectedTx.attachments.map((attachment: any, index: number) => (
+                      <div key={index} className="bg-gray-50 p-4 rounded-lg">
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1">
+                            <div className="font-medium text-sm">{attachment.name}</div>
+                            <div className="text-xs text-gray-500">
+                              {attachment.size && `${(attachment.size / 1024).toFixed(1)} KB`}
+                              {attachment.uploadedAt && ` • ${new Date(attachment.uploadedAt).toLocaleDateString()}`}
+                            </div>
+                          </div>
+                          <a
+                            href={attachment.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="ml-2 text-blue-600 hover:text-blue-800"
+                          >
+                            View
+                          </a>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Notes */}
+              {selectedTx.notes && (
+                <div>
+                  <h3 className="text-lg font-semibold mb-3">Notes</h3>
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <div className="text-sm text-gray-700 whitespace-pre-wrap">{selectedTx.notes}</div>
+                  </div>
+                </div>
+              )}
+
+              {/* Audit Information */}
+              <div>
+                <h3 className="text-lg font-semibold mb-3">Audit Information</h3>
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
+                    <div>
+                      <div className="text-gray-500 mb-1">Created By</div>
+                      <div className="font-medium">
+                        {typeof selectedTx.createdBy === 'object' 
+                          ? `${selectedTx.createdBy.firstName || ''} ${selectedTx.createdBy.lastName || ''}`.trim()
+                          : selectedTx.createdBy
+                        }
+                      </div>
+                      {selectedTx.createdAt && (
+                        <div className="text-xs text-gray-500">{new Date(selectedTx.createdAt).toLocaleString()}</div>
+                      )}
+                    </div>
+                    {selectedTx.approvedBy && (
+                      <div>
+                        <div className="text-gray-500 mb-1">Approved By</div>
+                        <div className="font-medium">
+                          {typeof selectedTx.approvedBy === 'object' 
+                            ? `${selectedTx.approvedBy.firstName || ''} ${selectedTx.approvedBy.lastName || ''}`.trim()
+                            : selectedTx.approvedBy
+                          }
+                        </div>
+                        {selectedTx.approvedAt && (
+                          <div className="text-xs text-gray-500">{new Date(selectedTx.approvedAt).toLocaleString()}</div>
+                        )}
+                      </div>
+                    )}
+                    {selectedTx.reconciledBy && (
+                      <div>
+                        <div className="text-gray-500 mb-1">Reconciled By</div>
+                        <div className="font-medium">
+                          {typeof selectedTx.reconciledBy === 'object' 
+                            ? `${selectedTx.reconciledBy.firstName || ''} ${selectedTx.reconciledBy.lastName || ''}`.trim()
+                            : selectedTx.reconciledBy
+                          }
+                        </div>
+                        {selectedTx.reconciledAt && (
+                          <div className="text-xs text-gray-500">{new Date(selectedTx.reconciledAt).toLocaleString()}</div>
+                        )}
+                      </div>
+                    )}
+                    <div>
+                      <div className="text-gray-500 mb-1">Reconciled</div>
+                      <div className="font-medium">
+                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                          selectedTx.isReconciled ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                        }`}>
+                          {selectedTx.isReconciled ? 'Yes' : 'No'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           ) : (
-            <div className="text-gray-500">No transaction selected</div>
+            <div className="text-gray-500 text-center py-8">No transaction selected</div>
           )}
         </Modal>
 

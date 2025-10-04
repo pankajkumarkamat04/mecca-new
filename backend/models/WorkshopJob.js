@@ -370,7 +370,10 @@ workshopJobSchema.methods.updateProgress = function() {
     this.progress = 0;
     return;
   }
-  this.progress = this.completionPercentage;
+  
+  // Calculate progress based on completed tasks
+  const completedTasks = this.tasks.filter(task => task.status === 'completed').length;
+  this.progress = Math.round((completedTasks / this.tasks.length) * 100);
 };
 
 workshopJobSchema.methods.checkPartsAvailability = async function() {

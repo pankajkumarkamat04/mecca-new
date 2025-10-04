@@ -679,12 +679,32 @@ export interface StockMovement {
   _id: string;
   product: string | Product;
   quantity: number;
-  type: 'in' | 'out' | 'transfer' | 'adjustment';
-  reason: string;
+  movementType: 'in' | 'out' | 'transfer' | 'adjustment' | 'return' | 'damage' | 'expired' | 'receiving' | 'picking' | 'packing' | 'shipping' | 'cycle_count' | 'stock_take';
+  reason?: string;
   referenceDocument?: string;
-  movedBy: string;
-  movementDate: string;
+  movedBy?: string | { firstName: string; lastName: string };
+  createdBy?: string | { firstName: string; lastName: string };
+  movementDate?: string;
   createdAt: string;
+  updatedAt?: string;
+  unitCost?: number;
+  totalCost?: number;
+  previousStock?: number;
+  newStock?: number;
+  reference?: string;
+  referenceType?: string;
+  notes?: string;
+  warehouse?: string;
+  warehouseName?: string;
+  fromLocation?: any;
+  toLocation?: any;
+  supplier?: string | { name: string };
+  batchNumber?: string;
+  expiryDate?: string;
+  serialNumbers?: string[];
+  description?: string;
+  statusColor?: string;
+  id?: string;
 }
 
 // Project and Task types removed
