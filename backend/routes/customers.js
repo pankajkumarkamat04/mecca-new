@@ -8,8 +8,6 @@ const {
   createCustomer,
   updateCustomer,
   deleteCustomer,
-  addWalletTransaction,
-  getWalletTransactions,
   getCustomerStats,
   getTopCustomers,
   getCustomerByPhone
@@ -57,15 +55,6 @@ router.delete('/:id', auth, validateObjectId(), deleteCustomer);
 // @access  Private
 router.get('/:id/stats', auth, validateObjectId(), getCustomerStats);
 
-// @route   POST /api/customers/:id/wallet
-// @desc    Add wallet transaction
-// @access  Private
-router.post('/:id/wallet', auth, validateObjectId(), addWalletTransaction);
-
-// @route   GET /api/customers/:id/wallet/transactions
-// @desc    Get wallet transactions
-// @access  Private
-router.get('/:id/wallet/transactions', auth, validateObjectId(), validatePagination(), getWalletTransactions);
 
 
 module.exports = router;

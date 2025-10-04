@@ -8,7 +8,6 @@ import { useQuery } from '@tanstack/react-query';
 import { invoicesAPI, customersAPI, supportAPI } from '@/lib/api';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { 
-  WalletIcon, 
   DocumentTextIcon, 
   TicketIcon, 
   ShoppingBagIcon,
@@ -55,15 +54,6 @@ const CustomerDashboardPage: React.FC = () => {
   });
 
 
-  // Fetch wallet transactions
-  const { data: walletTransactions, isLoading: walletLoading } = useQuery({
-    queryKey: ['customer-wallet-transactions', user?._id],
-    queryFn: () => customersAPI.getWalletTransactions(user?._id || '', {
-      page: 1,
-      limit: 5,
-    }),
-    enabled: !!user?._id,
-  });
 
   if (isLoading) {
     return (
@@ -82,7 +72,6 @@ const CustomerDashboardPage: React.FC = () => {
     return null; // Layout will handle redirect to login
   }
 
-  const walletBalance = customerData?.data?.wallet?.balance || user?.wallet?.balance || 0;
   const totalSpent = customerData?.data?.totalPurchases?.amount || 0;
   const visitCount = customerData?.data?.totalPurchases?.count || 0;
 
@@ -136,24 +125,6 @@ const CustomerDashboardPage: React.FC = () => {
 
         {/* Key Metrics */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <div className="bg-white shadow rounded-lg p-6">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <WalletIcon className="h-8 w-8 text-blue-600" />
-              </div>
-              <div className="ml-4">
-                <h3 className="text-sm font-medium text-gray-500">Wallet Balance</h3>
-                <p className="mt-2 text-3xl font-bold text-blue-600">
-                  {formatCurrency(walletBalance)}
-                </p>
-                <div className="mt-4">
-                  <Link href="/customer/wallet" className="text-sm text-blue-600 hover:text-blue-800 flex items-center">
-                    Manage wallet <ArrowRightIcon className="h-4 w-4 ml-1" />
-                  </Link>
-                </div>
-              </div>
-            </div>
-          </div>
 
           <div className="bg-white shadow rounded-lg p-6">
             <div className="flex items-center">
@@ -358,13 +329,6 @@ const CustomerDashboardPage: React.FC = () => {
               </div>
             </Link>
 
-            <Link href="/customer/wallet" className="p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-green-500 hover:bg-green-50 transition-colors">
-              <div className="text-center">
-                <div className="text-2xl mb-2">💳</div>
-                <div className="text-sm font-medium text-gray-900">My Wallet</div>
-                <div className="text-xs text-gray-500">Manage balance</div>
-              </div>
-            </Link>
 
             <Link href="/customer/support" className="p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-red-500 hover:bg-red-50 transition-colors">
               <div className="text-center">

@@ -26,7 +26,6 @@ const customerRoutes = [
   '/customer',
   '/customer/invoices',
   '/customer/purchases',
-  '/customer/wallet',
   '/customer/support',
 ];
 

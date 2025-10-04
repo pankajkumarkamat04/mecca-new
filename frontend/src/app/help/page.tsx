@@ -121,7 +121,7 @@ const HelpPage: React.FC = () => {
     },
     {
       question: 'What payment methods are supported?',
-      answer: 'The system supports cash, credit/debit cards, digital wallets, and online payment gateways like Stripe and PayPal.',
+      answer: 'The system supports cash, credit/debit cards, and online payment gateways like Stripe and PayPal.',
     },
     {
       question: 'How can I generate custom reports?',

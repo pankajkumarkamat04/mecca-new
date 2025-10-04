@@ -285,10 +285,6 @@ async function seed() {
         zipCode: '78746',
         country: 'USA'
       },
-      wallet: {
-        balance: 125.50,
-        currency: 'USD'
-      },
       preferences: {
         language: 'en',
         timezone: 'America/Chicago',
@@ -312,10 +308,6 @@ async function seed() {
         state: 'TX',
         zipCode: '78746',
         country: 'USA'
-      },
-      wallet: {
-        balance: 75.25,
-        currency: 'USD'
       },
       preferences: {
         language: 'en',
@@ -341,10 +333,6 @@ async function seed() {
         zipCode: '78746',
         country: 'USA'
       },
-      wallet: {
-        balance: 200.00,
-        currency: 'USD'
-      },
       preferences: {
         language: 'en',
         timezone: 'America/Chicago',
@@ -369,10 +357,6 @@ async function seed() {
         zipCode: '78759',
         country: 'USA'
       },
-      wallet: {
-        balance: 50.00,
-        currency: 'USD'
-      },
       preferences: {
         language: 'en',
         timezone: 'America/Chicago',
@@ -396,10 +380,6 @@ async function seed() {
         state: 'TX',
         zipCode: '78759',
         country: 'USA'
-      },
-      wallet: {
-        balance: 300.75,
-        currency: 'USD'
       },
       preferences: {
         language: 'en',
@@ -2808,7 +2788,6 @@ async function seed() {
     console.log(`  Password: password123`);
     console.log(`  Role: ${user.role}`);
     console.log(`  Phone: ${user.phone || 'N/A'}`);
-    console.log(`  Wallet: $${user.wallet?.balance || 0} ${user.wallet?.currency || 'USD'}`);
     console.log('');
   });
 
@@ -2825,7 +2804,7 @@ async function seed() {
   console.log('Warehouse Manager: Full access to warehouse operations, inventory, and staff management');
   console.log('Financial Analyst: Access to financial reports, transactions, and accounting');
   console.log('Technical Support Specialist: Handle technical issues and system support');
-  console.log('Customer: Access to customer dashboard, purchases, wallet, support');
+  console.log('Customer: Access to customer dashboard, purchases, support');
   console.log('');
   console.log('🔗 PHONE-BASED LINKING:');
   console.log('─'.repeat(30));

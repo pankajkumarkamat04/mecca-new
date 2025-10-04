@@ -18,10 +18,6 @@ interface User {
     module: string;
     actions: string[];
   }>;
-  wallet?: {
-    balance: number;
-    currency: string;
-  };
   preferences?: {
     language: string;
     timezone: string;

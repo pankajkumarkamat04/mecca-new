@@ -61,7 +61,6 @@ const TestRedirectPage: React.FC = () => {
                   <>
                     <p className="text-sm text-yellow-700">✓ Customer Dashboard: /customer</p>
                     <p className="text-sm text-yellow-700">✓ Customer Invoices: /customer/invoices</p>
-                    <p className="text-sm text-yellow-700">✓ Customer Wallet: /customer/wallet</p>
                     <p className="text-sm text-yellow-700">✓ Customer Support: /customer/support</p>
                     <p className="text-sm text-yellow-700">✓ Profile: /profile</p>
                   </>

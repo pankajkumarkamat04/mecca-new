@@ -13,7 +13,6 @@ const getPaymentMethodColor = (paymentMethod) => {
     'cash': '#10b981',
     'card': '#3b82f6',
     'bank_transfer': '#8b5cf6',
-    'wallet': '#f59e0b',
     'stripe': '#6366f1',
     'paypal': '#06b6d4',
     'other': '#6b7280'

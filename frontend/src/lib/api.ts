@@ -117,10 +117,6 @@ export const customersAPI = {
   getTopCustomers: () => api.get('/customers/top'),
   getCustomerStats: (id: string) => api.get(`/customers/${id}/stats`),
   getCustomerByPhone: (phone: string) => api.get(`/customers/by-phone/${phone}`),
-  addWalletTransaction: (id: string, transactionData: any) =>
-    api.post(`/customers/${id}/wallet`, transactionData),
-  getWalletTransactions: (id: string, params?: any) =>
-    api.get(`/customers/${id}/wallet/transactions`, { params }),
 };
 
 // Suppliers API

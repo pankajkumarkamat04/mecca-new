@@ -17,7 +17,6 @@ import {
   ShieldCheckIcon,
   KeyIcon,
   GlobeAltIcon,
-  CurrencyDollarIcon,
   PaintBrushIcon,
   PhotoIcon,
   TrashIcon,
@@ -74,7 +73,6 @@ const SettingsPage: React.FC = () => {
   const tabs = [
     { id: 'company', name: 'Company', icon: CogIcon },
     { id: 'system', name: 'System', icon: ComputerDesktopIcon },
-    { id: 'billing', name: 'Billing', icon: CurrencyDollarIcon },
   ];
 
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -582,80 +580,6 @@ const SettingsPage: React.FC = () => {
     );
   };
 
-  const renderBillingTab = () => (
-    <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-medium text-gray-900">Billing & Subscription</h3>
-        <p className="text-sm text-gray-600">Manage your subscription and billing information.</p>
-      </div>
-
-      <div className="space-y-6">
-        <div className="bg-blue-50 p-6 rounded-lg">
-          <div className="flex items-center">
-            <div className="flex-shrink-0">
-              <CurrencyDollarIcon className="h-8 w-8 text-blue-600" />
-            </div>
-            <div className="ml-4">
-              <h4 className="text-lg font-medium text-blue-900">Professional Plan</h4>
-              <p className="text-sm text-blue-700">$99/month • Next billing: January 15, 2025</p>
-            </div>
-          </div>
-        </div>
-
-        <div>
-          <h4 className="text-md font-medium text-gray-900 mb-4">Payment Method</h4>
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <div className="h-8 w-12 bg-blue-600 rounded flex items-center justify-center">
-                  <span className="text-white text-xs font-bold">VISA</span>
-                </div>
-                <div className="ml-3">
-                  <p className="text-sm font-medium text-gray-900">•••• •••• •••• 4242</p>
-                  <p className="text-sm text-gray-500">Expires 12/25</p>
-                </div>
-              </div>
-              <Button variant="outline" size="sm">
-                Update
-              </Button>
-            </div>
-          </div>
-        </div>
-
-        <div className="border-t border-gray-200 pt-6">
-          <h4 className="text-md font-medium text-gray-900 mb-4">Billing History</h4>
-          <div className="space-y-3">
-            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-              <div>
-                <p className="text-sm font-medium text-gray-900">December 2024</p>
-                <p className="text-sm text-gray-500">Professional Plan</p>
-              </div>
-              <div className="text-right">
-                <p className="text-sm font-medium text-gray-900">$99.00</p>
-                <p className="text-sm text-gray-500">Paid</p>
-              </div>
-            </div>
-            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-              <div>
-                <p className="text-sm font-medium text-gray-900">November 2024</p>
-                <p className="text-sm text-gray-500">Professional Plan</p>
-              </div>
-              <div className="text-right">
-                <p className="text-sm font-medium text-gray-900">$99.00</p>
-                <p className="text-sm text-gray-500">Paid</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="flex justify-end">
-        <Button variant="outline">
-          Download Invoice
-        </Button>
-      </div>
-    </div>
-  );
 
   const renderTabContent = () => {
     switch (activeTab) {
@@ -663,8 +587,6 @@ const SettingsPage: React.FC = () => {
         return renderCompanyTab();
       case 'system':
         return renderSystemTab();
-      case 'billing':
-        return renderBillingTab();
       default:
         return renderCompanyTab();
     }

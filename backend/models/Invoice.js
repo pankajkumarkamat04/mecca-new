@@ -140,7 +140,7 @@ const invoiceSchema = new mongoose.Schema({
   payments: [{
     method: {
       type: String,
-      enum: ['cash', 'card', 'bank_transfer', 'wallet', 'stripe', 'paypal', 'other'],
+      enum: ['cash', 'card', 'bank_transfer', 'stripe', 'paypal', 'other'],
       required: true
     },
     amount: {

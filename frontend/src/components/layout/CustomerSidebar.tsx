@@ -8,7 +8,6 @@ import { useSettings } from '@/contexts/SettingsContext';
 import { cn } from '@/lib/utils';
 import {
   HomeIcon,
-  WalletIcon as WalletOutline,
   TicketIcon as TicketOutline,
   DocumentTextIcon,
   UserIcon,
@@ -36,7 +35,6 @@ const items: SidebarItem[] = [
   { name: 'My Orders', href: '/customer/orders', icon: ShoppingBagIcon },
   { name: 'My Purchases', href: '/customer/purchases', icon: DocumentTextIcon },
   { name: 'My Invoices', href: '/customer/invoices', icon: DocumentTextIcon },
-  { name: 'My Wallet', href: '/customer/wallet', icon: WalletOutline },
   { name: 'Support', href: '/customer/support', icon: TicketOutline },
   { name: 'Profile', href: '/profile', icon: UserIcon },
 ];

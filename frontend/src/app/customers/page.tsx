@@ -20,7 +20,6 @@ import {
   TrashIcon,
   EyeIcon,
   UsersIcon,
-  WalletIcon,
   StarIcon,
 } from '@heroicons/react/24/outline';
 
@@ -28,7 +27,6 @@ const CustomersPage: React.FC = () => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
-  const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -77,10 +75,6 @@ const CustomersPage: React.FC = () => {
     setIsEditModalOpen(true);
   };
 
-  const handleWalletTransaction = (customer: Customer) => {
-    setSelectedCustomer(customer);
-    setIsWalletModalOpen(true);
-  };
 
 
   const columns = [
@@ -123,21 +117,11 @@ const CustomersPage: React.FC = () => {
       ),
     },
     {
-      key: 'wallet.balance',
-      label: 'Wallet Balance',
-      sortable: true,
-      render: (row: Customer) => (
-        <div className="text-sm text-gray-900">
-          {formatCurrency(row.wallet.balance, row.wallet.currency)}
-        </div>
-      ),
-    },
-    {
       key: 'totalPurchases',
       label: 'Total Spent',
       sortable: true,
       render: (row: Customer) => (
-        <span className="text-sm text-gray-900">{formatCurrency(row.wallet.balance, row.wallet.currency)}</span>
+        <span className="text-sm text-gray-900">{formatCurrency(row.totalPurchases?.amount || 0)}</span>
       ),
     },
     {
@@ -163,13 +147,6 @@ const CustomersPage: React.FC = () => {
             title="View Customer"
           >
             <EyeIcon className="h-4 w-4" />
-          </button>
-          <button
-            onClick={() => handleWalletTransaction(row)}
-            className="text-green-600 hover:text-green-900"
-            title="Wallet Transaction"
-          >
-            <WalletIcon className="h-4 w-4" />
           </button>
           <button
             onClick={() => handleEditCustomer(row)}
@@ -385,12 +362,6 @@ const CustomersPage: React.FC = () => {
                   </p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Wallet Balance</label>
-                  <p className="text-sm text-gray-900">
-                    {formatCurrency(selectedCustomer.wallet.balance, selectedCustomer.wallet.currency)}
-                  </p>
-                </div>
-                <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Total Spent</label>
                   <p className="text-sm text-gray-900">{formatCurrency(selectedCustomer.totalPurchases)}</p>
                 </div>
@@ -411,28 +382,6 @@ const CustomersPage: React.FC = () => {
           )}
         </Modal>
 
-        {/* Wallet Transaction Modal */}
-        <Modal
-          isOpen={isWalletModalOpen}
-          onClose={() => setIsWalletModalOpen(false)}
-          title="Wallet Transaction"
-          size="md"
-        >
-          {selectedCustomer && (
-            <div className="space-y-4">
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <h3 className="font-medium text-gray-900">Current Balance</h3>
-                <p className="text-2xl font-bold text-blue-600">
-                  {formatCurrency(selectedCustomer.wallet.balance, selectedCustomer.wallet.currency)}
-                </p>
-              </div>
-              <CustomerWalletForm 
-                customer={selectedCustomer}
-                onSuccess={() => setIsWalletModalOpen(false)}
-              />
-            </div>
-          )}
-        </Modal>
       </div>
     </Layout>
   );
@@ -546,110 +495,5 @@ const CustomerEditForm: React.FC<{
   );
 };
 
-// Customer Wallet Form Component
-const CustomerWalletForm: React.FC<{ 
-  customer: Customer | null; 
-  onSuccess: () => void; 
-}> = ({ customer, onSuccess }) => {
-  const queryClient = useQueryClient();
-  const [transactionType, setTransactionType] = useState<'credit' | 'debit'>('credit');
-
-  const walletSchema = useMemo(() => z.object({
-    amount: z.number().min(0.01, 'Amount must be greater than 0'),
-    description: z.string().min(1, 'Description is required'),
-    type: z.enum(['credit', 'debit']).default('credit'),
-  }), []);
-
-  const processWalletTransactionMutation = useMutation({
-    mutationFn: (data: any) => {
-      // This would call a wallet transaction API
-      return new Promise((resolve) => {
-        setTimeout(() => {
-          resolve({ success: true });
-        }, 1000);
-      });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['customers'] });
-      toast.success('Wallet transaction processed successfully');
-      onSuccess();
-    },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to process wallet transaction');
-    },
-  });
-
-  if (!customer) return null;
-
-  return (
-    <Form
-      schema={walletSchema}
-      defaultValues={{ 
-        amount: 0,
-        description: '',
-        type: 'credit'
-      }}
-      loading={processWalletTransactionMutation.isPending}
-    >{(methods) => (
-      <div className="space-y-6">
-        <FormSection title="Wallet Transaction">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <FormField label="Transaction Type" required>
-              <Select
-                options={[
-                  { value: 'credit', label: 'Add Credit' },
-                  { value: 'debit', label: 'Deduct Amount' }
-                ]}
-                value={methods.watch('type')}
-                onChange={(e) => {
-                  methods.setValue('type', e.target.value as 'credit' | 'debit');
-                  setTransactionType(e.target.value as 'credit' | 'debit');
-                }}
-                fullWidth
-              />
-            </FormField>
-            <FormField label="Amount" required error={methods.formState.errors.amount?.message as string}>
-              <Input 
-                type="number" 
-                step="0.01"
-                {...methods.register('amount', { valueAsNumber: true })} 
-                fullWidth 
-              />
-            </FormField>
-            <FormField label="Description" required error={methods.formState.errors.description?.message as string} className="md:col-span-2">
-              <Input {...methods.register('description')} fullWidth />
-            </FormField>
-          </div>
-        </FormSection>
-
-        <div className="bg-blue-50 p-4 rounded-lg">
-          <p className="text-sm text-blue-800">
-            <strong>Current Balance:</strong> {formatCurrency(customer.wallet.balance, customer.wallet.currency)}
-            {transactionType === 'credit' ? (
-              <span className="text-green-600"> → {formatCurrency(customer.wallet.balance + (methods.watch('amount') || 0), customer.wallet.currency)}</span>
-            ) : (
-              <span className="text-red-600"> → {formatCurrency(customer.wallet.balance - (methods.watch('amount') || 0), customer.wallet.currency)}</span>
-            )}
-          </p>
-        </div>
-
-        <FormActions
-          onCancel={onSuccess}
-          onSubmit={async () => {
-            const isValid = await methods.trigger();
-            if (isValid) {
-              const values = methods.getValues();
-              await processWalletTransactionMutation.mutateAsync(values);
-            } else {
-              toast.error('Please fill in all required fields');
-            }
-          }}
-          submitText={processWalletTransactionMutation.isPending ? 'Processing...' : 'Process Transaction'}
-          loading={processWalletTransactionMutation.isPending}
-        />
-      </div>
-    )}</Form>
-  );
-};
 
 export default CustomersPage;

@@ -10,7 +10,6 @@ export interface User {
   isActive: boolean;
   lastLogin?: string;
   permissions?: Permission[];
-  wallet?: Wallet;
   preferences?: UserPreferences;
   salary?: Salary;
   hireDate?: string;
@@ -32,10 +31,6 @@ export interface Permission {
   actions: string[];
 }
 
-export interface Wallet {
-  balance: number;
-  currency: string;
-}
 
 export interface UserPreferences {
   language: string;
@@ -128,9 +123,11 @@ export interface Customer {
   customerCode: string;
   type: 'individual' | 'business';
   address?: Address;
-  wallet: Wallet;
   preferences?: CustomerPreferences;
-  totalPurchases: number;
+  totalPurchases: {
+    amount: number;
+    count: number;
+  };
   isActive: boolean;
   createdBy: string;
   createdAt: string;
@@ -666,7 +663,7 @@ export interface Tax {
 }
 
 export interface Payment {
-  method: 'cash' | 'card' | 'bank_transfer' | 'wallet' | 'stripe' | 'paypal' | 'other';
+  method: 'cash' | 'card' | 'bank_transfer' | 'stripe' | 'paypal' | 'other';
   amount: number;
   reference?: string;
   date: string;

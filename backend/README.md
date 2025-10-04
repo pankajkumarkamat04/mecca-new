@@ -8,7 +8,7 @@ A comprehensive Point of Sale (POS) system backend built with Node.js, Express.j
 - **User Management** - Authentication, authorization, role-based access control
 - **Store Management** - Multi-store support, employee assignment, store-specific settings
 - **Product Management** - Inventory tracking, pricing, categories, variations
-- **Customer Management** - Customer profiles, wallets, account management
+- **Customer Management** - Customer profiles, account management
 - **Supplier Management** - Vendor relationships, purchase tracking, ratings
 
 ### Sales & Operations

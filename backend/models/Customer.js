@@ -75,34 +75,6 @@ const customerSchema = new mongoose.Schema({
       }
     }
   },
-  wallet: {
-    balance: {
-      type: Number,
-      default: 0,
-      min: [0, 'Wallet balance cannot be negative']
-    },
-    currency: {
-      type: String,
-      default: 'USD'
-    },
-    transactions: [{
-      type: {
-        type: String,
-        enum: ['credit', 'debit'],
-        required: true
-      },
-      amount: {
-        type: Number,
-        required: true
-      },
-      description: String,
-      reference: String,
-      date: {
-        type: Date,
-        default: Date.now
-      }
-    }]
-  },
   preferences: {
     language: {
       type: String,
@@ -190,24 +162,6 @@ customerSchema.pre('save', async function(next) {
   next();
 });
 
-// Method to add wallet transaction
-customerSchema.methods.addWalletTransaction = function(type, amount, description, reference) {
-  this.wallet.transactions.push({
-    type,
-    amount,
-    description,
-    reference,
-    date: new Date()
-  });
-  
-  if (type === 'credit') {
-    this.wallet.balance += amount;
-  } else {
-    this.wallet.balance -= amount;
-  }
-  
-  return this.save();
-};
 
 // Method to update purchase statistics
 customerSchema.methods.updatePurchaseStats = function(amount) {

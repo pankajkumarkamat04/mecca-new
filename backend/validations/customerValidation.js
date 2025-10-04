@@ -156,32 +156,6 @@ const updateCustomerValidation = [
     .withMessage('isActive must be a boolean value')
 ];
 
-// Wallet transaction validation
-const walletTransactionValidation = [
-  param('id')
-    .isMongoId()
-    .withMessage('Invalid customer ID'),
-  
-  body('type')
-    .isIn(['credit', 'debit'])
-    .withMessage('Transaction type must be credit or debit'),
-  
-  body('amount')
-    .isFloat({ min: 0.01 })
-    .withMessage('Amount must be a positive number'),
-  
-  body('description')
-    .optional()
-    .trim()
-    .isLength({ max: 200 })
-    .withMessage('Description cannot exceed 200 characters'),
-  
-  body('reference')
-    .optional()
-    .trim()
-    .isLength({ max: 100 })
-    .withMessage('Reference cannot exceed 100 characters')
-];
 
 
 // Get customer by ID validation
@@ -194,6 +168,5 @@ const getCustomerByIdValidation = [
 module.exports = {
   createCustomerValidation,
   updateCustomerValidation,
-  walletTransactionValidation,
   getCustomerByIdValidation
 };

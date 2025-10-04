@@ -30,7 +30,7 @@ export const ROLE_ROUTES: Record<UserRole, RoleRoute> = {
   customer: {
     role: 'customer',
     defaultPath: '/customer',
-    allowedPaths: ['/customer', '/customer/invoices', '/customer/purchases', '/customer/wallet', '/customer/support', '/customer/inquiries', '/customer/quotations', '/customer/orders', '/customer/workshop', '/profile']
+    allowedPaths: ['/customer', '/customer/invoices', '/customer/purchases', '/customer/support', '/customer/inquiries', '/customer/quotations', '/customer/orders', '/customer/workshop', '/profile']
   },
   warehouse_manager: {
     role: 'warehouse_manager',

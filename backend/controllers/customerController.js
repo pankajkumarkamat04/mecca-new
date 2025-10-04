@@ -185,81 +185,7 @@ const deleteCustomer = async (req, res) => {
   }
 };
 
-// @desc    Add wallet transaction
-// @route   POST /api/customers/:id/wallet
-// @access  Private
-const addWalletTransaction = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { type, amount, description, reference } = req.body;
 
-    const customer = await Customer.findById(id);
-    if (!customer) {
-      return res.status(404).json({
-        success: false,
-        message: 'Customer not found'
-      });
-    }
-
-    await customer.addWalletTransaction(type, amount, description, reference);
-
-    res.json({
-      success: true,
-      message: 'Wallet transaction added successfully',
-      data: {
-        newBalance: customer.wallet.balance,
-        transaction: customer.wallet.transactions[customer.wallet.transactions.length - 1]
-      }
-    });
-  } catch (error) {
-    console.error('Add wallet transaction error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error'
-    });
-  }
-};
-
-// @desc    Get customer wallet transactions
-// @route   GET /api/customers/:id/wallet/transactions
-// @access  Private
-const getWalletTransactions = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
-    const skip = (page - 1) * limit;
-
-    const customer = await Customer.findById(id).select('wallet.transactions');
-    if (!customer) {
-      return res.status(404).json({
-        success: false,
-        message: 'Customer not found'
-      });
-    }
-
-    const transactions = customer.wallet.transactions
-      .sort((a, b) => new Date(b.date) - new Date(a.date))
-      .slice(skip, skip + limit);
-
-    res.json({
-      success: true,
-      data: transactions,
-      pagination: {
-        page,
-        limit,
-        total: customer.wallet.transactions.length,
-        pages: Math.ceil(customer.wallet.transactions.length / limit)
-      }
-    });
-  } catch (error) {
-    console.error('Get wallet transactions error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error'
-    });
-  }
-};
 
 
 // @desc    Get customer statistics
@@ -278,7 +204,6 @@ const getCustomerStats = async (req, res) => {
       totalPurchases: 0,
       averageOrderValue: 0,
       lastPurchase: null,
-      walletBalance: 0,
     };
 
     try {
@@ -308,7 +233,7 @@ const getCustomerStats = async (req, res) => {
     }
 
     const customer = await Customer.findById(customerId)
-      .select('totalPurchases lastPurchase wallet');
+      .select('totalPurchases lastPurchase');
 
     if (customer) {
       stats.totalInvoices = customer.totalPurchases.count;
@@ -317,7 +242,6 @@ const getCustomerStats = async (req, res) => {
         ? customer.totalPurchases.amount / customer.totalPurchases.count 
         : 0;
       stats.lastPurchase = customer.lastPurchase;
-      stats.walletBalance = customer.wallet.balance;
     }
 
     res.json({
@@ -405,8 +329,6 @@ module.exports = {
   createCustomer,
   updateCustomer,
   deleteCustomer,
-  addWalletTransaction,
-  getWalletTransactions,
   getCustomerStats,
   getTopCustomers,
   getCustomerByPhone

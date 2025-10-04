@@ -448,6 +448,7 @@ const ProfilePage: React.FC = () => {
           </div>
   );
 
+
   const renderTabContent = () => {
     switch (activeTab) {
       case 'profile':

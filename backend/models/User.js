@@ -56,16 +56,6 @@ const userSchema = new mongoose.Schema({
     module: String,
     actions: [String]
   }],
-  wallet: {
-    balance: {
-      type: Number,
-      default: 0
-    },
-    currency: {
-      type: String,
-      default: 'USD'
-    }
-  },
   preferences: {
     language: {
       type: String,
