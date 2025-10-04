@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
+import Image from 'next/image';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Layout from '@/components/layout/Layout';
 import Button from '@/components/ui/Button';
@@ -11,7 +12,7 @@ import Select from '@/components/ui/Select';
 import { invoicesAPI, customersAPI, productsAPI } from '@/lib/api';
 import CustomerSelector from '@/components/ui/CustomerSelector';
 import { useSettings } from '@/contexts/SettingsContext';
-import { formatCurrency, formatDate, getStatusColor, buildPrintableInvoiceHTML } from '@/lib/utils';
+import { formatCurrency, formatDate, getStatusColor, buildPrintableInvoiceHTML, getLogoUrl } from '@/lib/utils';
 import { calculatePrice } from '@/lib/priceCalculator';
 import PriceSummary from '@/components/ui/PriceSummary';
 import InvoiceReceipt from '@/components/ui/InvoiceReceipt';
@@ -1094,7 +1095,13 @@ const InvoiceHeaderRight: React.FC<{ invoice: any }> = ({ invoice }) => {
       <div>
         <div className="flex items-center justify-end gap-3">
           {company?.logo?.url && (
-            <img src={company.logo.url} alt="Logo" className="h-10 w-auto object-contain" />
+            <Image
+              width={40}
+              height={40}
+              src={getLogoUrl(company.logo.url)}
+              alt="Logo"
+              className="object-contain"
+            />
           )}
           <div className="text-2xl font-bold text-gray-900">
             {formatCurrency(invoice?.total ?? invoice?.totalAmount ?? 0)}

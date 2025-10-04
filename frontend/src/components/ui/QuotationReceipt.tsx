@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Quotation, QuotationItem } from '@/types';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { formatCurrency, formatDate, getLogoUrl } from '@/lib/utils';
 import { calculatePrice } from '@/lib/priceCalculator';
 import { useSettings } from '@/contexts/SettingsContext';
 import Button from './Button';
@@ -29,7 +29,7 @@ const QuotationReceipt: React.FC<QuotationReceiptProps> = ({
     phone: company?.phone || 'Your Phone Number',
     email: company?.email || 'your@email.com',
     taxId: company?.taxId || 'Your Tax ID',
-    logo: company?.logo?.url
+    logo: company?.logo?.url ? getLogoUrl(company.logo.url) : ''
   };
 
   // Calculate pricing using the universal price calculator

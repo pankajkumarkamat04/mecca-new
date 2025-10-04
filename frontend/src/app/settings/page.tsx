@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Image from 'next/image';
 import Layout from '@/components/layout/Layout';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
@@ -8,7 +9,7 @@ import Select from '@/components/ui/Select';
 import { useAuth } from '@/contexts/AuthContext';
 import { settingsAPI } from '@/lib/api';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { formatDate } from '@/lib/utils';
+import { formatDate, getLogoUrl } from '@/lib/utils';
 import toast from 'react-hot-toast';
 import {
   UserIcon,
@@ -29,6 +30,8 @@ const SettingsPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [formData, setFormData] = useState<Record<string, any>>({});
+  const [hasChanges, setHasChanges] = useState(false);
 
   const queryClient = useQueryClient();
   const { data: settingsData } = useQuery({
@@ -39,7 +42,9 @@ const SettingsPage: React.FC = () => {
     mutationFn: (data: any) => settingsAPI.updateSettings(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['app-settings'] });
-      toast.success('Settings saved');
+      toast.success('Settings saved successfully');
+      setHasChanges(false);
+      setFormData({});
     },
     onError: () => {
       toast.error('Failed to save settings');
@@ -99,6 +104,42 @@ const SettingsPage: React.FC = () => {
     deleteLogoMutation.mutate();
   };
 
+  const handleInputChange = (field: string, value: any, section: string = 'company') => {
+    setFormData((prev: Record<string, any>) => ({
+      ...prev,
+      [section]: {
+        ...prev[section],
+        [field]: value
+      }
+    }));
+    setHasChanges(true);
+  };
+
+  const handleNestedInputChange = (field: string, value: any, parentField: string, section: string = 'company') => {
+    setFormData((prev: Record<string, any>) => ({
+      ...prev,
+      [section]: {
+        ...prev[section],
+        [parentField]: {
+          ...prev[section]?.[parentField],
+          [field]: value
+        }
+      }
+    }));
+    setHasChanges(true);
+  };
+
+  const handleSaveSettings = () => {
+    if (Object.keys(formData).length > 0) {
+      updateSettings.mutate(formData);
+    }
+  };
+
+  const handleCancelChanges = () => {
+    setFormData({});
+    setHasChanges(false);
+  };
+
 
 
 
@@ -107,12 +148,32 @@ const SettingsPage: React.FC = () => {
   const renderCompanyTab = () => {
     const settings = settingsData?.data?.data;
     const company = settings?.company || {};
+    const currentCompany = { ...company, ...formData.company };
     
     return (
       <div className="space-y-6">
-        <div>
-          <h3 className="text-lg font-medium text-gray-900">Company Settings</h3>
-          <p className="text-sm text-gray-600">Manage your company information and preferences.</p>
+        <div className="flex justify-between items-center">
+          <div>
+            <h3 className="text-lg font-medium text-gray-900">Company Settings</h3>
+            <p className="text-sm text-gray-600">Manage your company information and preferences.</p>
+          </div>
+          {hasChanges && (
+            <div className="flex space-x-3">
+              <Button 
+                variant="outline" 
+                onClick={handleCancelChanges}
+                disabled={updateSettings.isPending}
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleSaveSettings}
+                loading={updateSettings.isPending}
+              >
+                Save Changes
+              </Button>
+            </div>
+          )}
         </div>
 
         <div className="space-y-6">
@@ -121,11 +182,16 @@ const SettingsPage: React.FC = () => {
             <h4 className="text-md font-medium text-gray-900 mb-4">Company Logo</h4>
             <div className="flex items-center space-x-6">
               <div className="flex-shrink-0">
-                {logoPreview || company.logo?.url ? (
-                  <img
-                    className="h-20 w-20 object-contain border border-gray-300 rounded-lg"
-                    src={logoPreview || company.logo?.url}
+                {logoPreview || currentCompany.logo?.url ? (
+                  <Image
+                    width={80}
+                    height={80}
+                    className="object-contain border border-gray-300 rounded-lg"
+                    src={logoPreview || getLogoUrl(currentCompany.logo?.url || '')}
                     alt="Company logo"
+                    onError={(e) => {
+                      console.error('Logo failed to load:', (e.target as HTMLImageElement).src);
+                    }}
                   />
                 ) : (
                   <div className="h-20 w-20 bg-gray-100 border border-gray-300 rounded-lg flex items-center justify-center">
@@ -135,23 +201,25 @@ const SettingsPage: React.FC = () => {
               </div>
               <div className="flex-1">
                 <div className="flex space-x-3">
-                  <label className="cursor-pointer">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleLogoChange}
-                      className="hidden"
-                    />
-                    <Button variant="outline" leftIcon={<PhotoIcon className="h-4 w-4" />}>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleLogoChange}
+                    className="hidden"
+                    id="logo-upload"
+                  />
+                  <label htmlFor="logo-upload" className="cursor-pointer">
+                    <div className="inline-flex items-center justify-center font-medium rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 focus:ring-blue-500 px-4 py-2 text-sm">
+                      <PhotoIcon className="h-4 w-4 mr-2" />
                       {logoFile ? 'Change Logo' : 'Upload Logo'}
-                    </Button>
+                    </div>
                   </label>
                   {logoFile && (
                     <Button onClick={handleUploadLogo} loading={uploadLogoMutation.isPending}>
                       Upload
                     </Button>
                   )}
-                  {company.logo?.url && (
+                  {currentCompany.logo?.url && (
                     <Button 
                       variant="outline" 
                       onClick={handleDeleteLogo} 
@@ -175,58 +243,40 @@ const SettingsPage: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <Input
                 label="Company Name"
-                defaultValue={company.name || ''}
+                value={currentCompany.name || ''}
                 fullWidth
-                onChange={(e) => {
-                  const updatedCompany = { ...company, name: e.target.value };
-                  updateSettings.mutate({ company: updatedCompany });
-                }}
+                onChange={(e) => handleInputChange('name', e.target.value)}
               />
               <Input
                 label="Company Code"
-                defaultValue={company.code || ''}
+                value={currentCompany.code || ''}
                 fullWidth
-                onChange={(e) => {
-                  const updatedCompany = { ...company, code: e.target.value };
-                  updateSettings.mutate({ company: updatedCompany });
-                }}
+                onChange={(e) => handleInputChange('code', e.target.value)}
               />
               <Input
                 label="Tax ID"
-                defaultValue={company.taxId || ''}
+                value={currentCompany.taxId || ''}
                 fullWidth
-                onChange={(e) => {
-                  const updatedCompany = { ...company, taxId: e.target.value };
-                  updateSettings.mutate({ company: updatedCompany });
-                }}
+                onChange={(e) => handleInputChange('taxId', e.target.value)}
               />
               <Input
                 label="Website"
-                defaultValue={company.website || ''}
+                value={currentCompany.website || ''}
                 fullWidth
-                onChange={(e) => {
-                  const updatedCompany = { ...company, website: e.target.value };
-                  updateSettings.mutate({ company: updatedCompany });
-                }}
+                onChange={(e) => handleInputChange('website', e.target.value)}
               />
               <Input
                 label="Email"
                 type="email"
-                defaultValue={company.email || ''}
+                value={currentCompany.email || ''}
                 fullWidth
-                onChange={(e) => {
-                  const updatedCompany = { ...company, email: e.target.value };
-                  updateSettings.mutate({ company: updatedCompany });
-                }}
+                onChange={(e) => handleInputChange('email', e.target.value)}
               />
               <Input
                 label="Phone"
-                defaultValue={company.phone || ''}
+                value={currentCompany.phone || ''}
                 fullWidth
-                onChange={(e) => {
-                  const updatedCompany = { ...company, phone: e.target.value };
-                  updateSettings.mutate({ company: updatedCompany });
-                }}
+                onChange={(e) => handleInputChange('phone', e.target.value)}
               />
             </div>
           </div>
@@ -237,63 +287,33 @@ const SettingsPage: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <Input
                 label="Street Address"
-                defaultValue={company.address?.street || ''}
+                value={currentCompany.address?.street || ''}
                 fullWidth
-                onChange={(e) => {
-                  const updatedCompany = { 
-                    ...company, 
-                    address: { ...company.address, street: e.target.value }
-                  };
-                  updateSettings.mutate({ company: updatedCompany });
-                }}
+                onChange={(e) => handleNestedInputChange('street', e.target.value, 'address')}
               />
               <Input
                 label="City"
-                defaultValue={company.address?.city || ''}
+                value={currentCompany.address?.city || ''}
                 fullWidth
-                onChange={(e) => {
-                  const updatedCompany = { 
-                    ...company, 
-                    address: { ...company.address, city: e.target.value }
-                  };
-                  updateSettings.mutate({ company: updatedCompany });
-                }}
+                onChange={(e) => handleNestedInputChange('city', e.target.value, 'address')}
               />
               <Input
                 label="State/Province"
-                defaultValue={company.address?.state || ''}
+                value={currentCompany.address?.state || ''}
                 fullWidth
-                onChange={(e) => {
-                  const updatedCompany = { 
-                    ...company, 
-                    address: { ...company.address, state: e.target.value }
-                  };
-                  updateSettings.mutate({ company: updatedCompany });
-                }}
+                onChange={(e) => handleNestedInputChange('state', e.target.value, 'address')}
               />
               <Input
                 label="ZIP/Postal Code"
-                defaultValue={company.address?.zipCode || ''}
+                value={currentCompany.address?.zipCode || ''}
                 fullWidth
-                onChange={(e) => {
-                  const updatedCompany = { 
-                    ...company, 
-                    address: { ...company.address, zipCode: e.target.value }
-                  };
-                  updateSettings.mutate({ company: updatedCompany });
-                }}
+                onChange={(e) => handleNestedInputChange('zipCode', e.target.value, 'address')}
               />
               <Input
                 label="Country"
-                defaultValue={company.address?.country || ''}
+                value={currentCompany.address?.country || ''}
                 fullWidth
-                onChange={(e) => {
-                  const updatedCompany = { 
-                    ...company, 
-                    address: { ...company.address, country: e.target.value }
-                  };
-                  updateSettings.mutate({ company: updatedCompany });
-                }}
+                onChange={(e) => handleNestedInputChange('country', e.target.value, 'address')}
               />
             </div>
           </div>
@@ -311,22 +331,16 @@ const SettingsPage: React.FC = () => {
                   { value: 'CAD', label: 'CAD - Canadian Dollar' },
                   { value: 'AUD', label: 'AUD - Australian Dollar' },
                 ]}
-                value={company.defaultCurrency || 'USD'}
-                onChange={(value) => {
-                  const updatedCompany = { ...company, defaultCurrency: value };
-                  updateSettings.mutate({ company: updatedCompany });
-                }}
+                value={currentCompany.defaultCurrency || 'USD'}
+                onChange={(value) => handleInputChange('defaultCurrency', value)}
                 fullWidth
               />
               <Input
                 label="Default Tax Rate (%)"
                 type="number"
-                value={company.defaultTaxRate || 10}
+                value={currentCompany.defaultTaxRate || 10}
                 fullWidth
-                onChange={(e) => {
-                  const updatedCompany = { ...company, defaultTaxRate: parseFloat(e.target.value) };
-                  updateSettings.mutate({ company: updatedCompany });
-                }}
+                onChange={(e) => handleInputChange('defaultTaxRate', parseFloat(e.target.value))}
               />
             </div>
           </div>
@@ -338,12 +352,32 @@ const SettingsPage: React.FC = () => {
   const renderSystemTab = () => {
     const settings = settingsData?.data?.data;
     const system = settings?.system || {};
+    const currentSystem = { ...system, ...formData.system };
     
     return (
       <div className="space-y-6">
-        <div>
-          <h3 className="text-lg font-medium text-gray-900">System Settings</h3>
-          <p className="text-sm text-gray-600">Configure system-wide settings and security policies.</p>
+        <div className="flex justify-between items-center">
+          <div>
+            <h3 className="text-lg font-medium text-gray-900">System Settings</h3>
+            <p className="text-sm text-gray-600">Configure system-wide settings and security policies.</p>
+          </div>
+          {hasChanges && (
+            <div className="flex space-x-3">
+              <Button 
+                variant="outline" 
+                onClick={handleCancelChanges}
+                disabled={updateSettings.isPending}
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleSaveSettings}
+                loading={updateSettings.isPending}
+              >
+                Save Changes
+              </Button>
+            </div>
+          )}
         </div>
 
         <div className="space-y-6">
@@ -358,11 +392,8 @@ const SettingsPage: React.FC = () => {
                 </div>
                 <input
                   type="checkbox"
-                  checked={system.maintenanceMode || false}
-                  onChange={(e) => {
-                    const updatedSystem = { ...system, maintenanceMode: e.target.checked };
-                    updateSettings.mutate({ system: updatedSystem });
-                  }}
+                  checked={currentSystem.maintenanceMode || false}
+                  onChange={(e) => handleInputChange('maintenanceMode', e.target.checked, 'system')}
                   className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                 />
               </div>
@@ -374,11 +405,8 @@ const SettingsPage: React.FC = () => {
                 </div>
                 <input
                   type="checkbox"
-                  checked={system.allowRegistration !== false}
-                  onChange={(e) => {
-                    const updatedSystem = { ...system, allowRegistration: e.target.checked };
-                    updateSettings.mutate({ system: updatedSystem });
-                  }}
+                  checked={currentSystem.allowRegistration !== false}
+                  onChange={(e) => handleInputChange('allowRegistration', e.target.checked, 'system')}
                   className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                 />
               </div>
@@ -387,21 +415,15 @@ const SettingsPage: React.FC = () => {
                 <Input
                   label="Session Timeout (minutes)"
                   type="number"
-                  value={system.sessionTimeout || 30}
-                  onChange={(e) => {
-                    const updatedSystem = { ...system, sessionTimeout: parseInt(e.target.value) };
-                    updateSettings.mutate({ system: updatedSystem });
-                  }}
+                  value={currentSystem.sessionTimeout || 30}
+                  onChange={(e) => handleInputChange('sessionTimeout', parseInt(e.target.value), 'system')}
                   fullWidth
                 />
                 <Input
                   label="Max Login Attempts"
                   type="number"
-                  value={system.maxLoginAttempts || 5}
-                  onChange={(e) => {
-                    const updatedSystem = { ...system, maxLoginAttempts: parseInt(e.target.value) };
-                    updateSettings.mutate({ system: updatedSystem });
-                  }}
+                  value={currentSystem.maxLoginAttempts || 5}
+                  onChange={(e) => handleInputChange('maxLoginAttempts', parseInt(e.target.value), 'system')}
                   fullWidth
                 />
               </div>
@@ -415,17 +437,8 @@ const SettingsPage: React.FC = () => {
               <Input
                 label="Minimum Password Length"
                 type="number"
-                value={system.passwordPolicy?.minLength || 8}
-                onChange={(e) => {
-                  const updatedSystem = { 
-                    ...system, 
-                    passwordPolicy: { 
-                      ...system.passwordPolicy, 
-                      minLength: parseInt(e.target.value) 
-                    }
-                  };
-                  updateSettings.mutate({ system: updatedSystem });
-                }}
+                value={currentSystem.passwordPolicy?.minLength || 8}
+                onChange={(e) => handleNestedInputChange('minLength', parseInt(e.target.value), 'passwordPolicy', 'system')}
                 fullWidth
               />
               
@@ -434,17 +447,8 @@ const SettingsPage: React.FC = () => {
                   <label className="text-sm font-medium text-gray-700">Require Uppercase Letters</label>
                   <input
                     type="checkbox"
-                    checked={system.passwordPolicy?.requireUppercase !== false}
-                    onChange={(e) => {
-                      const updatedSystem = { 
-                        ...system, 
-                        passwordPolicy: { 
-                          ...system.passwordPolicy, 
-                          requireUppercase: e.target.checked 
-                        }
-                      };
-                      updateSettings.mutate({ system: updatedSystem });
-                    }}
+                    checked={currentSystem.passwordPolicy?.requireUppercase !== false}
+                    onChange={(e) => handleNestedInputChange('requireUppercase', e.target.checked, 'passwordPolicy', 'system')}
                     className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                   />
                 </div>
@@ -453,17 +457,8 @@ const SettingsPage: React.FC = () => {
                   <label className="text-sm font-medium text-gray-700">Require Lowercase Letters</label>
                   <input
                     type="checkbox"
-                    checked={system.passwordPolicy?.requireLowercase !== false}
-                    onChange={(e) => {
-                      const updatedSystem = { 
-                        ...system, 
-                        passwordPolicy: { 
-                          ...system.passwordPolicy, 
-                          requireLowercase: e.target.checked 
-                        }
-                      };
-                      updateSettings.mutate({ system: updatedSystem });
-                    }}
+                    checked={currentSystem.passwordPolicy?.requireLowercase !== false}
+                    onChange={(e) => handleNestedInputChange('requireLowercase', e.target.checked, 'passwordPolicy', 'system')}
                     className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                   />
                 </div>
@@ -472,17 +467,8 @@ const SettingsPage: React.FC = () => {
                   <label className="text-sm font-medium text-gray-700">Require Numbers</label>
                   <input
                     type="checkbox"
-                    checked={system.passwordPolicy?.requireNumbers !== false}
-                    onChange={(e) => {
-                      const updatedSystem = { 
-                        ...system, 
-                        passwordPolicy: { 
-                          ...system.passwordPolicy, 
-                          requireNumbers: e.target.checked 
-                        }
-                      };
-                      updateSettings.mutate({ system: updatedSystem });
-                    }}
+                    checked={currentSystem.passwordPolicy?.requireNumbers !== false}
+                    onChange={(e) => handleNestedInputChange('requireNumbers', e.target.checked, 'passwordPolicy', 'system')}
                     className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                   />
                 </div>
@@ -491,17 +477,8 @@ const SettingsPage: React.FC = () => {
                   <label className="text-sm font-medium text-gray-700">Require Special Characters</label>
                   <input
                     type="checkbox"
-                    checked={system.passwordPolicy?.requireSpecialChars || false}
-                    onChange={(e) => {
-                      const updatedSystem = { 
-                        ...system, 
-                        passwordPolicy: { 
-                          ...system.passwordPolicy, 
-                          requireSpecialChars: e.target.checked 
-                        }
-                      };
-                      updateSettings.mutate({ system: updatedSystem });
-                    }}
+                    checked={currentSystem.passwordPolicy?.requireSpecialChars || false}
+                    onChange={(e) => handleNestedInputChange('requireSpecialChars', e.target.checked, 'passwordPolicy', 'system')}
                     className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                   />
                 </div>

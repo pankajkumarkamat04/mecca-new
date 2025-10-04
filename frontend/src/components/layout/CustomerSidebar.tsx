@@ -2,10 +2,11 @@
 
 import React from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSettings } from '@/contexts/SettingsContext';
-import { cn } from '@/lib/utils';
+import { cn, getLogoUrl } from '@/lib/utils';
 import {
   HomeIcon,
   TicketIcon as TicketOutline,
@@ -67,7 +68,13 @@ const CustomerSidebar: React.FC<CustomerSidebarProps> = ({ isOpen, onClose }) =>
           <div className="flex items-center justify-center h-16 px-4 bg-blue-600">
             {company?.logo?.url ? (
               <div className="flex items-center space-x-3">
-                <img src={company.logo.url} alt={company.name || 'Company Logo'} className="h-8 w-8 object-contain" />
+                <Image
+                  width={32}
+                  height={32}
+                  src={getLogoUrl(company.logo.url)}
+                  alt={company.name || 'Company Logo'}
+                  className="object-contain"
+                />
                 <h1 className="text-xl font-bold text-white">{company.name || 'Customer Portal'}</h1>
               </div>
             ) : (

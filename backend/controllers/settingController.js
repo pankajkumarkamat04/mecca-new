@@ -173,6 +173,73 @@ const deleteLogo = async (req, res) => {
   }
 };
 
+// @desc Upload favicon
+// @route POST /api/settings/favicon
+// @access Private
+const uploadFavicon = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'No file uploaded' });
+    }
+
+    const settings = await Setting.getSingleton();
+    
+    // Delete old favicon if exists
+    const oldFaviconPath = path.join('uploads/logos', 'favicon.ico');
+    if (fs.existsSync(oldFaviconPath)) {
+      fs.unlinkSync(oldFaviconPath);
+    }
+
+    // Copy uploaded file to favicon.ico
+    const newFaviconPath = path.join('uploads/logos', 'favicon.ico');
+    fs.copyFileSync(req.file.path, newFaviconPath);
+    
+    // Delete the temporary uploaded file
+    fs.unlinkSync(req.file.path);
+
+    const baseUrl = process.env.BACKEND_URL || 'http://localhost:5000';
+    settings.company.favicon = {
+      url: `${baseUrl}/favicon.ico`,
+      filename: 'favicon.ico',
+      originalName: req.file.originalname
+    };
+    settings.updatedBy = req.user?._id || settings.updatedBy;
+
+    await settings.save();
+    res.json({ success: true, message: 'Favicon uploaded successfully', data: settings.company.favicon });
+  } catch (error) {
+    console.error('Upload favicon error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// @desc Delete favicon
+// @route DELETE /api/settings/favicon
+// @access Private
+const deleteFavicon = async (req, res) => {
+  try {
+    const settings = await Setting.getSingleton();
+    
+    const faviconPath = path.join('uploads/logos', 'favicon.ico');
+    if (fs.existsSync(faviconPath)) {
+      fs.unlinkSync(faviconPath);
+    }
+
+    settings.company.favicon = {
+      url: '',
+      filename: '',
+      originalName: ''
+    };
+    settings.updatedBy = req.user?._id || settings.updatedBy;
+
+    await settings.save();
+    res.json({ success: true, message: 'Favicon deleted successfully' });
+  } catch (error) {
+    console.error('Delete favicon error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
 module.exports = { 
   getSettings,
   getPublicSettings, 

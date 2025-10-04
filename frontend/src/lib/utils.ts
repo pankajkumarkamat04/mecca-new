@@ -58,7 +58,7 @@ export const buildPrintableInvoiceHTML = (invoice: any, company?: any) => {
   const balance = toNumber(invoice?.balance, Math.max(0, total - paid));
 
   const logoHtml = company?.logo?.url
-    ? `<img src="${company.logo.url}" alt="Logo" style="height:48px;object-fit:contain;" />`
+    ? `<img src="${getLogoUrl(company.logo.url)}" alt="Logo" style="height:48px;object-fit:contain;" />`
     : '';
   const companyBlock = company
     ? `<div>
@@ -522,4 +522,21 @@ export const formatValidationErrors = (error: any): string => {
 
 export const hasValidationErrors = (error: any): boolean => {
   return getValidationErrors(error).length > 0;
+};
+
+// Logo URL utility
+export const getLogoUrl = (logoUrl: string): string => {
+  if (!logoUrl) return '';
+  
+  // If the URL already starts with http, use it as is
+  if (logoUrl.startsWith('http')) {
+    return logoUrl;
+  }
+  
+  // Construct the full URL using NEXT_PUBLIC_API_URL
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+  const baseUrl = apiUrl.replace('/api', '');
+  const fullUrl = `${baseUrl}${logoUrl}`;
+  
+  return fullUrl;
 };

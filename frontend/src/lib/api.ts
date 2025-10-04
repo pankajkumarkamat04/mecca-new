@@ -512,6 +512,12 @@ export const reportsAnalyticsAPI = {
   
   // Inventory Analytics
   getInventoryAnalytics: (params?: any) => api.get('/reports-analytics/inventory', { params }),
+
+  // Chart APIs
+  getSalesTrendsChart: (params?: any) => api.get('/reports-analytics/charts/sales-trends', { params }),
+  getTopProductsChart: (params?: any) => api.get('/reports-analytics/charts/top-products', { params }),
+  getRevenueAnalyticsChart: (params?: any) => api.get('/reports-analytics/charts/revenue-analytics', { params }),
+  getWorkshopAnalyticsChart: (params?: any) => api.get('/reports-analytics/charts/workshop-analytics', { params }),
 };
 
 export default api;

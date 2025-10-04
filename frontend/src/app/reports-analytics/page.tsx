@@ -6,6 +6,8 @@ import Layout from '@/components/layout/Layout';
 import { reportsAnalyticsAPI } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatCurrency, formatDate } from '@/lib/utils';
+import SalesChart from '@/components/charts/SalesChart';
+import BarChart from '@/components/charts/BarChart';
 import {
   ChartBarIcon,
   ShoppingBagIcon,
@@ -59,6 +61,31 @@ const ReportsAnalyticsPage: React.FC = () => {
     queryKey: ['reports-analytics-inventory', selectedPeriod],
     queryFn: () => reportsAnalyticsAPI.getInventoryAnalytics({ period: selectedPeriod }),
     enabled: canViewInventory && activeTab === 'inventory',
+  });
+
+  // Chart Queries
+  const { data: salesTrendsChart, isLoading: salesTrendsLoading } = useQuery({
+    queryKey: ['reports-analytics-sales-trends', selectedPeriod],
+    queryFn: () => reportsAnalyticsAPI.getSalesTrendsChart({ period: selectedPeriod }),
+    enabled: canViewOrders && (activeTab === 'orders' || activeTab === 'pos-sales'),
+  });
+
+  const { data: topProductsChart, isLoading: topProductsLoading } = useQuery({
+    queryKey: ['reports-analytics-top-products', selectedPeriod],
+    queryFn: () => reportsAnalyticsAPI.getTopProductsChart({ period: selectedPeriod, limit: 10 }),
+    enabled: canViewOrders && (activeTab === 'orders' || activeTab === 'pos-sales'),
+  });
+
+  const { data: revenueAnalyticsChart, isLoading: revenueAnalyticsLoading } = useQuery({
+    queryKey: ['reports-analytics-revenue-analytics', selectedPeriod],
+    queryFn: () => reportsAnalyticsAPI.getRevenueAnalyticsChart({ period: selectedPeriod }),
+    enabled: canViewOrders && activeTab === 'pos-sales',
+  });
+
+  const { data: workshopAnalyticsChart, isLoading: workshopAnalyticsLoading } = useQuery({
+    queryKey: ['reports-analytics-workshop-chart', selectedPeriod],
+    queryFn: () => reportsAnalyticsAPI.getWorkshopAnalyticsChart({ period: selectedPeriod }),
+    enabled: canViewWorkshop && activeTab === 'workshop',
   });
 
   const tabs = [
@@ -220,6 +247,42 @@ const ReportsAnalyticsPage: React.FC = () => {
           </div>
         )}
 
+        {/* Charts Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Sales Trends Chart */}
+          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Order Trends</h3>
+            {salesTrendsLoading ? (
+              <div className="flex justify-center items-center h-64">Loading...</div>
+            ) : (
+              <SalesChart
+                type="area"
+                data={(salesTrendsChart?.data?.data?.dailyTrends || []).map((d: any) => ({
+                  date: `${d._id.year}-${d._id.month.toString().padStart(2, '0')}-${d._id.day.toString().padStart(2, '0')}`,
+                  sales: d.count,
+                  revenue: d.revenue,
+                  orders: d.count,
+                }))}
+              />
+            )}
+          </div>
+
+          {/* Top Products Chart */}
+          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Top Products by Quantity</h3>
+            {topProductsLoading ? (
+              <div className="flex justify-center items-center h-64">Loading...</div>
+            ) : (
+              <BarChart
+                data={(topProductsChart?.data?.data?.topProductsByQuantity || []).map((p: any) => ({
+                  name: p.name || 'Unknown',
+                  value: p.totalQuantity,
+                }))}
+              />
+            )}
+          </div>
+        </div>
+
       </div>
     );
   };
@@ -290,6 +353,42 @@ const ReportsAnalyticsPage: React.FC = () => {
             </div>
           </div>
         )}
+
+        {/* Charts Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Revenue Analytics Chart */}
+          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Revenue Trends</h3>
+            {revenueAnalyticsLoading ? (
+              <div className="flex justify-center items-center h-64">Loading...</div>
+            ) : (
+              <SalesChart
+                type="line"
+                data={(revenueAnalyticsChart?.data?.data?.monthlyRevenue || []).map((d: any) => ({
+                  date: `${d._id.year}-${d._id.month.toString().padStart(2, '0')}`,
+                  sales: d.revenue,
+                  revenue: d.revenue,
+                  orders: d.orderCount,
+                }))}
+              />
+            )}
+          </div>
+
+          {/* Payment Methods Chart */}
+          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Payment Methods Distribution</h3>
+            {revenueAnalyticsLoading ? (
+              <div className="flex justify-center items-center h-64">Loading...</div>
+            ) : (
+              <BarChart
+                data={(revenueAnalyticsChart?.data?.data?.paymentMethodBreakdown || []).map((p: any) => ({
+                  name: p._id || 'Unknown',
+                  value: p.totalAmount,
+                }))}
+              />
+            )}
+          </div>
+        </div>
       </div>
     );
   };
@@ -370,6 +469,42 @@ const ReportsAnalyticsPage: React.FC = () => {
             </div>
           </div>
         )}
+
+        {/* Charts Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Workshop Job Trends Chart */}
+          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Job Trends</h3>
+            {workshopAnalyticsLoading ? (
+              <div className="flex justify-center items-center h-64">Loading...</div>
+            ) : (
+              <SalesChart
+                type="area"
+                data={(workshopAnalyticsChart?.data?.data?.jobTrends || []).map((d: any) => ({
+                  date: `${d._id.year}-${d._id.month.toString().padStart(2, '0')}-${d._id.day.toString().padStart(2, '0')}`,
+                  sales: d.count,
+                  revenue: d.totalRevenue,
+                  orders: d.count,
+                }))}
+              />
+            )}
+          </div>
+
+          {/* Top Technicians Chart */}
+          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Top Technicians by Jobs</h3>
+            {workshopAnalyticsLoading ? (
+              <div className="flex justify-center items-center h-64">Loading...</div>
+            ) : (
+              <BarChart
+                data={(workshopAnalyticsChart?.data?.data?.topTechnicians || []).map((t: any) => ({
+                  name: t.technicianName || 'Unknown',
+                  value: t.jobCount,
+                }))}
+              />
+            )}
+          </div>
+        </div>
       </div>
     );
   };
@@ -432,7 +567,7 @@ const ReportsAnalyticsPage: React.FC = () => {
             <div className="space-y-3">
               {data.categories.map((category: any) => (
                 <div key={category._id} className="flex items-center justify-between">
-                  <span className="capitalize font-medium text-gray-900">{category._id || 'Uncategorized'}</span>
+                  <span className="capitalize font-medium text-gray-900">{category.categoryName || 'Uncategorized'}</span>
                   <div className="text-right">
                     <p className="font-semibold text-gray-900">{category.productCount} products</p>
                     <p className="text-sm text-gray-500">{formatCurrency(category.totalValue)}</p>

@@ -5,7 +5,11 @@ const {
   getPOSSalesAnalytics,
   getWorkshopAnalytics,
   getInventoryAnalytics,
-  getDashboardSummary
+  getDashboardSummary,
+  getSalesTrendsChart,
+  getTopProductsChart,
+  getRevenueAnalyticsChart,
+  getWorkshopAnalyticsChart
 } = require('../controllers/reportsAnalyticsController');
 
 const router = express.Router();
@@ -37,5 +41,26 @@ router.get('/workshop', authorize('admin', 'manager', 'workshop_employee'), getW
 // @desc    Get inventory analytics with stock levels and movements
 // @access  Private (Admin, Manager, Warehouse Manager, Warehouse Employee)
 router.get('/inventory', authorize('admin', 'manager', 'warehouse_manager', 'warehouse_employee'), getInventoryAnalytics);
+
+// Chart endpoints
+// @route   GET /api/reports-analytics/charts/sales-trends
+// @desc    Get sales trends chart data
+// @access  Private (Admin, Manager, Sales Person)
+router.get('/charts/sales-trends', authorize('admin', 'manager', 'sales_person'), getSalesTrendsChart);
+
+// @route   GET /api/reports-analytics/charts/top-products
+// @desc    Get top products chart data
+// @access  Private (Admin, Manager, Sales Person)
+router.get('/charts/top-products', authorize('admin', 'manager', 'sales_person'), getTopProductsChart);
+
+// @route   GET /api/reports-analytics/charts/revenue-analytics
+// @desc    Get revenue analytics chart data
+// @access  Private (Admin, Manager, Sales Person)
+router.get('/charts/revenue-analytics', authorize('admin', 'manager', 'sales_person'), getRevenueAnalyticsChart);
+
+// @route   GET /api/reports-analytics/charts/workshop-analytics
+// @desc    Get workshop analytics chart data
+// @access  Private (Admin, Manager, Workshop Employee)
+router.get('/charts/workshop-analytics', authorize('admin', 'manager', 'workshop_employee'), getWorkshopAnalyticsChart);
 
 module.exports = router;

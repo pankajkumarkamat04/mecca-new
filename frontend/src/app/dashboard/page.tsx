@@ -54,6 +54,19 @@ const DashboardPage: React.FC = () => {
     enabled: !!user?.warehouse?.assignedWarehouse && ['warehouse_manager', 'warehouse_employee'].includes(user?.role),
   });
 
+  // Fetch chart data for regular dashboard
+  const { data: salesTrendsChart } = useQuery({
+    queryKey: ['dashboard-sales-trends'],
+    queryFn: () => reportsAnalyticsAPI.getSalesTrendsChart({ period: '30d' }),
+    enabled: !['warehouse_manager', 'warehouse_employee'].includes(user?.role || ''),
+  });
+
+  const { data: topProductsChart } = useQuery({
+    queryKey: ['dashboard-top-products'],
+    queryFn: () => reportsAnalyticsAPI.getTopProductsChart({ period: '30d', limit: 5 }),
+    enabled: !['warehouse_manager', 'warehouse_employee'].includes(user?.role || ''),
+  });
+
   // Handle error separately
   useEffect(() => {
     if (error) {
@@ -63,8 +76,8 @@ const DashboardPage: React.FC = () => {
   }, [error]);
 
   useEffect(() => {
-    if (dashboardData?.data) {
-      const apiData = dashboardData.data;
+    if (dashboardData?.data?.data) {
+      const apiData = dashboardData.data.data;
       // Transform the new API response to match the expected structure
       setStats({
         sales: {
@@ -423,11 +436,11 @@ const DashboardPage: React.FC = () => {
             </div>
             <SalesChart
               type="area"
-              data={(dashboardData?.data?.salesTrend || []).map((d: any) => ({
-                date: d._id,
-                sales: d.totalInvoices || d.totalSales,
-                revenue: d.totalSales,
-                orders: d.totalInvoices,
+              data={(salesTrendsChart?.data?.data?.dailyTrends || []).map((d: any) => ({
+                date: `${d._id.year}-${d._id.month.toString().padStart(2, '0')}-${d._id.day.toString().padStart(2, '0')}`,
+                sales: d.count,
+                revenue: d.revenue,
+                orders: d.count,
               }))}
             />
           </div>
@@ -438,7 +451,7 @@ const DashboardPage: React.FC = () => {
               <ChartBarIcon className="h-5 w-5 text-gray-400" />
             </div>
             <BarChart
-              data={(dashboardData?.data?.topProducts || []).map((p: any) => ({
+              data={(topProductsChart?.data?.data?.topProductsByQuantity || []).map((p: any) => ({
                 name: p.name || 'Unknown',
                 value: p.totalQuantity,
               }))}

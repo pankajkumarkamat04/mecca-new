@@ -452,14 +452,25 @@ const getInventoryAnalytics = async (req, res) => {
     // Category-wise Inventory
     const categoryInventory = await Product.aggregate([
       {
+        $lookup: {
+          from: 'categories',
+          localField: 'category',
+          foreignField: '_id',
+          as: 'categoryData'
+        }
+      },
+      { $unwind: '$categoryData' },
+      {
         $group: {
           _id: '$category',
+          categoryName: { $first: '$categoryData.name' },
           productCount: { $sum: 1 },
           totalStock: { $sum: '$inventory.currentStock' },
           totalValue: { $sum: { $multiply: ['$inventory.currentStock', '$pricing.costPrice'] } },
           avgStockLevel: { $avg: '$inventory.currentStock' }
         }
-      }
+      },
+      { $sort: { totalValue: -1 } }
     ]);
 
     // Stock Movement Analysis (Last 30 days)
@@ -680,10 +691,379 @@ const getDashboardSummary = async (req, res) => {
   }
 };
 
+// @desc    Get Sales Trends Chart Data
+// @route   GET /api/reports-analytics/charts/sales-trends
+// @access  Private
+const getSalesTrendsChart = async (req, res) => {
+  try {
+    const { period = '30d', startDate, endDate } = req.query;
+    
+    // Calculate date range
+    let dateFilter = {};
+    const now = new Date();
+    
+    if (startDate && endDate) {
+      dateFilter = {
+        createdAt: {
+          $gte: new Date(startDate),
+          $lte: new Date(endDate)
+        }
+      };
+    } else {
+      let daysBack = 30;
+      switch (period) {
+        case '7d': daysBack = 7; break;
+        case '30d': daysBack = 30; break;
+        case '90d': daysBack = 90; break;
+        case '1y': daysBack = 365; break;
+        default: daysBack = 30;
+      }
+      dateFilter = {
+        createdAt: {
+          $gte: new Date(now.getTime() - (daysBack * 24 * 60 * 60 * 1000))
+        }
+      };
+    }
+
+    // Daily sales trends
+    const dailyTrends = await Order.aggregate([
+      { $match: dateFilter },
+      {
+        $group: {
+          _id: {
+            year: { $year: '$createdAt' },
+            month: { $month: '$createdAt' },
+            day: { $dayOfMonth: '$createdAt' }
+          },
+          count: { $sum: 1 },
+          revenue: { $sum: '$totalAmount' }
+        }
+      },
+      { $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1 } }
+    ]);
+
+    // Invoice trends
+    const invoiceTrends = await Invoice.aggregate([
+      { $match: dateFilter },
+      {
+        $group: {
+          _id: {
+            year: { $year: '$createdAt' },
+            month: { $month: '$createdAt' },
+            day: { $dayOfMonth: '$createdAt' }
+          },
+          count: { $sum: 1 },
+          revenue: { $sum: '$totalAmount' }
+        }
+      },
+      { $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1 } }
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        dailyTrends,
+        invoiceTrends
+      }
+    });
+  } catch (error) {
+    console.error('Sales trends chart error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// @desc    Get Top Products Chart Data
+// @route   GET /api/reports-analytics/charts/top-products
+// @access  Private
+const getTopProductsChart = async (req, res) => {
+  try {
+    const { period = '30d', startDate, endDate, limit = 10 } = req.query;
+    
+    // Calculate date range
+    let dateFilter = {};
+    const now = new Date();
+    
+    if (startDate && endDate) {
+      dateFilter = {
+        createdAt: {
+          $gte: new Date(startDate),
+          $lte: new Date(endDate)
+        }
+      };
+    } else {
+      let daysBack = 30;
+      switch (period) {
+        case '7d': daysBack = 7; break;
+        case '30d': daysBack = 30; break;
+        case '90d': daysBack = 90; break;
+        case '1y': daysBack = 365; break;
+        default: daysBack = 30;
+      }
+      dateFilter = {
+        createdAt: {
+          $gte: new Date(now.getTime() - (daysBack * 24 * 60 * 60 * 1000))
+        }
+      };
+    }
+
+    // Top products by quantity sold
+    const topProductsByQuantity = await Order.aggregate([
+      { $match: dateFilter },
+      { $unwind: '$items' },
+      {
+        $group: {
+          _id: '$items.product',
+          name: { $first: '$items.name' },
+          sku: { $first: '$items.sku' },
+          totalQuantity: { $sum: '$items.quantity' },
+          totalRevenue: { $sum: { $multiply: ['$items.quantity', '$items.unitPrice'] } }
+        }
+      },
+      { $sort: { totalQuantity: -1 } },
+      { $limit: parseInt(limit) }
+    ]);
+
+    // Top products by revenue
+    const topProductsByRevenue = await Order.aggregate([
+      { $match: dateFilter },
+      { $unwind: '$items' },
+      {
+        $group: {
+          _id: '$items.product',
+          name: { $first: '$items.name' },
+          sku: { $first: '$items.sku' },
+          totalQuantity: { $sum: '$items.quantity' },
+          totalRevenue: { $sum: { $multiply: ['$items.quantity', '$items.unitPrice'] } }
+        }
+      },
+      { $sort: { totalRevenue: -1 } },
+      { $limit: parseInt(limit) }
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        topProductsByQuantity,
+        topProductsByRevenue
+      }
+    });
+  } catch (error) {
+    console.error('Top products chart error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// @desc    Get Revenue Analytics Chart Data
+// @route   GET /api/reports-analytics/charts/revenue-analytics
+// @access  Private
+const getRevenueAnalyticsChart = async (req, res) => {
+  try {
+    const { period = '30d', startDate, endDate } = req.query;
+    
+    // Calculate date range
+    let dateFilter = {};
+    const now = new Date();
+    
+    if (startDate && endDate) {
+      dateFilter = {
+        createdAt: {
+          $gte: new Date(startDate),
+          $lte: new Date(endDate)
+        }
+      };
+    } else {
+      let daysBack = 30;
+      switch (period) {
+        case '7d': daysBack = 7; break;
+        case '30d': daysBack = 30; break;
+        case '90d': daysBack = 90; break;
+        case '1y': daysBack = 365; break;
+        default: daysBack = 30;
+      }
+      dateFilter = {
+        createdAt: {
+          $gte: new Date(now.getTime() - (daysBack * 24 * 60 * 60 * 1000))
+        }
+      };
+    }
+
+    // Monthly revenue breakdown
+    const monthlyRevenue = await Order.aggregate([
+      { $match: dateFilter },
+      {
+        $group: {
+          _id: {
+            year: { $year: '$createdAt' },
+            month: { $month: '$createdAt' }
+          },
+          revenue: { $sum: '$totalAmount' },
+          orderCount: { $sum: 1 },
+          avgOrderValue: { $avg: '$totalAmount' }
+        }
+      },
+      { $sort: { '_id.year': 1, '_id.month': 1 } }
+    ]);
+
+    // Payment method breakdown - handle both paymentMethod (seed data) and payments array (model)
+    const paymentMethodBreakdown = await Invoice.aggregate([
+      { $match: dateFilter },
+      {
+        $group: {
+          _id: { $ifNull: ['$paymentMethod', 'unknown'] },
+          count: { $sum: 1 },
+          totalAmount: { $sum: '$total' }
+        }
+      },
+      { $sort: { totalAmount: -1 } }
+    ]);
+
+    // Customer segment revenue
+    const customerSegmentRevenue = await Order.aggregate([
+      { $match: dateFilter },
+      {
+        $lookup: {
+          from: 'customers',
+          localField: 'customer',
+          foreignField: '_id',
+          as: 'customerData'
+        }
+      },
+      { $unwind: '$customerData' },
+      {
+        $group: {
+          _id: '$customerData.type',
+          revenue: { $sum: '$totalAmount' },
+          orderCount: { $sum: 1 },
+          avgOrderValue: { $avg: '$totalAmount' }
+        }
+      },
+      { $sort: { revenue: -1 } }
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        monthlyRevenue,
+        paymentMethodBreakdown,
+        customerSegmentRevenue
+      }
+    });
+  } catch (error) {
+    console.error('Revenue analytics chart error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// @desc    Get Workshop Analytics Chart Data
+// @route   GET /api/reports-analytics/charts/workshop-analytics
+// @access  Private
+const getWorkshopAnalyticsChart = async (req, res) => {
+  try {
+    const { period = '30d', startDate, endDate } = req.query;
+    
+    // Calculate date range
+    let dateFilter = {};
+    const now = new Date();
+    
+    if (startDate && endDate) {
+      dateFilter = {
+        createdAt: {
+          $gte: new Date(startDate),
+          $lte: new Date(endDate)
+        }
+      };
+    } else {
+      let daysBack = 30;
+      switch (period) {
+        case '7d': daysBack = 7; break;
+        case '30d': daysBack = 30; break;
+        case '90d': daysBack = 90; break;
+        case '1y': daysBack = 365; break;
+        default: daysBack = 30;
+      }
+      dateFilter = {
+        createdAt: {
+          $gte: new Date(now.getTime() - (daysBack * 24 * 60 * 60 * 1000))
+        }
+      };
+    }
+
+    // Workshop job trends
+    const jobTrends = await WorkshopJob.aggregate([
+      { $match: dateFilter },
+      {
+        $group: {
+          _id: {
+            year: { $year: '$createdAt' },
+            month: { $month: '$createdAt' },
+            day: { $dayOfMonth: '$createdAt' }
+          },
+          count: { $sum: 1 },
+          totalRevenue: { $sum: '$estimatedCost' }
+        }
+      },
+      { $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1 } }
+    ]);
+
+    // Job status distribution
+    const jobStatusDistribution = await WorkshopJob.aggregate([
+      { $match: dateFilter },
+      {
+        $group: {
+          _id: '$status',
+          count: { $sum: 1 },
+          totalRevenue: { $sum: '$estimatedCost' }
+        }
+      },
+      { $sort: { count: -1 } }
+    ]);
+
+    // Top technicians by jobs
+    const topTechnicians = await WorkshopJob.aggregate([
+      { $match: dateFilter },
+      {
+        $lookup: {
+          from: 'technicians',
+          localField: 'assignedTechnician',
+          foreignField: '_id',
+          as: 'technicianData'
+        }
+      },
+      { $unwind: '$technicianData' },
+      {
+        $group: {
+          _id: '$assignedTechnician',
+          technicianName: { $first: { $concat: ['$technicianData.firstName', ' ', '$technicianData.lastName'] } },
+          jobCount: { $sum: 1 },
+          totalRevenue: { $sum: '$estimatedCost' }
+        }
+      },
+      { $sort: { jobCount: -1 } },
+      { $limit: 10 }
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        jobTrends,
+        jobStatusDistribution,
+        topTechnicians
+      }
+    });
+  } catch (error) {
+    console.error('Workshop analytics chart error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
 module.exports = {
   getOrderAnalytics,
   getPOSSalesAnalytics,
   getWorkshopAnalytics,
   getInventoryAnalytics,
-  getDashboardSummary
+  getDashboardSummary,
+  getSalesTrendsChart,
+  getTopProductsChart,
+  getRevenueAnalyticsChart,
+  getWorkshopAnalyticsChart
 };
