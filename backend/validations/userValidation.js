@@ -27,7 +27,7 @@ const createUserValidation = [
     .withMessage('Password must be at least 6 characters'),
   
   body('role')
-    .isIn(['admin', 'manager', 'employee', 'customer', 'warehouse_manager', 'warehouse_employee'])
+    .isIn(['admin', 'manager', 'customer', 'warehouse_manager', 'warehouse_employee', 'sales_person', 'workshop_employee'])
     .withMessage('Invalid role'),
   
   body('phone')
@@ -87,7 +87,7 @@ const updateUserValidation = [
   
   body('role')
     .optional()
-    .isIn(['admin', 'manager', 'employee', 'customer', 'warehouse_manager', 'warehouse_employee'])
+    .isIn(['admin', 'manager', 'customer', 'warehouse_manager', 'warehouse_employee', 'sales_person', 'workshop_employee'])
     .withMessage('Invalid role'),
   
   body('isActive')

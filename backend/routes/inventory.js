@@ -9,7 +9,6 @@ const {
   getProductMovements,
   getProductStock,
   performStockAdjustment,
-  performReplenishmentCheck,
   performStockTaking,
   processReceiving,
   processPicking,
@@ -63,10 +62,6 @@ router.get('/products/:productId/stock', auth, validateObjectId('productId'), ge
 // @access  Private
 router.get('/warehouse-dashboard', auth, getWarehouseDashboard);
 
-// @route   POST /api/inventory/replenishment-check
-// @desc    Perform stock replenishment check
-// @access  Private
-router.post('/replenishment-check', auth, checkPermission('inventory', 'update'), performReplenishmentCheck);
 
 // @route   POST /api/inventory/stock-taking
 // @desc    Perform stock taking/cycle count

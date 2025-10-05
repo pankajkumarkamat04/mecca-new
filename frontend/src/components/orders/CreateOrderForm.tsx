@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { customersAPI, productsAPI } from '@/lib/api';
 import Button from '@/components/ui/Button';
 import CustomerSelector from '@/components/ui/CustomerSelector';
+import FormProductSelector from '@/components/ui/FormProductSelector';
 import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
 import { formatCurrency } from '@/lib/utils';
@@ -281,17 +282,10 @@ const CreateOrderForm: React.FC<CreateOrderFormProps> = ({ onClose, onSuccess, i
                 <tr key={index}>
                   <td className="px-6 py-4">
                     <div className="w-48 min-w-0">
-                      <Select
+                      <FormProductSelector
                         value={item.product}
-                        onChange={(e) => handleItemChange(index, 'product', e.target.value)}
-                        options={[
-                          { value: '', label: 'Select Product' },
-                          ...(productsData?.data?.data?.map((product: any) => ({
-                            value: product._id,
-                            label: `${product.name} (${product.sku})`
-                          })) || [])
-                        ]}
-                        className="w-full"
+                        onChange={(value) => handleItemChange(index, 'product', value)}
+                        placeholder="Select Product"
                       />
                       {item.name && (
                         <div className="mt-1 text-xs text-gray-500 truncate">

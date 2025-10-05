@@ -10,6 +10,7 @@ import TextArea from '@/components/ui/TextArea';
 import Select from '@/components/ui/Select';
 import Button from '@/components/ui/Button';
 import CustomerSelector from '@/components/ui/CustomerSelector';
+import FormProductSelector from '@/components/ui/FormProductSelector';
 import { quotationsAPI } from '@/lib/api';
 import { customersAPI } from '@/lib/api';
 import { productsAPI } from '@/lib/api';
@@ -283,20 +284,11 @@ const CreateQuotationForm: React.FC<CreateQuotationFormProps> = ({
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         Product *
                       </label>
-                      <select
-                        name={`product-${index}`}
+                      <FormProductSelector
                         value={item.product}
-                        onChange={(e) => updateItem(index, 'product', e.target.value)}
-                        className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-                        required
-                      >
-                        <option value="">Select a product</option>
-                        {Array.isArray(products) ? products.map((product: any) => (
-                          <option key={product._id} value={product._id}>
-                            {product.name} ({product.sku}) - ${product.pricing?.sellingPrice || 0}
-                          </option>
-                        )) : null}
-                      </select>
+                        onChange={(value) => updateItem(index, 'product', value)}
+                        placeholder="Select a product"
+                      />
                     </div>
 
                     <div>

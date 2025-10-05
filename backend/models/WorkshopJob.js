@@ -30,6 +30,7 @@ const jobPartSchema = new mongoose.Schema({
   productSku: { type: String, trim: true }, // Cached SKU for performance
   quantityRequired: { type: Number, required: true, min: 0 },
   quantityUsed: { type: Number, default: 0, min: 0 },
+  quantityReturned: { type: Number, default: 0, min: 0 },
   quantityAvailable: { type: Number, default: 0, min: 0 }, // Current stock level
   unitCost: { type: Number, min: 0 }, // Cost per unit
   totalCost: { type: Number, min: 0 }, // Total cost for this part
@@ -92,7 +93,7 @@ const workshopJobSchema = new mongoose.Schema({
   customer: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer' },
   customerPhone: { type: String, trim: true },
   priority: { type: String, enum: ['low', 'medium', 'high', 'urgent'], default: 'medium' },
-  status: { type: String, enum: ['draft', 'scheduled', 'in_progress', 'on_hold', 'completed', 'cancelled'], default: 'draft', index: true },
+  status: { type: String, enum: ['scheduled', 'in_progress', 'on_hold', 'completed', 'cancelled'], default: 'scheduled', index: true },
   qualityChecked: { type: Boolean, default: false },
   deadline: Date,
   scheduled: {
@@ -178,7 +179,7 @@ const workshopJobSchema = new mongoose.Schema({
   // Track detailed progress events for visualization and auditing
   progressHistory: [{
     progress: { type: Number, min: 0, max: 100, required: true },
-    status: { type: String, enum: ['draft', 'scheduled', 'in_progress', 'on_hold', 'completed', 'cancelled'] },
+    status: { type: String, enum: ['scheduled', 'in_progress', 'on_hold', 'completed', 'cancelled'] },
     step: { type: String, trim: true }, // e.g., 'assessment', 'resource_assignment', 'work_started', 'quality_check', 'completion'
     message: { type: String, trim: true },
     updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
@@ -293,6 +294,18 @@ const workshopJobSchema = new mongoose.Schema({
     meccaSignature: { type: String, trim: true },
     meccaSignedAt: { type: Date },
   },
+  // Job completion details
+  completionDetails: {
+    completedAt: { type: Date },
+    actualDuration: { type: Number, min: 0 }, // in minutes
+    charges: [{
+      name: { type: String, required: true, trim: true },
+      amount: { type: Number, required: true, min: 0 },
+      tax: { type: Number, default: 0, min: 0, max: 100 }
+    }],
+    completionNotes: { type: String, trim: true },
+    completedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
+  }
 }, {
   timestamps: true,
   toJSON: { virtuals: true },
@@ -365,15 +378,26 @@ workshopJobSchema.methods.removeTechnician = function(userId) {
   }
 };
 
-workshopJobSchema.methods.updateProgress = function() {
-  if (!this.tasks || this.tasks.length === 0) {
+workshopJobSchema.methods.updateProgress = function(forceTaskBased = false) {
+  // If forceTaskBased is true, calculate based on tasks
+  if (forceTaskBased && this.tasks && this.tasks.length > 0) {
+    const completedTasks = this.tasks.filter(task => task.status === 'completed').length;
+    this.progress = Math.round((completedTasks / this.tasks.length) * 100);
+    return;
+  }
+  
+  // Only set to 0 if progress hasn't been initialized at all
+  if (this.progress === undefined || this.progress === null) {
     this.progress = 0;
     return;
   }
   
-  // Calculate progress based on completed tasks
-  const completedTasks = this.tasks.filter(task => task.status === 'completed').length;
-  this.progress = Math.round((completedTasks / this.tasks.length) * 100);
+  // Don't override manually set progress values (like 10% on creation)
+  // Only calculate task-based progress if progress is exactly 0 and tasks exist
+  if (this.tasks && this.tasks.length > 0 && this.progress === 0) {
+    const completedTasks = this.tasks.filter(task => task.status === 'completed').length;
+    this.progress = Math.round((completedTasks / this.tasks.length) * 100);
+  }
 };
 
 workshopJobSchema.methods.checkPartsAvailability = async function() {
@@ -453,21 +477,41 @@ workshopJobSchema.methods.addStatusUpdate = function(status, message, userId, no
 workshopJobSchema.methods.calculateJobCosts = function() {
   let materialCost = 0;
   let laborCost = 0;
+  let estimatedMaterialCost = 0;
   
   // Calculate material costs from parts
   for (const part of this.parts) {
-    if (part.quantityUsed > 0) {
-      materialCost += (part.unitCost || 0) * part.quantityUsed;
+    const unitCost = part.unitCost || part.totalCost / (part.quantityRequired || 1) || 0;
+    const quantity = part.quantityUsed > 0 ? part.quantityUsed : (part.quantityRequired || 0);
+    
+    if (quantity > 0) {
+      const partCost = unitCost * quantity;
+      materialCost += partCost;
+      
+      // Also calculate estimated cost for assigned parts
+      if (part.quantityUsed === 0 && part.quantityRequired > 0) {
+        estimatedMaterialCost += unitCost * part.quantityRequired;
+      }
     }
   }
   
   // Calculate labor costs from tasks
   for (const task of this.tasks) {
-    if (task.actualDuration && task.assignee) {
+    const duration = task.actualDuration || task.estimatedDuration || 0;
+    if (duration > 0) {
       // This would need to be enhanced with actual labor rates
       const hourlyRate = 50; // Default hourly rate - should come from technician profile
-      laborCost += (task.actualDuration / 60) * hourlyRate;
+      laborCost += (duration / 60) * hourlyRate;
     }
+  }
+  
+  // If no labor cost from tasks, estimate based on job status
+  if (laborCost === 0 && this.status !== 'scheduled') {
+    // Estimate labor cost based on job complexity and parts
+    const baseLaborCost = 25; // Base cost
+    const partsMultiplier = this.parts.length * 5; // $5 per part
+    const priorityMultiplier = this.priority === 'high' ? 1.5 : this.priority === 'urgent' ? 2 : 1;
+    laborCost = (baseLaborCost + partsMultiplier) * priorityMultiplier;
   }
   
   this.jobCard.materialCost = materialCost;
@@ -477,7 +521,9 @@ workshopJobSchema.methods.calculateJobCosts = function() {
   return {
     materialCost,
     laborCost,
-    totalCost: materialCost + laborCost
+    estimatedMaterialCost,
+    totalCost: materialCost + laborCost,
+    estimatedTotalCost: estimatedMaterialCost + laborCost
   };
 };
 
@@ -549,17 +595,17 @@ workshopJobSchema.pre('save', async function(next) {
     this.customerPortal = { customerComments: [], statusUpdates: [] };
   }
   
-  // Generate job card number if not exists
-  if (!this.jobCard.cardNumber && this.status !== 'draft') {
+  // Generate job card number if not exists (generate for all statuses except draft)
+  if (!this.jobCard.cardNumber) {
     this.jobCard.cardNumber = await this.generateJobCardNumber();
   }
   
-  // Generate work order number if not exists
-  if (!this.jobCard.workOrderNumber && this.status !== 'draft') {
+  // Generate work order number if not exists (generate for all statuses except draft)
+  if (!this.jobCard.workOrderNumber) {
     this.jobCard.workOrderNumber = await this.generateWorkOrderNumber();
   }
   
-  // Update progress based on tasks
+  // Update progress based on tasks (only if not manually set)
   this.updateProgress();
   
   // Calculate job costs

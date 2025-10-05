@@ -76,7 +76,7 @@ const JobProgressVisualization: React.FC<JobProgressVisualizationProps> = ({ job
         <div>
           <h2 className="text-2xl font-bold text-gray-900">{job.title}</h2>
           <p className="text-sm text-gray-600">
-            Job Card: {job.jobCard?.cardNumber || 'Not generated'} | 
+            Job Card: {job.jobCard?.cardNumber || 'N/A'} | 
             Status: {job.status.replace('_', ' ')}
           </p>
         </div>
@@ -277,6 +277,39 @@ const OverviewView: React.FC<{ job: any; analytics: any }> = ({ job, analytics }
             <span className="text-sm text-blue-600">{analytics?.parts?.used || 0}</span>
           </div>
         </div>
+      </div>
+
+      {/* Assigned Parts (Overview) */}
+      <div className="bg-white p-6 rounded-lg shadow">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-medium text-gray-900">Assigned Parts</h3>
+          <Badge color={Array.isArray(job?.parts) && job.parts.length > 0 ? 'blue' : 'gray'}>
+            {Array.isArray(job?.parts) ? job.parts.length : 0}
+          </Badge>
+        </div>
+        {Array.isArray(job?.parts) && job.parts.length > 0 ? (
+          <div className="space-y-2 max-h-56 overflow-y-auto">
+            {job.parts.map((part: any, index: number) => {
+              const name = part?.productName || part?.product?.name || 'Unnamed Part';
+              const sku = part?.productSku || part?.product?.sku || 'N/A';
+              const qty = part?.quantityRequired || 0;
+              const used = part?.quantityUsed || 0;
+              const returned = part?.quantityReturned || 0;
+              const stock = part?.product?.inventory?.currentStock;
+              return (
+                <div key={index} className="flex items-center justify-between p-2 border border-gray-200 rounded-lg">
+                  <div className="min-w-0 pr-2">
+                    <p className="text-sm font-medium text-gray-900 truncate">{String(name)}</p>
+                    <p className="text-xs text-gray-600 truncate">Qty: {qty}{used > 0 ? ` • Used: ${used}` : ''}{returned > 0 ? ` • Returned: ${returned}` : ''}{stock !== undefined ? ` • Stock: ${stock}` : ''}</p>
+                  </div>
+                  <Badge color={used > 0 ? 'green' : 'gray'}>{used > 0 ? 'Used' : 'Pending'}</Badge>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <p className="text-sm text-gray-500">No parts assigned</p>
+        )}
       </div>
 
       {/* Customer Information */}
@@ -493,151 +526,255 @@ const ResourcesView: React.FC<{ job: any; analytics: any }> = ({ job, analytics 
           )}
         </div>
       </div>
+
+      {/* Required Tools */}
+      <div className="bg-white p-6 rounded-lg shadow">
+        <h3 className="text-lg font-medium text-gray-900 mb-4">Required Tools</h3>
+        <div className="space-y-3">
+          {job.tools?.map((tool: any, index: number) => (
+            <div key={index} className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
+              <div className="flex items-center">
+                <WrenchScrewdriverIcon className="h-5 w-5 text-purple-600 mr-3" />
+                <div>
+                  <p className="text-sm font-medium text-purple-900">{tool.name}</p>
+                  <p className="text-xs text-purple-700">
+                    {tool.category} • {tool.condition}
+                  </p>
+                </div>
+              </div>
+              <Badge color={tool.isAvailable ? 'green' : 'red'}>
+                {tool.isAvailable ? 'Available' : 'Assigned'}
+              </Badge>
+            </div>
+          ))}
+          {(!job.tools || job.tools.length === 0) && (
+            <p className="text-gray-500 text-sm">No tools required</p>
+          )}
+        </div>
+      </div>
+
+      {/* Required Parts */}
+      <div className="bg-white p-6 rounded-lg shadow">
+        <h3 className="text-lg font-medium text-gray-900 mb-4">Required Parts</h3>
+        <div className="space-y-3">
+          {job.parts?.map((part: any, index: number) => (
+            <div key={index} className="flex items-center justify-between p-3 bg-orange-50 rounded-lg">
+              <div className="flex items-center">
+                <CurrencyDollarIcon className="h-5 w-5 text-orange-600 mr-3" />
+                <div>
+                  <p className="text-sm font-medium text-orange-900">{part.productName || part.product?.name || 'Unnamed Part'}</p>
+                  <p className="text-xs text-orange-700">
+                    Qty: {part.quantityRequired || 0}
+                    {part.quantityUsed > 0 ? ` • Used: ${part.quantityUsed}` : ''}
+                    {part.quantityReturned > 0 ? ` • Returned: ${part.quantityReturned}` : ''}
+                    {part.product?.inventory?.currentStock !== undefined ? ` • Stock: ${part.product.inventory.currentStock}` : ''}
+                  </p>
+                </div>
+              </div>
+              <div className="text-right">
+                <Badge color={part.status === 'reserved' ? 'blue' : part.status === 'used' ? 'green' : 'gray'}>
+                  {part.status || 'Pending'}
+                </Badge>
+                {part.reservedAt && (
+                  <p className="text-xs text-orange-600 mt-1">
+                    Reserved: {formatDate(part.reservedAt)}
+                  </p>
+                )}
+              </div>
+            </div>
+          ))}
+          {(!job.parts || job.parts.length === 0) && (
+            <p className="text-gray-500 text-sm">No parts required</p>
+          )}
+        </div>
+      </div>
     </div>
   );
 };
 
 // Costs View Component
 const CostsView: React.FC<{ job: any; analytics: any }> = ({ job, analytics }) => {
-  const costs = analytics?.costs || {};
+  return (
+    <div className="bg-white p-6 rounded-lg shadow">
+      <h3 className="text-lg font-medium text-gray-900 mb-4">Costs</h3>
+      <div className="space-y-4">
+        {/* Labor Costs */}
+        <div className="flex justify-between items-center">
+          <div>
+            <p className="text-sm text-gray-600">Labor Costs</p>
+            <p className="text-lg font-bold text-gray-900">
+              {formatCurrency(analytics?.costs?.laborCost || 0)}
+            </p>
+            {analytics?.costs?.laborCost === 0 && (
+              <p className="text-xs text-gray-500">Estimated based on job complexity</p>
+            )}
+          </div>
+          <Badge color={analytics?.costs?.laborCost > 0 ? 'green' : 'blue'}>
+            {analytics?.costs?.laborCost > 0 ? 'Actual' : 'Estimated'}
+          </Badge>
+        </div>
+
+        {/* Material Costs */}
+        <div className="flex justify-between items-center">
+          <div>
+            <p className="text-sm text-gray-600">Material Costs</p>
+            <p className="text-lg font-bold text-gray-900">
+              {formatCurrency(analytics?.costs?.materialCost || analytics?.costs?.estimatedMaterialCost || 0)}
+            </p>
+            {analytics?.costs?.materialCost === 0 && analytics?.costs?.estimatedMaterialCost > 0 && (
+              <p className="text-xs text-gray-500">Based on assigned parts</p>
+            )}
+          </div>
+          <Badge color={analytics?.costs?.materialCost > 0 ? 'green' : 'blue'}>
+            {analytics?.costs?.materialCost > 0 ? 'Actual' : 'Estimated'}
+          </Badge>
+        </div>
+
+        {/* Total Costs */}
+        <div className="flex justify-between items-center">
+          <div>
+            <p className="text-sm text-gray-600">Total Costs</p>
+            <p className="text-lg font-bold text-gray-900">
+              {formatCurrency(analytics?.costs?.totalCost || analytics?.costs?.estimatedTotalCost || 0)}
+            </p>
+          </div>
+          <Badge color={analytics?.costs?.totalCost > 0 ? 'green' : 'blue'}>
+            {analytics?.costs?.totalCost > 0 ? 'Actual' : 'Estimated'}
+          </Badge>
+        </div>
+
+        {/* Cost Breakdown */}
+        <div className="bg-gray-50 p-4 rounded-lg">
+          <h4 className="text-md font-medium text-gray-900 mb-3">Cost Breakdown</h4>
+          <div className="space-y-2">
+            <div className="flex justify-between text-sm text-gray-700">
+              <span>Labor:</span>
+              <span>{formatCurrency(analytics?.costs?.laborCost || 0)}</span>
+            </div>
+            <div className="flex justify-between text-sm text-gray-700">
+              <span>Materials:</span>
+              <span>{formatCurrency(analytics?.costs?.materialCost || analytics?.costs?.estimatedMaterialCost || 0)}</span>
+            </div>
+            <div className="flex justify-between text-sm text-gray-700">
+              <span>Subtotal:</span>
+              <span>{formatCurrency((analytics?.costs?.laborCost || 0) + (analytics?.costs?.materialCost || analytics?.costs?.estimatedMaterialCost || 0))}</span>
+            </div>
+            <div className="flex justify-between text-sm text-gray-700">
+              <span>Tax (10%):</span>
+              <span>{formatCurrency(((analytics?.costs?.laborCost || 0) + (analytics?.costs?.materialCost || analytics?.costs?.estimatedMaterialCost || 0)) * 0.1)}</span>
+            </div>
+            <div className="flex justify-between text-sm font-medium text-gray-900 border-t pt-2">
+              <span>Total:</span>
+              <span>{formatCurrency(((analytics?.costs?.laborCost || 0) + (analytics?.costs?.materialCost || analytics?.costs?.estimatedMaterialCost || 0)) * 1.1)}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// WorkflowSteps Component
+const WorkflowSteps: React.FC<{ job: any }> = ({ job }) => {
+  const progress = job.progress || 0;
+  
+  const steps = [
+    { 
+      id: 'quality_check', 
+      name: 'Quality Check', 
+      threshold: 10,
+      description: 'Initial quality assessment and job setup'
+    },
+    { 
+      id: 'resource_assignment', 
+      name: 'Resource Assignment', 
+      threshold: 30,
+      description: 'Assign technicians, tools, machines, and parts'
+    },
+    { 
+      id: 'work_in_progress', 
+      name: 'Work in Progress', 
+      threshold: 75,
+      description: 'Ongoing work and updates'
+    },
+    { 
+      id: 'completion', 
+      name: 'Job Completion', 
+      threshold: 100,
+      description: 'Final completion and resource release'
+    },
+  ];
+
+  const getStepStatus = (stepThreshold: number) => {
+    if (progress >= stepThreshold) return 'completed';
+    if (progress >= stepThreshold - 10) return 'in_progress';
+    return 'pending';
+  };
+
+  const getStepIcon = (status: string) => {
+    switch (status) {
+      case 'completed':
+        return <CheckCircleIcon className="h-4 w-4 text-green-600" />;
+      case 'in_progress':
+        return <PlayIcon className="h-4 w-4 text-blue-600" />;
+      default:
+        return <ClockIcon className="h-4 w-4 text-gray-400" />;
+    }
+  };
+
+  const getStepColor = (status: string) => {
+    switch (status) {
+      case 'completed':
+        return 'bg-green-100 border-green-200';
+      case 'in_progress':
+        return 'bg-blue-100 border-blue-200';
+      default:
+        return 'bg-gray-100 border-gray-200';
+    }
+  };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <div className="bg-white p-6 rounded-lg shadow">
-        <h3 className="text-lg font-medium text-gray-900 mb-4">Cost Breakdown</h3>
-        <div className="space-y-3">
-          <div className="flex justify-between">
-            <span className="text-sm text-gray-600">Material Cost:</span>
-            <span className="text-sm font-medium text-gray-900">
-              {formatCurrency(costs.materialCost || 0)}
-            </span>
+    <div className="space-y-4">
+      {steps.map((step, index) => {
+        const status = getStepStatus(step.threshold);
+        const isLast = index === steps.length - 1;
+        
+        return (
+          <div key={step.id} className="relative">
+            <div className="flex items-start">
+              <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center border-2 ${getStepColor(status)}`}>
+                {getStepIcon(status)}
+              </div>
+              <div className="ml-4 flex-1">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-medium text-gray-900">{step.name}</h4>
+                  <span className="text-xs text-gray-500">{step.threshold}%</span>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">{step.description}</p>
+                <div className="flex items-center mt-2">
+                  <div className="flex-1 bg-gray-200 rounded-full h-1.5 mr-2">
+                    <div 
+                      className={`h-1.5 rounded-full transition-all duration-300 ${
+                        status === 'completed' ? 'bg-green-500' : 
+                        status === 'in_progress' ? 'bg-blue-500' : 'bg-gray-300'
+                      }`}
+                      style={{ 
+                        width: `${Math.min(100, Math.max(0, (progress - (index > 0 ? steps[index - 1].threshold : 0)) / (step.threshold - (index > 0 ? steps[index - 1].threshold : 0)) * 100))}%` 
+                      }}
+                    ></div>
+                  </div>
+                  <span className="text-xs text-gray-600">{progress}%</span>
+                </div>
+              </div>
+            </div>
+            {!isLast && (
+              <div className="absolute left-5 top-10 w-0.5 h-4 bg-gray-200"></div>
+            )}
           </div>
-          <div className="flex justify-between">
-            <span className="text-sm text-gray-600">Labor Cost:</span>
-            <span className="text-sm font-medium text-gray-900">
-              {formatCurrency(costs.laborCost || 0)}
-            </span>
-          </div>
-          <div className="flex justify-between border-t pt-3">
-            <span className="text-sm font-medium text-gray-900">Total Cost:</span>
-            <span className="text-lg font-bold text-gray-900">
-              {formatCurrency(costs.totalCost || 0)}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-white p-6 rounded-lg shadow">
-        <h3 className="text-lg font-medium text-gray-900 mb-4">Cost Analysis</h3>
-        <div className="space-y-3">
-          <div className="flex justify-between">
-            <span className="text-sm text-gray-600">Estimated Cost:</span>
-            <span className="text-sm text-gray-900">
-              {formatCurrency(job.jobCard?.estimatedCost || 0)}
-            </span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-sm text-gray-600">Actual Cost:</span>
-            <span className="text-sm text-gray-900">
-              {formatCurrency(costs.totalCost || 0)}
-            </span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-sm text-gray-600">Variance:</span>
-            <span className={`text-sm font-medium ${
-              (costs.totalCost || 0) > (job.jobCard?.estimatedCost || 0) 
-                ? 'text-red-600' 
-                : 'text-green-600'
-            }`}>
-              {formatCurrency((costs.totalCost || 0) - (job.jobCard?.estimatedCost || 0))}
-            </span>
-          </div>
-        </div>
-      </div>
+        );
+      })}
     </div>
   );
 };
 
 export default JobProgressVisualization;
-
-// Workflow Steps Component
-const WorkflowSteps: React.FC<{ job: any }> = ({ job }) => {
-  const steps = [
-    'Job Intake',
-    'Scheduling',
-    'Preparation',
-    'Work Execution',
-    'Quality Control',
-    'Completion',
-    'Follow-up',
-  ];
-
-  const hasPreparation = Boolean(job?.resources?.requiredMachines?.length || job?.resources?.assignedTechnicians?.length);
-  const hasQuality = Boolean((job?.tasks || []).some((t: any) => t.status === 'review') || job?.qualityChecked);
-  const isFollowUpDone = Boolean(job?.customerPortal?.followUpDone);
-
-  const statusToStepIndex = () => {
-    switch (job?.status) {
-      case 'draft':
-        return 0; // Job Intake
-      case 'scheduled':
-        return hasPreparation ? 2 : 1; // Preparation or Scheduling
-      case 'in_progress':
-        return 3; // Work Execution
-      case 'completed':
-        return isFollowUpDone ? 6 : (hasQuality ? 5 : 5); // Completion or Follow-up
-      case 'on_hold':
-      case 'cancelled':
-        return 3; // Treat as during execution
-      default:
-        return 0;
-    }
-  };
-
-  const currentIndex = statusToStepIndex();
-
-  const isStepCompleted = (index: number) => {
-    if (index < currentIndex) return true;
-    if (job?.status === 'completed') {
-      if (index <= 5) return true; // up to Completion
-      if (index === 6) return isFollowUpDone;
-    }
-    if (index === 2) return hasPreparation || currentIndex > 2;
-    if (index === 4) return hasQuality || currentIndex > 4;
-    return false;
-  };
-
-  const isStepCurrent = (index: number) => index === currentIndex;
-
-  return (
-    <div className="w-full">
-      <ol className="flex items-center w-full">
-        {steps.map((label, index) => (
-          <li key={index} className="flex-1 flex items-center">
-            <div className={`flex items-center ${index !== steps.length - 1 ? 'w-full' : ''}`}>
-              <div className={`flex items-center justify-center h-8 w-8 rounded-full text-xs font-bold transition-colors ${
-                isStepCompleted(index)
-                  ? 'bg-green-100 text-green-700 border border-green-300'
-                  : isStepCurrent(index)
-                  ? 'bg-blue-100 text-blue-700 border border-blue-300'
-                  : 'bg-gray-100 text-gray-500 border border-gray-300'
-              }`}>
-                {index + 1}
-              </div>
-              {index !== steps.length - 1 && (
-                <div className={`h-0.5 flex-1 mx-2 ${
-                  isStepCompleted(index)
-                    ? 'bg-green-300'
-                    : isStepCurrent(index)
-                    ? 'bg-blue-300'
-                    : 'bg-gray-200'
-                }`} />
-              )}
-            </div>
-            <div className="ml-2 text-xs text-gray-700 hidden sm:block">{label}</div>
-          </li>
-        ))}
-      </ol>
-    </div>
-  );
-};

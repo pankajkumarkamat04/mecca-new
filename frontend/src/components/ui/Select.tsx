@@ -31,7 +31,7 @@ const Select: React.FC<SelectProps> = ({
 }) => {
   const selectId = id || `select-${Math.random().toString(36).substr(2, 9)}`;
   
-  const baseClasses = 'block rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm';
+  const baseClasses = 'block rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm';
   const errorClasses = error ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : '';
   const widthClasses = fullWidth ? 'w-full' : '';
   

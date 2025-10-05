@@ -361,97 +361,6 @@ const performStockAdjustment = async (req, res) => {
   }
 };
 
-// @desc    Perform stock replenishment check
-// @route   POST /api/inventory/replenishment-check
-// @access  Private
-const performReplenishmentCheck = async (req, res) => {
-  try {
-    const { warehouseId, autoCreateOrders } = req.body;
-
-    // Build filter for products that need replenishment
-    const productFilter = { 
-      isActive: true,
-      'inventory.autoReorder': true
-    };
-    
-    if (warehouseId) {
-      productFilter['inventory.warehouse'] = warehouseId;
-    }
-
-    const products = await Product.find(productFilter)
-      .populate('supplier')
-      .populate('inventory.warehouse');
-
-    const replenishmentData = [];
-    const ordersCreated = [];
-
-    for (const product of products) {
-      const currentStock = product.inventory.currentStock;
-      const reorderPoint = product.inventory.reorderPoint;
-      const reorderQuantity = product.inventory.reorderQuantity;
-
-      if (currentStock <= reorderPoint && reorderQuantity > 0) {
-        const replenishmentItem = {
-          product: product._id,
-          productName: product.name,
-          sku: product.sku,
-          currentStock,
-          reorderPoint,
-          reorderQuantity,
-          supplier: product.supplier,
-          warehouse: product.inventory.warehouse,
-          needsReplenishment: true
-        };
-
-        replenishmentData.push(replenishmentItem);
-
-        // Auto-create purchase order if enabled
-        if (autoCreateOrders && product.supplier) {
-          const orderData = {
-            supplier: product.supplier._id,
-            warehouse: product.inventory.warehouse?._id,
-            items: [{
-              product: product._id,
-              name: product.name,
-              sku: product.sku,
-              description: product.description,
-              quantity: reorderQuantity,
-              unitCost: product.pricing.costPrice,
-              totalCost: reorderQuantity * product.pricing.costPrice
-            }],
-            subtotal: reorderQuantity * product.pricing.costPrice,
-            totalAmount: reorderQuantity * product.pricing.costPrice,
-            status: 'draft',
-            notes: 'Auto-generated replenishment order',
-            priority: currentStock === 0 ? 'urgent' : 'high',
-            createdBy: req.user._id
-          };
-
-          const purchaseOrder = new PurchaseOrder(orderData);
-          await purchaseOrder.save();
-          ordersCreated.push(purchaseOrder._id);
-        }
-      }
-    }
-
-    res.json({
-      success: true,
-      message: `Replenishment check completed. ${replenishmentData.length} products need replenishment.`,
-      data: {
-        productsNeedingReplenishment: replenishmentData.length,
-        replenishmentData,
-        ordersCreated: ordersCreated.length,
-        orderIds: ordersCreated
-      }
-    });
-  } catch (error) {
-    console.error('Perform replenishment check error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error'
-    });
-  }
-};
 
 // @desc    Perform stock taking/cycle count
 // @route   POST /api/inventory/stock-taking
@@ -966,16 +875,15 @@ const getStockAlerts = async (req, res) => {
       productFilter.supplier = supplier;
     }
 
+    // Get ALL products first (no pagination yet)
     const products = await Product.find(productFilter)
       .populate('supplier', 'name')
       .populate('inventory.warehouse', 'name code')
       .populate('category', 'name')
-      .sort({ 'inventory.currentStock': 1 })
-      .skip(skip)
-      .limit(limit);
+      .sort({ 'inventory.currentStock': 1 });
 
-    // Generate real-time alerts
-    const alerts = [];
+    // Generate real-time alerts from ALL products
+    const allAlerts = [];
     for (const product of products) {
       const currentStock = product.inventory.currentStock;
       const minStock = product.inventory.minStock;
@@ -1044,23 +952,13 @@ const getStockAlerts = async (req, res) => {
       }
       
       if (alert) {
-        alerts.push(alert);
+        allAlerts.push(alert);
       }
     }
 
-    // Get total count for pagination
-    const totalProducts = await Product.countDocuments(productFilter);
-    let totalAlerts = 0;
-    
-    for (const product of await Product.find(productFilter)) {
-      const currentStock = product.inventory.currentStock;
-      const minStock = product.inventory.minStock;
-      const maxStock = product.inventory.maxStock;
-      
-      if (currentStock <= minStock || currentStock > maxStock) {
-        totalAlerts++;
-      }
-    }
+    // Apply pagination to the alerts
+    const totalAlerts = allAlerts.length;
+    const alerts = allAlerts.slice(skip, skip + limit);
 
     res.json({
       success: true,
@@ -1245,7 +1143,6 @@ module.exports = {
   getProductMovements,
   getProductStock,
   performStockAdjustment,
-  performReplenishmentCheck,
   performStockTaking,
   processReceiving,
   processPicking,

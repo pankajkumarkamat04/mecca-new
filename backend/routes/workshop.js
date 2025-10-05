@@ -9,6 +9,7 @@ const {
   updateJobProgress,
   completeJob,
   cancelJob,
+  deleteJob,
   assignTechnician,
   removeTechnician,
   addTask,
@@ -17,6 +18,7 @@ const {
   releaseMachine,
   bookWorkStation,
   assignTool,
+  assignResources,
   checkPartsAvailability,
   reserveParts,
   getAvailableResources,
@@ -54,6 +56,7 @@ router.get('/', auth, getJobs);
 router.post('/', auth, checkPermission('workshop', 'create'), createJob);
 router.get('/:id', auth, getJobById);
 router.put('/:id', auth, checkPermission('workshop', 'update'), updateJob);
+router.delete('/:id', auth, checkPermission('workshop', 'delete'), deleteJob);
 router.put('/:id/schedule', auth, checkPermission('workshop', 'update'), scheduleJob);
 router.put('/:id/progress', auth, checkPermission('workshop', 'update'), updateJobProgress);
 router.post('/:id/complete', auth, checkPermission('workshop', 'update'), completeJob);
@@ -67,6 +70,7 @@ router.post('/:id/release-machine', auth, checkPermission('workshop', 'update'),
 router.post('/:id/book-workstation', auth, checkPermission('workshop', 'update'), bookWorkStation);
 router.post('/:id/assign-tool', auth, checkPermission('workshop', 'update'), assignTool);
 router.post('/:id/return-tool', auth, checkPermission('workshop', 'update'), returnTool);
+router.post('/:id/assign-resources', auth, checkPermission('workshop', 'update'), assignResources);
 
 // Task management
 router.post('/:id/tasks', auth, checkPermission('workshop', 'update'), addTask);

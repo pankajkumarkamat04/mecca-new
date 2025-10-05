@@ -65,6 +65,11 @@ const getWarehouseSidebarItems = (userRole: string): SidebarItem[] => {
       icon: BuildingOfficeIcon,
       children: [
         {
+          name: 'Products',
+          href: '/products',
+          icon: CubeIcon,
+        },
+        {
           name: 'Orders',
           href: '/warehouse-portal/orders',
           icon: ShoppingBagIcon,
@@ -135,6 +140,11 @@ const getSalesSidebarItems = (userRole: string): SidebarItem[] => {
       href: '#',
       icon: ShoppingBagIcon,
       children: [
+        {
+          name: 'Products',
+          href: '/products',
+          icon: CubeIcon,
+        },
         {
           name: 'Customers',
           href: '/customers',
@@ -293,6 +303,12 @@ const getSidebarItems = (userRole: string): SidebarItem[] => {
         href: '#',
         icon: ArchiveBoxIcon,
         children: [
+          {
+            name: 'Products',
+            href: '/products',
+            icon: CubeIcon,
+            permission: { module: 'products', action: 'read' },
+          },
           {
             name: 'Inventory',
             href: '/inventory',
@@ -553,7 +569,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
       >
         <div className="flex flex-col h-full">
           {/* Logo */}
-          <div className="flex items-center justify-center h-16 px-4 bg-blue-600">
+          <div className="flex items-center justify-center h-16 px-4 bg-gradient-to-r from-red-500 to-red-600 shadow-lg">
             {company?.logo?.url ? (
               <div className="flex items-center space-x-3">
                 <Image
@@ -630,13 +646,13 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                       onClick={toggleOpen}
                       className={cn(
                         'w-full flex items-center px-2 py-2 text-base font-medium rounded-md transition-colors',
-                        (groupActive || isOpen) ? 'bg-blue-100 text-blue-900' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                        (groupActive || isOpen) ? 'bg-red-50 text-red-900 border-r-2 border-red-500' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                       )}
                     >
                       <item.icon
                         className={cn(
                           'mr-3 h-5 w-5 flex-shrink-0',
-                          (groupActive || isOpen) ? 'text-blue-500' : 'text-gray-400 group-hover:text-gray-500'
+                          (groupActive || isOpen) ? 'text-red-500' : 'text-gray-400 group-hover:text-gray-500'
                         )}
                       />
                       {item.name}
@@ -658,14 +674,14 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                               href={child.href}
                               className={cn(
                                 'group flex items-center px-2 py-1.5 text-sm font-medium rounded-md transition-colors',
-                                childActive ? 'bg-blue-50 text-blue-900' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                                childActive ? 'bg-red-50 text-red-900 border-r-2 border-red-400' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                               )}
                               onClick={onClose}
                             >
                               <child.icon
                                 className={cn(
                                   'mr-3 h-4 w-4 flex-shrink-0',
-                                  childActive ? 'text-blue-500' : 'text-gray-400 group-hover:text-gray-500'
+                                  childActive ? 'text-red-500' : 'text-gray-400 group-hover:text-gray-500'
                                 )}
                               />
                               {child.name}
@@ -690,7 +706,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                   className={cn(
                     'group flex items-center px-2 py-2 text-base font-medium rounded-md transition-colors',
                     isActive
-                      ? 'bg-blue-100 text-blue-900'
+                      ? 'bg-red-50 text-red-900 border-r-2 border-red-500'
                       : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                   )}
                   onClick={onClose}
@@ -698,7 +714,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                   <item.icon
                     className={cn(
                       'mr-3 h-5 w-5 flex-shrink-0',
-                      isActive ? 'text-blue-500' : 'text-gray-400 group-hover:text-gray-500'
+                      isActive ? 'text-red-500' : 'text-gray-400 group-hover:text-gray-500'
                     )}
                   />
                   {item.name}
@@ -716,9 +732,9 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
           <div className="p-4 border-t border-gray-200">
             <button
               onClick={handleLogout}
-              className="group flex items-center w-full px-2 py-2 text-sm font-medium text-gray-600 rounded-md hover:bg-gray-50 hover:text-gray-900"
+              className="group flex items-center w-full px-2 py-2 text-sm font-medium text-gray-600 rounded-md hover:bg-red-50 hover:text-red-600 transition-colors"
             >
-              <ArrowRightOnRectangleIcon className="mr-3 h-5 w-5 text-gray-400 group-hover:text-gray-500" />
+              <ArrowRightOnRectangleIcon className="mr-3 h-5 w-5 text-gray-400 group-hover:text-red-500" />
               Logout
             </button>
           </div>

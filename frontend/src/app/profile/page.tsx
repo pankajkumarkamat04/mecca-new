@@ -325,7 +325,7 @@ const ProfilePage: React.FC = () => {
             </div>
             <input
               type="checkbox"
-              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded"
             />
           </div>
         </div>
@@ -366,14 +366,14 @@ const ProfilePage: React.FC = () => {
         <div>
           <h4 className="text-md font-medium text-gray-900 mb-4">Theme</h4>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="border border-gray-200 rounded-lg p-4 cursor-pointer hover:border-blue-500">
+            <div className="border border-gray-200 rounded-lg p-4 cursor-pointer hover:border-red-500">
               <div className="flex items-center space-x-3">
                 <input
                   type="radio"
                   name="theme"
                   value="light"
                   defaultChecked={(user as any)?.preferences?.theme !== 'dark'}
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                  className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300"
                 />
                 <div>
                   <p className="text-sm font-medium text-gray-900">Light</p>
@@ -381,14 +381,14 @@ const ProfilePage: React.FC = () => {
                 </div>
               </div>
             </div>
-            <div className="border border-gray-200 rounded-lg p-4 cursor-pointer hover:border-blue-500">
+            <div className="border border-gray-200 rounded-lg p-4 cursor-pointer hover:border-red-500">
               <div className="flex items-center space-x-3">
                 <input
                   type="radio"
                   name="theme"
                   value="dark"
                   defaultChecked={(user as any)?.preferences?.theme === 'dark'}
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                  className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300"
                 />
                 <div>
                   <p className="text-sm font-medium text-gray-900">Dark</p>
@@ -396,14 +396,14 @@ const ProfilePage: React.FC = () => {
                 </div>
               </div>
             </div>
-            <div className="border border-gray-200 rounded-lg p-4 cursor-pointer hover:border-blue-500">
+            <div className="border border-gray-200 rounded-lg p-4 cursor-pointer hover:border-red-500">
               <div className="flex items-center space-x-3">
                 <input
                   type="radio"
                   name="theme"
                   value="auto"
                   defaultChecked={(user as any)?.preferences?.theme === 'auto'}
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                  className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300"
                 />
                 <div>
                   <p className="text-sm font-medium text-gray-900">Auto</p>
@@ -485,7 +485,7 @@ const ProfilePage: React.FC = () => {
                       flex items-center py-4 px-1 border-b-2 font-medium text-sm
                       ${
                         activeTab === tab.id
-                          ? 'border-blue-500 text-blue-600'
+                          ? 'border-red-500 text-red-600'
                           : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                       }
                     `}

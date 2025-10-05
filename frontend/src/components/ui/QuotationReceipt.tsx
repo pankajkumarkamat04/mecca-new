@@ -103,7 +103,7 @@ const QuotationReceipt: React.FC<QuotationReceiptProps> = ({
                 className="w-8 h-8 object-contain mr-2"
               />
             ) : (
-              <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-sm mr-2">
+              <div className="w-8 h-8 bg-red-600 rounded-full flex items-center justify-center text-white font-bold text-sm mr-2">
                 {companyInfo.name.charAt(0)}
               </div>
             )}
@@ -119,7 +119,7 @@ const QuotationReceipt: React.FC<QuotationReceiptProps> = ({
           </div>
         </div>
         <div className="text-right">
-          <h2 className="text-lg font-bold text-blue-600 mb-1">QUOTATION</h2>
+          <h2 className="text-lg font-bold text-red-600 mb-1">QUOTATION</h2>
           <div className="text-xs space-y-0.5">
             <p><strong>Quotation #:</strong> {quotation.quotationNumber}</p>
             <p><strong>Date:</strong> {formatDate(quotation.quotationDate)}</p>

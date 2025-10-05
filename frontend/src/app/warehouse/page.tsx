@@ -33,14 +33,14 @@ const WarehouseDashboard: React.FC = () => {
   });
 
   // Fetch replenishment suggestions
-  const { data: replenishmentData } = useQuery({
-    queryKey: ['replenishmentSuggestions'],
-    queryFn: () => stockAlertAPI.getReplenishmentSuggestions(),
-  });
+  // const { data: replenishmentData } = useQuery({
+  //   queryKey: ['replenishmentSuggestions'],
+  //   queryFn: () => stockAlertAPI.getReplenishmentSuggestions(),
+  // });
 
   const alerts = alertsData?.data?.data || [];
   const deliveryStats = deliveryStatsData?.data?.data || {};
-  const replenishmentSuggestions = replenishmentData?.data?.data?.suggestions || [];
+  const replenishmentSuggestions: any[] = []; // replenishmentData?.data?.data?.suggestions || [];
 
   const tabs = [
     { id: 'overview', name: 'Overview', icon: ChartBarIcon },

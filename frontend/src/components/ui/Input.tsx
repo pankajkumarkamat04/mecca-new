@@ -25,7 +25,7 @@ const Input: React.FC<InputProps> = ({
 }) => {
   const inputId = id || `input-${Math.random().toString(36).substr(2, 9)}`;
   
-  const baseClasses = 'block rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm';
+  const baseClasses = 'block rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm';
   const errorClasses = error ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : '';
   const iconClasses = leftIcon || rightIcon ? 'pl-10 pr-10' : '';
   const widthClasses = fullWidth ? 'w-full' : '';

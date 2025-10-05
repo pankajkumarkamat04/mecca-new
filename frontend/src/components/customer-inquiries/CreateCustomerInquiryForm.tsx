@@ -10,6 +10,7 @@ import TextArea from '@/components/ui/TextArea';
 import Select from '@/components/ui/Select';
 import Button from '@/components/ui/Button';
 import CustomerSelector from '@/components/ui/CustomerSelector';
+import FormProductSelector from '@/components/ui/FormProductSelector';
 import { customerInquiriesAPI } from '@/lib/api';
 import { customersAPI } from '@/lib/api';
 import { productsAPI } from '@/lib/api';
@@ -253,18 +254,11 @@ const CreateCustomerInquiryForm: React.FC<CreateCustomerInquiryFormProps> = ({
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Product
                     </label>
-                    <select
+                    <FormProductSelector
                       value={item.product}
-                      onChange={(e) => updateProductInterest(index, 'product', e.target.value)}
-                      className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-                    >
-                      <option value="">Select a product</option>
-                      {products.map((product: any) => (
-                        <option key={product._id} value={product._id}>
-                          {product.name} ({product.sku})
-                        </option>
-                      ))}
-                    </select>
+                      onChange={(value) => updateProductInterest(index, 'product', value)}
+                      placeholder="Select a product"
+                    />
                   </div>
 
                   <div className="w-24">

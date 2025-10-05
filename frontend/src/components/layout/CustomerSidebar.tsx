@@ -65,7 +65,7 @@ const CustomerSidebar: React.FC<CustomerSidebarProps> = ({ isOpen, onClose }) =>
         )}
       >
         <div className="flex flex-col h-full">
-          <div className="flex items-center justify-center h-16 px-4 bg-blue-600">
+          <div className="flex items-center justify-center h-16 px-4 bg-gradient-to-r from-red-500 to-red-600 shadow-lg">
             {company?.logo?.url ? (
               <div className="flex items-center space-x-3">
                 <Image
@@ -113,11 +113,11 @@ const CustomerSidebar: React.FC<CustomerSidebarProps> = ({ isOpen, onClose }) =>
                   href={item.href}
                   className={cn(
                     'group flex items-center px-2 py-2 text-base font-medium rounded-md transition-colors',
-                    isActive ? 'bg-blue-100 text-blue-900' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                    isActive ? 'bg-red-50 text-red-900 border-r-2 border-red-500' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                   )}
                   onClick={onClose}
                 >
-                  <item.icon className={cn('mr-3 h-5 w-5 flex-shrink-0', isActive ? 'text-blue-500' : 'text-gray-400 group-hover:text-gray-500')} />
+                  <item.icon className={cn('mr-3 h-5 w-5 flex-shrink-0', isActive ? 'text-red-500' : 'text-gray-400 group-hover:text-gray-500')} />
                   {item.name}
                 </Link>
               );
@@ -127,9 +127,9 @@ const CustomerSidebar: React.FC<CustomerSidebarProps> = ({ isOpen, onClose }) =>
                 <div className="p-4 border-t border-gray-200">
                   <button
                     onClick={handleLogout}
-                    className="group flex items-center w-full px-2 py-2 text-sm font-medium text-gray-600 rounded-md hover:bg-gray-50 hover:text-gray-900"
+                    className="group flex items-center w-full px-2 py-2 text-sm font-medium text-gray-600 rounded-md hover:bg-red-50 hover:text-red-600 transition-colors"
                   >
-                    <ArrowRightOnRectangleIcon className="mr-3 h-5 w-5 text-gray-400 group-hover:text-gray-500" />
+                    <ArrowRightOnRectangleIcon className="mr-3 h-5 w-5 text-gray-400 group-hover:text-red-500" />
                     Logout
                   </button>
                 </div>

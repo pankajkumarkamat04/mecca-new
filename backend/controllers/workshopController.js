@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const WorkshopJob = require('../models/WorkshopJob');
 const Product = require('../models/Product');
 const StockMovement = require('../models/StockMovement');
@@ -10,7 +11,7 @@ const Technician = require('../models/Technician');
 async function processJobCompletion(jobId, userId) {
   const Invoice = require('../models/Invoice');
   // Load latest job with parts populated
-  const job = await WorkshopJob.findById(jobId).populate('parts.product');
+  const job = await WorkshopJob.findById(jobId).populate('parts.product', 'name sku pricing inventory');
   if (!job) return { job: null };
 
   
@@ -175,11 +176,31 @@ const createJob = async (req, res) => {
         return res.status(400).json({ success: false, message: 'Insufficient stock for required parts', shortages });
       }
     }
+    // Set initial progress to 10% for quality check completion
+    data.progress = 10;
+    data.progressHistory = [{
+      progress: 10,
+      status: 'scheduled',
+      step: 'quality_check',
+      message: 'Job created - quality check completed',
+      updatedBy: req.user._id,
+      updatedAt: new Date()
+    }];
+
+    // Set createdBy for all tasks
+    if (data.tasks && Array.isArray(data.tasks)) {
+      data.tasks = data.tasks.map(task => ({
+        ...task,
+        createdBy: req.user._id
+      }));
+    }
+
     const job = await WorkshopJob.create(data);
     const populated = await WorkshopJob.findById(job._id)
       .populate('customer', 'firstName lastName email')
       .populate('createdBy', 'firstName lastName')
-      .populate('tasks.assignee', 'firstName lastName');
+      .populate('tasks.assignee', 'firstName lastName')
+      .populate('tasks.createdBy', 'firstName lastName');
     res.status(201).json({ success: true, message: 'Job created', data: populated });
   } catch (error) {
     console.error('Create job error:', error);
@@ -200,12 +221,20 @@ const getJobs = async (req, res) => {
     if (priority) filter.priority = priority;
     if (customer) filter.customer = customer;
     if (customerPhone) filter.customerPhone = { $regex: customerPhone, $options: 'i' };
-    if (search) filter.title = { $regex: search, $options: 'i' };
+    if (search) {
+      // Search by job title, job card number, or vehicle registration number
+      filter.$or = [
+        { title: { $regex: search, $options: 'i' } },
+        { 'jobCard.cardNumber': { $regex: search, $options: 'i' } },
+        { 'vehicle.regNumber': { $regex: search, $options: 'i' } }
+      ];
+    }
 
     const jobs = await WorkshopJob.find(filter)
       .populate('customer', 'firstName lastName email')
       .populate('createdBy', 'firstName lastName')
       .populate('tasks.assignee', 'firstName lastName')
+      .populate('parts.product', 'name sku pricing inventory')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
@@ -243,13 +272,68 @@ const getJobById = async (req, res) => {
   }
 };
 
-// Update job card (including tasks, parts, tools, schedule)
+// Update job card (including tasks, parts, tools, schedule, part quantities, and progress)
 const updateJob = async (req, res) => {
   try {
     const previous = await WorkshopJob.findById(req.params.id).select('status');
     if (!previous) return res.status(404).json({ success: false, message: 'Job not found' });
 
-    const update = { ...req.body, lastUpdatedBy: req.user._id };
+    const { partQuantities, incrementProgress, ...updateData } = req.body;
+    
+    // Handle part quantity updates if provided
+    if (partQuantities && Array.isArray(partQuantities) && partQuantities.length > 0) {
+      const StockMovement = require('../models/StockMovement');
+      const Product = require('../models/Product');
+      
+      for (const { productId, quantity } of partQuantities) {
+        try {
+          const part = previous.parts?.find(p => p.product.toString() === productId || p.product._id?.toString() === productId);
+          if (!part) continue;
+
+          const product = await Product.findById(productId);
+          if (!product) continue;
+
+          const currentStock = product.inventory?.currentStock || 0;
+          const oldQuantity = part.quantityRequired || 0;
+          const quantityDifference = quantity - oldQuantity;
+
+          // Check if we have enough stock for the increase
+          if (quantityDifference > 0 && currentStock < quantityDifference) {
+            return res.status(400).json({
+              success: false,
+              message: `Insufficient stock for ${product.name}. Available: ${currentStock}, Required increase: ${quantityDifference}`
+            });
+          }
+
+          // Update the part quantity
+          part.quantityRequired = quantity;
+
+          // Note: Inventory will be updated only on job completion
+        } catch (error) {
+          console.error(`Failed to update part ${productId}:`, error);
+        }
+      }
+    }
+
+    // Handle progress increment if requested
+    if (incrementProgress) {
+      if (previous.status === 'in_progress' && previous.progress < 75) {
+        const newProgress = Math.min(75, (previous.progress || 0) + 5);
+        updateData.progress = newProgress;
+        
+        if (!updateData.progressHistory) updateData.progressHistory = [];
+        updateData.progressHistory.push({
+          progress: newProgress,
+          status: previous.status,
+          step: 'update',
+          message: 'Job progress updated',
+          updatedBy: req.user._id,
+          updatedAt: new Date()
+        });
+      }
+    }
+
+    const update = { ...updateData, lastUpdatedBy: req.user._id };
     const job = await WorkshopJob.findByIdAndUpdate(req.params.id, update, { new: true, runValidators: true })
       .populate('customer', 'firstName lastName email')
       .populate('tasks.assignee', 'firstName lastName')
@@ -285,7 +369,7 @@ const scheduleJob = async (req, res) => {
   try {
     const { start, end } = req.body;
     // Validate parts availability before scheduling
-    const current = await WorkshopJob.findById(req.params.id).populate('parts.product');
+    const current = await WorkshopJob.findById(req.params.id).populate('parts.product', 'name sku pricing inventory');
     if (!current) return res.status(404).json({ success: false, message: 'Job not found' });
     const shortages = [];
     for (const p of (current.parts || [])) {
@@ -345,6 +429,8 @@ const updateJobProgress = async (req, res) => {
   }
 };
 
+
+
 // Get job visualization data: core job details + progress history
 const getJobVisualization = async (req, res) => {
   try {
@@ -360,15 +446,283 @@ const getJobVisualization = async (req, res) => {
   }
 };
 
-// Complete job: deduct used parts from inventory
+// Helper function to process inventory updates with returns
+async function processJobCompletionWithReturns(jobId, userId, partsUsed, partsReturned) {
+  const job = await WorkshopJob.findById(jobId).populate('parts.product', 'name sku pricing inventory');
+  if (!job) return;
+
+  for (const part of (job.parts || [])) {
+    const product = part.product;
+    if (!product) continue;
+
+    const partId = product._id.toString();
+    const usedQty = partsUsed && partsUsed[partId] ? partsUsed[partId] : (part.quantityUsed || part.quantityRequired || 0);
+    const returnedQty = partsReturned && partsReturned[partId] ? partsReturned[partId] : 0;
+    
+    if (usedQty > 0) {
+      // Deduct used quantity
+      const previousStock = Number(product.inventory?.currentStock ?? 0);
+      const newStock = Math.max(0, previousStock - usedQty);
+      const unitCost = Number(product.pricing?.costPrice ?? 0);
+
+      const movement = new StockMovement({
+        product: product._id,
+        movementType: 'out',
+        quantity: usedQty,
+        unitCost,
+        totalCost: unitCost * usedQty,
+        previousStock,
+        newStock,
+        reason: `Workshop job ${jobId} completion - parts used`,
+        createdBy: userId,
+      });
+      await movement.save();
+
+      product.inventory.currentStock = newStock;
+    }
+
+    if (returnedQty > 0) {
+      // Add back returned quantity
+      const previousStock = Number(product.inventory?.currentStock ?? 0);
+      const newStock = previousStock + returnedQty;
+      const unitCost = Number(product.pricing?.costPrice ?? 0);
+
+      const movement = new StockMovement({
+        product: product._id,
+        movementType: 'in',
+        quantity: returnedQty,
+        unitCost,
+        totalCost: unitCost * returnedQty,
+        previousStock,
+        newStock,
+        reason: `Workshop job ${jobId} completion - parts returned`,
+        createdBy: userId,
+      });
+      await movement.save();
+
+      product.inventory.currentStock = newStock;
+    }
+
+    await product.save();
+  }
+}
+
+// Helper function to release all assigned resources
+async function releaseAllResources(job, userId) {
+  // Release technicians
+  if (job.resources?.assignedTechnicians) {
+    for (const techAssignment of job.resources.assignedTechnicians) {
+      const technician = await Technician.findById(techAssignment.technicianId);
+      if (technician) {
+        technician.removeJob(job._id);
+        await technician.save();
+      }
+    }
+  }
+
+  // Release tools
+  if (job.tools) {
+    for (const toolAssignment of job.tools) {
+      const tool = await Tool.findById(toolAssignment.toolId);
+      if (tool) {
+        tool.returnTool();
+        await tool.save();
+      }
+    }
+  }
+
+  // Release machines
+  if (job.resources?.requiredMachines) {
+    for (const machineAssignment of job.resources.requiredMachines) {
+      const machine = await Machine.findById(machineAssignment.machineId);
+      if (machine) {
+        machine.releaseMachine();
+        await machine.save();
+      }
+    }
+  }
+}
+
+// Helper function to create invoice for completed job
+async function createJobInvoice(job, partsUsed, partsReturned) {
+  const Invoice = require('../models/Invoice');
+  
+  const invoiceItems = [];
+
+  // Add dynamic charges
+  if (job.completionDetails?.charges && Array.isArray(job.completionDetails.charges)) {
+    for (const charge of job.completionDetails.charges) {
+      if (charge.name && charge.amount && parseFloat(charge.amount) > 0) {
+        const amount = parseFloat(charge.amount);
+        const tax = parseFloat(charge.tax) || 0;
+        const taxAmount = (amount * tax) / 100;
+        const totalAmount = amount + taxAmount;
+        
+        // For service charges, we need to find or create a service product
+        // For now, we'll create a virtual service product entry
+        const serviceProduct = {
+          _id: new mongoose.Types.ObjectId(), // Generate a new ObjectId for service
+          name: charge.name,
+          sku: `SERVICE-${charge.name.toUpperCase().replace(/\s+/g, '-')}`
+        };
+        
+        invoiceItems.push({
+          product: serviceProduct._id,
+          name: charge.name,
+          description: charge.name,
+          sku: serviceProduct.sku,
+          quantity: 1,
+          unitPrice: amount,
+          taxRate: tax,
+          total: totalAmount
+        });
+      }
+    }
+  }
+
+  // Add parts used
+  if (job.parts && partsUsed) {
+    for (const part of job.parts) {
+      const partId = part.product._id.toString();
+      const usedQty = partsUsed[partId] || 0;
+      if (usedQty > 0) {
+        const unitPrice = part.unitPrice || part.product?.pricing?.costPrice || part.product?.pricing?.salePrice || 0;
+        const totalPrice = unitPrice * usedQty;
+        
+        invoiceItems.push({
+          product: part.product._id,
+          name: part.productName || part.product?.name || 'Part',
+          description: part.productSku || part.product?.sku || '',
+          sku: part.productSku || part.product?.sku || '',
+          quantity: usedQty,
+          unitPrice: unitPrice,
+          total: totalPrice
+        });
+      }
+    }
+  }
+
+  // Calculate totals
+  const subtotal = invoiceItems.reduce((sum, item) => sum + (item.total || 0), 0);
+  const totalDiscount = 0; // No discount for now
+  const tax = subtotal * 0.1; // 10% tax
+  const total = subtotal + tax - totalDiscount;
+
+  // Generate invoice number
+  const invoiceNumber = await Invoice.generateInvoiceNumber('sale');
+
+  // Get customer phone from job
+  const customerPhone = job.customer?.phone || job.customerPhone || '';
+
+  const invoice = new Invoice({
+    invoiceNumber,
+    type: 'sale',
+    customer: job.customer._id || job.customer,
+    customerPhone,
+    items: invoiceItems,
+    subtotal,
+    totalDiscount,
+    tax,
+    total,
+    status: 'pending',
+    dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+    notes: job.completionDetails?.completionNotes || `Invoice for job: ${job.title}`,
+    createdBy: job.lastUpdatedBy,
+    isWorkshopTransaction: true // Mark as workshop transaction
+  });
+
+  await invoice.save();
+  return invoice;
+}
+
+// Complete job: deduct used parts from inventory and create invoice
 const completeJob = async (req, res) => {
   try {
-    const result = await processJobCompletion(req.params.id, req.user._id);
-    if (!result.job) return res.status(404).json({ success: false, message: 'Job not found' });
-    res.json({ success: true, message: 'Job completed and inventory updated', data: result.job });
+    const {
+      actualDuration, 
+      charges, 
+      notes, 
+      partsUsed, 
+      partsReturned 
+    } = req.body;
+
+    const job = await WorkshopJob.findById(req.params.id)
+      .populate('customer', 'firstName lastName email phone')
+      .populate('parts.product', 'name sku pricing inventory');
+
+    if (!job) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Job not found' 
+      });
+    }
+
+    // Update job with completion details
+    job.status = 'completed';
+    job.progress = 100;
+    job.completionDetails = {
+      completedAt: new Date(),
+      actualDuration: actualDuration,
+      charges: charges || [],
+      completionNotes: notes,
+      completedBy: req.user._id
+    };
+    job.lastUpdatedBy = req.user._id;
+
+    // Update parts with actual usage and returns
+    if (partsUsed && job.parts) {
+      job.parts.forEach(part => {
+        const partId = part.product._id || part.product;
+        if (partsUsed[partId] !== undefined) {
+          part.quantityUsed = partsUsed[partId];
+          part.actualUsage = partsUsed[partId];
+        }
+        if (partsReturned && partsReturned[partId] !== undefined) {
+          part.quantityReturned = partsReturned[partId];
+        }
+      });
+    }
+
+    // Update progress history
+    job.progressHistory.push({
+      progress: 100,
+      status: 'completed',
+      step: 'completion',
+      message: 'Job completed successfully',
+      updatedBy: req.user._id,
+      updatedAt: new Date()
+    });
+
+    await job.save();
+
+    // Process inventory updates (deduct used parts, add back returned parts)
+    await processJobCompletionWithReturns(req.params.id, req.user._id, partsUsed, partsReturned);
+
+    // Release all assigned resources
+    await releaseAllResources(job, req.user._id);
+
+    // Create invoice
+    const invoiceData = await createJobInvoice(job, partsUsed, partsReturned);
+
+    const updatedJob = await WorkshopJob.findById(job._id)
+      .populate('customer', 'firstName lastName email phone')
+      .populate('parts.product', 'name sku pricing inventory')
+      .populate('resources.assignedTechnicians.user', 'firstName lastName email');
+
+    res.json({ 
+      success: true, 
+      message: 'Job completed successfully with invoice created',
+      data: {
+        job: updatedJob,
+        invoice: invoiceData
+      }
+    });
   } catch (error) {
     console.error('Complete job error:', error);
-    res.status(500).json({ success: false, message: 'Server error' });
+    res.status(500).json({ 
+      success: false, 
+      message: error.message || 'Server error' 
+    });
   }
 };
 
@@ -411,6 +765,74 @@ const cancelJob = async (req, res) => {
     res.json({ success: true, message: 'Job cancelled', data: updatedJob });
   } catch (error) {
     console.error('Cancel job error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// @desc    Delete job permanently
+// @route   DELETE /api/workshop/jobs/:id
+// @access  Private
+const deleteJob = async (req, res) => {
+  try {
+    const job = await WorkshopJob.findById(req.params.id);
+    if (!job) {
+      return res.status(404).json({ success: false, message: 'Job not found' });
+    }
+
+    // Check if job can be deleted (only allow deletion of draft/scheduled jobs)
+    if (job.status === 'in_progress' || job.status === 'completed') {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Cannot delete job that is in progress or completed. Cancel the job instead.' 
+      });
+    }
+
+    // Complete job for all assigned technicians before deleting
+    if (job.resources && job.resources.assignedTechnicians) {
+      for (const assignedTech of job.resources.assignedTechnicians) {
+        const technician = await Technician.findById(assignedTech.user);
+        if (technician) {
+          technician.removeJob(job._id);
+          await technician.save();
+        }
+      }
+    }
+    
+    // Return all assigned tools before deleting
+    if (job.tools && job.tools.length > 0) {
+      for (const jobTool of job.tools) {
+        if (jobTool.toolId) {
+          const tool = await Tool.findById(jobTool.toolId);
+          if (tool) {
+            tool.returnTool();
+            await tool.save();
+          }
+        }
+      }
+    }
+
+    // Release all booked machines before deleting
+    if (job.resources && job.resources.requiredMachines) {
+      for (const machine of job.resources.requiredMachines) {
+        if (machine.machineId) {
+          const machineDoc = await Machine.findById(machine.machineId);
+          if (machineDoc) {
+            machineDoc.releaseMachine();
+            await machineDoc.save();
+          }
+        }
+      }
+    }
+
+    // Delete the job permanently
+    await WorkshopJob.findByIdAndDelete(req.params.id);
+
+    res.json({ 
+      success: true, 
+      message: 'Job deleted successfully' 
+    });
+  } catch (error) {
+    console.error('Delete job error:', error);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };
@@ -460,11 +882,11 @@ const assignTechnician = async (req, res) => {
     await technician.save();
 
     // Update job status and progress when resources are assigned
-    if (job.status === 'draft' || job.status === 'scheduled') {
+    if (job.status === 'scheduled') {
       job.status = 'in_progress';
-      job.progress = 20;
+      job.progress = 30;
       job.progressHistory.push({
-        progress: 20,
+        progress: 30,
         status: 'in_progress',
         step: 'resource_assignment',
         message: 'Resources assigned - work started',
@@ -565,8 +987,7 @@ const addTask = async (req, res) => {
 
     job.tasks.push(newTask);
     
-    // Update job progress based on task completion
-    job.updateProgress();
+    // Don't update progress when adding tasks - only when completing them
     
     job.lastUpdatedBy = req.user._id;
     await job.save();
@@ -628,8 +1049,26 @@ const updateTaskStatus = async (req, res) => {
       task.completedAt = new Date();
     }
 
-    // Update job progress based on task completion
-    job.updateProgress();
+    // Update job progress by 5% for each completed task
+    if (status === 'completed') {
+      const completedTasks = job.tasks.filter(task => task.status === 'completed').length;
+      const newProgress = Math.min(100, 30 + (completedTasks * 5)); // Start from 30% after resource assignment, then 5% per task
+      
+      if (newProgress > job.progress) {
+        job.progress = newProgress;
+        
+        // Add progress history entry
+        if (!job.progressHistory) job.progressHistory = [];
+        job.progressHistory.push({
+          progress: newProgress,
+          status: job.status,
+          step: 'task_completion',
+          message: `Task completed - progress updated to ${newProgress}%`,
+          updatedBy: req.user._id,
+          updatedAt: new Date()
+        });
+      }
+    }
     
     job.lastUpdatedBy = req.user._id;
     await job.save();
@@ -703,7 +1142,7 @@ const bookMachine = async (req, res) => {
     }
 
     // Update job status and progress when resources are assigned
-    if (job.status === 'draft' || job.status === 'scheduled') {
+    if (job.status === 'scheduled') {
       job.status = 'in_progress';
       job.progress = 20;
       job.progressHistory.push({
@@ -908,7 +1347,7 @@ const assignTool = async (req, res) => {
     }
 
     // Update job status and progress when resources are assigned
-    if (job.status === 'draft' || job.status === 'scheduled') {
+    if (job.status === 'scheduled') {
       job.status = 'in_progress';
       job.progress = 20;
       job.progressHistory.push({
@@ -935,6 +1374,232 @@ const assignTool = async (req, res) => {
     });
   } catch (error) {
     console.error('Assign tool error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Server error'
+    });
+  }
+};
+
+// @desc    Bulk assign resources to job (technicians, tools, machines, parts)
+// @route   POST /api/workshop/jobs/:id/assign-resources
+// @access  Private
+const assignResources = async (req, res) => {
+  try {
+    const { technicians = [], tools = [], machines = [], parts = [] } = req.body;
+    const job = await WorkshopJob.findById(req.params.id);
+    
+    if (!job) {
+      return res.status(404).json({
+        success: false,
+        message: 'Job not found'
+      });
+    }
+
+    const errors = [];
+    const assignedResources = {
+      technicians: [],
+      tools: [],
+      machines: [],
+      parts: []
+    };
+
+    // Assign technicians
+    for (const { technicianId, role = 'technician' } of technicians) {
+      try {
+        const technician = await Technician.findById(technicianId).populate('user', 'firstName lastName');
+        if (!technician) {
+          errors.push(`Technician with ID ${technicianId} not found`);
+          continue;
+        }
+
+        if (!technician.isCurrentlyAvailable) {
+          errors.push(`Technician ${technician.user ? `${technician.user.firstName} ${technician.user.lastName}` : technician.employeeId} is not currently available`);
+          continue;
+        }
+
+        const technicianName = technician.user 
+          ? `${technician.user.firstName} ${technician.user.lastName}`
+          : technician.employeeId || 'Technician';
+        
+        job.assignTechnician(technicianId, technicianName, role, req.user._id);
+        technician.assignJob(job._id, role);
+        await technician.save();
+        
+        assignedResources.technicians.push({ technicianId, name: technicianName, role });
+      } catch (error) {
+        errors.push(`Failed to assign technician ${technicianId}: ${error.message}`);
+      }
+    }
+
+    // Assign tools
+    for (const { toolId } of tools) {
+      try {
+        const tool = await Tool.findById(toolId);
+        if (!tool) {
+          errors.push(`Tool with ID ${toolId} not found`);
+          continue;
+        }
+
+        if (!tool.availability.isAvailable) {
+          errors.push(`Tool ${tool.name} is not available`);
+          continue;
+        }
+
+        tool.assignTool(job._id, req.user._id);
+        await tool.save();
+
+        // Add tool to job resources
+        const existingTool = job.tools.find(t => t.toolId && t.toolId.toString() === toolId);
+        if (!existingTool) {
+          job.tools.push({
+            name: tool.name,
+            toolId: tool._id,
+            category: tool.category,
+            condition: tool.condition,
+            requiredFrom: new Date(),
+            assignedTo: req.user._id,
+            assignedAt: new Date(),
+            isAvailable: false
+          });
+        }
+        
+        assignedResources.tools.push({ toolId, name: tool.name });
+      } catch (error) {
+        errors.push(`Failed to assign tool ${toolId}: ${error.message}`);
+      }
+    }
+
+    // Book machines
+    for (const { machineId } of machines) {
+      try {
+        const machine = await Machine.findById(machineId);
+        if (!machine) {
+          errors.push(`Machine with ID ${machineId} not found`);
+          continue;
+        }
+
+        if (!machine.availability.isAvailable) {
+          errors.push(`Machine ${machine.name} is not available`);
+          continue;
+        }
+
+        machine.bookMachine(job._id, req.user._id);
+        await machine.save();
+
+        // Add machine to job resources
+        const existingMachine = job.resources?.requiredMachines?.find(m => m.machineId && m.machineId.toString() === machineId);
+        if (!existingMachine) {
+          if (!job.resources) {
+            job.resources = { assignedTechnicians: [], requiredMachines: [], requiredTools: [] };
+          }
+          job.resources.requiredMachines.push({
+            name: machine.name,
+            machineId: machine._id,
+            model: machine.model,
+            category: machine.category,
+            requiredFrom: new Date(),
+            bookedBy: req.user._id,
+            bookedAt: new Date(),
+            isAvailable: false
+          });
+        }
+        
+        assignedResources.machines.push({ machineId, name: machine.name });
+      } catch (error) {
+        errors.push(`Failed to book machine ${machineId}: ${error.message}`);
+      }
+    }
+
+    // Assign parts
+    for (const { productId, quantity = 1 } of parts) {
+      try {
+        const product = await Product.findById(productId);
+        if (!product) {
+          errors.push(`Product with ID ${productId} not found`);
+          continue;
+        }
+
+        // Check inventory availability (use currentStock instead of quantity)
+        const availableStock = product.inventory?.currentStock || 0;
+        if (availableStock < quantity) {
+          errors.push(`Insufficient stock for ${product.name}. Available: ${availableStock}, Required: ${quantity}`);
+          continue;
+        }
+
+        // Check if part already exists in job
+        const existingPart = job.parts.find(p => p.product && p.product.toString() === productId);
+        
+        if (existingPart) {
+          // Update existing part quantity and price
+          const newQuantity = (existingPart.quantityRequired || 0) + quantity;
+          existingPart.quantityRequired = newQuantity;
+          // Update unitPrice in case it changed
+          existingPart.unitPrice = product.pricing?.salePrice || product.pricing?.costPrice || product.pricing?.cost || existingPart.unitPrice || 0;
+        } else {
+          // Add new part
+          if (!job.parts) {
+            job.parts = [];
+          }
+          job.parts.push({
+            product: product._id,
+            productName: product.name,
+            productSku: product.sku,
+            quantityRequired: quantity,
+            quantityUsed: 0,
+            quantityReturned: 0,
+            unitPrice: product.pricing?.salePrice || product.pricing?.costPrice || product.pricing?.cost || 0,
+            status: 'reserved',
+            reservedAt: new Date(),
+            reservedBy: req.user._id
+          });
+        }
+
+        // Note: Inventory will be updated only on job completion
+        assignedResources.parts.push({ productId, name: product.name, quantity });
+      } catch (error) {
+        errors.push(`Failed to assign part ${productId}: ${error.message}`);
+      }
+    }
+
+    // Update job status and progress if resources were assigned
+    if (assignedResources.technicians.length > 0 || assignedResources.tools.length > 0 || 
+        assignedResources.machines.length > 0 || assignedResources.parts.length > 0) {
+      
+      if (job.status === 'scheduled') {
+        job.status = 'in_progress';
+        job.progress = 30;
+        job.progressHistory.push({
+          progress: 30,
+          status: 'in_progress',
+          step: 'resource_assignment',
+          message: 'Resources assigned - work started',
+          updatedBy: req.user._id,
+          updatedAt: new Date()
+        });
+      }
+      
+      job.lastUpdatedBy = req.user._id;
+      await job.save();
+    }
+
+    const updatedJob = await WorkshopJob.findById(job._id)
+      .populate('customer', 'firstName lastName email phone')
+      .populate('createdBy', 'firstName lastName')
+      .populate('resources.assignedTechnicians.user', 'firstName lastName email')
+      .populate('parts.product', 'name sku pricing inventory');
+
+    res.json({
+      success: true,
+      message: `Successfully assigned resources: ${assignedResources.technicians.length} technicians, ${assignedResources.tools.length} tools, ${assignedResources.machines.length} machines, ${assignedResources.parts.length} parts`,
+      data: {
+        assignedResources,
+        errors: errors.length > 0 ? errors : undefined,
+        job: updatedJob
+      }
+    });
+  } catch (error) {
+    console.error('Assign resources error:', error);
     res.status(500).json({
       success: false,
       message: error.message || 'Server error'
@@ -1093,7 +1758,6 @@ const getAvailableResources = async (req, res) => {
 const getJobStats = async (req, res) => {
   try {
     const totalJobs = await WorkshopJob.countDocuments({ isActive: true });
-    const draftJobs = await WorkshopJob.countDocuments({ status: 'draft', isActive: true });
     const scheduledJobs = await WorkshopJob.countDocuments({ status: 'scheduled', isActive: true });
     const inProgressJobs = await WorkshopJob.countDocuments({ status: 'in_progress', isActive: true });
     const completedJobs = await WorkshopJob.countDocuments({ status: 'completed', isActive: true });
@@ -1123,7 +1787,6 @@ const getJobStats = async (req, res) => {
       data: {
         total: totalJobs,
         byStatus: {
-          draft: draftJobs,
           scheduled: scheduledJobs,
           in_progress: inProgressJobs,
           completed: completedJobs
@@ -1686,12 +2349,7 @@ const updateJobTask = async (req, res) => {
               totalCost: product.pricing.costPrice * quantity
             });
             
-            // Reserve inventory
-            if (product.inventory.currentStock >= quantity) {
-              product.inventory.currentStock -= quantity;
-              product.inventory.reservedStock = (product.inventory.reservedStock || 0) + quantity;
-              await product.save();
-            }
+            // Note: Inventory will be updated only on job completion
           }
         }
       }
@@ -1700,13 +2358,7 @@ const updateJobTask = async (req, res) => {
       for (const partId of removed) {
         const partToRemove = job.parts.find(p => p._id && p._id.toString() === partId);
         if (partToRemove) {
-          // Release reserved inventory
-          const product = await Product.findById(partToRemove.product);
-          if (product) {
-            product.inventory.currentStock += partToRemove.quantityRequired;
-            product.inventory.reservedStock = Math.max(0, (product.inventory.reservedStock || 0) - partToRemove.quantityRequired);
-            await product.save();
-          }
+          // Note: Inventory will be managed only on job completion
           
           // Remove part from job
           job.parts = job.parts.filter(p => p._id && p._id.toString() !== partId);
@@ -1891,12 +2543,7 @@ const updateJobResources = async (req, res) => {
             });
           }
           
-          // Reserve inventory (reduce available stock)
-          if (product.inventory.currentStock >= partData.quantity) {
-            product.inventory.currentStock -= partData.quantity;
-            product.inventory.reservedStock = (product.inventory.reservedStock || 0) + partData.quantity;
-            await product.save();
-          }
+          // Note: Inventory will be updated only on job completion
         }
       }
       
@@ -1904,13 +2551,7 @@ const updateJobResources = async (req, res) => {
       for (const partId of removed) {
         const partToRemove = job.parts.find(p => p._id && p._id.toString() === partId);
         if (partToRemove) {
-          // Release reserved inventory
-          const product = await Product.findById(partToRemove.product);
-          if (product) {
-            product.inventory.currentStock += partToRemove.quantityRequired;
-            product.inventory.reservedStock = Math.max(0, (product.inventory.reservedStock || 0) - partToRemove.quantityRequired);
-            await product.save();
-          }
+          // Note: Inventory will be managed only on job completion
           
           // Remove part from job
           job.parts = job.parts.filter(p => p._id && p._id.toString() !== partId);
@@ -1926,7 +2567,7 @@ const updateJobResources = async (req, res) => {
     if (parts && parts.added && parts.added.length > 0) resourcesAdded = true;
 
     // Update job status and progress when resources are assigned
-    if (resourcesAdded && (job.status === 'draft' || job.status === 'scheduled')) {
+    if (resourcesAdded && job.status === 'scheduled') {
       job.status = 'in_progress';
       job.progress = 20;
       job.progressHistory.push({
@@ -2128,6 +2769,7 @@ module.exports = {
   updateJobProgress,
   completeJob,
   cancelJob,
+  deleteJob,
   assignTechnician,
   removeTechnician,
   addTask,
@@ -2136,6 +2778,7 @@ module.exports = {
   releaseMachine,
   bookWorkStation,
   assignTool,
+  assignResources,
   checkPartsAvailability,
   reserveParts,
   getAvailableResources,

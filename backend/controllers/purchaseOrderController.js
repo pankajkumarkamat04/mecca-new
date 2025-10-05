@@ -156,6 +156,16 @@ const createPurchaseOrder = async (req, res) => {
       item.name = product.name;
       item.sku = product.sku;
       item.description = product.description;
+
+    // Ensure required computed fields are present for validation
+    const parsedQuantity = Number(item.quantity) || 0;
+    const parsedUnitCost = Number(item.unitCost) || 0;
+    item.quantity = parsedQuantity;
+    item.unitCost = parsedUnitCost;
+    item.totalCost = parsedQuantity * parsedUnitCost;
+    if (item.receivedQuantity == null) item.receivedQuantity = 0;
+    // pendingQuantity will be recalculated in pre-save, but set a safe initial value
+    item.pendingQuantity = Math.max(0, parsedQuantity - (item.receivedQuantity || 0));
     }
 
     const purchaseOrder = new PurchaseOrder(orderData);

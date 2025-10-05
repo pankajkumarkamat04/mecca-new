@@ -44,7 +44,6 @@ const CustomerWorkshopPage: React.FC = () => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'draft': return 'gray';
       case 'scheduled': return 'blue';
       case 'in_progress': return 'orange';
       case 'on_hold': return 'yellow';
@@ -159,11 +158,9 @@ const CustomerWorkshopPage: React.FC = () => {
                     )}
 
                     {/* Job Card Number */}
-                    {job.jobCard?.cardNumber && (
                       <div className="text-sm text-gray-600 mb-3">
-                        <strong>Job Card:</strong> {job.jobCard.cardNumber}
+                      <strong>Job Card:</strong> {job.jobCard?.cardNumber || 'N/A'}
                       </div>
-                    )}
                   </div>
 
                   <div className="ml-4 flex gap-2">
@@ -238,7 +235,6 @@ const JobDetailsView: React.FC<{
 }> = ({ job, onClose }) => {
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'draft': return 'gray';
       case 'scheduled': return 'blue';
       case 'in_progress': return 'orange';
       case 'on_hold': return 'yellow';
@@ -284,12 +280,10 @@ const JobDetailsView: React.FC<{
                 <span className="text-sm text-gray-900">{formatDate(job.deadline)}</span>
               </div>
             )}
-            {job.jobCard?.cardNumber && (
               <div className="flex justify-between">
                 <span className="text-sm text-gray-600">Job Card:</span>
-                <span className="text-sm text-gray-900">{job.jobCard.cardNumber}</span>
+              <span className="text-sm text-gray-900">{job.jobCard?.cardNumber || 'N/A'}</span>
               </div>
-            )}
           </div>
         </div>
 
@@ -682,7 +676,6 @@ const CustomerWorkflowSteps: React.FC<{ job: any }> = ({ job }) => {
 
   const statusToStepIndex = () => {
     switch (job?.status) {
-      case 'draft': return 0;
       case 'scheduled': return hasPreparation ? 2 : 1;
       case 'in_progress': return 3;
       case 'completed': return isFollowUpDone ? 6 : 5;

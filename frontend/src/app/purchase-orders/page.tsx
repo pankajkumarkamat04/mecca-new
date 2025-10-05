@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import toast from 'react-hot-toast';
 import Layout from '@/components/layout/Layout';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { purchaseOrderAPI } from '@/lib/api';
+import { purchaseOrderAPI, warehouseAPI } from '@/lib/api';
 import { calculatePrice } from '@/lib/priceCalculator';
 import PriceSummary from '@/components/ui/PriceSummary';
 import Button from '@/components/ui/Button';
@@ -12,6 +12,8 @@ import DataTable from '@/components/ui/DataTable';
 import Modal from '@/components/ui/Modal';
 import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
+import SupplierSelector from '@/components/ui/SupplierSelector';
+import ProductSelector from '@/components/ui/ProductSelector';
 import {
   PlusIcon,
   EyeIcon,
@@ -116,12 +118,12 @@ const PurchaseOrdersPage: React.FC = () => {
 
   const orders = ordersData?.data?.data || [];
   const pagination = ordersData?.data?.pagination || {};
-  const stats = statsData?.data;
+  const stats = statsData?.data?.data;
 
   const getStatusColor = (status: string) => {
     const colors = {
       draft: 'bg-gray-100 text-gray-800',
-      sent: 'bg-blue-100 text-blue-800',
+      sent: 'bg-red-100 text-red-800',
       confirmed: 'bg-green-100 text-green-800',
       partial: 'bg-yellow-100 text-yellow-800',
       received: 'bg-green-100 text-green-800',
@@ -134,7 +136,7 @@ const PurchaseOrdersPage: React.FC = () => {
   const getPriorityColor = (priority: string) => {
     const colors = {
       low: 'bg-gray-100 text-gray-800',
-      normal: 'bg-blue-100 text-blue-800',
+      normal: 'bg-red-100 text-red-800',
       high: 'bg-orange-100 text-orange-800',
       urgent: 'bg-red-100 text-red-800',
     };
@@ -158,9 +160,9 @@ const PurchaseOrdersPage: React.FC = () => {
     {
       key: 'orderDate',
       label: 'Order Date',
-      render: (value: string) => (
+      render: (row: PurchaseOrder) => (
         <div className="text-sm text-gray-900">
-          {new Date(value).toLocaleDateString()}
+          {new Date(row.orderDate).toLocaleDateString()}
         </div>
       ),
     },
@@ -197,27 +199,13 @@ const PurchaseOrdersPage: React.FC = () => {
     {
       key: 'totalAmount',
       label: 'Total Amount',
-      render: (value: number) => (
+      render: (row: PurchaseOrder) => (
         <div className="text-sm font-medium text-gray-900">
-          ${value.toLocaleString()}
+          ${row.totalAmount.toLocaleString()}
         </div>
       ),
     },
-    {
-      key: 'completionPercentage',
-      label: 'Progress',
-      render: (value: number) => (
-        <div className="flex items-center">
-          <div className="flex-1 bg-gray-200 rounded-full h-2 mr-2">
-            <div
-              className="bg-blue-600 h-2 rounded-full"
-              style={{ width: `${value}%` }}
-            />
-          </div>
-          <span className="text-sm text-gray-600">{value}%</span>
-        </div>
-      ),
-    },
+    
     {
       key: 'actions',
       label: 'Actions',
@@ -228,7 +216,7 @@ const PurchaseOrdersPage: React.FC = () => {
               setSelectedOrder(row);
               setShowViewModal(true);
             }}
-            className="text-blue-600 hover:text-blue-800"
+            className="text-red-600 hover:text-red-800"
             title="View Details"
           >
             <EyeIcon className="h-4 w-4" />
@@ -252,7 +240,7 @@ const PurchaseOrdersPage: React.FC = () => {
                   sendOrderMutation.mutate(row._id);
                 }
               }}
-              className="text-blue-600 hover:text-blue-800"
+              className="text-red-600 hover:text-red-800"
               title="Send to Supplier"
             >
               <PaperAirplaneIcon className="h-4 w-4" />
@@ -334,7 +322,7 @@ const PurchaseOrdersPage: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           <div className="bg-white p-6 rounded-lg shadow">
             <div className="flex items-center">
-              <ShoppingCartIcon className="h-8 w-8 text-blue-600" />
+              <ShoppingCartIcon className="h-8 w-8 text-red-600" />
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-500">Total Orders</p>
                 <p className="text-2xl font-bold text-gray-900">{stats.totalOrders}</p>
@@ -348,7 +336,9 @@ const PurchaseOrdersPage: React.FC = () => {
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-500">Pending Orders</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.pendingValue}</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {(stats.draftOrders || 0) + (stats.sentOrders || 0) + (stats.confirmedOrders || 0) + (stats.partialOrders || 0)}
+                </p>
               </div>
             </div>
           </div>
@@ -426,6 +416,7 @@ const PurchaseOrdersPage: React.FC = () => {
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
         title="Create Purchase Order"
+        size="xl"
       >
         <CreatePurchaseOrderForm
           onSuccess={() => {
@@ -496,14 +487,14 @@ const CreatePurchaseOrderForm: React.FC<{
   onCancel: () => void;
 }> = ({ onSuccess, onCancel }) => {
   const [formData, setFormData] = useState({
-    supplier: '',
+    supplier: null as any,
     warehouse: '',
     expectedDeliveryDate: '',
     priority: 'normal',
     paymentTerms: 'net_30',
     shippingMethod: 'standard',
     notes: '',
-    items: [{ product: '', quantity: '', unitCost: '' }],
+    items: [{ product: null as any, quantity: '', unitCost: '' }],
   });
 
   const createOrderMutation = useMutation({
@@ -514,15 +505,55 @@ const CreatePurchaseOrderForm: React.FC<{
     },
   });
 
+  // Warehouses for selection
+  const { data: warehousesList } = useQuery({
+    queryKey: ['warehouses-list'],
+    queryFn: () => warehouseAPI.getWarehouses({ limit: 100 })
+  });
+  const warehouseOptions = (warehousesList?.data?.data || []).map((w: any) => ({ value: w._id, label: w.code ? `${w.name} (${w.code})` : w.name }));
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    createOrderMutation.mutate(formData);
+    if (!formData.supplier) {
+      toast.error('Please select a supplier');
+      return;
+    }
+    if (!formData.warehouse) {
+      toast.error('Please select a warehouse');
+      return;
+    }
+    
+    // Validate items
+    const validItems = formData.items.filter(item => 
+      item.product && item.quantity && item.unitCost
+    );
+    
+    if (validItems.length === 0) {
+      toast.error('Please add at least one item with product, quantity, and unit cost');
+      return;
+    }
+    
+    const submitData = {
+      ...formData,
+      supplier: formData.supplier._id,
+      supplierName: formData.supplier.name,
+      items: validItems.map(item => ({
+        product: item.product._id,
+        name: item.product.name,
+        sku: item.product.sku,
+        description: item.product.description,
+        quantity: parseInt(item.quantity),
+        unitCost: parseFloat(item.unitCost),
+        totalCost: parseInt(item.quantity) * parseFloat(item.unitCost)
+      }))
+    };
+    createOrderMutation.mutate(submitData);
   };
 
   const addItem = () => {
     setFormData({
       ...formData,
-      items: [...formData.items, { product: '', quantity: '', unitCost: '' }]
+      items: [...formData.items, { product: null, quantity: '', unitCost: '' }]
     });
   };
 
@@ -535,16 +566,28 @@ const CreatePurchaseOrderForm: React.FC<{
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Supplier *
           </label>
-          <Input
-            value={formData.supplier}
-            onChange={(e) => setFormData({ ...formData, supplier: e.target.value })}
+          <SupplierSelector
+            selectedSupplier={formData.supplier}
+            onSupplierSelect={(supplier) => setFormData({ ...formData, supplier })}
             placeholder="Select supplier..."
-            required
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Warehouse *
+          </label>
+          <Select
+            value={formData.warehouse}
+            onChange={(e) => setFormData({ ...formData, warehouse: e.target.value })}
+            options={[
+              { value: '', label: 'Select warehouse', disabled: true },
+              ...warehouseOptions
+            ]}
           />
         </div>
         <div>
@@ -609,6 +652,94 @@ const CreatePurchaseOrderForm: React.FC<{
         </div>
       </div>
 
+      {/* Items Section */}
+      <div>
+        <div className="flex justify-between items-center mb-4">
+          <label className="block text-sm font-medium text-gray-700">
+            Items *
+          </label>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={addItem}
+          >
+            Add Item
+          </Button>
+        </div>
+        <div className="space-y-3">
+          {formData.items.map((item, index) => (
+            <div key={index} className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 border border-gray-200 rounded-lg">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Product *
+                </label>
+                <ProductSelector
+                  selectedProduct={item.product}
+                  onProductSelect={(product) => {
+                    const newItems = [...formData.items];
+                    newItems[index].product = product;
+                    // Auto-fill unit cost if product has cost price
+                    if (product && product.pricing?.costPrice && !newItems[index].unitCost) {
+                      newItems[index].unitCost = product.pricing.costPrice.toString();
+                    }
+                    setFormData({ ...formData, items: newItems });
+                  }}
+                  placeholder="Select product..."
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Quantity *
+                </label>
+                <Input
+                  type="number"
+                  step="1"
+                  min="0"
+                  value={item.quantity}
+                  onChange={(e) => {
+                    const newItems = [...formData.items];
+                    newItems[index].quantity = e.target.value;
+                    setFormData({ ...formData, items: newItems });
+                  }}
+                  placeholder="Quantity"
+                  fullWidth
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Unit Cost *
+                </label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={item.unitCost}
+                  onChange={(e) => {
+                    const newItems = [...formData.items];
+                    newItems[index].unitCost = e.target.value;
+                    setFormData({ ...formData, items: newItems });
+                  }}
+                  placeholder="Unit cost"
+                  fullWidth
+                />
+              </div>
+              <div className="flex items-end">
+                <Button
+                  type="button"
+                  variant="danger"
+                  size="sm"
+                  onClick={() => removeItem(index)}
+                  disabled={formData.items.length === 1}
+                >
+                  Remove
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
           Notes
@@ -616,7 +747,7 @@ const CreatePurchaseOrderForm: React.FC<{
         <textarea
           value={formData.notes}
           onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
           rows={3}
         />
       </div>
@@ -805,7 +936,7 @@ const EditPurchaseOrderForm: React.FC<{
         <textarea
           value={formData.notes}
           onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
           rows={3}
         />
       </div>
@@ -830,16 +961,10 @@ const ReceiveItemsForm: React.FC<{
 }> = ({ order, onSuccess, onCancel }) => {
   const queryClient = useQueryClient();
   const [receivedItems, setReceivedItems] = useState<Record<string, number>>({});
+  const [notes, setNotes] = useState('');
 
   const receiveItemsMutation = useMutation({
-    mutationFn: (data: any) => {
-      // This would call a purchase order receiving API
-      return new Promise((resolve) => {
-        setTimeout(() => {
-          resolve({ success: true });
-        }, 1000);
-      });
-    },
+    mutationFn: (data: any) => purchaseOrderAPI.receivePurchaseOrder(order._id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['purchase-orders'] });
       toast.success('Items received successfully');
@@ -858,22 +983,28 @@ const ReceiveItemsForm: React.FC<{
   };
 
   const handleReceiveItems = () => {
-    const itemsToReceive = (order as any).items.map((item: any) => ({
-      itemId: item.product._id,
-      orderedQuantity: item.quantity,
-      receivedQuantity: receivedItems[item.product._id] || 0
-    }));
+    const itemsToReceive = (order as any).items
+      .filter((item: any) => (receivedItems[item._id] || 0) > 0)
+      .map((item: any) => ({
+        itemId: item._id,
+        quantity: receivedItems[item._id] || 0
+      }));
+
+    if (itemsToReceive.length === 0) {
+      toast.error('Please enter quantities for at least one item');
+      return;
+    }
 
     receiveItemsMutation.mutate({
-      orderId: order._id,
-      items: itemsToReceive
+      receivedItems: itemsToReceive,
+      notes: notes || 'Items received via purchase order'
     });
   };
 
   return (
     <div className="space-y-6">
-      <div className="bg-blue-50 p-4 rounded-lg">
-        <h3 className="font-medium text-blue-900 mb-2">Receiving Items for {order.orderNumber}</h3>
+      <div className="bg-red-50 p-4 rounded-lg">
+        <h3 className="font-medium text-red-900 mb-2">Receiving Items for {order.orderNumber}</h3>
         <p className="text-sm text-blue-800">
           Supplier: {order.supplier.name} | Order Date: {new Date(order.orderDate).toLocaleDateString()}
         </p>
@@ -882,14 +1013,12 @@ const ReceiveItemsForm: React.FC<{
       <div className="space-y-4">
         <h4 className="font-medium text-gray-900">Items to Receive</h4>
         {(order as any).items.map((item: any) => (
-          <div key={item.product._id} className="border rounded-lg p-4">
+          <div key={item._id} className="border rounded-lg p-4">
             <div className="flex justify-between items-start">
               <div className="flex-1">
-                <h5 className="font-medium text-gray-900">{item.product.name}</h5>
-                <p className="text-sm text-gray-600">SKU: {item.product.sku}</p>
-                <p className="text-sm text-gray-600">
-                  Ordered: {item.quantity} {item.product.unit}
-                </p>
+                <h5 className="font-medium text-gray-900">{item.product?.name || item.name}</h5>
+                <p className="text-sm text-gray-600">SKU: {item.product?.sku || item.sku}</p>
+                <p className="text-sm text-gray-600">Ordered: {item.quantity}</p>
               </div>
               <div className="ml-4">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -899,8 +1028,8 @@ const ReceiveItemsForm: React.FC<{
                   type="number"
                   min="0"
                   max={item.quantity}
-                  value={receivedItems[item.product._id] || 0}
-                  onChange={(e) => handleQuantityChange(item.product._id, parseInt(e.target.value) || 0)}
+                  value={receivedItems[item._id] || 0}
+                  onChange={(e) => handleQuantityChange(item._id, parseInt(e.target.value) || 0)}
                   className="w-24"
                 />
                 <p className="text-xs text-gray-500 mt-1">
@@ -910,6 +1039,19 @@ const ReceiveItemsForm: React.FC<{
             </div>
           </div>
         ))}
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Notes (Optional)
+        </label>
+        <textarea
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          rows={3}
+          placeholder="Add any notes about the received items..."
+        />
       </div>
 
       <div className="flex justify-end space-x-3 pt-4">

@@ -15,6 +15,8 @@ import { StockMovement, Product } from '@/types';
 import toast from 'react-hot-toast';
 import { z } from 'zod';
 import { Form, FormActions, FormField, FormSection } from '@/components/ui/Form';
+import ProductSelector from '@/components/ui/ProductSelector';
+import FormProductSelector from '@/components/ui/FormProductSelector';
 import {
   PlusIcon,
   ArrowUpIcon,
@@ -29,6 +31,15 @@ import {
   ShoppingCartIcon,
   CheckCircleIcon,
   ClockIcon,
+  MagnifyingGlassIcon,
+  FunnelIcon,
+  EyeIcon,
+  PencilIcon,
+  TrashIcon,
+  CheckIcon,
+  XMarkIcon,
+  ArrowRightIcon,
+  ArrowLeftIcon,
 } from '@heroicons/react/24/outline';
 
 // Stock Taking Modal Component
@@ -36,7 +47,7 @@ const StockTakingModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const [warehouseId, setWarehouseId] = useState('');
   const [stockItems, setStockItems] = useState<Array<{ productId: string; actualQuantity: number }>>([]);
   const [notes, setNotes] = useState('');
-  const [selectedProduct, setSelectedProduct] = useState('');
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [actualQuantity, setActualQuantity] = useState(0);
 
   const queryClient = useQueryClient();
@@ -65,13 +76,12 @@ const StockTakingModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     }
   });
 
-  const productOptions = (productsList?.data?.data || []).map((p: any) => ({ value: p._id, label: `${p.name} (${p.sku})` }));
   const warehouseOptions = (warehousesList?.data?.data || []).map((w: any) => ({ value: w._id, label: w.name }));
 
   const addStockItem = () => {
     if (selectedProduct && actualQuantity >= 0) {
-      setStockItems([...stockItems, { productId: selectedProduct, actualQuantity }]);
-      setSelectedProduct('');
+      setStockItems([...stockItems, { productId: selectedProduct._id, actualQuantity }]);
+      setSelectedProduct(null);
       setActualQuantity(0);
     }
   };
@@ -127,15 +137,15 @@ const StockTakingModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
       <div className="border rounded-lg p-4">
         <h3 className="text-lg font-medium mb-4">Add Stock Items</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-          <Select
-            options={[{ value: '', label: 'Select product', disabled: true }, ...productOptions]}
-            value={selectedProduct}
-            onChange={(e) => setSelectedProduct(e.target.value)}
-            fullWidth
+          <ProductSelector
+            selectedProduct={selectedProduct}
+            onProductSelect={(product) => setSelectedProduct(product)}
+            placeholder="Select product..."
           />
           <Input
             type="number"
-            step="0.01"
+            step="1"
+            min="0"
             value={actualQuantity}
             onChange={(e) => setActualQuantity(Number(e.target.value))}
             placeholder="Actual quantity"
@@ -193,7 +203,7 @@ const ReceivingModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   }>>([]);
   const [purchaseOrderId, setPurchaseOrderId] = useState('');
   const [notes, setNotes] = useState('');
-  const [selectedProduct, setSelectedProduct] = useState('');
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [quantity, setQuantity] = useState(0);
   const [unitCost, setUnitCost] = useState(0);
   const [batchNumber, setBatchNumber] = useState('');
@@ -225,19 +235,18 @@ const ReceivingModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     }
   });
 
-  const productOptions = (productsList?.data?.data || []).map((p: any) => ({ value: p._id, label: `${p.name} (${p.sku})` }));
   const warehouseOptions = (warehousesList?.data?.data || []).map((w: any) => ({ value: w._id, label: w.name }));
 
   const addReceivedItem = () => {
     if (selectedProduct && quantity > 0) {
       setReceivedItems([...receivedItems, { 
-        productId: selectedProduct, 
+        productId: selectedProduct._id, 
         quantity, 
         unitCost,
         batchNumber: batchNumber || undefined,
         location: location || undefined
       }]);
-      setSelectedProduct('');
+      setSelectedProduct(null);
       setQuantity(0);
       setUnitCost(0);
       setBatchNumber('');
@@ -298,15 +307,21 @@ const ReceivingModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
       <div className="border rounded-lg p-4">
         <h3 className="text-lg font-medium mb-4">Add Received Items</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-          <Select
-            options={[{ value: '', label: 'Select product', disabled: true }, ...productOptions]}
-            value={selectedProduct}
-            onChange={(e) => setSelectedProduct(e.target.value)}
-            fullWidth
+          <ProductSelector
+            selectedProduct={selectedProduct}
+            onProductSelect={(product) => {
+              setSelectedProduct(product);
+              // Auto-fill unit cost if product has cost price
+              if (product && product.pricing?.costPrice && unitCost === 0) {
+                setUnitCost(product.pricing.costPrice);
+              }
+            }}
+            placeholder="Select product..."
           />
           <Input
             type="number"
-            step="0.01"
+            step="1"
+            min="0"
             value={quantity}
             onChange={(e) => setQuantity(Number(e.target.value))}
             placeholder="Quantity received"
@@ -315,6 +330,7 @@ const ReceivingModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
           <Input
             type="number"
             step="0.01"
+            min="0"
             value={unitCost}
             onChange={(e) => setUnitCost(Number(e.target.value))}
             placeholder="Unit cost"
@@ -378,7 +394,7 @@ const PickingModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   }>>([]);
   const [orderReference, setOrderReference] = useState('');
   const [notes, setNotes] = useState('');
-  const [selectedProduct, setSelectedProduct] = useState('');
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [quantity, setQuantity] = useState(0);
 
   const queryClient = useQueryClient();
@@ -407,13 +423,12 @@ const PickingModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     }
   });
 
-  const productOptions = (productsList?.data?.data || []).map((p: any) => ({ value: p._id, label: `${p.name} (${p.sku})` }));
   const warehouseOptions = (warehousesList?.data?.data || []).map((w: any) => ({ value: w._id, label: w.name }));
 
   const addPickedItem = () => {
     if (selectedProduct && quantity > 0) {
-      setPickedItems([...pickedItems, { productId: selectedProduct, quantity }]);
-      setSelectedProduct('');
+      setPickedItems([...pickedItems, { productId: selectedProduct._id, quantity }]);
+      setSelectedProduct(null);
       setQuantity(0);
     }
   };
@@ -471,15 +486,15 @@ const PickingModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
       <div className="border rounded-lg p-4">
         <h3 className="text-lg font-medium mb-4">Add Picked Items</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-          <Select
-            options={[{ value: '', label: 'Select product', disabled: true }, ...productOptions]}
-            value={selectedProduct}
-            onChange={(e) => setSelectedProduct(e.target.value)}
-            fullWidth
+          <ProductSelector
+            selectedProduct={selectedProduct}
+            onProductSelect={(product) => setSelectedProduct(product)}
+            placeholder="Select product..."
           />
           <Input
             type="number"
-            step="0.01"
+            step="1"
+            min="0"
             value={quantity}
             onChange={(e) => setQuantity(Number(e.target.value))}
             placeholder="Quantity picked"
@@ -531,7 +546,7 @@ const MoveStockModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     quantity: number; 
   }>>([]);
   const [notes, setNotes] = useState('');
-  const [selectedProduct, setSelectedProduct] = useState('');
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [quantity, setQuantity] = useState(0);
 
   const queryClient = useQueryClient();
@@ -560,13 +575,12 @@ const MoveStockModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     }
   });
 
-  const productOptions = (productsList?.data?.data || []).map((p: any) => ({ value: p._id, label: `${p.name} (${p.sku})` }));
   const warehouseOptions = (warehousesList?.data?.data || []).map((w: any) => ({ value: w._id, label: w.name }));
 
   const addMoveItem = () => {
     if (selectedProduct && quantity > 0) {
-      setMoveItems([...moveItems, { productId: selectedProduct, quantity }]);
-      setSelectedProduct('');
+      setMoveItems([...moveItems, { productId: selectedProduct._id, quantity }]);
+      setSelectedProduct(null);
       setQuantity(0);
     }
   };
@@ -645,15 +659,15 @@ const MoveStockModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
       <div className="border rounded-lg p-4">
         <h3 className="text-lg font-medium mb-4">Add Items to Move</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-          <Select
-            options={[{ value: '', label: 'Select product', disabled: true }, ...productOptions]}
-            value={selectedProduct}
-            onChange={(e) => setSelectedProduct(e.target.value)}
-            fullWidth
+          <ProductSelector
+            selectedProduct={selectedProduct}
+            onProductSelect={(product) => setSelectedProduct(product)}
+            placeholder="Select product..."
           />
           <Input
             type="number"
-            step="0.01"
+            step="1"
+            min="0"
             value={quantity}
             onChange={(e) => setQuantity(Number(e.target.value))}
             placeholder="Quantity to move"
@@ -698,7 +712,7 @@ const MoveStockModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
 
 const InventoryPage: React.FC = () => {
   const { hasPermission } = useAuth();
-  const [activeTab, setActiveTab] = useState('levels');
+  const [activeTab, setActiveTab] = useState('overview');
   const [isMovementModalOpen, setIsMovementModalOpen] = useState(false);
   const [isAdjustmentModalOpen, setIsAdjustmentModalOpen] = useState(false);
   const [isStockTakingModalOpen, setIsStockTakingModalOpen] = useState(false);
@@ -708,74 +722,24 @@ const InventoryPage: React.FC = () => {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   
   // Stock Alerts state
-  const [selectedAlerts, setSelectedAlerts] = useState<string[]>([]);
   const [alertTypeFilter, setAlertTypeFilter] = useState('all');
   const [severityFilter, setSeverityFilter] = useState('all');
-  const [statusFilter, setStatusFilter] = useState('unresolved');
-  const [isViewAlertModalOpen, setIsViewAlertModalOpen] = useState(false);
-  const [isResolveAlertModalOpen, setIsResolveAlertModalOpen] = useState(false);
-  const [selectedAlert, setSelectedAlert] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(10);
   const [movementType, setMovementType] = useState('all');
+  const [isViewAlertModalOpen, setIsViewAlertModalOpen] = useState(false);
+  const [selectedAlert, setSelectedAlert] = useState<any>(null);
 
   const queryClient = useQueryClient();
 
-  // Stock Alert mutations
-  const markAsReadMutation = useMutation({
-    mutationFn: (id: string) => {
-      // For real-time alerts, we don't need to mark as read since they're dynamic
-      return Promise.resolve({ success: true });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['stock-alerts'] });
-      queryClient.invalidateQueries({ queryKey: ['stock-alert-stats'] });
-      toast.success('Alert marked as read');
-    },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to mark alert as read');
-    },
-  });
-
-  const resolveAlertMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: any }) => {
-      // For real-time alerts, we don't need to resolve since they're dynamic
-      return Promise.resolve({ success: true });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['stock-alerts'] });
-      queryClient.invalidateQueries({ queryKey: ['stock-alert-stats'] });
-      toast.success('Alert resolved successfully');
-      setIsResolveAlertModalOpen(false);
-    },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to resolve alert');
-    },
-  });
-
-  const bulkResolveMutation = useMutation({
-    mutationFn: (data: any) => {
-      // For real-time alerts, we don't need to bulk resolve since they're dynamic
-      return Promise.resolve({ success: true });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['stock-alerts'] });
-      queryClient.invalidateQueries({ queryKey: ['stock-alert-stats'] });
-      setSelectedAlerts([]);
-      toast.success('Alerts resolved successfully');
-    },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to resolve alerts');
-    },
-  });
 
   const checkLowStockMutation = useMutation({
     mutationFn: (data: any) => stockAlertAPI.checkLowStock(data),
     onSuccess: (response: any) => {
       queryClient.invalidateQueries({ queryKey: ['stock-alerts'] });
       queryClient.invalidateQueries({ queryKey: ['stock-alert-stats'] });
-      toast.success(`Stock check completed. ${response.data.alertsFound} alerts found.`);
+      toast.success(`Stock check completed. ${response.data.data.alertsFound} alerts found.`);
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.message || 'Failed to check low stock');
@@ -786,7 +750,7 @@ const InventoryPage: React.FC = () => {
   const { data: inventoryLevels, isPending: levelsLoading } = useQuery({
     queryKey: ['inventory-levels', searchTerm],
     queryFn: () => inventoryAPI.getInventoryLevels(),
-    enabled: activeTab === 'levels'
+    enabled: activeTab === 'levels' || activeTab === 'overview'
   });
 
   // Fetch stock movements
@@ -822,7 +786,6 @@ const InventoryPage: React.FC = () => {
       search: searchTerm, 
       alertType: alertTypeFilter === 'all' ? undefined : alertTypeFilter,
       severity: severityFilter === 'all' ? undefined : severityFilter,
-      isResolved: statusFilter === 'unresolved' ? false : statusFilter === 'resolved' ? true : undefined
     }],
     queryFn: () => stockAlertAPI.getStockAlerts({
       page: currentPage,
@@ -830,16 +793,17 @@ const InventoryPage: React.FC = () => {
       search: searchTerm,
       alertType: alertTypeFilter === 'all' ? undefined : alertTypeFilter,
       severity: severityFilter === 'all' ? undefined : severityFilter,
-      isResolved: statusFilter === 'unresolved' ? false : statusFilter === 'resolved' ? true : undefined
     }),
-    enabled: activeTab === 'alerts'
+    enabled: activeTab === 'alerts' || activeTab === 'overview',
+    refetchInterval: 30000, // Refetch every 30 seconds for real-time updates
   });
 
   // Stock Alert stats
-  const { data: alertStatsData } = useQuery({
+  const { data: alertStatsData, isLoading: alertStatsLoading, error: alertStatsError } = useQuery({
     queryKey: ['stock-alert-stats'],
     queryFn: () => stockAlertAPI.getStockAlertStats(),
-    enabled: activeTab === 'alerts'
+    enabled: activeTab === 'alerts' || activeTab === 'overview',
+    refetchInterval: 30000, // Refetch every 30 seconds for real-time updates
   });
 
   // Stock Taking data (fetch when tab is active)
@@ -962,7 +926,6 @@ const InventoryPage: React.FC = () => {
     staleTime: 60_000
   });
 
-  const productOptions = (productsList?.data?.data || []).map((p: any) => ({ value: p._id, label: `${p.name} (${p.sku})` }));
   const warehouseOptions = (warehousesList?.data?.data || []).map((w: any) => ({ value: w._id, label: w.name }));
   const movementTypeOptionsForForm = [
     { value: 'in', label: 'Stock In' },
@@ -1318,28 +1281,6 @@ const InventoryPage: React.FC = () => {
       ),
     },
     {
-      key: 'status',
-      label: 'Status',
-      render: (row: any) => (
-        <div className="flex items-center space-x-2">
-          {!row.isRead && (
-            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-              New
-            </span>
-          )}
-          {row.isResolved ? (
-            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-              Resolved
-            </span>
-          ) : (
-            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-              Open
-            </span>
-          )}
-        </div>
-      ),
-    },
-    {
       key: 'createdAt',
       label: 'Created',
       render: (row: any) => (
@@ -1363,40 +1304,16 @@ const InventoryPage: React.FC = () => {
           >
             View
           </Button>
-          {!row.isRead && (
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={() => markAsReadMutation.mutate(row._id)}
-            >
-              Mark Read
-            </Button>
-          )}
-          {!row.isResolved && (
-            <Button
-              size="sm"
-              variant="primary"
-              onClick={() => {
-                setSelectedAlert(row);
-                setIsResolveAlertModalOpen(true);
-              }}
-            >
-              Resolve
-            </Button>
-          )}
         </div>
       ),
     },
   ];
 
   const tabs = [
-    { id: 'levels', name: 'Inventory Levels', icon: CubeIcon },
+    { id: 'overview', name: 'Overview', icon: ChartBarIcon },
+    { id: 'levels', name: 'Stock Levels', icon: CubeIcon },
     { id: 'movements', name: 'Stock Movements', icon: ArrowPathIcon },
-    { id: 'alerts', name: 'Low Stock Alerts', icon: ExclamationTriangleIcon },
-    { id: 'warehouse', name: 'Warehouse Operations', icon: BuildingOfficeIcon },
-    { id: 'stock-taking', name: 'Stock Taking', icon: ClipboardDocumentListIcon },
-    { id: 'receiving', name: 'Receiving', icon: TruckIcon },
-    { id: 'picking', name: 'Picking', icon: ShoppingCartIcon },
+    { id: 'alerts', name: 'Alerts & Monitoring', icon: ExclamationTriangleIcon },
   ];
 
   return (
@@ -1407,60 +1324,6 @@ const InventoryPage: React.FC = () => {
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Inventory Management</h1>
             <p className="text-gray-600">Track stock levels, movements, and manage inventory</p>
-          </div>
-          <div className="flex space-x-3">
-            {hasPermission('inventory', 'update') && (
-              <Button
-                onClick={() => setIsAdjustmentModalOpen(true)}
-                leftIcon={<CubeIcon className="h-4 w-4" />}
-              >
-                Stock Adjustment
-              </Button>
-            )}
-            {hasPermission('inventory', 'create') && (
-              <Button
-                onClick={() => setIsMovementModalOpen(true)}
-                leftIcon={<PlusIcon className="h-4 w-4" />}
-              >
-                Record Movement
-              </Button>
-            )}
-            {hasPermission('inventory', 'update') && (
-              <Button
-                onClick={() => setIsStockTakingModalOpen(true)}
-                leftIcon={<ClipboardDocumentListIcon className="h-4 w-4" />}
-                variant="secondary"
-              >
-                Stock Taking
-              </Button>
-            )}
-            {hasPermission('inventory', 'create') && (
-              <Button
-                onClick={() => setIsReceivingModalOpen(true)}
-                leftIcon={<TruckIcon className="h-4 w-4" />}
-                variant="secondary"
-              >
-                Receiving
-              </Button>
-            )}
-            {hasPermission('inventory', 'update') && (
-              <Button
-                onClick={() => setIsPickingModalOpen(true)}
-                leftIcon={<ShoppingCartIcon className="h-4 w-4" />}
-                variant="secondary"
-              >
-                Picking
-              </Button>
-            )}
-            {hasPermission('inventory', 'update') && (
-              <Button
-                onClick={() => setIsMoveStockModalOpen(true)}
-                leftIcon={<ArrowPathIcon className="h-4 w-4" />}
-                variant="secondary"
-              >
-                Move Stock
-              </Button>
-            )}
           </div>
         </div>
 
@@ -1484,6 +1347,104 @@ const InventoryPage: React.FC = () => {
           </nav>
         </div>
 
+        {/* Overview Tab */}
+        {activeTab === 'overview' && (
+          <div className="space-y-6">
+            {/* Key Metrics Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {/* Total Products */}
+              <div className="bg-white p-6 rounded-lg shadow-sm border">
+                <div className="flex items-center">
+                  <CubeIcon className="h-8 w-8 text-blue-600" />
+                  <div className="ml-4">
+                    <p className="text-sm font-medium text-gray-500">Total Products</p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {inventoryLevels?.data?.data?.length || 0}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Low Stock Alerts */}
+              <div className="bg-white p-6 rounded-lg shadow-sm border">
+                <div className="flex items-center">
+                  <ExclamationTriangleIcon className="h-8 w-8 text-red-600" />
+                  <div className="ml-4">
+                    <p className="text-sm font-medium text-gray-500">Low Stock Alerts</p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {alertStatsData?.data?.data?.totalAlerts || 0}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Critical Alerts */}
+              <div className="bg-white p-6 rounded-lg shadow-sm border">
+                <div className="flex items-center">
+                  <ExclamationTriangleIcon className="h-8 w-8 text-red-500" />
+                  <div className="ml-4">
+                    <p className="text-sm font-medium text-gray-500">Critical Alerts</p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {alertStatsData?.data?.data?.criticalAlerts || 0}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Recent Movements */}
+              <div className="bg-white p-6 rounded-lg shadow-sm border">
+                <div className="flex items-center">
+                  <ArrowPathIcon className="h-8 w-8 text-green-600" />
+                  <div className="ml-4">
+                    <p className="text-sm font-medium text-gray-500">Recent Movements</p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {movementsData?.data?.length || 0}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+
+            {/* Recent Alerts */}
+            <div className="bg-white p-6 rounded-lg shadow-sm border">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">Recent Alerts</h3>
+                <Button
+                  onClick={() => setActiveTab('alerts')}
+                  variant="secondary"
+                  size="sm"
+                >
+                  View All
+                </Button>
+              </div>
+              <div className="space-y-3">
+                {alertsData?.data?.data?.slice(0, 5).map((alert: any, index: number) => (
+                  <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center">
+                      <ExclamationTriangleIcon className="h-5 w-5 text-red-500 mr-3" />
+                      <div>
+                        <p className="font-medium text-gray-900">{alert.productName}</p>
+                        <p className="text-sm text-gray-500">{alert.sku}</p>
+                        <p className="text-xs text-gray-400 mt-1">{alert.message}</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getSeverityColor(alert.severity)}`}>
+                        {alert.severity?.charAt(0).toUpperCase() + alert.severity?.slice(1)}
+                      </span>
+                      <p className="text-sm text-gray-500 mt-1">{alert.currentStock} units</p>
+                    </div>
+                  </div>
+                ))}
+                {(!alertsData?.data?.data || alertsData.data.data.length === 0) && (
+                  <p className="text-gray-500 text-center py-4">No recent alerts</p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Inventory Levels Tab */}
         {activeTab === 'levels' && (
           <div className="space-y-4">
@@ -1506,27 +1467,30 @@ const InventoryPage: React.FC = () => {
           </div>
         )}
 
+
         {/* Stock Movements Tab */}
         {activeTab === 'movements' && (
           <div className="space-y-4">
             <div className="flex justify-between items-center">
-              <div className="flex-1 mr-4">
+              <div className="flex-1">
                 <Input
                   placeholder="Search movements..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  fullWidth
+                  leftIcon={<MagnifyingGlassIcon className="h-4 w-4" />}
+                  className="max-w-md"
                 />
               </div>
-              <div className="w-48">
+              <div className="flex space-x-3">
                 <Select
                   options={movementTypeOptions}
                   value={movementType}
                   onChange={(e) => setMovementType(e.target.value)}
-                  fullWidth
+                  className="min-w-[150px]"
                 />
               </div>
             </div>
+
             <DataTable
               columns={movementsColumns}
               data={Array.isArray(movementsData?.data?.data) ? movementsData.data.data : []}
@@ -1549,7 +1513,7 @@ const InventoryPage: React.FC = () => {
                     <ExclamationTriangleIcon className="h-8 w-8 text-red-600" />
                     <div className="ml-4">
                       <p className="text-sm font-medium text-gray-500">Total Alerts</p>
-                      <p className="text-2xl font-bold text-gray-900">{alertStatsData?.data?.totalAlerts || 0}</p>
+                      <p className="text-2xl font-bold text-gray-900">{alertStatsData?.data?.data?.totalAlerts || 0}</p>
               </div>
                   </div>
                 </div>
@@ -1558,7 +1522,7 @@ const InventoryPage: React.FC = () => {
                     <ExclamationTriangleIcon className="h-8 w-8 text-orange-600" />
                     <div className="ml-4">
                       <p className="text-sm font-medium text-gray-500">Critical Alerts</p>
-                      <p className="text-2xl font-bold text-gray-900">{alertStatsData?.data?.criticalAlerts || 0}</p>
+                      <p className="text-2xl font-bold text-gray-900">{alertStatsData?.data?.data?.criticalAlerts || 0}</p>
                     </div>
                   </div>
                 </div>
@@ -1567,7 +1531,7 @@ const InventoryPage: React.FC = () => {
                     <CheckCircleIcon className="h-8 w-8 text-green-600" />
                     <div className="ml-4">
                       <p className="text-sm font-medium text-gray-500">Resolved Today</p>
-                      <p className="text-2xl font-bold text-gray-900">{alertStatsData?.data?.resolvedToday || 0}</p>
+                      <p className="text-2xl font-bold text-gray-900">{alertStatsData?.data?.data?.resolvedToday || 0}</p>
                     </div>
                   </div>
                 </div>
@@ -1576,7 +1540,7 @@ const InventoryPage: React.FC = () => {
                     <ClockIcon className="h-8 w-8 text-blue-600" />
                     <div className="ml-4">
                       <p className="text-sm font-medium text-gray-500">Avg Resolution Time</p>
-                      <p className="text-2xl font-bold text-gray-900">{alertStatsData?.data?.avgResolutionTime || 0}h</p>
+                      <p className="text-2xl font-bold text-gray-900">{alertStatsData?.data?.data?.avgResolutionTime || 0}h</p>
                     </div>
                   </div>
                 </div>
@@ -1626,33 +1590,8 @@ const InventoryPage: React.FC = () => {
                       fullWidth
                     />
                   </div>
-                  <div className="w-full sm:w-48">
-                    <Select
-                      options={[
-                        { value: 'unresolved', label: 'Unresolved' },
-                        { value: 'resolved', label: 'Resolved' },
-                        { value: 'all', label: 'All Status' },
-                      ]}
-                      value={statusFilter}
-                      onChange={(e) => setStatusFilter(e.target.value)}
-                      fullWidth
-                    />
-                  </div>
                 </div>
                 <div className="flex items-center space-x-2">
-                  {selectedAlerts.length > 0 && (
-                    <Button
-                      variant="secondary"
-                      onClick={() => {
-                        bulkResolveMutation.mutate({
-                          alertIds: selectedAlerts,
-                          resolutionNotes: 'Bulk resolved from inventory page'
-                        });
-                      }}
-                    >
-                      Resolve Selected ({selectedAlerts.length})
-                    </Button>
-                  )}
                   <Button
                     variant="primary"
                     onClick={() => {
@@ -1680,315 +1619,17 @@ const InventoryPage: React.FC = () => {
                 pagination={{
                   page: currentPage,
                   limit: pageSize,
-                  total: alertsData?.data?.total || 0,
-                  pages: alertsData?.data?.totalPages || 1,
+                  total: alertsData?.data?.pagination?.total || 0,
+                  pages: alertsData?.data?.pagination?.pages || 1,
                 }}
               />
             </div>
           </div>
         )}
 
-        {/* Warehouse Operations Tab */}
-        {activeTab === 'warehouse' && (
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="bg-white p-6 rounded-lg shadow">
-                <div className="flex items-center">
-                  <BuildingOfficeIcon className="h-8 w-8 text-blue-600" />
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-500">Total Warehouses</p>
-                    <p className="text-2xl font-bold text-gray-900">
-                      {warehouseDashboard?.data?.warehouseStats?.totalWarehouses || 0}
-                    </p>
-                  </div>
-                </div>
-              </div>
-              <div className="bg-white p-6 rounded-lg shadow">
-                <div className="flex items-center">
-                  <ExclamationTriangleIcon className="h-8 w-8 text-red-600" />
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-500">Low Stock Alerts</p>
-                    <p className="text-2xl font-bold text-gray-900">
-                      {warehouseDashboard?.data?.lowStockAlerts || 0}
-                    </p>
-                  </div>
-                </div>
-              </div>
-              <div className="bg-white p-6 rounded-lg shadow">
-                <div className="flex items-center">
-                  <ShoppingCartIcon className="h-8 w-8 text-green-600" />
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-500">Pending Orders</p>
-                    <p className="text-2xl font-bold text-gray-900">
-                      {warehouseDashboard?.data?.pendingOrders || 0}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <div className="bg-white rounded-lg shadow">
-              <div className="px-6 py-4 border-b border-gray-200">
-                <h3 className="text-lg font-medium text-gray-900">Recent Warehouse Movements</h3>
-              </div>
-              <div className="p-6">
-                {warehouseDashboard?.data?.recentMovements?.length > 0 ? (
-                  <div className="space-y-3">
-                    {warehouseDashboard?.data?.recentMovements?.map((movement: any, index: number) => (
-                      <div key={index} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-b-0">
-                        <div className="flex items-center">
-                          <div className={`w-2 h-2 rounded-full mr-3 ${
-                            movement.movementType === 'in' ? 'bg-green-500' :
-                            movement.movementType === 'out' ? 'bg-red-500' :
-                            'bg-blue-500'
-                          }`} />
-                          <div>
-                            <p className="text-sm font-medium text-gray-900">
-                              {movement.product?.name || 'Unknown Product'}
-                            </p>
-                            <p className="text-xs text-gray-500">
-                              {movement.movementType} - {movement.quantity} units
-                            </p>
-                          </div>
-                        </div>
-                        <div className="text-sm text-gray-500">
-                          {new Date(movement.createdAt).toLocaleDateString()}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-gray-500 text-center py-4">No recent movements</p>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
 
-        {/* Stock Taking Tab */}
-        {activeTab === 'stock-taking' && (
-          <div className="space-y-4">
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <div className="flex items-center">
-                <ClipboardDocumentListIcon className="h-5 w-5 text-blue-600 mr-2" />
-                <h3 className="text-sm font-medium text-blue-800">
-                  Stock Taking / Cycle Count
-                </h3>
-              </div>
-              <p className="mt-1 text-sm text-blue-700">
-                Perform physical inventory counts and adjust stock levels accordingly.
-              </p>
-            </div>
-            
-            <div className="bg-white rounded-lg shadow p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-medium text-gray-900">Start Stock Taking</h3>
-                <Button
-                  onClick={() => setIsStockTakingModalOpen(true)}
-                  leftIcon={<ClipboardDocumentListIcon className="h-4 w-4" />}
-                  variant="primary"
-                >
-                  New Stock Taking
-                </Button>
-              </div>
-              
-              {/* Stock Taking Statistics */}
-              {stockTakingData && (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                  <div className="bg-blue-50 p-4 rounded-lg">
-                    <div className="flex items-center">
-                      <CubeIcon className="h-6 w-6 text-blue-600 mr-2" />
-                      <div>
-                        <p className="text-sm font-medium text-blue-800">Total Products</p>
-                        <p className="text-lg font-bold text-blue-900">
-                          {stockTakingData?.data?.productStats?.totalProducts || 0}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="bg-green-50 p-4 rounded-lg">
-                    <div className="flex items-center">
-                      <CheckCircleIcon className="h-6 w-6 text-green-600 mr-2" />
-                      <div>
-                        <p className="text-sm font-medium text-green-800">In Stock</p>
-                        <p className="text-lg font-bold text-green-900">
-                          {stockTakingData?.data?.productStats?.inStockProducts || 0}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="bg-orange-50 p-4 rounded-lg">
-                    <div className="flex items-center">
-                      <ExclamationTriangleIcon className="h-6 w-6 text-orange-600 mr-2" />
-                      <div>
-                        <p className="text-sm font-medium text-orange-800">Low Stock</p>
-                        <p className="text-lg font-bold text-orange-900">
-                          {stockTakingData?.data?.productStats?.lowStockProducts || 0}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-              
-            <div className="text-center py-8">
-              <ClipboardDocumentListIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Stock Taking Operations</h3>
-                <p className="text-gray-500 mb-4">Click "New Stock Taking" to start a cycle count and adjust inventory levels.</p>
-              </div>
-            </div>
-          </div>
-        )}
 
-        {/* Receiving Tab */}
-        {activeTab === 'receiving' && (
-          <div className="space-y-4">
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-              <div className="flex items-center">
-                <TruckIcon className="h-5 w-5 text-green-600 mr-2" />
-                <h3 className="text-sm font-medium text-green-800">
-                  Goods Receiving
-                </h3>
-              </div>
-              <p className="mt-1 text-sm text-green-700">
-                Process incoming goods from suppliers and update inventory levels.
-              </p>
-            </div>
-            
-            <div className="bg-white rounded-lg shadow p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-medium text-gray-900">Process Receiving</h3>
-                <Button
-                  onClick={() => setIsReceivingModalOpen(true)}
-                  leftIcon={<TruckIcon className="h-4 w-4" />}
-                  variant="primary"
-                >
-                  New Receiving
-                </Button>
-              </div>
-              
-              {/* Receiving Statistics */}
-              {receivingData && (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                  <div className="bg-blue-50 p-4 rounded-lg">
-                    <div className="flex items-center">
-                      <BuildingOfficeIcon className="h-6 w-6 text-blue-600 mr-2" />
-                      <div>
-                        <p className="text-sm font-medium text-blue-800">Total Warehouses</p>
-                        <p className="text-lg font-bold text-blue-900">
-                          {receivingData?.data?.warehouseStats?.totalWarehouses || 0}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="bg-green-50 p-4 rounded-lg">
-                    <div className="flex items-center">
-                      <ArrowUpIcon className="h-6 w-6 text-green-600 mr-2" />
-                      <div>
-                        <p className="text-sm font-medium text-green-800">Recent Receipts</p>
-                        <p className="text-lg font-bold text-green-900">
-                          {receivingData?.data?.movementStats?.receiptsToday || 0}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="bg-purple-50 p-4 rounded-lg">
-                    <div className="flex items-center">
-                      <ClockIcon className="h-6 w-6 text-purple-600 mr-2" />
-                      <div>
-                        <p className="text-sm font-medium text-purple-800">Pending Receipts</p>
-                        <p className="text-lg font-bold text-purple-900">
-                          {receivingData?.data?.movementStats?.pendingReceipts || 0}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-              
-            <div className="text-center py-8">
-              <TruckIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Receiving Operations</h3>
-                <p className="text-gray-500 mb-4">Click "New Receiving" to process incoming goods and update inventory levels.</p>
-              </div>
-            </div>
-          </div>
-        )}
 
-        {/* Picking Tab */}
-        {activeTab === 'picking' && (
-          <div className="space-y-4">
-            <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-              <div className="flex items-center">
-                <ShoppingCartIcon className="h-5 w-5 text-purple-600 mr-2" />
-                <h3 className="text-sm font-medium text-purple-800">
-                  Order Picking
-                </h3>
-              </div>
-              <p className="mt-1 text-sm text-purple-700">
-                Process order picking operations and update inventory levels.
-              </p>
-            </div>
-            
-            <div className="bg-white rounded-lg shadow p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-medium text-gray-900">Start Picking</h3>
-                <Button
-                  onClick={() => setIsPickingModalOpen(true)}
-                  leftIcon={<ShoppingCartIcon className="h-4 w-4" />}
-                  variant="primary"
-                >
-                  New Picking
-                </Button>
-              </div>
-              
-              {/* Picking Statistics */}
-              {pickingData && (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                  <div className="bg-blue-50 p-4 rounded-lg">
-                    <div className="flex items-center">
-                      <ShoppingCartIcon className="h-6 w-6 text-blue-600 mr-2" />
-                      <div>
-                        <p className="text-sm font-medium text-blue-800">Total Orders</p>
-                        <p className="text-lg font-bold text-blue-900">
-                          {pickingData?.data?.movementStats?.picksToday || 0}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="bg-green-50 p-4 rounded-lg">
-                    <div className="flex items-center">
-                      <ArrowDownIcon className="h-6 w-6 text-green-600 mr-2" />
-                      <div>
-                        <p className="text-sm font-medium text-green-800">Completed Picks</p>
-                        <p className="text-lg font-bold text-green-900">
-                          {pickingData?.data?.movementStats?.completedPicks || 0}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="bg-orange-50 p-4 rounded-lg">
-                    <div className="flex items-center">
-                      <ClockIcon className="h-6 w-6 text-orange-600 mr-2" />
-                      <div>
-                        <p className="text-sm font-medium text-orange-800">Pending Picks</p>
-                        <p className="text-lg font-bold text-orange-900">
-                          {pickingData?.data?.movementStats?.pendingPicks || 0}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-              
-            <div className="text-center py-8">
-              <ShoppingCartIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Picking Operations</h3>
-                <p className="text-gray-500 mb-4">Click "New Picking" to process order picking and update inventory levels.</p>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Record Movement Modal */}
         <Modal
@@ -2016,11 +1657,10 @@ const InventoryPage: React.FC = () => {
               <FormSection title="Movement Details">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField label="Product" required error={methods.formState.errors.product?.message as string}>
-                    <Select
-                      options={[{ value: '', label: 'Select product', disabled: true }, ...productOptions]}
+                    <FormProductSelector
                       value={methods.watch('product')}
-                      onChange={(e) => methods.setValue('product', e.target.value)}
-                      fullWidth
+                      onChange={(value) => methods.setValue('product', value)}
+                      placeholder="Select product..."
                     />
                   </FormField>
                   <FormField label="Movement Type" required error={methods.formState.errors.movementType?.message as string}>
@@ -2032,7 +1672,7 @@ const InventoryPage: React.FC = () => {
                     />
                   </FormField>
                   <FormField label="Quantity" required error={methods.formState.errors.quantity?.message as string}>
-                    <Input type="number" step="0.01" {...methods.register('quantity')} fullWidth />
+                    <Input type="number" step="1" min="0" {...methods.register('quantity')} fullWidth />
                   </FormField>
                   <FormField label="Unit Cost" required error={methods.formState.errors.unitCost?.message as string}>
                     <Input type="number" step="0.01" {...methods.register('unitCost')} fullWidth />
@@ -2100,15 +1740,14 @@ const InventoryPage: React.FC = () => {
               <FormSection title="Adjustment Details">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField label="Product" required error={methods.formState.errors.productId?.message as string}>
-                    <Select
-                      options={[{ value: '', label: 'Select product', disabled: true }, ...productOptions]}
+                    <FormProductSelector
                       value={methods.watch('productId')}
-                      onChange={(e) => methods.setValue('productId', e.target.value)}
-                      fullWidth
+                      onChange={(value) => methods.setValue('productId', value)}
+                      placeholder="Select product..."
                     />
                   </FormField>
                   <FormField label="New Quantity" required error={methods.formState.errors.newQuantity?.message as string}>
-                    <Input type="number" step="0.01" {...methods.register('newQuantity')} fullWidth />
+                    <Input type="number" step="1" min="0" {...methods.register('newQuantity')} fullWidth />
                   </FormField>
                   <FormField label="Reason" error={methods.formState.errors.reason?.message as string}>
                     <Input {...methods.register('reason')} placeholder="Optional reason" fullWidth />
@@ -2225,20 +1864,9 @@ const InventoryPage: React.FC = () => {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
                   <div className="flex items-center space-x-2">
-                    {!selectedAlert.isRead && (
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                        New
-                      </span>
-                    )}
-                    {selectedAlert.isResolved ? (
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                        Resolved
-                      </span>
-                    ) : (
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                        Open
+                      Active Alert
                       </span>
-                    )}
                   </div>
                 </div>
                 <div>
@@ -2252,105 +1880,10 @@ const InventoryPage: React.FC = () => {
                   {selectedAlert.message}
                 </div>
               </div>
-              {selectedAlert.resolutionNotes && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Resolution Notes</label>
-                  <div className="text-sm text-gray-900 p-3 bg-green-50 rounded-md">
-                    {selectedAlert.resolutionNotes}
-                  </div>
-                </div>
-              )}
             </div>
           )}
         </Modal>
 
-        {/* Resolve Alert Modal */}
-        <Modal
-          isOpen={isResolveAlertModalOpen}
-          onClose={() => setIsResolveAlertModalOpen(false)}
-          title="Resolve Alert"
-          size="lg"
-        >
-          {selectedAlert && (
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                const formData = new FormData(e.target as HTMLFormElement);
-                const resolutionNotes = formData.get('resolutionNotes') as string;
-                const action = formData.get('action') as string;
-                
-                resolveAlertMutation.mutate({
-                  id: selectedAlert._id,
-                  data: {
-                    isResolved: true,
-                    resolutionNotes,
-                    resolutionAction: action,
-                    resolvedAt: new Date().toISOString()
-                  }
-                });
-              }}
-              className="space-y-6"
-            >
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Product</label>
-                  <div className="text-sm text-gray-900">
-                    <div className="font-medium">{selectedAlert.productName}</div>
-                    <div className="text-gray-500">SKU: {selectedAlert.sku}</div>
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Current Stock</label>
-                  <div className="text-sm text-gray-900">{selectedAlert.currentStock} units</div>
-                </div>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Resolution Action</label>
-                <Select
-                  options={[
-                    { value: 'reordered', label: 'Reordered Stock' },
-                    { value: 'adjusted', label: 'Adjusted Stock Levels' },
-                    { value: 'discontinued', label: 'Product Discontinued' },
-                    { value: 'false_positive', label: 'False Positive' },
-                    { value: 'other', label: 'Other' },
-                  ]}
-                  name="action"
-                  required
-                  fullWidth
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Resolution Notes</label>
-                <textarea
-                  name="resolutionNotes"
-                  rows={4}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Enter resolution notes..."
-                  required
-                />
-              </div>
-              
-              <div className="flex justify-end space-x-3">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={() => setIsResolveAlertModalOpen(false)}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  variant="primary"
-                  loading={resolveAlertMutation.isPending}
-                >
-                  Resolve Alert
-                </Button>
-              </div>
-            </form>
-          )}
-        </Modal>
       </div>
     </Layout>
   );

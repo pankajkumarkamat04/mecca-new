@@ -2204,6 +2204,8 @@ async function seed() {
       customer: customers[2]._id,
       priority: 'medium',
       status: 'scheduled',
+      progress: 10,
+      qualityChecked: true,
       vehicle: {
         make: 'Toyota',
         model: 'Camry',
@@ -2218,7 +2220,33 @@ async function seed() {
         end: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000 + 2 * 60 * 60 * 1000)
       },
       parts: [
-        { product: products[3]._id, quantityRequired: 1, quantityUsed: 0 }
+        { 
+          product: products[3]._id, 
+          quantityRequired: 1, 
+          quantityUsed: 0,
+          quantityAvailable: 5,
+          unitCost: products[3].pricing.costPrice,
+          totalCost: products[3].pricing.costPrice,
+          status: 'reserved'
+        }
+      ],
+      progressHistory: [
+        {
+          progress: 0,
+          status: 'scheduled',
+          step: 'creation',
+          message: 'Job created',
+          updatedBy: users[2]._id,
+          updatedAt: new Date()
+        },
+        {
+          progress: 10,
+          status: 'scheduled',
+          step: 'quality_check',
+          message: 'Quality check completed',
+          updatedBy: users[2]._id,
+          updatedAt: new Date()
+        }
       ],
       createdBy: users[2]._id
     },
@@ -2228,6 +2256,8 @@ async function seed() {
       customer: customers[0]._id,
       priority: 'high',
       status: 'in_progress',
+      progress: 40,
+      qualityChecked: true,
       vehicle: {
         make: 'N/A',
         model: 'Desktop',
@@ -2238,7 +2268,76 @@ async function seed() {
       },
       repairRequest: 'Some keys not working properly',
       parts: [
-        { product: products[1]._id, quantityRequired: 1, quantityUsed: 0 }
+        { 
+          product: products[1]._id, 
+          quantityRequired: 1, 
+          quantityUsed: 0,
+          quantityAvailable: 8,
+          unitCost: products[1].pricing.costPrice,
+          totalCost: products[1].pricing.costPrice,
+          status: 'reserved'
+        }
+      ],
+      tasks: [
+        {
+          title: 'Remove old keyboard',
+          description: 'Safely disconnect and remove the faulty keyboard',
+          status: 'completed',
+          priority: 'medium',
+          estimatedDuration: 15,
+          actualDuration: 12,
+          createdBy: users[1]._id
+        },
+        {
+          title: 'Install new keyboard',
+          description: 'Install and test the new mechanical keyboard',
+          status: 'in_progress',
+          priority: 'medium',
+          estimatedDuration: 20,
+          createdBy: users[1]._id
+        },
+        {
+          title: 'Test functionality',
+          description: 'Test all keys and functionality of the new keyboard',
+          status: 'todo',
+          priority: 'medium',
+          estimatedDuration: 10,
+          createdBy: users[1]._id
+        }
+      ],
+      progressHistory: [
+        {
+          progress: 0,
+          status: 'scheduled',
+          step: 'creation',
+          message: 'Job created',
+          updatedBy: users[1]._id,
+          updatedAt: new Date()
+        },
+        {
+          progress: 10,
+          status: 'scheduled',
+          step: 'quality_check',
+          message: 'Quality check completed',
+          updatedBy: users[1]._id,
+          updatedAt: new Date()
+        },
+        {
+          progress: 30,
+          status: 'in_progress',
+          step: 'resource_assignment',
+          message: 'Resources assigned',
+          updatedBy: users[1]._id,
+          updatedAt: new Date()
+        },
+        {
+          progress: 40,
+          status: 'in_progress',
+          step: 'work_progress',
+          message: 'Work in progress',
+          updatedBy: users[1]._id,
+          updatedAt: new Date()
+        }
       ],
       createdBy: users[1]._id
     },
@@ -2248,6 +2347,8 @@ async function seed() {
       customer: customers[1]._id,
       priority: 'low',
       status: 'on_hold',
+      progress: 15,
+      qualityChecked: true,
       vehicle: {
         make: 'N/A',
         model: 'Office Chair',
@@ -2258,7 +2359,41 @@ async function seed() {
       },
       repairRequest: 'Chair is squeaking and support is loose',
       parts: [
-        { product: products[2]._id, quantityRequired: 1, quantityUsed: 0 }
+        { 
+          product: products[2]._id, 
+          quantityRequired: 1, 
+          quantityUsed: 0,
+          quantityAvailable: 3,
+          unitCost: products[2].pricing.costPrice,
+          totalCost: products[2].pricing.costPrice,
+          status: 'reserved'
+        }
+      ],
+      progressHistory: [
+        {
+          progress: 0,
+          status: 'scheduled',
+          step: 'creation',
+          message: 'Job created',
+          updatedBy: users[0]._id,
+          updatedAt: new Date()
+        },
+        {
+          progress: 10,
+          status: 'scheduled',
+          step: 'quality_check',
+          message: 'Quality check completed',
+          updatedBy: users[0]._id,
+          updatedAt: new Date()
+        },
+        {
+          progress: 15,
+          status: 'on_hold',
+          step: 'work_progress',
+          message: 'Work on hold',
+          updatedBy: users[0]._id,
+          updatedAt: new Date()
+        }
       ],
       createdBy: users[0]._id
     },
@@ -2267,7 +2402,9 @@ async function seed() {
       description: 'Replace unresponsive wireless mouse',
       customer: customers[0]._id,
       priority: 'medium',
-      status: 'draft',
+      status: 'scheduled',
+      progress: 10,
+      qualityChecked: true,
       vehicle: {
         make: 'N/A',
         model: 'Desktop',
@@ -2278,7 +2415,33 @@ async function seed() {
       },
       repairRequest: 'Mouse left click intermittently fails',
       parts: [
-        { product: products[0]._id, quantityRequired: 1, quantityUsed: 0 }
+        { 
+          product: products[0]._id, 
+          quantityRequired: 1, 
+          quantityUsed: 0,
+          quantityAvailable: 12,
+          unitCost: products[0].pricing.costPrice,
+          totalCost: products[0].pricing.costPrice,
+          status: 'reserved'
+        }
+      ],
+      progressHistory: [
+        {
+          progress: 0,
+          status: 'scheduled',
+          step: 'creation',
+          message: 'Job created',
+          updatedBy: users[2]._id,
+          updatedAt: new Date()
+        },
+        {
+          progress: 10,
+          status: 'scheduled',
+          step: 'quality_check',
+          message: 'Quality check completed',
+          updatedBy: users[2]._id,
+          updatedAt: new Date()
+        }
       ],
       createdBy: users[2]._id
     },
@@ -2290,6 +2453,8 @@ async function seed() {
       customerPhone: '+1-555-2000', // Phone-based linking
       priority: 'high',
       status: 'in_progress',
+      progress: 65,
+      qualityChecked: true,
       vehicle: {
         make: 'Dell',
         model: 'Inspiron 15',
@@ -2300,7 +2465,94 @@ async function seed() {
       },
       repairRequest: 'Screen cracked after accidental drop',
       parts: [
-        { product: products[1]._id, quantityRequired: 1, quantityUsed: 0 }
+        { 
+          product: products[1]._id, 
+          quantityRequired: 1, 
+          quantityUsed: 0,
+          quantityAvailable: 8,
+          unitCost: products[1].pricing.costPrice,
+          totalCost: products[1].pricing.costPrice,
+          status: 'reserved'
+        }
+      ],
+      tasks: [
+        {
+          title: 'Diagnose screen damage',
+          description: 'Assess the extent of screen damage and determine repair approach',
+          status: 'completed',
+          priority: 'high',
+          estimatedDuration: 30,
+          actualDuration: 25,
+          createdBy: users[1]._id
+        },
+        {
+          title: 'Order replacement screen',
+          description: 'Order the correct replacement screen for Dell Inspiron 15',
+          status: 'completed',
+          priority: 'high',
+          estimatedDuration: 5,
+          actualDuration: 5,
+          createdBy: users[1]._id
+        },
+        {
+          title: 'Remove damaged screen',
+          description: 'Carefully remove the damaged screen assembly',
+          status: 'completed',
+          priority: 'high',
+          estimatedDuration: 45,
+          actualDuration: 40,
+          createdBy: users[1]._id
+        },
+        {
+          title: 'Install new screen',
+          description: 'Install the new screen assembly and connect all cables',
+          status: 'in_progress',
+          priority: 'high',
+          estimatedDuration: 60,
+          createdBy: users[1]._id
+        },
+        {
+          title: 'Test screen functionality',
+          description: 'Test display quality, touch functionality, and all features',
+          status: 'todo',
+          priority: 'high',
+          estimatedDuration: 20,
+          createdBy: users[1]._id
+        }
+      ],
+      progressHistory: [
+        {
+          progress: 0,
+          status: 'scheduled',
+          step: 'creation',
+          message: 'Job created',
+          updatedBy: users[1]._id,
+          updatedAt: new Date()
+        },
+        {
+          progress: 10,
+          status: 'scheduled',
+          step: 'quality_check',
+          message: 'Quality check completed',
+          updatedBy: users[1]._id,
+          updatedAt: new Date()
+        },
+        {
+          progress: 30,
+          status: 'in_progress',
+          step: 'resource_assignment',
+          message: 'Resources assigned',
+          updatedBy: users[1]._id,
+          updatedAt: new Date()
+        },
+        {
+          progress: 65,
+          status: 'in_progress',
+          step: 'work_progress',
+          message: 'Work in progress',
+          updatedBy: users[1]._id,
+          updatedAt: new Date()
+        }
       ],
       createdBy: users[1]._id
     },
@@ -2311,6 +2563,8 @@ async function seed() {
       customerPhone: '+1-555-2004', // Phone-based linking
       priority: 'medium',
       status: 'scheduled',
+      progress: 10,
+      qualityChecked: true,
       vehicle: {
         make: 'N/A',
         model: 'Desktop PC',
@@ -2325,8 +2579,42 @@ async function seed() {
         end: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000 + 3 * 60 * 60 * 1000)
       },
       parts: [
-        { product: products[0]._id, quantityRequired: 1, quantityUsed: 0 },
-        { product: products[1]._id, quantityRequired: 1, quantityUsed: 0 }
+        { 
+          product: products[0]._id, 
+          quantityRequired: 1, 
+          quantityUsed: 0,
+          quantityAvailable: 12,
+          unitCost: products[0].pricing.costPrice,
+          totalCost: products[0].pricing.costPrice,
+          status: 'reserved'
+        },
+        { 
+          product: products[1]._id, 
+          quantityRequired: 1, 
+          quantityUsed: 0,
+          quantityAvailable: 8,
+          unitCost: products[1].pricing.costPrice,
+          totalCost: products[1].pricing.costPrice,
+          status: 'reserved'
+        }
+      ],
+      progressHistory: [
+        {
+          progress: 0,
+          status: 'scheduled',
+          step: 'creation',
+          message: 'Job created',
+          updatedBy: users[2]._id,
+          updatedAt: new Date()
+        },
+        {
+          progress: 10,
+          status: 'scheduled',
+          step: 'quality_check',
+          message: 'Quality check completed',
+          updatedBy: users[2]._id,
+          updatedAt: new Date()
+        }
       ],
       createdBy: users[2]._id
     }

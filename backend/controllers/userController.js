@@ -95,8 +95,28 @@ const getUserById = async (req, res) => {
 // @access  Private (Admin/Manager)
 const createUser = async (req, res) => {
   try {
-    const { role, warehouse } = req.body;
+    let { role, warehouse } = req.body;
     const currentUserRole = req.user.role;
+
+    // Normalize and validate role early
+    const allowedRoles = ['admin','manager','customer','warehouse_manager','warehouse_employee','sales_person','workshop_employee'];
+    if (role) {
+      const normalized = String(role).toLowerCase().replace(/\s+/g, '_');
+      // Common alias mapping
+      const aliasMap = {
+        employee: 'warehouse_employee',
+        sales: 'sales_person',
+        workshop: 'workshop_employee'
+      };
+      role = aliasMap[normalized] || normalized;
+      if (!allowedRoles.includes(role)) {
+        return res.status(400).json({
+          success: false,
+          message: `Invalid role. Allowed roles: ${allowedRoles.join(', ')}`
+        });
+      }
+      req.body.role = role;
+    }
 
     // Role-based permission checks
     if (currentUserRole === 'employee' || currentUserRole === 'warehouse_employee') {

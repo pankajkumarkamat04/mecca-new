@@ -21,6 +21,7 @@ import { Invoice } from '@/types';
 import toast from 'react-hot-toast';
 import { z } from 'zod';
 import { Form, FormActions, FormField, FormSection } from '@/components/ui/Form';
+import FormProductSelector from '@/components/ui/FormProductSelector';
 import {
   PlusIcon,
   EyeIcon,
@@ -103,10 +104,8 @@ const InvoicesPage: React.FC = () => {
     queryFn: () => productsAPI.getProducts({ limit: 100, page: 1 })
   });
   const customerOptions = Array.isArray(customersList?.data?.data) ? customersList.data.data : [];
-  const productOptions = Array.isArray(productsList?.data?.data) ? productsList.data.data : [];
   
   const customerOptionsFormatted = customerOptions.map((c: any) => ({ value: c._id, label: `${c.firstName} ${c.lastName}` }));
-  const productOptionsFormatted = productOptions.map((p: any) => ({ value: p._id, label: `${p.name} (${p.sku})` }));
 
   // Form schema
   const invoiceSchema = useMemo(() => z.object({
@@ -197,7 +196,7 @@ const InvoicesPage: React.FC = () => {
   const getStatusBadge = (status: string) => {
     const statusConfig = {
       draft: { color: 'bg-gray-100 text-gray-800', label: 'Draft' },
-      sent: { color: 'bg-blue-100 text-blue-800', label: 'Sent' },
+      sent: { color: 'bg-red-100 text-red-800', label: 'Sent' },
       paid: { color: 'bg-green-100 text-green-800', label: 'Paid' },
       partial: { color: 'bg-yellow-100 text-yellow-800', label: 'Partial' },
       overdue: { color: 'bg-red-100 text-red-800', label: 'Overdue' },
@@ -368,7 +367,7 @@ const InvoicesPage: React.FC = () => {
         <div className="flex items-center space-x-2">
           <button
             onClick={() => handleViewInvoice(row)}
-            className="text-blue-600 hover:text-blue-900"
+            className="text-red-600 hover:text-red-900"
             title="View Invoice"
           >
             <EyeIcon className="h-4 w-4" />
@@ -570,22 +569,20 @@ const InvoicesPage: React.FC = () => {
                   {methods.watch('items').map((item, idx) => (
                     <div key={idx} className="grid grid-cols-1 md:grid-cols-4 gap-3">
                       <FormField label="Product" required error={(methods.formState.errors.items as any)?.[idx]?.product?.message as string}>
-                        <Select
-                          options={[{ value: '', label: 'Select product', disabled: true }, ...productOptionsFormatted]}
+                        <FormProductSelector
                           value={methods.watch(`items.${idx}.product` as const)}
-                          onChange={(e) => {
-                            const productId = e.target.value;
+                          onChange={(productId) => {
                             methods.setValue(`items.${idx}.product` as const, productId);
                             
                             // Auto-populate unit price when product is selected
                             if (productId) {
-                              const selectedProduct = productOptions.find((p: any) => p._id === productId);
+                              const selectedProduct = productsList?.data?.data?.find((p: any) => p._id === productId);
                               if (selectedProduct && selectedProduct.pricing?.sellingPrice) {
                                 methods.setValue(`items.${idx}.unitPrice` as const, selectedProduct.pricing.sellingPrice);
                               }
                             }
                           }}
-                          fullWidth
+                          placeholder="Select product..."
                         />
                       </FormField>
                       <FormField label="Quantity" required error={(methods.formState.errors.items as any)?.[idx]?.quantity?.message as string}>
@@ -630,7 +627,7 @@ const InvoicesPage: React.FC = () => {
                 {(() => {
                   const items = methods.watch('items') || [];
                   const priceItems = items.filter((item: any) => item.product).map((item: any) => {
-                    const product = productOptions.find((p: any) => p._id === item.product);
+                    const product = productsList?.data?.data?.find((p: any) => p._id === item.product);
                     return {
                       product: product ? {
                         _id: product._id,
@@ -820,7 +817,7 @@ const InvoicesPage: React.FC = () => {
                             </div>
                           )}
                           {taxRate > 0 && (
-                            <div className="flex justify-between text-blue-600">
+                            <div className="flex justify-between text-red-600">
                               <span>Tax ({taxRate}%):</span>
                               <span>+{formatCurrency(taxAmount)}</span>
                             </div>
@@ -1050,7 +1047,7 @@ const InvoicesPage: React.FC = () => {
                   onClick={() => setReceiptType('short')}
                   className={`px-4 py-2 rounded ${
                     receiptType === 'short' 
-                      ? 'bg-blue-600 text-white' 
+                      ? 'bg-red-600 text-white' 
                       : 'bg-gray-200 text-gray-700'
                   }`}
                 >
@@ -1060,7 +1057,7 @@ const InvoicesPage: React.FC = () => {
                   onClick={() => setReceiptType('full')}
                   className={`px-4 py-2 rounded ${
                     receiptType === 'full' 
-                      ? 'bg-blue-600 text-white' 
+                      ? 'bg-red-600 text-white' 
                       : 'bg-gray-200 text-gray-700'
                   }`}
                 >
@@ -1087,10 +1084,9 @@ export default InvoicesPage;
 
 // Header right block: company logo (if available) and total
 const InvoiceHeaderRight: React.FC<{ invoice: any }> = ({ invoice }) => {
+  const { company } = useSettings();
+  
   try {
-    // Lazy require hook context at runtime
-    const { useSettings } = require('@/contexts/SettingsContext');
-    const { company } = useSettings();
     return (
       <div>
         <div className="flex items-center justify-end gap-3">

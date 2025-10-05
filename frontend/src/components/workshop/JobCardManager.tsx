@@ -103,8 +103,8 @@ const JobCardManager: React.FC<JobCardManagerProps> = ({ job, onClose }) => {
           <div>
             <h2 className="text-xl font-semibold text-gray-900">{job.title}</h2>
             <p className="text-sm text-gray-600 mt-1">
-              Job Card: {job.jobCard?.cardNumber || 'Not generated'} | 
-              Work Order: {job.jobCard?.workOrderNumber || 'Not generated'}
+              Job Card: {job.jobCard?.cardNumber || 'N/A'} | 
+              Work Order: {job.jobCard?.workOrderNumber || 'N/A'}
             </p>
           </div>
           <div className="flex space-x-2">
@@ -304,11 +304,11 @@ const OverviewTab: React.FC<{
           <div className="space-y-3">
             <div className="flex justify-between items-center py-2 border-b border-gray-100">
               <span className="text-sm font-medium text-gray-600">Job Card Number:</span>
-              <span className="text-sm font-semibold text-gray-900">{job.jobCard?.cardNumber || 'Not generated'}</span>
+              <span className="text-sm font-semibold text-gray-900">{job.jobCard?.cardNumber || 'N/A'}</span>
             </div>
             <div className="flex justify-between items-center py-2 border-b border-gray-100">
               <span className="text-sm font-medium text-gray-600">Work Order Number:</span>
-              <span className="text-sm font-semibold text-gray-900">{job.jobCard?.workOrderNumber || 'Not generated'}</span>
+              <span className="text-sm font-semibold text-gray-900">{job.jobCard?.workOrderNumber || 'N/A'}</span>
             </div>
             <div className="flex justify-between items-center py-2 border-b border-gray-100">
               <span className="text-sm font-medium text-gray-600">Version:</span>
