@@ -79,6 +79,11 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // Serve static files from uploads directory
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
+// Serve images via API route in production
+if (process.env.NODE_ENV === 'production') {
+  app.use('/api/uploads', express.static(path.join(__dirname, 'uploads')));
+}
+
 // Compression middleware
 app.use(compression());
 

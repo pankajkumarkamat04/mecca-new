@@ -2,6 +2,7 @@ const Setting = require('../models/Setting');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const { generateImageUrl } = require('../utils/imageUtils');
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
@@ -130,7 +131,7 @@ const uploadLogo = async (req, res) => {
 
     // Update logo information
     settings.company.logo = {
-      url: `/uploads/logos/${req.file.filename}`,
+      url: generateImageUrl(req.file.filename, req, 'logos'),
       filename: req.file.filename,
       originalName: req.file.originalname
     };
