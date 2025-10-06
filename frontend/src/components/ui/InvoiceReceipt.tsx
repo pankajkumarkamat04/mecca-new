@@ -56,8 +56,20 @@ const InvoiceReceipt: React.FC<InvoiceReceiptProps> = ({
 
   const calculateTotalTax = () => {
     return invoice.items?.reduce((sum, item) => {
-      const itemTotal = (item.unitPrice || item.price || 0) * (item.quantity || 0);
-      const taxAmount = itemTotal * ((item.taxRate || 0) / 100);
+      const qty = item.quantity || 0;
+      const unit = item.unitPrice || item.price || 0;
+      const subtotal = unit * qty;
+      const discountRate = item.discount || 0;
+      const afterDiscount = subtotal - (subtotal * discountRate) / 100;
+
+      let taxAmount = 0;
+      if (typeof item.taxRate === 'number' && item.taxRate > 0) {
+        taxAmount = (afterDiscount * item.taxRate) / 100;
+      } else if (typeof item.total === 'number' && item.total > afterDiscount) {
+        // Fallback: infer tax from provided total
+        taxAmount = Math.max(0, item.total - afterDiscount);
+      }
+
       return sum + taxAmount;
     }, 0) || 0;
   };
@@ -70,10 +82,12 @@ const InvoiceReceipt: React.FC<InvoiceReceiptProps> = ({
     }, 0) || 0;
   };
 
-  const subtotal = calculateSubtotal();
-  const totalTax = calculateTotalTax();
-  const totalDiscount = calculateTotalDiscount();
-  const finalTotal = subtotal + totalTax - totalDiscount;
+  // Prefer backend-provided totals to avoid recomputation mismatches
+  const subtotal = typeof invoice.subtotal === 'number' ? invoice.subtotal : calculateSubtotal();
+  const totalTax = typeof invoice.totalTax === 'number' ? invoice.totalTax : calculateTotalTax();
+  const totalDiscount = typeof invoice.totalDiscount === 'number' ? invoice.totalDiscount : calculateTotalDiscount();
+  const computedTotal = subtotal + totalTax - totalDiscount + (invoice.shipping?.cost || 0);
+  const finalTotal = typeof invoice.total === 'number' ? invoice.total : computedTotal;
 
   if (type === 'short') {
     return (
@@ -243,6 +257,7 @@ const InvoiceReceipt: React.FC<InvoiceReceiptProps> = ({
               <th className="py-3 px-4 border-b text-center text-sm font-semibold text-gray-700">Qty</th>
               <th className="py-3 px-4 border-b text-right text-sm font-semibold text-gray-700">Unit Price</th>
               <th className="py-3 px-4 border-b text-right text-sm font-semibold text-gray-700">Discount</th>
+              <th className="py-3 px-4 border-b text-right text-sm font-semibold text-gray-700">Tax</th>
               <th className="py-3 px-4 border-b text-right text-sm font-semibold text-gray-700">Total</th>
             </tr>
           </thead>
@@ -256,6 +271,17 @@ const InvoiceReceipt: React.FC<InvoiceReceiptProps> = ({
                 <td className="py-3 px-4 border-b text-center text-sm text-gray-900">{item.quantity}</td>
                 <td className="py-3 px-4 border-b text-right text-sm text-gray-900">{formatCurrency(item.unitPrice || item.price || 0)}</td>
                 <td className="py-3 px-4 border-b text-right text-sm text-gray-900">{formatCurrency(item.discount || 0)}</td>
+                <td className="py-3 px-4 border-b text-right text-sm text-gray-900">{(() => {
+                  const qty = item.quantity || 0;
+                  const unit = item.unitPrice || item.price || 0;
+                  const subtotal = unit * qty;
+                  const discountRate = item.discount || 0;
+                  const afterDiscount = subtotal - (subtotal * discountRate) / 100;
+                  const tax = typeof item.taxRate === 'number' && item.taxRate > 0
+                    ? (afterDiscount * item.taxRate) / 100
+                    : Math.max(0, (item.total || 0) - afterDiscount);
+                  return formatCurrency(tax);
+                })()}</td>
                 <td className="py-3 px-4 border-b text-right text-sm text-gray-900 font-medium">{formatCurrency(item.total)}</td>
               </tr>
             ))}

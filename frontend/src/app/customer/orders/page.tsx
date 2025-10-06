@@ -130,7 +130,9 @@ const CustomerOrdersPage: React.FC = () => {
                         {getPaymentStatusBadge(order.paymentStatus)}
                       </div>
                       <p className="text-sm text-gray-600 mb-2">
-                        Total Amount: {formatCurrency(order.total)}
+                        Total Amount: {formatCurrency(
+                          (order.totalAmount ?? order.total ?? 0)
+                        )}
                       </p>
                       <div className="flex items-center gap-4 text-xs text-gray-500">
                         <span>Order Date: {formatDate(order.orderDate)}</span>

@@ -194,6 +194,9 @@ export const supportAPI = {
     api.put(`/support/${id}/status`, { status }),
   addSatisfactionRating: (id: string, rating: any) =>
     api.post(`/support/${id}/satisfaction`, rating),
+  // Use conversations endpoint for replies
+  replyToTicket: (id: string, data: { message: string; isInternal?: boolean; attachments?: any[] }) =>
+    api.post(`/support/${id}/conversations`, data),
   getSupportStats: () => api.get('/support/stats'),
   getOverdueTickets: () => api.get('/support/overdue'),
 };
@@ -244,7 +247,7 @@ export const quotationsAPI = {
   markAsViewed: (id: string) => api.post(`/quotations/${id}/view`),
   acceptQuotation: (id: string) => api.post(`/quotations/${id}/accept`),
   rejectQuotation: (id: string) => api.post(`/quotations/${id}/reject`),
-  convertToOrder: (id: string) => api.post(`/quotations/${id}/convert-to-order`),
+  // convertToOrder removed per request
   convertToInvoice: (id: string) => api.post(`/quotations/${id}/convert`),
   getQuotationStats: () => api.get('/quotations/stats'),
   checkInventoryAvailability: (data: any) => api.post('/quotations/check-inventory', data),

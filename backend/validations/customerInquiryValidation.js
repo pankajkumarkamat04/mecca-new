@@ -86,7 +86,14 @@ const updateCustomerInquiryValidation = [
 
   body('status')
     .optional()
-    .isIn(['new', 'pending', 'in_progress', 'resolved', 'closed', 'cancelled'])
+    .isIn([
+      // canonical
+      'new', 'under_review', 'quoted', 'converted_to_order', 'closed', 'cancelled',
+      // accepted aliases (normalized in controller)
+      'pending', 'open', 'review', 'reviewing', 'in_review', 'inprogress', 'in_progress',
+      'quote', 'quotation', 'converted', 'ordered', 'order_placed',
+      'done', 'complete', 'completed', 'resolved', 'cancel', 'canceled'
+    ])
     .withMessage('Invalid status'),
 
   body('productsOfInterest')
@@ -127,7 +134,14 @@ const updateCustomerInquiryStatusValidation = [
   body('status')
     .notEmpty()
     .withMessage('Status is required')
-    .isIn(['new', 'pending', 'in_progress', 'resolved', 'closed', 'cancelled'])
+    .isIn([
+      // canonical
+      'new', 'under_review', 'quoted', 'converted_to_order', 'closed', 'cancelled',
+      // accepted aliases (normalized in controller)
+      'pending', 'open', 'review', 'reviewing', 'in_review', 'inprogress', 'in_progress',
+      'quote', 'quotation', 'converted', 'ordered', 'order_placed',
+      'done', 'complete', 'completed', 'resolved', 'cancel', 'canceled'
+    ])
     .withMessage('Invalid status'),
 
   body('notes')
@@ -160,7 +174,14 @@ const getCustomerInquiriesValidation = [
 
   query('status')
     .optional()
-    .isIn(['new', 'pending', 'in_progress', 'resolved', 'closed', 'cancelled'])
+    .isIn([
+      // canonical
+      'new', 'under_review', 'quoted', 'converted_to_order', 'closed', 'cancelled',
+      // accepted aliases (normalized in controller)
+      'pending', 'open', 'review', 'reviewing', 'in_review', 'inprogress', 'in_progress',
+      'quote', 'quotation', 'converted', 'ordered', 'order_placed',
+      'done', 'complete', 'completed', 'resolved', 'cancel', 'canceled'
+    ])
     .withMessage('Invalid status'),
 
   query('priority')

@@ -183,26 +183,7 @@ const CustomerInquiriesPage: React.FC = () => {
           >
             <PencilIcon className="h-4 w-4" />
           </Button>
-          {(inquiry.status === 'new' || inquiry.status === 'under_review') && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => handleConvert(inquiry, 'quotation')}
-              title="Convert to Quotation"
-            >
-              <DocumentTextIcon className="h-4 w-4" />
-            </Button>
-          )}
-          {inquiry.status === 'quoted' && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => handleConvert(inquiry, 'order')}
-              title="Convert to Order"
-            >
-              <ShoppingCartIcon className="h-4 w-4" />
-            </Button>
-          )}
+          {/* Conversion actions removed as requested */}
         </div>
       )
     }

@@ -121,7 +121,9 @@ const CustomerQuotationsPage: React.FC = () => {
                         )}
                       </div>
                       <p className="text-sm text-gray-600 mb-2">
-                        Total Amount: {formatCurrency(quotation.total)}
+                        Total Amount: {formatCurrency(
+                          (quotation as any).totalAmount ?? quotation.total ?? ((quotation.subtotal ?? 0) + (quotation.totalTax ?? 0) + (quotation.shippingCost ?? 0))
+                        )}
                       </p>
                       <div className="flex items-center gap-4 text-xs text-gray-500">
                         <span>Created: {formatDate(quotation.quotationDate)}</span>

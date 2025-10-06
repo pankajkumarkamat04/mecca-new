@@ -91,6 +91,7 @@ const workshopJobSchema = new mongoose.Schema({
   title: { type: String, required: true, trim: true },
   description: { type: String, trim: true },
   customer: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer' },
+  customerName: { type: String, trim: true },
   customerPhone: { type: String, trim: true },
   priority: { type: String, enum: ['low', 'medium', 'high', 'urgent'], default: 'medium' },
   status: { type: String, enum: ['scheduled', 'in_progress', 'on_hold', 'completed', 'cancelled'], default: 'scheduled', index: true },
@@ -343,11 +344,20 @@ workshopJobSchema.virtual('assignedTechnicianNames').get(function() {
 
 // Instance methods
 workshopJobSchema.methods.generateJobCardNumber = async function() {
-  const count = await this.constructor.countDocuments();
-  const year = new Date().getFullYear();
-  const month = String(new Date().getMonth() + 1).padStart(2, '0');
-  const number = String(count + 1).padStart(4, '0');
-  return `JC-${year}${month}-${number}`;
+  const Model = this.constructor;
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const prefix = `JC-${year}${month}-`;
+
+  // Start from count of existing for this month, then find first available slot
+  let seq = await Model.countDocuments({ 'jobCard.cardNumber': { $regex: `^${prefix}` } });
+  while (true) {
+    seq += 1;
+    const candidate = `${prefix}${String(seq).padStart(4, '0')}`;
+    const exists = await Model.exists({ 'jobCard.cardNumber': candidate });
+    if (!exists) return candidate;
+  }
 };
 
 workshopJobSchema.methods.assignTechnician = function(userId, userName, role = 'technician', assignedBy) {

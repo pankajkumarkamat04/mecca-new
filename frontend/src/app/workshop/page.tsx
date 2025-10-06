@@ -153,7 +153,10 @@ const JobCompletionModal: React.FC<{
                        part?.product?.pricing?.costPrice || 
                        part?.product?.pricing?.salePrice || 
                        part?.product?.pricing?.cost || 0;
-      return total + (unitPrice * quantity);
+      const taxRate = Number(part?.product?.pricing?.taxRate ?? 0);
+      const base = unitPrice * quantity;
+      const taxAmount = (base * taxRate) / 100;
+      return total + base + taxAmount;
     }, 0);
     
     return chargesTotal + partsCost;
@@ -334,15 +337,27 @@ const JobCompletionModal: React.FC<{
                         />
                       </div>
                     </div>
-                    <div className="mt-2 text-right">
-                      <span className="text-sm font-medium text-gray-900">
-                        Subtotal: ${((finalDetails.partsUsed[part.product] || finalDetails.partsUsed[part.product._id] || 0) * (
+                    <div className="mt-2 text-right space-y-1">
+                      {(() => {
+                        const qty = (finalDetails.partsUsed[part.product] || finalDetails.partsUsed[part.product._id] || 0);
+                        const unit = (
                           part?.unitPrice || 
                           part?.product?.pricing?.costPrice || 
                           part?.product?.pricing?.salePrice || 
                           part?.product?.pricing?.cost || 0
-                        )).toFixed(2)}
-                      </span>
+                        );
+                        const taxRate = Number(part?.product?.pricing?.taxRate ?? 0);
+                        const base = qty * unit;
+                        const taxAmt = (base * taxRate) / 100;
+                        const total = base + taxAmt;
+                        return (
+                          <>
+                            <div className="text-sm text-gray-600">Tax Rate: {taxRate}%</div>
+                            <div className="text-sm text-gray-600">Tax: ${taxAmt.toFixed(2)}</div>
+                            <div className="text-sm font-medium text-gray-900">Subtotal (incl. tax): ${total.toFixed(2)}</div>
+                          </>
+                        );
+                      })()}
                     </div>
                   </div>
                 ))}
@@ -379,21 +394,42 @@ const JobCompletionModal: React.FC<{
                             </div>
                           );
                         })}
-                <div className="flex justify-between">
-                  <span>Parts Cost:</span>
-                  <span>${Object.entries(finalDetails.partsUsed).reduce((total, [partId, quantity]) => {
-                    const part = populatedJob?.parts?.find((p: any) => p.product === partId || p.product._id === partId);
-                    const unitPrice = part?.unitPrice || 
-                                     part?.product?.pricing?.costPrice || 
-                                     part?.product?.pricing?.salePrice || 
-                                     part?.product?.pricing?.cost || 0;
-                    return total + (unitPrice * quantity);
-                  }, 0).toFixed(2)}</span>
-                </div>
-                <div className="border-t border-blue-200 pt-2 flex justify-between font-medium">
-                  <span>Total:</span>
-                  <span>${calculateTotal().toFixed(2)}</span>
-                </div>
+                {(() => {
+                  const chargesBase = finalDetails.charges.reduce((sum, c) => sum + (parseFloat(c.amount) || 0), 0);
+                  const chargesTax = finalDetails.charges.reduce((sum, c) => {
+                    const a = parseFloat(c.amount) || 0;
+                    const t = parseFloat(String(c.tax)) || 0;
+                    return sum + (a * t) / 100;
+                  }, 0);
+
+                  const partsBase = Object.entries(finalDetails.partsUsed).reduce((sum, [partId, qty]) => {
+                    const part: any = (populatedJob?.parts || []).find((p: any) => p.product === partId || p.product._id === partId);
+                    const unit = part?.unitPrice || part?.product?.pricing?.costPrice || part?.product?.pricing?.salePrice || part?.product?.pricing?.cost || 0;
+                    return sum + (Number(qty) || 0) * unit;
+                  }, 0);
+                  const partsTax = Object.entries(finalDetails.partsUsed).reduce((sum, [partId, qty]) => {
+                    const part: any = (populatedJob?.parts || []).find((p: any) => p.product === partId || p.product._id === partId);
+                    const unit = part?.unitPrice || part?.product?.pricing?.costPrice || part?.product?.pricing?.salePrice || part?.product?.pricing?.cost || 0;
+                    const rate = Number(part?.product?.pricing?.taxRate ?? 0);
+                    const base = (Number(qty) || 0) * unit;
+                    return sum + (base * rate) / 100;
+                  }, 0);
+
+                  const grandTotal = chargesBase + chargesTax + partsBase + partsTax;
+
+                  return (
+                    <div className="mt-2 space-y-1">
+                      <div className="flex justify-between"><span>Parts Subtotal:</span><span>${partsBase.toFixed(2)}</span></div>
+                      <div className="flex justify-between"><span>Parts Tax:</span><span>${partsTax.toFixed(2)}</span></div>
+                      <div className="flex justify-between"><span>Charges Subtotal:</span><span>${chargesBase.toFixed(2)}</span></div>
+                      <div className="flex justify-between"><span>Charges Tax:</span><span>${chargesTax.toFixed(2)}</span></div>
+                      <div className="border-t border-blue-200 pt-2 flex justify-between font-medium text-blue-900">
+                        <span>Grand Total:</span>
+                        <span>${grandTotal.toFixed(2)}</span>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           </div>

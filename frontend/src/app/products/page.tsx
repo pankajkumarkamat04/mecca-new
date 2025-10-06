@@ -507,10 +507,16 @@ const ProductsPage: React.FC = () => {
                   <FormField label="Warehouse *" error={methods.formState.errors.inventory?.warehouse?.message as string}>
                     <Select
                       {...methods.register('inventory.warehouse')}
-                      options={warehousesData?.data?.map((warehouse: any) => ({
+                      options={(
+                        Array.isArray(warehousesData?.data?.data)
+                          ? warehousesData.data.data
+                          : Array.isArray(warehousesData?.data)
+                            ? warehousesData.data
+                            : []
+                      ).map((warehouse: any) => ({
                         value: warehouse._id,
                         label: `${warehouse.name} (${warehouse.code})`
-                      })) || []}
+                      }))}
                       placeholder="Select a warehouse"
                       fullWidth
                     />
@@ -812,10 +818,16 @@ const ProductsPage: React.FC = () => {
                     <FormField label="Warehouse *" error={methods.formState.errors.inventory?.warehouse?.message as string}>
                       <Select
                         {...methods.register('inventory.warehouse')}
-                        options={warehousesData?.data?.map((warehouse: any) => ({
+                        options={(
+                          Array.isArray(warehousesData?.data?.data)
+                            ? warehousesData.data.data
+                            : Array.isArray(warehousesData?.data)
+                              ? warehousesData.data
+                              : []
+                        ).map((warehouse: any) => ({
                           value: warehouse._id,
                           label: `${warehouse.name} (${warehouse.code})`
-                        })) || []}
+                        }))}
                         placeholder="Select a warehouse"
                         fullWidth
                       />
@@ -930,7 +942,11 @@ const ProductsPage: React.FC = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Markup</label>
-                  <p className="text-sm text-gray-900">{selectedProduct.pricing.markup.toFixed(1)}%</p>
+                  <p className="text-sm text-gray-900">
+                    {typeof selectedProduct.pricing.markup === 'number' 
+                      ? `${selectedProduct.pricing.markup.toFixed(1)}%`
+                      : 'N/A'}
+                  </p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>

@@ -535,7 +535,9 @@ export const getLogoUrl = (logoUrl: string): string => {
   
   // Construct the full URL using NEXT_PUBLIC_API_URL
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
-  const baseUrl = apiUrl.replace('/api', '');
+  const mode = process.env.NEXT_PUBLIC_MODE;
+  // In production, keep '/api' in the URL; in other modes, strip it
+  const baseUrl = mode === 'production' ? apiUrl : apiUrl.replace('/api', '');
   const fullUrl = `${baseUrl}${logoUrl}`;
   
   return fullUrl;

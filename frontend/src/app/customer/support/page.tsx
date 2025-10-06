@@ -41,30 +41,15 @@ const CustomerSupportPage: React.FC = () => {
   });
   const [newMessage, setNewMessage] = useState('');
 
-  // Fetch customer record by email
-  const { data: customerData, isLoading: customerLoading, error: customerError } = useQuery({
-    queryKey: ['customer-by-email', user?.email],
-    queryFn: async () => {
-      try {
-        // Try to get customer by searching
-        const response = await customersAPI.getCustomers({ 
-          page: 1, 
-          limit: 100, // Get more results to ensure we find the customer
-          search: user?.email 
-        });
-        // Find customer by exact email match
-        const customers = response?.data?.data?.data || [];
-        const customer = customers.find((c: any) => c.email === user?.email);
-        
-        return customer || null;
-      } catch (error) {
-        return null;
-      }
-    },
-    enabled: !!user?.email,
-    retry: 2,
-    staleTime: 5 * 60 * 1000 // 5 minutes
-  });
+  // Use user data directly for customer portal
+  const customerData = user ? {
+    _id: user._id,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    email: user.email,
+    phone: user.phone
+  } : null;
+  const customerLoading = false;
 
   // Fetch customer's support tickets
   const { data: ticketsData, isLoading } = useQuery({
@@ -93,9 +78,31 @@ const CustomerSupportPage: React.FC = () => {
   const addConversationMutation = useMutation({
     mutationFn: ({ ticketId, message }: { ticketId: string; message: string }) => 
       supportAPI.addConversation(ticketId, { message, isInternal: false }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['customer-support-tickets'] });
+    onSuccess: async (data, variables) => {
+      // Clear the message input first
       setNewMessage('');
+      
+      // Invalidate all customer support ticket queries
+      queryClient.invalidateQueries({ queryKey: ['customer-support-tickets'] });
+      
+      // Also invalidate any specific ticket queries if they exist
+      queryClient.invalidateQueries({ queryKey: ['support-ticket', variables.ticketId] });
+      
+      // If the ticket is currently open, refetch and update the selected ticket
+      if (selectedTicket && selectedTicket._id === variables.ticketId) {
+        // Refetch the tickets data and get the fresh data
+        await queryClient.refetchQueries({ queryKey: ['customer-support-tickets'] });
+        
+        // Get the fresh data from the cache
+        const freshData = queryClient.getQueryData(['customer-support-tickets', currentPage, pageSize, statusFilter, priorityFilter]) as any;
+        const tickets = freshData?.data?.data || [];
+        const updatedTicket = tickets.find((t: any) => t._id === variables.ticketId);
+        
+        // Update the selected ticket with fresh data
+        if (updatedTicket) {
+          setSelectedTicket(updatedTicket);
+        }
+      }
     }
   });
 
@@ -249,9 +256,9 @@ const CustomerSupportPage: React.FC = () => {
   ];
 
   const getStatusCounts = () => {
-    if (!ticketsData?.data) return {};
+    if (!ticketsData?.data?.data) return {};
     
-    const tickets = ticketsData.data;
+    const tickets = ticketsData.data.data;
     return {
       total: tickets.length,
       open: tickets.filter((t: any) => t.status === 'open').length,

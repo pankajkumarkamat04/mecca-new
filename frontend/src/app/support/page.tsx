@@ -26,6 +26,8 @@ import {
   UserIcon,
   TagIcon,
   PaperClipIcon,
+  EyeIcon,
+  PaperAirplaneIcon,
 } from '@heroicons/react/24/outline';
 
 const SupportPage: React.FC = () => {
@@ -261,14 +263,14 @@ const SupportPage: React.FC = () => {
             className="text-blue-600 hover:text-blue-900"
             title="View Ticket"
           >
-            <ChatBubbleLeftRightIcon className="h-4 w-4" />
+            <EyeIcon className="h-4 w-4" />
           </button>
           <button
             onClick={() => handleReplyTicket(row)}
             className="text-green-600 hover:text-green-900"
             title="Reply"
           >
-            <ChatBubbleLeftRightIcon className="h-4 w-4" />
+            <PaperAirplaneIcon className="h-4 w-4" />
           </button>
         </div>
       ),
@@ -819,7 +821,7 @@ const CreateTicketForm: React.FC<{ onClose: () => void; onSuccess: () => void }>
         <Button
           type="button"
           onClick={handleSubmit}
-          disabled={createTicketMutation.isPending}
+          disabled={createTicketMutation.isPending || !formData.subject.trim() || !formData.description.trim()}
         >
           {createTicketMutation.isPending ? 'Creating...' : 'Create Ticket'}
         </Button>
@@ -842,16 +844,10 @@ const SupportReplyForm: React.FC<{
   }), []);
 
   const replyToTicketMutation = useMutation({
-    mutationFn: (data: any) => {
-      // This would call a support reply API
-      return new Promise((resolve) => {
-        setTimeout(() => {
-          resolve({ success: true });
-        }, 1000);
-      });
-    },
+    mutationFn: (data: any) => supportAPI.replyToTicket(ticket?._id as string, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['support-tickets'] });
+      queryClient.invalidateQueries({ queryKey: ['overdue-tickets'] });
       toast.success('Reply sent successfully');
       onSuccess();
     },

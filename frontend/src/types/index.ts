@@ -497,6 +497,10 @@ export interface ReceiptItem {
   unitPrice: number;
   total: number;
   sku?: string;
+  // Optional fields that may be present in POS receipts
+  discount?: number;
+  taxRate?: number;
+  price?: number;
 }
 
 // Payment Types

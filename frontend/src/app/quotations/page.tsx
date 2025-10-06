@@ -91,18 +91,7 @@ const QuotationsPage: React.FC = () => {
     },
   });
 
-  // Convert to order mutation
-  const convertToOrderMutation = useMutation({
-    mutationFn: (quotationId: string) => quotationsAPI.convertToOrder(quotationId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['quotations'] });
-      queryClient.invalidateQueries({ queryKey: ['quotationStats'] });
-      toast.success('Quotation converted to order successfully');
-    },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to convert quotation to order');
-    },
-  });
+  // Convert to order feature removed
 
   const quotations = quotationsData?.data?.data || [];
   const stats = statsData?.data?.data || {};
@@ -131,11 +120,7 @@ const QuotationsPage: React.FC = () => {
     generatePickingListMutation.mutate(quotation._id);
   };
 
-  const handleConvertToOrder = (quotation: any) => {
-    if (window.confirm(`Are you sure you want to convert quotation ${quotation.quotationNumber} to an order?`)) {
-      convertToOrderMutation.mutate(quotation._id);
-    }
-  };
+  // const handleConvertToOrder = () => {};
 
   const handleShowReceipt = (quotation: Quotation) => {
     setSelectedQuotation(quotation);
@@ -208,7 +193,10 @@ const QuotationsPage: React.FC = () => {
       header: 'Amount',
       render: (quotation: any) => (
         <div className="font-medium text-gray-900">
-          ${quotation.totalAmount?.toFixed(2) || '0.00'}
+          {(() => {
+            const amount = (quotation?.totalAmount ?? quotation?.total ?? ((quotation?.subtotal ?? 0) + (quotation?.totalTax ?? 0)));
+            return `$${Number(amount || 0).toFixed(2)}`;
+          })()}
         </div>
       ),
     },
@@ -275,16 +263,7 @@ const QuotationsPage: React.FC = () => {
               <DocumentTextIcon className="h-4 w-4" />
             </Button>
           )}
-          {quotation.status === 'approved' && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => handleConvertToOrder(quotation)}
-              title="Convert to Order"
-            >
-              <ShoppingCartIcon className="h-4 w-4" />
-            </Button>
-          )}
+          {/* Convert to Order action removed as requested */}
           
           {/* Print Quotation */}
           <Button
@@ -453,7 +432,12 @@ const QuotationsPage: React.FC = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Total Amount</label>
-                  <p className="mt-1 text-sm text-gray-900">${selectedQuotation.totalAmount?.toFixed(2) || '0.00'}</p>
+                  <p className="mt-1 text-sm text-gray-900">
+                    {(() => {
+                      const amount = (selectedQuotation as any).totalAmount ?? (selectedQuotation as any).total ?? ((selectedQuotation as any).subtotal ?? 0) + ((selectedQuotation as any).totalTax ?? 0);
+                      return `$${Number(amount || 0).toFixed(2)}`;
+                    })()}
+                  </p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Valid Until</label>

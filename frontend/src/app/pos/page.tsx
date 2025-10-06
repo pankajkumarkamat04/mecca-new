@@ -10,6 +10,7 @@ import CustomerSelector from '@/components/ui/CustomerSelector';
 import { posAPI, productsAPI, customersAPI } from '@/lib/api';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { formatCurrency } from '@/lib/utils';
+import { useSettings } from '@/contexts/SettingsContext';
 import { calculatePrice } from '@/lib/priceCalculator';
 import PriceSummary from '@/components/ui/PriceSummary';
 import InvoiceReceipt from '@/components/ui/InvoiceReceipt';
@@ -37,6 +38,7 @@ interface CartItem {
 }
 
 const POSPage: React.FC = () => {
+  const { company } = useSettings();
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -116,6 +118,28 @@ const POSPage: React.FC = () => {
 
   // Convert Receipt to Invoice format for InvoiceReceipt component
   const convertReceiptToInvoice = (receipt: Receipt): Invoice => {
+    // Derive subtotal from items if not provided by backend
+    const itemsSubtotal = (receipt.items || []).reduce((sum, it: any) => {
+      const qty = Number(it.quantity) || 0;
+      const unit = Number(it.unitPrice ?? it.price) || 0;
+      return sum + qty * unit;
+    }, 0);
+
+    const subtotal = typeof (receipt as any).subtotal === 'number' ? (receipt as any).subtotal : itemsSubtotal;
+    const totalDiscount = typeof (receipt as any).totalDiscount === 'number' ? (receipt as any).totalDiscount : Number((receipt as any).discount) || 0;
+    const shippingCost = (receipt as any).shipping?.cost ? Number((receipt as any).shipping.cost) : 0;
+    const paidAmount = Number((receipt as any).paid ?? receipt.payments?.[0]?.amount ?? (receipt as any).tenderedAmount ?? 0);
+    const total = typeof (receipt as any).total === 'number' 
+      ? Number((receipt as any).total) 
+      : (paidAmount > 0 ? paidAmount : itemsSubtotal);
+
+    // If backend didn't provide totalTax, infer it from totals
+    let inferredTax = Math.max(0, total - subtotal - shippingCost + totalDiscount);
+    if (inferredTax === 0 && (company?.defaultTaxRate ?? 0) > 0) {
+      inferredTax = Math.max(0, (subtotal - totalDiscount) * (Number(company?.defaultTaxRate) / 100));
+    }
+    const totalTax = typeof (receipt as any).totalTax === 'number' ? (receipt as any).totalTax : (Number((receipt as any).tax) || inferredTax);
+
     return {
       _id: receipt.transactionId,
       invoiceNumber: receipt.invoiceNumber || receipt.receiptNumber,
@@ -132,19 +156,19 @@ const POSPage: React.FC = () => {
         quantity: item.quantity,
         unitPrice: item.unitPrice,
         price: item.unitPrice,
-        discount: 0,
-        taxRate: 0,
+        discount: item.discount || 0,
+        taxRate: item.taxRate || 0,
         total: item.total,
         product: ''
       })) || [],
-      subtotal: receipt.subtotal,
+      subtotal,
       discounts: [],
-      totalDiscount: receipt.totalDiscount || 0,
+      totalDiscount,
       taxes: [],
-      totalTax: receipt.totalTax || receipt.tax || 0,
+      totalTax,
       shipping: { cost: 0 },
-      total: receipt.total,
-      paid: receipt.total,
+      total,
+      paid: paidAmount || total,
       balance: 0,
       payments: [],
       notes: '',
@@ -196,7 +220,7 @@ const POSPage: React.FC = () => {
       quantity: item.quantity,
       unitPrice: item.price,
       discount: 0, // POS doesn't use discounts per item
-      taxRate: item.product?.pricing?.taxRate || 0
+      taxRate: (item.product?.pricing?.taxRate ?? company?.defaultTaxRate ?? 0)
     }));
 
     return calculatePrice(priceItems);
@@ -683,21 +707,37 @@ const POSPage: React.FC = () => {
                   <div className="text-sm font-medium text-gray-900 capitalize">{(receipt.payments?.[0]?.method) || 'cash'}</div>
                 </div>
                 <div className="space-y-1">
-                  <div className="flex justify-between text-sm text-gray-600">
-                    <span>Subtotal:</span>
-                    <span>{formatCurrency(receipt.subtotal ?? 0)}</span>
-                  </div>
-                  <div className="flex justify-between text-sm text-gray-600">
-                    <span>Tax:</span>
-                    <span>{formatCurrency(receipt.totalTax ?? 0)}</span>
-                  </div>
+                  {(() => {
+                    const rItemsSubtotal = (receipt.items || []).reduce((sum: number, it: any) => {
+                      const qty = Number(it.quantity) || 0;
+                      const unit = Number(it.unitPrice ?? it.price) || 0;
+                      return sum + qty * unit;
+                    }, 0);
+                    const rSubtotal = typeof (receipt as any).subtotal === 'number' ? (receipt as any).subtotal : rItemsSubtotal;
+                    const rTotalDiscount = typeof (receipt as any).totalDiscount === 'number' ? (receipt as any).totalDiscount : Number((receipt as any).discount) || 0;
+                    const rShipping = (receipt as any).shipping?.cost ? Number((receipt as any).shipping.cost) : 0;
+                    const rTotal = typeof (receipt as any).total === 'number' ? Number((receipt as any).total) : rItemsSubtotal;
+                    const rTax = typeof (receipt as any).totalTax === 'number' ? (receipt as any).totalTax : Math.max(0, rTotal - rSubtotal - rShipping + rTotalDiscount);
+                    return (
+                      <>
+                        <div className="flex justify-between text-sm text-gray-600">
+                          <span>Subtotal:</span>
+                          <span>{formatCurrency(rSubtotal)}</span>
+                        </div>
+                        <div className="flex justify-between text-sm text-gray-600">
+                          <span>Tax:</span>
+                          <span>{formatCurrency(rTax)}</span>
+                        </div>
+                      </>
+                    );
+                  })()}
                   <div className="flex justify-between text-sm text-gray-600">
                     <span>Discount:</span>
                     <span>-{formatCurrency(receipt.totalDiscount ?? 0)}</span>
                   </div>
                   <div className="flex justify-between text-sm font-semibold border-t pt-2">
                     <span>Total:</span>
-                    <span>{formatCurrency(receipt.total ?? 0)}</span>
+                    <span>{formatCurrency((receipt as any).total ?? 0)}</span>
                   </div>
                   {paymentMethod === 'cash' && (
                     <>

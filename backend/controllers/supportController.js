@@ -102,19 +102,35 @@ const createSupportTicket = async (req, res) => {
     const ticketData = req.body;
     ticketData.createdBy = req.user._id;
 
-    // Validate customer exists (only if customer is provided)
+    // Validate customer exists - check both Customer and User models
     if (ticketData.customer) {
-      console.log('Looking for customer with ID:', ticketData.customer);
-      const customer = await Customer.findById(ticketData.customer);
-      console.log('Customer found:', customer ? 'Yes' : 'No');
-      if (customer) {
-        console.log('Customer details:', { id: customer._id, name: customer.firstName + ' ' + customer.lastName, email: customer.email });
+      let customer = await Customer.findById(ticketData.customer);
+      
+      // If not found in Customer model, check User model
+      if (!customer) {
+        const user = await User.findById(ticketData.customer);
+        if (user) {
+          // Create customer data from user
+          customer = {
+            _id: user._id,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            email: user.email,
+            phone: user.phone
+          };
+        }
       }
+      
       if (!customer) {
         return res.status(404).json({
           success: false,
           message: 'Customer not found'
         });
+      }
+      
+      // Update the customer ID to point to the actual customer record if found
+      if (customer._id && customer._id.toString() !== ticketData.customer) {
+        ticketData.customer = customer._id;
       }
     }
 

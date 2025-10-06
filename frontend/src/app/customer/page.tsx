@@ -103,6 +103,13 @@ const CustomerDashboardPage: React.FC = () => {
     }
   };
 
+  // Normalize recent tickets response to an array
+  const tickets: any[] = Array.isArray(recentTickets?.data?.data)
+    ? recentTickets.data.data
+    : Array.isArray(recentTickets?.data)
+      ? recentTickets.data
+      : [];
+
 
   return (
     <Layout title="My Dashboard">
@@ -170,7 +177,7 @@ const CustomerDashboardPage: React.FC = () => {
               <div className="ml-4">
                 <h3 className="text-sm font-medium text-gray-500">Open Tickets</h3>
                 <p className="mt-2 text-3xl font-bold text-orange-600">
-                  {recentTickets?.data ? recentTickets.data.filter((t: any) => t.status !== 'closed' && t.status !== 'resolved').length : 0}
+                  {tickets.filter((t: any) => t.status !== 'closed' && t.status !== 'resolved').length}
                 </p>
                 <div className="mt-4">
                   <Link href="/customer/support" className="text-sm text-orange-600 hover:text-orange-800 flex items-center">
@@ -262,9 +269,9 @@ const CustomerDashboardPage: React.FC = () => {
                     </div>
                   ))}
                 </div>
-              ) : recentTickets?.data && recentTickets.data.length > 0 ? (
+              ) : tickets.length > 0 ? (
                 <div className="space-y-3">
-                  {recentTickets.data.slice(0, 3).map((ticket: any) => (
+                  {tickets.slice(0, 3).map((ticket: any) => (
                     <div key={ticket._id} className="p-3 bg-gray-50 rounded-lg">
                       <div className="flex items-center justify-between">
                         <div>

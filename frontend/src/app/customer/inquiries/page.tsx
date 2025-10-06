@@ -19,14 +19,16 @@ import Modal from '@/components/ui/Modal';
 import { customerInquiriesAPI } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
+import CustomerCreateInquiryForm from '@/components/customer-inquiries/CustomerCreateInquiryForm';
 
 const CustomerInquiriesPage: React.FC = () => {
   const { user } = useAuth();
   const [selectedInquiry, setSelectedInquiry] = useState<CustomerInquiry | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   // Fetch customer inquiries
-  const { data: inquiriesData, isLoading, error } = useQuery({
+  const { data: inquiriesData, isLoading, error, refetch } = useQuery({
     queryKey: ['customerInquiries', user?._id],
     queryFn: () => customerInquiriesAPI.getCustomerInquiries({
       customer: user?._id
@@ -97,7 +99,7 @@ const CustomerInquiriesPage: React.FC = () => {
             <h1 className="text-2xl font-bold text-gray-900">My Inquiries</h1>
             <p className="text-gray-600">Track your product inquiries and requests</p>
           </div>
-          <Button>
+          <Button onClick={() => setShowCreateModal(true)}>
             <PlusIcon className="h-4 w-4 mr-2" />
             New Inquiry
           </Button>
@@ -162,7 +164,7 @@ const CustomerInquiriesPage: React.FC = () => {
                 You haven't submitted any inquiries yet.
               </p>
               <div className="mt-6">
-                <Button>
+                <Button onClick={() => setShowCreateModal(true)}>
                   <PlusIcon className="h-4 w-4 mr-2" />
                   Submit Your First Inquiry
                 </Button>
@@ -259,6 +261,23 @@ const CustomerInquiriesPage: React.FC = () => {
               </div>
             </div>
           )}
+        </Modal>
+
+        {/* Create Inquiry Modal */}
+        <Modal
+          isOpen={showCreateModal}
+          onClose={() => setShowCreateModal(false)}
+          title="Create Inquiry"
+          size="lg"
+        >
+          <CustomerCreateInquiryForm
+            customerId={user?._id}
+            onClose={() => setShowCreateModal(false)}
+            onSuccess={() => {
+              setShowCreateModal(false);
+              refetch();
+            }}
+          />
         </Modal>
       </div>
     </Layout>

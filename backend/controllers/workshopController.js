@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const WorkshopJob = require('../models/WorkshopJob');
 const Product = require('../models/Product');
+const Setting = require('../models/Setting');
 const StockMovement = require('../models/StockMovement');
 const Machine = require('../models/Machine');
 const Tool = require('../models/Tool');
@@ -14,6 +15,9 @@ async function processJobCompletion(jobId, userId) {
   const job = await WorkshopJob.findById(jobId).populate('parts.product', 'name sku pricing inventory');
   if (!job) return { job: null };
 
+  // Load default tax rate from settings (fallback if product has no tax)
+  const settingsDoc = await Setting.getSingleton();
+  const defaultTaxRate = Number(settingsDoc?.company?.defaultTaxRate ?? 0);
   
 
   // Deduct used parts (fallback to quantityRequired if quantityUsed missing)
@@ -91,6 +95,7 @@ async function processJobCompletion(jobId, userId) {
     if (!part.product || usedQty <= 0) continue;
     const product = await Product.findById(part.product._id || part.product);
     if (!product) continue;
+    const taxRate = Number(product.pricing?.taxRate ?? defaultTaxRate ?? 0);
     items.push({
       product: product._id,
       name: product.name,
@@ -99,7 +104,7 @@ async function processJobCompletion(jobId, userId) {
       quantity: usedQty,
       unitPrice: Number(product.pricing?.sellingPrice ?? 0),
       discount: 0,
-      taxRate: Number(product.pricing?.taxRate ?? 0),
+      taxRate,
       total: 0,
     });
   }
@@ -546,6 +551,8 @@ async function releaseAllResources(job, userId) {
 // Helper function to create invoice for completed job
 async function createJobInvoice(job, partsUsed, partsReturned) {
   const Invoice = require('../models/Invoice');
+  const Setting = require('../models/Setting');
+  const Customer = require('../models/Customer');
   
   const invoiceItems = [];
 
@@ -582,12 +589,15 @@ async function createJobInvoice(job, partsUsed, partsReturned) {
 
   // Add parts used
   if (job.parts && partsUsed) {
+    const settingsDoc = await Setting.getSingleton();
+    const defaultTaxRate = Number(settingsDoc?.company?.defaultTaxRate ?? 0);
     for (const part of job.parts) {
       const partId = part.product._id.toString();
       const usedQty = partsUsed[partId] || 0;
       if (usedQty > 0) {
-        const unitPrice = part.unitPrice || part.product?.pricing?.costPrice || part.product?.pricing?.salePrice || 0;
-        const totalPrice = unitPrice * usedQty;
+        // Use selling price for invoicing
+        const unitPrice = part.product?.pricing?.sellingPrice ?? part.unitPrice ?? part.product?.pricing?.salePrice ?? part.product?.pricing?.costPrice ?? 0;
+        const taxRate = Number(part.product?.pricing?.taxRate ?? defaultTaxRate);
         
         invoiceItems.push({
           product: part.product._id,
@@ -595,29 +605,38 @@ async function createJobInvoice(job, partsUsed, partsReturned) {
           description: part.productSku || part.product?.sku || '',
           sku: part.productSku || part.product?.sku || '',
           quantity: usedQty,
-          unitPrice: unitPrice,
-          total: totalPrice
+          unitPrice,
+          discount: 0,
+          taxRate,
+          total: 0
         });
       }
     }
   }
 
   // Calculate totals
-  const subtotal = invoiceItems.reduce((sum, item) => sum + (item.total || 0), 0);
-  const totalDiscount = 0; // No discount for now
-  const tax = subtotal * 0.1; // 10% tax
-  const total = subtotal + tax - totalDiscount;
+  // Let the Invoice pre-save hook compute subtotal, totalTax, and total from items
+  const subtotal = 0;
+  const totalDiscount = 0;
+  const tax = 0;
+  const total = 0;
 
   // Generate invoice number
   const invoiceNumber = await Invoice.generateInvoiceNumber('sale');
 
   // Get customer phone from job
-  const customerPhone = job.customer?.phone || job.customerPhone || '';
+  const customerPhone = (job.customer && job.customer.phone) ? job.customer.phone : (job.customerPhone || '');
+  // Resolve customer by phone if job has no linked customer
+  let customerId = job.customer ? (job.customer._id || job.customer) : undefined;
+  if (!customerId && customerPhone) {
+    const existingCustomer = await Customer.findOne({ phone: customerPhone }).select('_id');
+    if (existingCustomer) customerId = existingCustomer._id;
+  }
 
   const invoice = new Invoice({
     invoiceNumber,
     type: 'sale',
-    customer: job.customer._id || job.customer,
+    customer: customerId,
     customerPhone,
     items: invoiceItems,
     subtotal,
@@ -657,13 +676,27 @@ const completeJob = async (req, res) => {
       });
     }
 
+    // Derive and store a stable customerName for UI display
+    if (!job.customerName) {
+      if (job.customer && (job.customer.firstName || job.customer.lastName)) {
+        job.customerName = `${job.customer.firstName || ''} ${job.customer.lastName || ''}`.trim();
+      } else if (job.customerPhone) {
+        job.customerName = job.customerPhone;
+      }
+    }
+
     // Update job with completion details
     job.status = 'completed';
     job.progress = 100;
+    // Sanitize charges: drop empty rows so schema doesn't require fields
+    const safeCharges = Array.isArray(charges)
+      ? charges.filter((c) => c && String(c.name || '').trim().length > 0 && !isNaN(parseFloat(c.amount)))
+      : [];
+
     job.completionDetails = {
       completedAt: new Date(),
       actualDuration: actualDuration,
-      charges: charges || [],
+      charges: safeCharges,
       completionNotes: notes,
       completedBy: req.user._id
     };
@@ -681,6 +714,18 @@ const completeJob = async (req, res) => {
           part.quantityReturned = partsReturned[partId];
         }
       });
+    }
+
+    // Release all assigned technicians (make them available again)
+    if (job.resources && Array.isArray(job.resources.assignedTechnicians)) {
+      for (const assignedTech of job.resources.assignedTechnicians) {
+        if (!assignedTech?.user) continue;
+        const technician = await Technician.findById(assignedTech.user);
+        if (technician) {
+          technician.completeJob(job._id);
+          await technician.save();
+        }
+      }
     }
 
     // Update progress history

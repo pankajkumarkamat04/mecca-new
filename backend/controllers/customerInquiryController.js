@@ -110,18 +110,39 @@ const createCustomerInquiry = async (req, res) => {
     // Generate inquiry number
     inquiryData.inquiryNumber = await CustomerInquiry.generateInquiryNumber();
 
-    // Validate customer exists
+    // Validate customer exists - use User ID to find Customer ID
     if (inquiryData.customer) {
-      const customer = await Customer.findById(inquiryData.customer);
-      if (!customer) {
+      const User = require('../models/User');
+      const user = await User.findById(inquiryData.customer);
+      
+      if (!user) {
         return res.status(404).json({
           success: false,
-          message: 'Customer not found'
+          message: 'User not found'
         });
       }
+      
+      // Find customer record using user's email or create customer data from user
+      let customer = await Customer.findOne({ email: user.email });
+      
+      if (!customer) {
+        // If no customer record exists, use user data directly
+        customer = {
+          firstName: user.firstName,
+          lastName: user.lastName,
+          email: user.email,
+          phone: user.phone
+        };
+      }
+      
       inquiryData.customerName = `${customer.firstName} ${customer.lastName}`;
       inquiryData.customerEmail = customer.email;
       inquiryData.customerPhone = customer.phone;
+      
+      // Update the customer ID to point to the actual customer record if found
+      if (customer._id) {
+        inquiryData.customer = customer._id;
+      }
     }
 
     // Validate products exist and populate item details
@@ -241,7 +262,7 @@ const updateCustomerInquiry = async (req, res) => {
 // @access  Private
 const updateCustomerInquiryStatus = async (req, res) => {
   try {
-    const { status, notes } = req.body;
+    let { status, notes } = req.body;
     const inquiry = await CustomerInquiry.findById(req.params.id);
     
     if (!inquiry) {
@@ -251,7 +272,27 @@ const updateCustomerInquiryStatus = async (req, res) => {
       });
     }
 
-    inquiry.status = status;
+    // Normalize and validate status against schema enum
+    const allowed = ['new', 'under_review', 'quoted', 'converted_to_order', 'closed', 'cancelled'];
+    const aliasMap = {
+      pending: 'new', open: 'new',
+      review: 'under_review', reviewing: 'under_review', inreview: 'under_review', in_review: 'under_review', inprogress: 'under_review', in_progress: 'under_review',
+      quote: 'quoted', quotation: 'quoted', quoted: 'quoted',
+      converted: 'converted_to_order', convert_to_order: 'converted_to_order', converted_to_po: 'converted_to_order', ordered: 'converted_to_order', order_placed: 'converted_to_order',
+      done: 'closed', close: 'closed', closed: 'closed', complete: 'closed', completed: 'closed', resolved: 'closed',
+      cancel: 'cancelled', canceled: 'cancelled', cancelled: 'cancelled'
+    };
+    const normalized = String(status || '').toLowerCase().replace(/[^a-z]+/g, '_').replace(/^_|_$/g, '');
+    const finalStatus = allowed.includes(normalized) ? normalized : (aliasMap[normalized] || null);
+    if (!finalStatus) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid status: ${status}`,
+        allowedStatuses: allowed,
+      });
+    }
+
+    inquiry.status = finalStatus;
     if (notes) {
       inquiry.internalNotes = notes;
     }
@@ -368,6 +409,17 @@ const convertInquiryToQuotation = async (req, res) => {
       status: 'draft',
       createdBy: req.user._id
     };
+
+    // Generate a quotation number
+    quotationData.quotationNumber = await Quotation.generateQuotationNumber();
+
+    // Ensure each item has a name (fallback to product name if available)
+    quotationData.items = (quotationData.items || []).map((it) => ({
+      ...it,
+      name: it.name || (it.product && it.product.name) || 'Item',
+      unitPrice: typeof it.unitPrice === 'number' ? it.unitPrice : 0,
+      total: 0,
+    }));
 
     const quotation = new Quotation(quotationData);
     await quotation.save();
