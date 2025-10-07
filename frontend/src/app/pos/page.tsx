@@ -312,10 +312,10 @@ const POSPage: React.FC = () => {
     if (phone.trim() && phone.length >= 10 && !selectedCustomerId) {
       try {
         const response = await customersAPI.getCustomerByPhone(phone);
-        const customer = response.data.data;
+        const customer = response?.data?.data;
         if (customer) {
           setLinkedCustomer(customer);
-          setCustomerName(`${customer.firstName} ${customer.lastName}`.trim());
+          setCustomerName(`${customer?.firstName || ''} ${customer?.lastName || ''}`.trim());
           setSelectedCustomerId(customer._id);
         } else {
           setLinkedCustomer(null);

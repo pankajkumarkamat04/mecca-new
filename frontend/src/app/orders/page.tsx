@@ -783,12 +783,12 @@ const OrdersPage: React.FC = () => {
                   options={[
                     { value: '', label: warehousesLoading ? 'Loading warehouses...' : 'Select Warehouse' },
                     ...(Array.isArray(warehousesData?.data?.data) ? warehousesData.data.data.map((warehouse: any) => ({
-                      value: warehouse._id,
-                      label: `${warehouse.name} (${warehouse.code})`
+                      value: warehouse?._id || '',
+                      label: `${warehouse?.name || 'Unknown'} (${warehouse?.code || 'N/A'})`
                     })) : [])
                   ]}
                 />
-                {!warehousesLoading && !warehousesError && Array.isArray(warehousesData?.data?.data) && warehousesData.data.data.length === 0 && (
+                {!warehousesLoading && !warehousesError && Array.isArray(warehousesData?.data?.data) && warehousesData?.data?.data?.length === 0 && (
                   <div className="mt-2 text-sm text-gray-500">
                     No warehouses available. Please create warehouses first.
                   </div>

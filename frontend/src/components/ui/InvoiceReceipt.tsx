@@ -169,7 +169,7 @@ const InvoiceReceipt: React.FC<InvoiceReceiptProps> = ({
         {invoice.payments && invoice.payments.length > 0 && (
           <div className="border-t border-dashed border-gray-300 py-2 mb-2">
             <div className="text-xs space-y-1">
-              <div>Payment: {invoice.payments[0].method}</div>
+              <div>Payment: {invoice.payments[0]?.method || 'Unknown'}</div>
               <div>Tendered: {formatCurrency(invoice.paid)}</div>
               <div>Change: {formatCurrency(invoice.paid - finalTotal)}</div>
             </div>
@@ -340,12 +340,12 @@ const InvoiceReceipt: React.FC<InvoiceReceiptProps> = ({
           <div className="text-sm">
             <div className="flex justify-between">
               <span>Payment Method:</span>
-              <span className="font-medium capitalize">{invoice.payments[0].method}</span>
+              <span className="font-medium capitalize">{invoice.payments[0]?.method || 'Unknown'}</span>
             </div>
-            {invoice.payments[0].reference && (
+            {invoice.payments[0]?.reference && (
               <div className="flex justify-between">
                 <span>Reference:</span>
-                <span>{invoice.payments[0].reference}</span>
+                <span>{invoice.payments[0]?.reference}</span>
               </div>
             )}
           </div>

@@ -258,13 +258,13 @@ const CustomerSupportPage: React.FC = () => {
   const getStatusCounts = () => {
     if (!ticketsData?.data?.data) return {};
     
-    const tickets = ticketsData.data.data;
+    const tickets = ticketsData.data.data || [];
     return {
       total: tickets.length,
-      open: tickets.filter((t: any) => t.status === 'open').length,
-      inProgress: tickets.filter((t: any) => t.status === 'in_progress').length,
-      resolved: tickets.filter((t: any) => t.status === 'resolved').length,
-      closed: tickets.filter((t: any) => t.status === 'closed').length,
+      open: tickets.filter((t: any) => t?.status === 'open').length,
+      inProgress: tickets.filter((t: any) => t?.status === 'in_progress').length,
+      resolved: tickets.filter((t: any) => t?.status === 'resolved').length,
+      closed: tickets.filter((t: any) => t?.status === 'closed').length,
     };
   };
 

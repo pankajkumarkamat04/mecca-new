@@ -216,7 +216,7 @@ const CustomerInvoicesPage: React.FC = () => {
       };
     }
     
-    const invoices = invoicesData.data.data;
+    const invoices = invoicesData.data.data || [];
     return {
       total: invoices.length,
       paid: invoices.filter((inv: Invoice) => inv.status === 'paid').length,

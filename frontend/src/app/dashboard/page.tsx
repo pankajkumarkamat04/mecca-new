@@ -81,20 +81,20 @@ const DashboardPage: React.FC = () => {
       // Transform the new API response to match the expected structure
       setStats({
         sales: {
-          monthlyTotal: apiData.orders?.revenue || 0,
-          monthlyInvoices: apiData.invoices?.total || apiData.orders?.total || 0,
+          monthlyTotal: apiData?.sales?.totalRevenue || apiData?.orders?.revenue || 0,
+          monthlyInvoices: apiData?.invoices?.total || apiData?.orders?.total || 0,
         },
         customers: {
-          total: apiData.customers?.total || 0,
-          newThisMonth: apiData.customers?.newThisMonth || 0,
+          total: apiData?.customers?.total || 0,
+          newThisMonth: apiData?.customers?.newThisMonth || 0,
         },
         products: {
-          total: apiData.inventory?.total || 0,
-          lowStock: apiData.inventory?.lowStock || 0,
+          total: apiData?.inventory?.total || 0,
+          lowStock: apiData?.inventory?.lowStock || 0,
         },
         support: {
-          openTickets: apiData.support?.openTickets || 0,
-          overdueTickets: apiData.support?.overdueTickets || 0,
+          openTickets: apiData?.support?.openTickets || 0,
+          overdueTickets: apiData?.support?.overdueTickets || 0,
         },
         employees: {
           total: 0, // Not available in new API
@@ -394,18 +394,18 @@ const DashboardPage: React.FC = () => {
                               </span>
                             </div>
                             <div>
-                              <div className="font-medium text-gray-900">{movement.product.name}</div>
+                              <div className="font-medium text-gray-900">{movement?.product?.name || 'Unknown Product'}</div>
                               <div className="text-sm text-gray-500">
-                                {movement.movementType} • {movement.quantity} units
+                                {movement?.movementType || 'Unknown'} • {movement?.quantity || 0} units
                               </div>
                             </div>
                           </div>
                           <div className="text-right">
                             <div className="text-sm text-gray-500">
-                              {movement.createdBy.firstName} {movement.createdBy.lastName}
+                              {movement?.createdBy?.firstName || 'Unknown'} {movement?.createdBy?.lastName || 'User'}
                             </div>
                             <div className="text-xs text-gray-400">
-                              {new Date(movement.createdAt).toLocaleDateString()}
+                              {movement?.createdAt ? new Date(movement.createdAt).toLocaleDateString() : 'Unknown Date'}
                             </div>
               </div>
               </div>
@@ -436,11 +436,11 @@ const DashboardPage: React.FC = () => {
             </div>
             <SalesChart
               type="area"
-              data={(salesTrendsChart?.data?.data?.dailyTrends || []).map((d: any) => ({
-                date: `${d._id.year}-${d._id.month.toString().padStart(2, '0')}-${d._id.day.toString().padStart(2, '0')}`,
-                sales: d.count,
-                revenue: d.revenue,
-                orders: d.count,
+              data={(salesTrendsChart?.data?.data?.dailyOrderTrends || salesTrendsChart?.data?.data?.dailyTrends || []).map((d: any) => ({
+                date: `${d?._id?.year || new Date().getFullYear()}-${(d?._id?.month || 1).toString().padStart(2, '0')}-${(d?._id?.day || 1).toString().padStart(2, '0')}`,
+                sales: d?.count || 0,
+                revenue: d?.revenue || 0,
+                orders: d?.count || 0,
               }))}
             />
           </div>
@@ -452,8 +452,8 @@ const DashboardPage: React.FC = () => {
             </div>
             <BarChart
               data={(topProductsChart?.data?.data?.topProductsByQuantity || []).map((p: any) => ({
-                name: p.name || 'Unknown',
-                value: p.totalQuantity,
+                name: p?.name || 'Unknown Product',
+                value: p?.totalQuantity || 0,
               }))}
             />
               </div>

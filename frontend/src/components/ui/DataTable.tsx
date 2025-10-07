@@ -259,22 +259,85 @@ const DataTable: React.FC<DataTableProps> = ({
                   Previous
                 </Button>
                 
-                {[...Array(pagination.pages)].map((_, i) => {
-                  const page = i + 1;
-                  const isCurrentPage = page === pagination.page;
+                {(() => {
+                  const { page: currentPage, pages: totalPages } = pagination;
+                  const maxVisiblePages = 7; // Show maximum 7 page numbers
                   
-                  return (
-                    <Button
-                      key={page}
-                      variant={isCurrentPage ? 'primary' : 'outline'}
-                      size="sm"
-                      onClick={() => onPageChange?.(page)}
-                      className="mx-1"
-                    >
-                      {page}
-                    </Button>
-                  );
-                })}
+                  // Calculate the range of pages to show
+                  let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+                  const endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+                  
+                  // Adjust start page if we're near the end
+                  if (endPage - startPage < maxVisiblePages - 1) {
+                    startPage = Math.max(1, endPage - maxVisiblePages + 1);
+                  }
+                  
+                  const pages = [];
+                  
+                  // Add first page and ellipsis if needed
+                  if (startPage > 1) {
+                    pages.push(
+                      <Button
+                        key={1}
+                        variant="outline"
+                        size="sm"
+                        onClick={() => onPageChange?.(1)}
+                        className="mx-1"
+                      >
+                        1
+                      </Button>
+                    );
+                    
+                    if (startPage > 2) {
+                      pages.push(
+                        <span key="ellipsis-start" className="px-2 py-1 text-sm text-gray-500">
+                          ...
+                        </span>
+                      );
+                    }
+                  }
+                  
+                  // Add visible page numbers
+                  for (let page = startPage; page <= endPage; page++) {
+                    const isCurrentPage = page === currentPage;
+                    pages.push(
+                      <Button
+                        key={page}
+                        variant={isCurrentPage ? 'primary' : 'outline'}
+                        size="sm"
+                        onClick={() => onPageChange?.(page)}
+                        className="mx-1"
+                      >
+                        {page}
+                      </Button>
+                    );
+                  }
+                  
+                  // Add ellipsis and last page if needed
+                  if (endPage < totalPages) {
+                    if (endPage < totalPages - 1) {
+                      pages.push(
+                        <span key="ellipsis-end" className="px-2 py-1 text-sm text-gray-500">
+                          ...
+                        </span>
+                      );
+                    }
+                    
+                    pages.push(
+                      <Button
+                        key={totalPages}
+                        variant="outline"
+                        size="sm"
+                        onClick={() => onPageChange?.(totalPages)}
+                        className="mx-1"
+                      >
+                        {totalPages}
+                      </Button>
+                    );
+                  }
+                  
+                  return pages;
+                })()}
                 
                 <Button
                   variant="outline"

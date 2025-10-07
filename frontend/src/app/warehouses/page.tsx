@@ -124,7 +124,7 @@ const WarehousesPage: React.FC = () => {
 
   useEffect(() => {
     if (usersData?.data?.data) {
-      setAvailableUsers(usersData.data.data);
+      setAvailableUsers(usersData.data.data || []);
     } else if (usersData?.data) {
       // Fallback for any different shapes
       setAvailableUsers(Array.isArray(usersData.data) ? usersData.data : []);
@@ -677,7 +677,7 @@ const CreateWarehouseForm: React.FC<{
       
       // If manager is selected, assign them
       if (formData.manager) {
-        await warehouseAPI.assignManager(result.data._id, formData.manager);
+        await warehouseAPI.assignManager(result?.data?._id || '', formData.manager);
       }
     } catch (error) {
       // Error handling is done by the mutation

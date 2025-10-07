@@ -739,7 +739,7 @@ const InventoryPage: React.FC = () => {
     onSuccess: (response: any) => {
       queryClient.invalidateQueries({ queryKey: ['stock-alerts'] });
       queryClient.invalidateQueries({ queryKey: ['stock-alert-stats'] });
-      toast.success(`Stock check completed. ${response.data.data.alertsFound} alerts found.`);
+      toast.success(`Stock check completed. ${response?.data?.data?.alertsFound || 0} alerts found.`);
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.message || 'Failed to check low stock');
@@ -1437,7 +1437,7 @@ const InventoryPage: React.FC = () => {
                     </div>
                   </div>
                 ))}
-                {(!alertsData?.data?.data || alertsData.data.data.length === 0) && (
+                {(!alertsData?.data?.data || (alertsData.data.data && alertsData.data.data.length === 0)) && (
                   <p className="text-gray-500 text-center py-4">No recent alerts</p>
                 )}
               </div>

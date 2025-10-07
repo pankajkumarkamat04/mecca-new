@@ -9,6 +9,7 @@ import { z } from 'zod'
 import { useAuth } from '@/contexts/AuthContext'
 import { EyeIcon, EyeSlashIcon, LockClosedIcon, UserIcon } from '@heroicons/react/24/outline'
 import toast from 'react-hot-toast'
+import AuthLayout from '@/components/layout/AuthLayout'
 
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
@@ -65,9 +66,9 @@ function LoginForm() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div className="bg-white rounded-2xl shadow-2xl p-8 border border-gray-100">
+    <AuthLayout>
+      <div className="space-y-8">
+        <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl p-8 border border-white/20">
           <div className="text-center mb-8">
             <div className="mx-auto h-16 w-16 flex items-center justify-center rounded-full bg-gradient-to-br from-red-500 to-red-600 shadow-lg">
               <LockClosedIcon className="h-8 w-8 text-white" />
@@ -201,16 +202,20 @@ function LoginForm() {
           </div>
         </div>
       </div>
-    </div>
+    </AuthLayout>
   )
 }
 
 export default function LoginPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600"></div>
-      </div>
+      <AuthLayout>
+        <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl p-8 border border-white/20">
+          <div className="flex items-center justify-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600"></div>
+          </div>
+        </div>
+      </AuthLayout>
     }>
       <LoginForm />
     </Suspense>

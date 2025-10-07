@@ -118,10 +118,12 @@ const CustomerSelector: React.FC<CustomerSelectorProps> = ({
     mutationFn: (data: any) => customersAPI.createCustomer(data),
     onSuccess: (response: any) => {
       queryClient.invalidateQueries({ queryKey: ['customers'] });
-      const newCustomer = response.data.data;
-      setSelectedCustomer(newCustomer);
-      onChange(newCustomer._id, newCustomer);
-      setShowCreateModal(false);
+      const newCustomer = response?.data?.data;
+      if (newCustomer) {
+        setSelectedCustomer(newCustomer);
+        onChange(newCustomer._id, newCustomer);
+        setShowCreateModal(false);
+      }
       setIsOpen(false);
       setCreateFormData({
         firstName: '',

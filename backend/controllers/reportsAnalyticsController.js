@@ -611,17 +611,20 @@ const getDashboardSummary = async (req, res) => {
     // Quick Stats
     const [
       totalOrders,
-      totalRevenue,
+      orderRevenue,
       totalJobs,
+      workshopRevenue,
       totalProducts,
       lowStockCount,
       pendingOrders,
       inProgressJobs,
-      todaySales,
+      posSalesToday,
+      posRevenue,
       totalCustomers,
       newCustomersThisMonth,
       openSupportTickets,
-      totalInvoices
+      totalInvoices,
+      invoiceRevenue
     ] = await Promise.all([
       Order.countDocuments({ createdAt: { $gte: thirtyDaysAgo } }),
       Order.aggregate([
@@ -629,6 +632,10 @@ const getDashboardSummary = async (req, res) => {
         { $group: { _id: null, total: { $sum: '$totalAmount' } } }
       ]),
       WorkshopJob.countDocuments({ createdAt: { $gte: thirtyDaysAgo } }),
+      WorkshopJob.aggregate([
+        { $match: { createdAt: { $gte: thirtyDaysAgo } } },
+        { $group: { _id: null, total: { $sum: '$estimatedCost' } } }
+      ]),
       Product.countDocuments(),
       Product.aggregate([
         {
@@ -646,12 +653,27 @@ const getDashboardSummary = async (req, res) => {
         type: 'sale',
         createdAt: { $gte: new Date(now.getFullYear(), now.getMonth(), now.getDate()) }
       }),
+      Transaction.aggregate([
+        { $match: { type: 'sale', createdAt: { $gte: thirtyDaysAgo } } },
+        { $group: { _id: null, total: { $sum: '$amount' } } }
+      ]),
       Customer.countDocuments(),
       Customer.countDocuments({ createdAt: { $gte: thirtyDaysAgo } }),
       // Support tickets - using a placeholder since we don't have a Support model
       Promise.resolve(0),
-      Invoice.countDocuments({ createdAt: { $gte: thirtyDaysAgo } })
+      Invoice.countDocuments({ createdAt: { $gte: thirtyDaysAgo } }),
+      Invoice.aggregate([
+        { $match: { createdAt: { $gte: thirtyDaysAgo } } },
+        { $group: { _id: null, total: { $sum: '$total' } } }
+      ])
     ]);
+
+    // Calculate comprehensive total sales
+    const totalSalesRevenue = 
+      (orderRevenue[0]?.total || 0) + 
+      (workshopRevenue[0]?.total || 0) + 
+      (posRevenue[0]?.total || 0) + 
+      (invoiceRevenue[0]?.total || 0);
 
     res.json({
       success: true,
@@ -659,18 +681,26 @@ const getDashboardSummary = async (req, res) => {
         orders: {
           total: totalOrders,
           pending: pendingOrders,
-          revenue: totalRevenue[0]?.total || 0
+          revenue: orderRevenue[0]?.total || 0
         },
         workshop: {
           total: totalJobs,
-          inProgress: inProgressJobs
+          inProgress: inProgressJobs,
+          revenue: workshopRevenue[0]?.total || 0
         },
         inventory: {
           total: totalProducts,
           lowStock: lowStockCount[0]?.count || 0
         },
         sales: {
-          today: todaySales
+          today: posSalesToday,
+          totalRevenue: totalSalesRevenue,
+          breakdown: {
+            pos: posRevenue[0]?.total || 0,
+            orders: orderRevenue[0]?.total || 0,
+            workshop: workshopRevenue[0]?.total || 0,
+            invoices: invoiceRevenue[0]?.total || 0
+          }
         },
         customers: {
           total: totalCustomers,
@@ -681,7 +711,8 @@ const getDashboardSummary = async (req, res) => {
           overdueTickets: 0 // Placeholder
         },
         invoices: {
-          total: totalInvoices
+          total: totalInvoices,
+          revenue: invoiceRevenue[0]?.total || 0
         }
       }
     });
@@ -725,8 +756,8 @@ const getSalesTrendsChart = async (req, res) => {
       };
     }
 
-    // Daily sales trends
-    const dailyTrends = await Order.aggregate([
+    // Daily sales trends - Orders
+    const dailyOrderTrends = await Order.aggregate([
       { $match: dateFilter },
       {
         $group: {
@@ -737,6 +768,40 @@ const getSalesTrendsChart = async (req, res) => {
           },
           count: { $sum: 1 },
           revenue: { $sum: '$totalAmount' }
+        }
+      },
+      { $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1 } }
+    ]);
+
+    // Daily POS sales trends
+    const dailyPOSTrends = await Transaction.aggregate([
+      { $match: { ...dateFilter, type: 'sale' } },
+      {
+        $group: {
+          _id: {
+            year: { $year: '$createdAt' },
+            month: { $month: '$createdAt' },
+            day: { $dayOfMonth: '$createdAt' }
+          },
+          count: { $sum: 1 },
+          revenue: { $sum: '$amount' }
+        }
+      },
+      { $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1 } }
+    ]);
+
+    // Daily workshop trends
+    const dailyWorkshopTrends = await WorkshopJob.aggregate([
+      { $match: dateFilter },
+      {
+        $group: {
+          _id: {
+            year: { $year: '$createdAt' },
+            month: { $month: '$createdAt' },
+            day: { $dayOfMonth: '$createdAt' }
+          },
+          count: { $sum: 1 },
+          revenue: { $sum: '$estimatedCost' }
         }
       },
       { $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1 } }
@@ -753,7 +818,7 @@ const getSalesTrendsChart = async (req, res) => {
             day: { $dayOfMonth: '$createdAt' }
           },
           count: { $sum: 1 },
-          revenue: { $sum: '$totalAmount' }
+          revenue: { $sum: '$total' }
         }
       },
       { $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1 } }
@@ -762,7 +827,9 @@ const getSalesTrendsChart = async (req, res) => {
     res.json({
       success: true,
       data: {
-        dailyTrends,
+        dailyOrderTrends,
+        dailyPOSTrends,
+        dailyWorkshopTrends,
         invoiceTrends
       }
     });

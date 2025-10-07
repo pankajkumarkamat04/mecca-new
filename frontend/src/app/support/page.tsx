@@ -247,7 +247,7 @@ const SupportPage: React.FC = () => {
       render: (row: SupportTicket) => (
         <div className="text-sm text-gray-900">
           {row.conversations && row.conversations.length > 0
-            ? formatDate(row.conversations[row.conversations.length - 1].createdAt)
+            ? formatDate(row.conversations[row.conversations.length - 1]?.createdAt)
             : formatDate(row.createdAt)
           }
         </div>

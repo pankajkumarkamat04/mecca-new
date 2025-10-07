@@ -78,7 +78,7 @@ const WarehousePortalLayoutInner: React.FC<{ children: React.ReactNode }> = ({ c
       setSelectedWarehouseId(userData.warehouse.assignedWarehouse);
     } else if (warehousesData?.data?.data && Array.isArray(warehousesData.data.data) && warehousesData.data.data.length > 0) {
       // For admin/manager, select first warehouse by default
-      setSelectedWarehouseId(warehousesData.data.data[0]._id);
+      setSelectedWarehouseId(warehousesData.data.data[0]?._id || '');
     }
   }, [userData, warehousesData, searchParams]);
 

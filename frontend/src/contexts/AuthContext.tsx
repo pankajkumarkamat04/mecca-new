@@ -76,8 +76,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           // Verify token with server
           try {
             const response = await authAPI.getMe();
-            setUser(response.data.user);
-            localStorage.setItem('user', JSON.stringify(response.data.user));
+            setUser(response?.data?.user || null);
+            if (response?.data?.user) {
+              localStorage.setItem('user', JSON.stringify(response.data.user));
+            }
           } catch (error) {
             // Token is invalid, clear storage
             localStorage.removeItem('token');
@@ -102,12 +104,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setIsLoading(true);
       const response = await authAPI.login({ email, password });
-      const { token: newToken, user: userData } = response.data;
+      const { token: newToken, user: userData } = response?.data || {};
 
-      setToken(newToken);
-      setUser(userData);
-      localStorage.setItem('token', newToken);
-      localStorage.setItem('user', JSON.stringify(userData));
+      if (newToken && userData) {
+        setToken(newToken);
+        setUser(userData);
+        localStorage.setItem('token', newToken);
+        localStorage.setItem('user', JSON.stringify(userData));
+      } else {
+        throw new Error('Invalid response from server');
+      }
 
       toast.success('Login successful!');
       
@@ -128,12 +134,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setIsLoading(true);
       const response = await authAPI.register(userData);
-      const { token: newToken, user: newUser } = response.data;
+      const { token: newToken, user: newUser } = response?.data || {};
 
-      setToken(newToken);
-      setUser(newUser);
-      localStorage.setItem('token', newToken);
-      localStorage.setItem('user', JSON.stringify(newUser));
+      if (newToken && newUser) {
+        setToken(newToken);
+        setUser(newUser);
+        localStorage.setItem('token', newToken);
+        localStorage.setItem('user', JSON.stringify(newUser));
+      } else {
+        throw new Error('Invalid response from server');
+      }
 
       toast.success('Registration successful!');
     } catch (error: any) {

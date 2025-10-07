@@ -153,7 +153,7 @@ const WarehouseDashboardInner: React.FC<{ warehouseId: string | null }> = ({ war
   // Update employees state
   useEffect(() => {
     if (employeesResponse?.data?.data?.employees) {
-      setEmployees(employeesResponse.data.data.employees);
+      setEmployees(employeesResponse.data.data.employees || []);
     }
   }, [employeesResponse]);
 

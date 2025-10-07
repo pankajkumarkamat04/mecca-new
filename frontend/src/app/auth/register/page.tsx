@@ -7,6 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { EyeIcon, EyeSlashIcon, UserPlusIcon, EnvelopeIcon, LockClosedIcon, PhoneIcon, BuildingOfficeIcon } from '@heroicons/react/24/outline'
 import { authAPI } from '@/lib/api'
+import AuthLayout from '@/components/layout/AuthLayout'
 
 const registerSchema = z.object({
   firstName: z.string().min(2, 'First name must be at least 2 characters'),
@@ -61,9 +62,9 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div className="bg-white rounded-2xl shadow-2xl p-8 border border-gray-100">
+    <AuthLayout>
+      <div className="space-y-8">
+        <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl p-8 border border-white/20">
           <div className="text-center mb-8">
             <div className="mx-auto h-16 w-16 flex items-center justify-center rounded-full bg-gradient-to-br from-red-500 to-red-600 shadow-lg">
               <UserPlusIcon className="h-8 w-8 text-white" />
@@ -301,6 +302,6 @@ export default function RegisterPage() {
           </div>
         </div>
       </div>
-    </div>
+    </AuthLayout>
   )
 }

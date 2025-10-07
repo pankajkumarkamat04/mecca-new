@@ -9,6 +9,7 @@ import { z } from 'zod'
 import { EyeIcon, EyeSlashIcon, LockClosedIcon, CheckCircleIcon } from '@heroicons/react/24/outline'
 import { authAPI } from '@/lib/api'
 import toast from 'react-hot-toast'
+import AuthLayout from '@/components/layout/AuthLayout'
 
 const resetPasswordSchema = z.object({
   password: z.string().min(6, 'Password must be at least 6 characters'),
@@ -78,9 +79,9 @@ function ResetPasswordForm() {
 
   if (isSuccess) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-md w-full space-y-8">
-          <div className="bg-white rounded-2xl shadow-2xl p-8 border border-gray-100">
+      <AuthLayout>
+        <div className="space-y-8">
+          <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl p-8 border border-white/20">
             <div className="text-center">
               <div className="mx-auto h-16 w-16 flex items-center justify-center rounded-full bg-gradient-to-br from-green-500 to-green-600 shadow-lg mb-6">
                 <CheckCircleIcon className="h-8 w-8 text-white" />
@@ -103,22 +104,26 @@ function ResetPasswordForm() {
             </div>
           </div>
         </div>
-      </div>
+    </AuthLayout>
     )
   }
 
   if (!token) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600"></div>
-      </div>
+      <AuthLayout>
+        <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl p-8 border border-white/20">
+          <div className="flex items-center justify-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600"></div>
+          </div>
+        </div>
+      </AuthLayout>
     )
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div className="bg-white rounded-2xl shadow-2xl p-8 border border-gray-100">
+    <AuthLayout>
+      <div className="space-y-8">
+        <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl p-8 border border-white/20">
           <div className="text-center mb-8">
             <div className="mx-auto h-16 w-16 flex items-center justify-center rounded-full bg-gradient-to-br from-red-500 to-red-600 shadow-lg">
               <LockClosedIcon className="h-8 w-8 text-white" />
@@ -234,16 +239,20 @@ function ResetPasswordForm() {
           </form>
         </div>
       </div>
-    </div>
+    </AuthLayout>
   )
 }
 
 export default function ResetPasswordPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600"></div>
-      </div>
+      <AuthLayout>
+        <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl p-8 border border-white/20">
+          <div className="flex items-center justify-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600"></div>
+          </div>
+        </div>
+      </AuthLayout>
     }>
       <ResetPasswordForm />
     </Suspense>

@@ -200,7 +200,7 @@ const TransactionsPage: React.FC = () => {
     setLoadingTransaction(true);
     try {
       const response = await transactionsAPI.getTransactionById(transaction._id);
-      setSelectedTx(response.data.data);
+      setSelectedTx(response?.data?.data || null);
       setViewOpen(true);
     } catch (error) {
       console.error('Error fetching transaction details:', error);
