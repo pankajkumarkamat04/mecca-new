@@ -36,6 +36,7 @@ import {
   ChevronDownIcon,
   ChevronRightIcon,
   CurrencyDollarIcon,
+  BuildingStorefrontIcon,
 } from '@heroicons/react/24/outline';
 
 interface SidebarItem {
@@ -271,6 +272,12 @@ const getSidebarItems = (userRole: string): SidebarItem[] => {
             href: '/pos',
             icon: CreditCardIcon,
             permission: { module: 'pos', action: 'read' },
+          },
+          {
+            name: 'Sales Outlets',
+            href: '/sales-outlets',
+            icon: BuildingStorefrontIcon,
+            roles: ['admin', 'manager'],
           },
           {
             name: 'Orders',

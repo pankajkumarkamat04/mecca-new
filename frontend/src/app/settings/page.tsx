@@ -22,6 +22,7 @@ import {
   PhotoIcon,
   TrashIcon,
   ComputerDesktopIcon,
+  ArrowPathIcon,
 } from '@heroicons/react/24/outline';
 
 const SettingsPage: React.FC = () => {
@@ -72,6 +73,18 @@ const SettingsPage: React.FC = () => {
     },
     onError: () => {
       toast.error('Failed to delete logo');
+    }
+  });
+
+  const refreshExchangeRatesMutation = useMutation({
+    mutationFn: () => settingsAPI.refreshExchangeRates(),
+    onSuccess: (response) => {
+      queryClient.invalidateQueries({ queryKey: ['app-settings'] });
+      const data = response.data?.data;
+      toast.success(`Updated ${data?.updatedCount || 0} exchange rates successfully`);
+    },
+    onError: () => {
+      toast.error('Failed to refresh exchange rates');
     }
   });
 
@@ -322,19 +335,6 @@ const SettingsPage: React.FC = () => {
           <div className="border-t border-gray-200 pt-6">
             <h4 className="text-md font-medium text-gray-900 mb-4">Default Settings</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Select
-                label="Default Currency"
-                options={[
-                  { value: 'USD', label: 'USD - US Dollar' },
-                  { value: 'EUR', label: 'EUR - Euro' },
-                  { value: 'GBP', label: 'GBP - British Pound' },
-                  { value: 'CAD', label: 'CAD - Canadian Dollar' },
-                  { value: 'AUD', label: 'AUD - Australian Dollar' },
-                ]}
-                value={currentCompany.defaultCurrency || 'USD'}
-                onChange={(value) => handleInputChange('defaultCurrency', value)}
-                fullWidth
-              />
               <Input
                 label="Default Tax Rate (%)"
                 type="number"
@@ -342,6 +342,133 @@ const SettingsPage: React.FC = () => {
                 fullWidth
                 onChange={(e) => handleInputChange('defaultTaxRate', parseFloat(e.target.value))}
               />
+            </div>
+          </div>
+
+          {/* Currency Settings */}
+          <div className="border-t border-gray-200 pt-6">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h4 className="text-md font-medium text-gray-900">Multi-Currency Settings</h4>
+                <p className="text-sm text-gray-600 mt-1">
+                  Exchange rates are updated automatically using real-time APIs.
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => refreshExchangeRatesMutation.mutate()}
+                loading={refreshExchangeRatesMutation.isPending}
+                leftIcon={<ArrowPathIcon className="h-4 w-4" />}
+              >
+                Refresh Rates
+              </Button>
+            </div>
+            
+            {currentCompany.currencySettings?.lastAutoUpdate && (
+              <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-sm text-blue-700">
+                  <span className="font-medium">Last automatic update:</span>{' '}
+                  {new Date(currentCompany.currencySettings.lastAutoUpdate).toLocaleString()}
+                </p>
+              </div>
+            )}
+            
+            <div className="space-y-4">
+              {/* USD Currency */}
+              <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h5 className="font-medium text-gray-900">$ USD - US Dollar</h5>
+                    <p className="text-sm text-gray-500">Base Currency (Exchange Rate: 1.00)</p>
+                  </div>
+                  <span className="px-3 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
+                    Base Currency
+                  </span>
+                </div>
+              </div>
+
+              {/* ZWL Currency */}
+              <div className="p-4 bg-white rounded-lg border border-gray-200">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <h5 className="font-medium text-gray-900">Z$ ZWL - Zimbabwean Dollar (ZIG)</h5>
+                    <p className="text-sm text-gray-500">1 USD = {currentCompany.currencySettings?.supportedCurrencies?.find((c: any) => c.code === 'ZWL')?.exchangeRate || 30} ZWL</p>
+                  </div>
+                  <span className="px-3 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
+                    Active
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Input
+                    label="Exchange Rate (1 USD = X ZWL)"
+                    type="number"
+                    step="0.01"
+                    value={
+                      formData.company?.currencySettings?.supportedCurrencies?.find((c: any) => c.code === 'ZWL')?.exchangeRate ||
+                      currentCompany.currencySettings?.supportedCurrencies?.find((c: any) => c.code === 'ZWL')?.exchangeRate ||
+                      30
+                    }
+                    fullWidth
+                    onChange={(e) => {
+                      const newRate = parseFloat(e.target.value);
+                      const currencies = currentCompany.currencySettings?.supportedCurrencies || [];
+                      const updatedCurrencies = currencies.map((c: any) => 
+                        c.code === 'ZWL' ? { ...c, exchangeRate: newRate, lastUpdated: new Date() } : c
+                      );
+                      setFormData((prev: any) => ({
+                        ...prev,
+                        company: {
+                          ...prev.company,
+                          currencySettings: {
+                            ...currentCompany.currencySettings,
+                            supportedCurrencies: updatedCurrencies
+                          }
+                        }
+                      }));
+                      setHasChanges(true);
+                    }}
+                  />
+                  <div className="flex items-end">
+                    <p className="text-xs text-gray-500 pb-2">
+                      Last updated: {new Date(currentCompany.currencySettings?.supportedCurrencies?.find((c: any) => c.code === 'ZWL')?.lastUpdated || Date.now()).toLocaleDateString()}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Default Display Currency */}
+              <div className="mt-4">
+                <Select
+                  label="Default Display Currency"
+                  options={[
+                    { value: 'USD', label: '$ USD - US Dollar' },
+                    { value: 'ZWL', label: 'Z$ ZWL - Zimbabwean Dollar (ZIG)' },
+                  ]}
+                  value={
+                    formData.company?.currencySettings?.defaultDisplayCurrency ||
+                    currentCompany.currencySettings?.defaultDisplayCurrency ||
+                    'USD'
+                  }
+                  onChange={(value) => {
+                    setFormData((prev: any) => ({
+                      ...prev,
+                      company: {
+                        ...prev.company,
+                        currencySettings: {
+                          ...currentCompany.currencySettings,
+                          defaultDisplayCurrency: value
+                        }
+                      }
+                    }));
+                    setHasChanges(true);
+                  }}
+                  fullWidth
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  This currency will be selected by default in transactions and reports.
+                </p>
+              </div>
             </div>
           </div>
         </div>

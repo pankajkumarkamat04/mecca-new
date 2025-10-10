@@ -1,6 +1,8 @@
 const Invoice = require('../models/Invoice');
 const Customer = require('../models/Customer');
 const Product = require('../models/Product');
+const Setting = require('../models/Setting');
+const { prepareCurrencyData } = require('../utils/currencyUtils');
 
 // @desc    Get all invoices
 // @route   GET /api/invoices
@@ -162,6 +164,15 @@ const createInvoice = async (req, res) => {
         success: false,
         message: 'Invoice must have at least one item'
       });
+    }
+
+    // Get settings for currency information
+    const settings = await Setting.getSingleton();
+    const displayCurrency = invoiceData.displayCurrency || settings.company.currencySettings?.defaultDisplayCurrency || 'USD';
+    
+    // Add currency data to invoice if not already present
+    if (!invoiceData.currency) {
+      invoiceData.currency = prepareCurrencyData(settings, displayCurrency);
     }
 
     // Update product stock for sale invoices

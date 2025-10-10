@@ -7,15 +7,17 @@ import Button from '@/components/ui/Button';
 import Modal from '@/components/ui/Modal';
 import Input from '@/components/ui/Input';
 import CustomerSelector from '@/components/ui/CustomerSelector';
-import { posAPI, productsAPI, customersAPI } from '@/lib/api';
+import CurrencySelector from '@/components/ui/CurrencySelector';
+import OutletSelector from '@/components/ui/OutletSelector';
+import { posAPI, productsAPI, customersAPI, salesOutletsAPI } from '@/lib/api';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { formatCurrency } from '@/lib/utils';
 import { useSettings } from '@/contexts/SettingsContext';
 import { calculatePrice } from '@/lib/priceCalculator';
-import PriceSummary from '@/components/ui/PriceSummary';
 import InvoiceReceipt from '@/components/ui/InvoiceReceipt';
 import { downloadReceipt, printReceipt } from '@/lib/receiptUtils';
 import toast from 'react-hot-toast';
+import { formatAmountWithCurrency, convertToBaseCurrency } from '@/lib/currencyUtils';
 import {
   ShoppingCartIcon,
   PlusIcon,
@@ -28,6 +30,7 @@ import {
   ArrowDownTrayIcon,
   ArrowLeftIcon,
   MagnifyingGlassIcon,
+  BuildingStorefrontIcon,
 } from '@heroicons/react/24/outline';
 
 interface CartItem {
@@ -53,8 +56,48 @@ const POSPage: React.FC = () => {
   const [receipt, setReceipt] = useState<Receipt | null>(null);
   const [showReceiptModal, setShowReceiptModal] = useState(false);
   const [receiptType, setReceiptType] = useState<'short' | 'full'>('short');
+  const [displayCurrency, setDisplayCurrency] = useState<string>('USD');
+  const [currentTime, setCurrentTime] = useState(new Date());
+  const [selectedOutletId, setSelectedOutletId] = useState<string>('');
+  const [selectedOutlet, setSelectedOutlet] = useState<any>(null);
+  const [showOutletModal, setShowOutletModal] = useState(false);
 
   const queryClient = useQueryClient();
+
+  // Check for saved outlet in localStorage
+  useEffect(() => {
+    const savedOutletId = localStorage.getItem('selectedOutletId');
+    const savedOutlet = localStorage.getItem('selectedOutlet');
+    
+    if (savedOutletId && savedOutlet) {
+      setSelectedOutletId(savedOutletId);
+      setSelectedOutlet(JSON.parse(savedOutlet));
+    } else {
+      // Show outlet selection modal if not set
+      setShowOutletModal(true);
+    }
+  }, []);
+
+  // Update time every second
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
+
+  // Set default currency from settings
+  useEffect(() => {
+    if (company?.currencySettings?.defaultDisplayCurrency) {
+      setDisplayCurrency(company.currencySettings.defaultDisplayCurrency);
+    }
+  }, [company]);
+
+  // Reset tendered amount when currency changes to avoid confusion
+  useEffect(() => {
+    setTenderedAmount(0);
+  }, [displayCurrency]);
 
   // Fetch products for POS
   const { data: productsData } = useQuery({
@@ -213,6 +256,46 @@ const POSPage: React.FC = () => {
     setCart(cart.filter(item => item.product._id !== productId));
   };
 
+  // Get exchange rate for selected currency
+  const getExchangeRate = () => {
+    if (!company?.currencySettings || displayCurrency === 'USD') return 1;
+    const currency = company.currencySettings.supportedCurrencies?.find(c => c.code === displayCurrency);
+    return currency?.exchangeRate || 1;
+  };
+
+  // Get currency symbol
+  const getCurrencySymbol = () => {
+    if (displayCurrency === 'USD') return '$';
+    const currency = company?.currencySettings?.supportedCurrencies?.find(c => c.code === displayCurrency);
+    return currency?.symbol || '$';
+  };
+
+  // Convert amount to display currency
+  const convertAmount = (amountUSD: number) => {
+    if (typeof amountUSD !== 'number' || isNaN(amountUSD)) return 0;
+    return amountUSD * getExchangeRate();
+  };
+
+  // Format amount with currency
+  const formatAmount = (amountUSD: number) => {
+    if (typeof amountUSD !== 'number' || isNaN(amountUSD)) {
+      console.warn('Invalid amount passed to formatAmount:', amountUSD);
+      return formatCurrency(0);
+    }
+    try {
+      const result = formatAmountWithCurrency(amountUSD, company?.currencySettings, displayCurrency);
+      // Ensure we always return a string
+      if (typeof result !== 'string') {
+        console.error('formatAmountWithCurrency returned non-string:', result, typeof result);
+        return formatCurrency(amountUSD);
+      }
+      return result;
+    } catch (error) {
+      console.error('Error formatting amount:', error, 'Amount:', amountUSD, 'Currency:', displayCurrency);
+      return formatCurrency(amountUSD);
+    }
+  };
+
   // Use universal price calculator
   const getPriceCalculation = () => {
     const priceItems = cart.map(item => ({
@@ -227,19 +310,31 @@ const POSPage: React.FC = () => {
   };
 
   const getSubtotal = () => {
-    return getPriceCalculation().subtotal;
+    const calc = getPriceCalculation();
+    return Number(calc?.subtotal || 0);
   };
 
   const getTax = () => {
-    return getPriceCalculation().totalTax;
+    const calc = getPriceCalculation();
+    return Number(calc?.totalTax || 0);
   };
 
   const getTotal = () => {
-    return getPriceCalculation().total;
+    const calc = getPriceCalculation();
+    return Number(calc?.total || 0);
   };
 
   const getChange = () => {
-    return Math.max(0, tenderedAmount - getTotal());
+    // Convert tendered amount from display currency to USD
+    const exchangeRate = getExchangeRate();
+    const tenderedUSD = displayCurrency === 'USD' 
+      ? tenderedAmount 
+      : tenderedAmount / exchangeRate;
+    
+    // Calculate change in USD (formatAmount will convert to display currency)
+    const totalUSD = getTotal();
+    const changeUSD = Math.max(0, tenderedUSD - totalUSD);
+    return Number(changeUSD) || 0;
   };
 
   // Removed customer lookup action
@@ -250,12 +345,24 @@ const POSPage: React.FC = () => {
       return;
     }
 
+    if (!selectedOutletId) {
+      toast.error('Please select a sales outlet');
+      setShowOutletModal(true);
+      return;
+    }
+
     if (!customerPhone.trim()) {
       toast.error('Customer phone number is required');
       return;
     }
 
-    if (paymentMethod === 'cash' && tenderedAmount < getTotal()) {
+    // Convert tendered amount from display currency to USD
+    const exchangeRate = getExchangeRate();
+    const tenderedUSD = displayCurrency === 'USD' 
+      ? tenderedAmount 
+      : tenderedAmount / exchangeRate; // Convert ZWL to USD
+    
+    if (paymentMethod === 'cash' && tenderedUSD < getTotal()) {
       toast.error('Insufficient amount tendered');
       return;
     }
@@ -272,9 +379,11 @@ const POSPage: React.FC = () => {
         customer: selectedCustomerId || undefined,
         customerName: customerName || undefined,
         customerPhone: customerPhone,
+        salesOutlet: selectedOutletId, // Include sales outlet
         paymentMethod,
-        tenderedAmount: paymentMethod === 'cash' ? tenderedAmount : getTotal(),
+        tenderedAmount: paymentMethod === 'cash' ? tenderedUSD : getTotal(), // Send USD amount
         total: getTotal(),
+        displayCurrency: displayCurrency, // Include selected currency
       };
       
       await processSaleMutation.mutateAsync(saleData);
@@ -302,6 +411,22 @@ const POSPage: React.FC = () => {
       setCustomerName('');
       setCustomerPhone('');
     }
+  };
+
+  const handleOutletSelect = (outletId: string, outlet?: any) => {
+    setSelectedOutletId(outletId);
+    setSelectedOutlet(outlet);
+    // Save to localStorage
+    localStorage.setItem('selectedOutletId', outletId);
+    if (outlet) {
+      localStorage.setItem('selectedOutlet', JSON.stringify(outlet));
+    }
+    setShowOutletModal(false);
+    toast.success(`Outlet selected: ${outlet?.name || outletId}`);
+  };
+
+  const handleChangeOutlet = () => {
+    setShowOutletModal(true);
   };
 
   // Handle phone number lookup for existing customers
@@ -351,9 +476,40 @@ const POSPage: React.FC = () => {
               Back to Dashboard
             </Button>
             <h1 className="text-2xl font-bold text-gray-900">MECCA POS</h1>
+            {selectedOutlet && (
+              <div className="flex items-center space-x-2 px-3 py-1 bg-blue-50 rounded-lg border border-blue-200">
+                <BuildingStorefrontIcon className="h-5 w-5 text-blue-600" />
+                <div>
+                  <div className="text-xs text-blue-600 font-medium">{selectedOutlet.outletCode}</div>
+                  <div className="text-xs text-blue-800">{selectedOutlet.name}</div>
+                </div>
+                <button
+                  onClick={handleChangeOutlet}
+                  className="ml-2 text-xs text-blue-600 hover:text-blue-800 underline"
+                >
+                  Change
+                </button>
+              </div>
+            )}
           </div>
-          <div className="text-sm text-gray-500">
-            {new Date().toLocaleDateString()} - {new Date().toLocaleTimeString()}
+          <div className="text-sm text-gray-500 font-mono">
+            <div className="flex items-center space-x-2">
+              <span>{currentTime.toLocaleDateString('en-US', { 
+                weekday: 'short', 
+                year: 'numeric', 
+                month: 'short', 
+                day: 'numeric' 
+              })}</span>
+              <span className="text-gray-400">•</span>
+              <span className="font-semibold text-blue-600">
+                {currentTime.toLocaleTimeString('en-US', { 
+                  hour: '2-digit', 
+                  minute: '2-digit', 
+                  second: '2-digit',
+                  hour12: true
+                })}
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -385,31 +541,37 @@ const POSPage: React.FC = () => {
           <div className="p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Products</h2>
             <div className="grid grid-cols-3 gap-4">
-              {productsData?.data?.data?.slice(0, 3).map((product: any) => (
-                <div
-                  key={product._id}
-                  className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 cursor-pointer transition-colors flex flex-col justify-between"
-                  onClick={() => addToCart(product)}
-                >
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <h3 className="font-medium text-gray-900 text-sm">{product.name}</h3>
-                      <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                        {product.inventory.currentStock} {product.inventory.unit}
-                      </span>
+              {productsData?.data?.data?.slice(0, 3).map((product: any) => {
+                const sellingPrice = Number(product?.pricing?.sellingPrice) || 0;
+                const stockQty = product?.inventory?.currentStock || 0;
+                const stockUnit = product?.inventory?.unit || '';
+                
+                return (
+                  <div
+                    key={product._id}
+                    className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 cursor-pointer transition-colors flex flex-col justify-between"
+                    onClick={() => addToCart(product)}
+                  >
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <h3 className="font-medium text-gray-900 text-sm">{product.name || 'Unknown'}</h3>
+                        <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                          {stockQty} {stockUnit}
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-500 mb-2">SKU: {product.sku || 'N/A'}</p>
                     </div>
-                    <p className="text-xs text-gray-500 mb-2">SKU: {product.sku}</p>
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-lg text-gray-900">
+                        {formatAmount(sellingPrice)}
+                      </span>
+                      <button className="bg-blue-600 text-white px-3 py-1 rounded text-xs hover:bg-blue-700">
+                        Add
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-lg text-gray-900">
-                      {formatCurrency(product.pricing.sellingPrice, product.pricing.currency)}
-                    </span>
-                    <button className="bg-blue-600 text-white px-3 py-1 rounded text-xs hover:bg-blue-700">
-                      Add
-                    </button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 
@@ -425,38 +587,43 @@ const POSPage: React.FC = () => {
               </div>
             ) : (
               <div className="space-y-3 overflow-y-auto flex-1">
-                {cart.map((item) => (
-                  <div key={item.product._id} className="flex items-center justify-between border border-gray-200 rounded-lg p-3">
-                    <div className="flex-1">
-                      <h4 className="font-medium text-gray-900">{item.product.name}</h4>
-                      <p className="text-sm text-gray-500">{formatCurrency(item.price)}</p>
+                {cart.map((item) => {
+                  const itemPrice = Number(item.price) || 0;
+                  const itemTotal = Number(item.total) || 0;
+                  
+                  return (
+                    <div key={item.product._id} className="flex items-center justify-between border border-gray-200 rounded-lg p-3">
+                      <div className="flex-1">
+                        <h4 className="font-medium text-gray-900">{item.product.name || 'Unknown Product'}</h4>
+                        <p className="text-sm text-gray-500">{formatAmount(itemPrice)}</p>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={() => updateQuantity(item.product._id, item.quantity - 1)}
+                          className="p-1 rounded-full hover:bg-gray-100"
+                        >
+                          <MinusIcon className="h-4 w-4" />
+                        </button>
+                        <span className="w-8 text-center font-medium">{item.quantity}</span>
+                        <button
+                          onClick={() => updateQuantity(item.product._id, item.quantity + 1)}
+                          className="p-1 rounded-full hover:bg-gray-100"
+                        >
+                          <PlusIcon className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => removeFromCart(item.product._id)}
+                          className="p-1 rounded-full hover:bg-red-100 text-red-600"
+                        >
+                          <XMarkIcon className="h-4 w-4" />
+                        </button>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-medium text-gray-900">{formatAmount(itemTotal)}</p>
+                      </div>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <button
-                        onClick={() => updateQuantity(item.product._id, item.quantity - 1)}
-                        className="p-1 rounded-full hover:bg-gray-100"
-                      >
-                        <MinusIcon className="h-4 w-4" />
-                      </button>
-                      <span className="w-8 text-center font-medium">{item.quantity}</span>
-                      <button
-                        onClick={() => updateQuantity(item.product._id, item.quantity + 1)}
-                        className="p-1 rounded-full hover:bg-gray-100"
-                      >
-                        <PlusIcon className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() => removeFromCart(item.product._id)}
-                        className="p-1 rounded-full hover:bg-red-100 text-red-600"
-                      >
-                        <XMarkIcon className="h-4 w-4" />
-                      </button>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-medium text-gray-900">{formatCurrency(item.total)}</p>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -516,17 +683,66 @@ const POSPage: React.FC = () => {
               onChange={(e) => setCustomerName(e.target.value)}
               fullWidth
             />
+
+            {/* Currency Selector */}
+            <CurrencySelector
+              label="Display Currency"
+              value={displayCurrency}
+              onChange={(value) => {
+                console.log('Currency changed to:', value);
+                setDisplayCurrency(String(value));
+              }}
+              fullWidth
+            />
           </div>
 
           {/* Order Summary */}
           <div className="border-t border-gray-200 pt-4 mb-6">
-            <PriceSummary 
-              calculation={getPriceCalculation()} 
-              showBreakdown={true}
-              showItems={false}
-              title=""
-              className="bg-transparent p-0"
-            />
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span>Subtotal:</span>
+                <span className="font-medium">
+                  {(() => {
+                    try {
+                      return formatAmount(getSubtotal());
+                    } catch (e) {
+                      console.error('Error formatting subtotal:', e);
+                      return '$0.00';
+                    }
+                  })()}
+                </span>
+              </div>
+              
+              {getTax() > 0 && (
+                <div className="flex justify-between text-sm text-blue-600">
+                  <span>Tax:</span>
+                  <span className="font-medium">
+                    +{(() => {
+                      try {
+                        return formatAmount(getTax());
+                      } catch (e) {
+                        console.error('Error formatting tax:', e);
+                        return '$0.00';
+                      }
+                    })()}
+                  </span>
+                </div>
+              )}
+              
+              <div className="flex justify-between text-lg font-semibold border-t pt-2 mt-2">
+                <span>Total ({displayCurrency}):</span>
+                <span className="text-blue-600">
+                  {(() => {
+                    try {
+                      return formatAmount(getTotal());
+                    } catch (e) {
+                      console.error('Error formatting total:', e);
+                      return '$0.00';
+                    }
+                  })()}
+                </span>
+              </div>
+            </div>
           </div>
 
           {/* Payment Method */}
@@ -564,7 +780,7 @@ const POSPage: React.FC = () => {
           {paymentMethod === 'cash' && (
             <div className="mb-6">
               <Input
-                label="Amount Tendered"
+                label={`Amount Tendered (${displayCurrency})`}
                 type="number"
                 step="0.01"
                 placeholder="0.00"
@@ -572,11 +788,16 @@ const POSPage: React.FC = () => {
                 onChange={(e) => setTenderedAmount(parseFloat(e.target.value) || 0)}
                 fullWidth
               />
+              <p className="text-xs text-gray-500 mt-1">
+                Total to pay: {formatAmount(getTotal())}
+              </p>
               {tenderedAmount > 0 && (
                 <div className="mt-2 text-sm">
                   <div className="flex justify-between">
                     <span>Change:</span>
-                    <span className="font-medium">{formatCurrency(getChange())}</span>
+                    <span className={`font-medium ${getChange() >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {formatAmount(getChange())}
+                    </span>
                   </div>
                 </div>
               )}
@@ -669,9 +890,16 @@ const POSPage: React.FC = () => {
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900">Invoice #{receipt.invoiceNumber}</h3>
                   <p className="text-sm text-gray-500">Date: {new Date(receipt.invoiceDate || Date.now()).toLocaleString()}</p>
+                  <p className="text-xs text-gray-500">Currency: {(receipt as any).currency?.displayCurrency || 'USD'}</p>
                 </div>
                 <div className="text-right">
-                  <div className="text-xl font-bold text-gray-900">{formatCurrency(receipt.total)}</div>
+                  <div className="text-xl font-bold text-gray-900">
+                    {formatAmountWithCurrency(
+                      receipt.total,
+                      company?.currencySettings,
+                      (receipt as any).currency?.displayCurrency || 'USD'
+                    )}
+                  </div>
                   <div className="text-xs text-gray-500 capitalize">
                     {receipt.status === 'completed' ? 'Paid' : 'Processing'}
                   </div>
@@ -693,8 +921,20 @@ const POSPage: React.FC = () => {
                       <tr key={idx}>
                         <td className="px-4 py-2 text-sm text-gray-900">{it.name || (typeof it.product === 'object' ? it.product?.name : 'Item')}</td>
                         <td className="px-4 py-2 text-sm text-gray-900">{it.quantity}</td>
-                        <td className="px-4 py-2 text-sm text-gray-900">{formatCurrency(it.unitPrice)}</td>
-                        <td className="px-4 py-2 text-sm text-gray-900">{formatCurrency(it.total)}</td>
+                        <td className="px-4 py-2 text-sm text-gray-900">
+                          {formatAmountWithCurrency(
+                            it.unitPrice,
+                            company?.currencySettings,
+                            (receipt as any).currency?.displayCurrency || 'USD'
+                          )}
+                        </td>
+                        <td className="px-4 py-2 text-sm text-gray-900">
+                          {formatAmountWithCurrency(
+                            it.total,
+                            company?.currencySettings,
+                            (receipt as any).currency?.displayCurrency || 'USD'
+                          )}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -708,6 +948,7 @@ const POSPage: React.FC = () => {
                 </div>
                 <div className="space-y-1">
                   {(() => {
+                    const receiptCurrency = (receipt as any).currency?.displayCurrency || 'USD';
                     const rItemsSubtotal = (receipt.items || []).reduce((sum: number, it: any) => {
                       const qty = Number(it.quantity) || 0;
                       const unit = Number(it.unitPrice ?? it.price) || 0;
@@ -722,35 +963,64 @@ const POSPage: React.FC = () => {
                       <>
                         <div className="flex justify-between text-sm text-gray-600">
                           <span>Subtotal:</span>
-                          <span>{formatCurrency(rSubtotal)}</span>
+                          <span>{formatAmountWithCurrency(rSubtotal, company?.currencySettings, receiptCurrency)}</span>
                         </div>
                         <div className="flex justify-between text-sm text-gray-600">
                           <span>Tax:</span>
-                          <span>{formatCurrency(rTax)}</span>
+                          <span>{formatAmountWithCurrency(rTax, company?.currencySettings, receiptCurrency)}</span>
                         </div>
                       </>
                     );
                   })()}
                   <div className="flex justify-between text-sm text-gray-600">
                     <span>Discount:</span>
-                    <span>-{formatCurrency(receipt.totalDiscount ?? 0)}</span>
+                    <span>-{formatAmountWithCurrency(
+                      receipt.totalDiscount ?? 0,
+                      company?.currencySettings,
+                      (receipt as any).currency?.displayCurrency || 'USD'
+                    )}</span>
                   </div>
                   <div className="flex justify-between text-sm font-semibold border-t pt-2">
-                    <span>Total:</span>
-                    <span>{formatCurrency((receipt as any).total ?? 0)}</span>
+                    <span>Total ({(receipt as any).currency?.displayCurrency || 'USD'}):</span>
+                    <span>{formatAmountWithCurrency(
+                      (receipt as any).total ?? 0,
+                      company?.currencySettings,
+                      (receipt as any).currency?.displayCurrency || 'USD'
+                    )}</span>
                   </div>
-                  {paymentMethod === 'cash' && (
-                    <>
-                      <div className="flex justify-between text-sm text-gray-600">
-                        <span>Tendered:</span>
-                        <span>{formatCurrency(tenderedAmount)}</span>
-                      </div>
-                      <div className="flex justify-between text-sm text-gray-900">
-                        <span>Change:</span>
-                        <span className="font-medium">{formatCurrency(Math.max(0, tenderedAmount - (receipt.total ?? 0)))}</span>
-                      </div>
-                    </>
-                  )}
+                  {(() => {
+                    const receiptCurrency = (receipt as any).currency?.displayCurrency || 'USD';
+                    const receiptExchangeRate = (receipt as any).currency?.exchangeRate || 1;
+                    
+                    // Get tendered and change from payment metadata
+                    const paymentData = (receipt as any).payments?.[0];
+                    const storedTenderedUSD = (paymentData as any)?.metadata?.tenderedAmount || ((receipt as any).paid ?? 0);
+                    const storedChangeUSD = (paymentData as any)?.metadata?.changeAmount || 0;
+                    
+                    if (paymentData?.method === 'cash') {
+                      return (
+                        <>
+                          <div className="flex justify-between text-sm text-gray-600">
+                            <span>Tendered:</span>
+                            <span>{formatAmountWithCurrency(
+                              storedTenderedUSD,
+                              company?.currencySettings,
+                              receiptCurrency
+                            )}</span>
+                          </div>
+                          <div className="flex justify-between text-sm text-gray-900">
+                            <span>Change:</span>
+                            <span className="font-medium">{formatAmountWithCurrency(
+                              storedChangeUSD,
+                              company?.currencySettings,
+                              receiptCurrency
+                            )}</span>
+                          </div>
+                        </>
+                      );
+                    }
+                    return null;
+                  })()}
                 </div>
               </div>
 
@@ -823,6 +1093,57 @@ const POSPage: React.FC = () => {
               />
             </div>
           )}
+        </Modal>
+
+        {/* Outlet Selection Modal */}
+        <Modal
+          isOpen={showOutletModal}
+          onClose={() => {
+            // Only allow closing if an outlet is already selected
+            if (selectedOutletId) {
+              setShowOutletModal(false);
+            } else {
+              toast.error('Please select a sales outlet to continue');
+            }
+          }}
+          title="Select Sales Outlet"
+          size="md"
+        >
+          <div className="space-y-6">
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              <p className="text-sm text-yellow-800">
+                <strong>Required:</strong> Please select a sales outlet before using the POS system.
+                This helps track sales by location.
+              </p>
+            </div>
+
+            <OutletSelector
+              value={selectedOutletId}
+              onChange={handleOutletSelect}
+              label="Sales Outlet"
+              required
+              fullWidth
+            />
+
+            {selectedOutletId && (
+              <div className="flex justify-end">
+                <Button onClick={() => setShowOutletModal(false)}>
+                  Continue to POS
+                </Button>
+              </div>
+            )}
+
+            {!selectedOutletId && (
+              <div className="text-center text-sm text-gray-500">
+                <p>No sales outlet selected yet.</p>
+                <p className="mt-2">
+                  <a href="/sales-outlets" className="text-blue-600 hover:text-blue-800 underline">
+                    Create a new sales outlet
+                  </a>
+                </p>
+              </div>
+            )}
+          </div>
         </Modal>
       </div>
     </div>

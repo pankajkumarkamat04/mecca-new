@@ -31,6 +31,10 @@ const invoiceSchema = new mongoose.Schema({
     type: String,
     default: 'default'
   },
+  salesOutlet: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'SalesOutlet'
+  },
   items: [{
     product: {
       type: mongoose.Schema.Types.ObjectId,
@@ -137,6 +141,12 @@ const invoiceSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
+  currency: {
+    baseCurrency: { type: String, default: 'USD' },
+    displayCurrency: { type: String, default: 'USD' },
+    exchangeRate: { type: Number, default: 1 },
+    exchangeRateDate: { type: Date, default: Date.now }
+  },
   payments: [{
     method: {
       type: String,
@@ -150,6 +160,7 @@ const invoiceSchema = new mongoose.Schema({
     reference: String,
     transactionId: String,
     gatewayResponse: mongoose.Schema.Types.Mixed,
+    metadata: mongoose.Schema.Types.Mixed,
     date: {
       type: Date,
       default: Date.now

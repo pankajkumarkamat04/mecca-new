@@ -3,6 +3,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const { generateImageUrl } = require('../utils/imageUtils');
+const { updateDatabaseRates, fetchExchangeRate } = require('../services/exchangeRateService');
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
@@ -66,7 +67,8 @@ const getPublicSettings = async (req, res) => {
         email: settings.company.email,
         phone: settings.company.phone,
         address: settings.company.address,
-        defaultCurrency: settings.company.defaultCurrency
+        defaultCurrency: settings.company.defaultCurrency,
+        currencySettings: settings.company.currencySettings
       },
       appearance: {
         theme: settings.appearance.theme,
@@ -241,12 +243,84 @@ const deleteFavicon = async (req, res) => {
   }
 };
 
+// @desc Refresh exchange rates from API
+// @route POST /api/settings/exchange-rates/refresh
+// @access Private
+const refreshExchangeRates = async (req, res) => {
+  try {
+    console.log('Manual exchange rate refresh triggered');
+    const result = await updateDatabaseRates(Setting);
+    
+    if (result.success) {
+      // Update lastAutoUpdate timestamp
+      const settings = await Setting.getSingleton();
+      if (settings.company.currencySettings) {
+        settings.company.currencySettings.lastAutoUpdate = new Date();
+        await settings.save();
+      }
+      
+      res.json({
+        success: true,
+        message: result.message,
+        data: {
+          updatedCount: result.updatedCount,
+          failedCount: result.failedCount,
+          updates: result.updates
+        }
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        message: result.error || 'Failed to update exchange rates'
+      });
+    }
+  } catch (error) {
+    console.error('Refresh exchange rates error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+};
+
+// @desc Get single exchange rate
+// @route GET /api/settings/exchange-rates/:currency
+// @access Public
+const getSingleExchangeRate = async (req, res) => {
+  try {
+    const { currency } = req.params;
+    const baseCurrency = req.query.base || 'USD';
+    
+    const result = await fetchExchangeRate(baseCurrency, currency.toUpperCase());
+    
+    if (result.success) {
+      res.json({
+        success: true,
+        data: result
+      });
+    } else {
+      res.status(404).json({
+        success: false,
+        message: result.error || 'Could not fetch exchange rate'
+      });
+    }
+  } catch (error) {
+    console.error('Get exchange rate error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+};
+
 module.exports = { 
   getSettings,
   getPublicSettings, 
   updateSettings, 
   uploadLogo, 
   deleteLogo,
+  refreshExchangeRates,
+  getSingleExchangeRate,
   upload: upload.single('logo')
 };
 

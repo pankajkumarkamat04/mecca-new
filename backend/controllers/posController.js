@@ -4,6 +4,9 @@ const Customer = require('../models/Customer');
 const Transaction = require('../models/Transaction');
 const Account = require('../models/Account');
 const StockMovement = require('../models/StockMovement');
+const Setting = require('../models/Setting');
+const SalesOutlet = require('../models/SalesOutlet');
+const { prepareCurrencyData, convertToBaseCurrency } = require('../utils/currencyUtils');
 
 // @desc    Open POS register
 // @route   POST /api/pos/registers/:registerId/open
@@ -43,6 +46,11 @@ const createTransaction = async (req, res) => {
   try {
     const transactionData = req.body;
     transactionData.createdBy = req.user._id;
+
+    // Get settings for currency information
+    const settings = await Setting.getSingleton();
+    const displayCurrency = transactionData.displayCurrency || settings.company.currencySettings?.defaultDisplayCurrency || 'USD';
+    const currencyData = prepareCurrencyData(settings, displayCurrency);
 
     // Validate items and stock availability (no stock changes here)
     for (const item of transactionData.items) {
@@ -147,6 +155,17 @@ const createTransaction = async (req, res) => {
       });
     }
 
+    // Validate sales outlet if provided
+    if (transactionData.salesOutlet) {
+      const outlet = await SalesOutlet.findById(transactionData.salesOutlet);
+      if (!outlet) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid sales outlet'
+        });
+      }
+    }
+
     // Create invoice with computed totals (no due date for POS transactions)
     const invoice = new Invoice({
       invoiceNumber,
@@ -154,6 +173,7 @@ const createTransaction = async (req, res) => {
       status: transactionData.paymentMethod === 'cash' ? 'paid' : 'pending',
       customer: transactionData.customer || undefined,
       customerPhone: transactionData.customerPhone,
+      salesOutlet: transactionData.salesOutlet || undefined,
       items,
       discounts: [],
       taxes: [],
@@ -164,12 +184,26 @@ const createTransaction = async (req, res) => {
       total,
       paid: transactionData.paymentMethod === 'cash' ? total : 0,
       balance: transactionData.paymentMethod === 'cash' ? 0 : total,
+      currency: currencyData, // Store currency information
+      payments: payments, // Include payment details with tender/change
       notes: transactionData.note || undefined,
       isPosTransaction: true, // Mark as POS transaction
       createdBy: req.user._id
     });
 
     await invoice.save();
+
+    // Update sales outlet stats
+    if (transactionData.salesOutlet) {
+      try {
+        const outlet = await SalesOutlet.findById(transactionData.salesOutlet);
+        if (outlet) {
+          await outlet.updateSalesStats(total);
+        }
+      } catch (e) {
+        console.error('Update outlet stats error:', e);
+      }
+    }
 
     // Update register session
     // Update customer stats if customer exists or if phone number is provided
@@ -191,7 +225,8 @@ const createTransaction = async (req, res) => {
 
     const populatedInvoice = await Invoice.findById(invoice._id)
       .populate('customer', 'firstName lastName email')
-      .populate('items.product', 'name sku');
+      .populate('items.product', 'name sku')
+      .populate('salesOutlet', 'outletCode name type address');
 
     // Create accounting transaction entry (simple one-line revenue)
     try {

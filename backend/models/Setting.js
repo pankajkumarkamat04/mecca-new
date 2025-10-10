@@ -21,6 +21,22 @@ const companySchema = new mongoose.Schema({
   },
   defaultCurrency: { type: String, default: 'USD' },
   defaultTaxRate: { type: Number, default: 10 },
+  currencySettings: {
+    baseCurrency: { type: String, default: 'USD' },
+    supportedCurrencies: [{
+      code: { type: String, required: true },
+      name: { type: String, required: true },
+      symbol: { type: String, required: true },
+      exchangeRate: { type: Number, required: true, default: 1 },
+      isActive: { type: Boolean, default: true },
+      lastUpdated: { type: Date, default: Date.now }
+    }],
+    defaultDisplayCurrency: { type: String, default: 'USD' },
+    autoUpdateRates: { type: Boolean, default: true },
+    updateFrequency: { type: String, enum: ['hourly', 'daily', 'weekly'], default: 'daily' },
+    lastAutoUpdate: { type: Date },
+    apiProvider: { type: String, default: 'EXCHANGERATE_API' }
+  },
   invoiceSettings: {
     prefix: { type: String, default: 'INV' },
     numberFormat: { type: String, default: 'INV-{YYYY}-{MM}-{####}' },
@@ -83,7 +99,57 @@ settingSchema.statics.getSingleton = async function() {
   const Setting = this;
   let doc = await Setting.findOne({ isActive: true });
   if (!doc) {
-    doc = await Setting.create({});
+    doc = await Setting.create({
+      company: {
+        currencySettings: {
+          baseCurrency: 'USD',
+          supportedCurrencies: [
+            {
+              code: 'USD',
+              name: 'US Dollar',
+              symbol: '$',
+              exchangeRate: 1,
+              isActive: true,
+              lastUpdated: new Date()
+            },
+            {
+              code: 'ZWL',
+              name: 'Zimbabwean Dollar (ZIG)',
+              symbol: 'Z$',
+              exchangeRate: 30,
+              isActive: true,
+              lastUpdated: new Date()
+            }
+          ],
+          defaultDisplayCurrency: 'USD'
+        }
+      }
+    });
+  } else if (!doc.company.currencySettings || !doc.company.currencySettings.supportedCurrencies || doc.company.currencySettings.supportedCurrencies.length === 0) {
+    // Initialize currency settings if not present
+    doc.company.currencySettings = {
+      baseCurrency: 'USD',
+      supportedCurrencies: [
+        {
+          code: 'USD',
+          name: 'US Dollar',
+          symbol: '$',
+          exchangeRate: 1,
+          isActive: true,
+          lastUpdated: new Date()
+        },
+        {
+          code: 'ZWL',
+          name: 'Zimbabwean Dollar (ZIG)',
+          symbol: 'Z$',
+          exchangeRate: 30,
+          isActive: true,
+          lastUpdated: new Date()
+        }
+      ],
+      defaultDisplayCurrency: 'USD'
+    };
+    await doc.save();
   }
   return doc;
 };

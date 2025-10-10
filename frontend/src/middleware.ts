@@ -12,6 +12,7 @@ const protectedRoutes = {
   '/invoices': ['admin', 'manager', 'sales_person'],
   '/inventory': ['admin', 'manager', 'warehouse_manager', 'warehouse_employee'],
   '/pos': ['admin', 'manager', 'sales_person'],
+  '/sales-outlets': ['admin', 'manager'],
   '/support': ['admin', 'manager', 'sales_person', 'workshop_employee'],
   '/accounts': ['admin', 'manager'],
   '/transactions': ['admin', 'manager'],

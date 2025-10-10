@@ -11,6 +11,7 @@ export const routePermissionMap: Array<{
 }> = [
   { prefix: '/dashboard' },
   { prefix: '/pos', permission: { module: 'pos', action: 'read' } },
+  { prefix: '/sales-outlets', roles: ['admin', 'manager'] },
   { prefix: '/workshop', permission: { module: 'workshop', action: 'read' } },
   { prefix: '/users', permission: { module: 'users', action: 'read' } },
   { prefix: '/products', permission: { module: 'products', action: 'read' } },

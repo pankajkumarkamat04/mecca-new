@@ -35,6 +35,10 @@ const toolRoutes = require('./routes/tools');
 const workstationRoutes = require('./routes/workstations');
 const technicianRoutes = require('./routes/technicians');
 const reportsAnalyticsRoutes = require('./routes/reportsAnalytics');
+const salesOutletRoutes = require('./routes/salesOutlets');
+
+// Import exchange rate scheduler
+const { startScheduler, stopScheduler } = require('./services/exchangeRateScheduler');
 
 const app = express();
 
@@ -141,6 +145,7 @@ app.use('/api/tools', toolRoutes);
 app.use('/api/workstations', workstationRoutes);
 app.use('/api/technicians', technicianRoutes);
 app.use('/api/reports-analytics', reportsAnalyticsRoutes);
+app.use('/api/sales-outlets', salesOutletRoutes);
 
 // API documentation endpoint
 app.get('/api', (req, res) => {
@@ -252,12 +257,14 @@ const connectDB = async () => {
 // Graceful shutdown
 process.on('SIGINT', async () => {
   console.log('\nShutting down gracefully...');
+  stopScheduler(); // Stop exchange rate scheduler
   await mongoose.connection.close();
   process.exit(0);
 });
 
 process.on('SIGTERM', async () => {
   console.log('\nShutting down gracefully...');
+  stopScheduler(); // Stop exchange rate scheduler
   await mongoose.connection.close();
   process.exit(0);
 });
@@ -268,6 +275,9 @@ const PORT = process.env.PORT || 5000;
 const startServer = async () => {
   await connectDB();
   
+  // Start exchange rate scheduler
+  startScheduler();
+  
   app.listen(PORT, () => {
     console.log(`
 🚀 POS System Server Started!
@@ -276,6 +286,7 @@ const startServer = async () => {
 📊 Health check: http://localhost:${PORT}/health
 📚 API docs: http://localhost:${PORT}/api
 🔗 Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:3000'}
+💱 Exchange rate auto-update: Enabled
     `);
   });
 };

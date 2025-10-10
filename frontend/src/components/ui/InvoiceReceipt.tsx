@@ -5,6 +5,7 @@ import { Invoice, InvoiceItem } from '@/types';
 import { formatCurrency, formatDate, getLogoUrl } from '@/lib/utils';
 import { calculatePrice } from '@/lib/priceCalculator';
 import { useSettings } from '@/contexts/SettingsContext';
+import { getCurrencyByCode, convertToDisplayCurrency, formatCurrency as formatCurrencyUtil } from '@/lib/currencyUtils';
 import Button from './Button';
 import { PrinterIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
 
@@ -32,6 +33,18 @@ const InvoiceReceipt: React.FC<InvoiceReceiptProps> = ({
     email: company?.email || 'your@email.com',
     taxId: company?.taxId || 'Your Tax ID',
     logo: company?.logo?.url ? getLogoUrl(company.logo.url) : ''
+  };
+
+  // Get currency information from invoice
+  const displayCurrencyCode = (invoice as any).currency?.displayCurrency || 'USD';
+  const exchangeRate = (invoice as any).currency?.exchangeRate || 1;
+  const currencyInfo = getCurrencyByCode(company?.currencySettings, displayCurrencyCode);
+  const currencySymbol = currencyInfo?.symbol || '$';
+
+  // Helper function to format amounts with correct currency
+  const formatAmount = (amount: number) => {
+    const displayAmount = convertToDisplayCurrency(amount, exchangeRate);
+    return formatCurrencyUtil(displayAmount, displayCurrencyCode, currencySymbol);
   };
 
   // Calculate pricing using the universal price calculator
@@ -136,7 +149,7 @@ const InvoiceReceipt: React.FC<InvoiceReceiptProps> = ({
             <div key={index} className="flex justify-between text-xs mb-1">
               <span className="flex-1 text-left">{item.name}</span>
               <span className="ml-2">x{item.quantity}</span>
-              <span className="ml-2">{formatCurrency(item.total)}</span>
+              <span className="ml-2">{formatAmount(item.total)}</span>
             </div>
           ))}
         </div>
@@ -145,36 +158,46 @@ const InvoiceReceipt: React.FC<InvoiceReceiptProps> = ({
         <div className="border-t border-dashed border-gray-300 py-2 mb-2 space-y-1">
           <div className="flex justify-between text-xs">
             <span>Subtotal:</span>
-            <span>{formatCurrency(subtotal)}</span>
+            <span>{formatAmount(subtotal)}</span>
           </div>
           {totalDiscount > 0 && (
             <div className="flex justify-between text-xs">
               <span>Discount:</span>
-              <span>-{formatCurrency(totalDiscount)}</span>
+              <span>-{formatAmount(totalDiscount)}</span>
             </div>
           )}
           {totalTax > 0 && (
             <div className="flex justify-between text-xs">
               <span>Tax:</span>
-              <span>{formatCurrency(totalTax)}</span>
+              <span>{formatAmount(totalTax)}</span>
             </div>
           )}
           <div className="flex justify-between text-sm font-bold border-t border-dashed border-gray-300 pt-1 mt-1">
-            <span>TOTAL:</span>
-            <span>{formatCurrency(finalTotal)}</span>
+            <span>TOTAL ({displayCurrencyCode}):</span>
+            <span>{formatAmount(finalTotal)}</span>
           </div>
         </div>
 
         {/* Payment Info */}
-        {invoice.payments && invoice.payments.length > 0 && (
-          <div className="border-t border-dashed border-gray-300 py-2 mb-2">
-            <div className="text-xs space-y-1">
-              <div>Payment: {invoice.payments[0]?.method || 'Unknown'}</div>
-              <div>Tendered: {formatCurrency(invoice.paid)}</div>
-              <div>Change: {formatCurrency(invoice.paid - finalTotal)}</div>
+        {invoice.payments && invoice.payments.length > 0 && (() => {
+          const payment = (invoice as any).payments[0];
+          const tenderedUSD = (payment as any)?.metadata?.tenderedAmount || (invoice.paid ?? 0);
+          const changeUSD = (payment as any)?.metadata?.changeAmount || 0;
+          
+          return (
+            <div className="border-t border-dashed border-gray-300 py-2 mb-2">
+              <div className="text-xs space-y-1">
+                <div>Payment: {payment?.method || 'Unknown'}</div>
+                {payment?.method === 'cash' && (
+                  <>
+                    <div>Tendered: {formatAmount(tenderedUSD)}</div>
+                    <div>Change: {formatAmount(changeUSD)}</div>
+                  </>
+                )}
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* Footer */}
         <div className="border-t border-dashed border-gray-300 py-2">
@@ -269,8 +292,8 @@ const InvoiceReceipt: React.FC<InvoiceReceiptProps> = ({
                   {item.sku && <div className="text-xs text-gray-500">SKU: {item.sku}</div>}
                 </td>
                 <td className="py-3 px-4 border-b text-center text-sm text-gray-900">{item.quantity}</td>
-                <td className="py-3 px-4 border-b text-right text-sm text-gray-900">{formatCurrency(item.unitPrice || item.price || 0)}</td>
-                <td className="py-3 px-4 border-b text-right text-sm text-gray-900">{formatCurrency(item.discount || 0)}</td>
+                <td className="py-3 px-4 border-b text-right text-sm text-gray-900">{formatAmount(item.unitPrice || item.price || 0)}</td>
+                <td className="py-3 px-4 border-b text-right text-sm text-gray-900">{formatAmount(item.discount || 0)}</td>
                 <td className="py-3 px-4 border-b text-right text-sm text-gray-900">{(() => {
                   const qty = item.quantity || 0;
                   const unit = item.unitPrice || item.price || 0;
@@ -280,9 +303,9 @@ const InvoiceReceipt: React.FC<InvoiceReceiptProps> = ({
                   const tax = typeof item.taxRate === 'number' && item.taxRate > 0
                     ? (afterDiscount * item.taxRate) / 100
                     : Math.max(0, (item.total || 0) - afterDiscount);
-                  return formatCurrency(tax);
+                  return formatAmount(tax);
                 })()}</td>
-                <td className="py-3 px-4 border-b text-right text-sm text-gray-900 font-medium">{formatCurrency(item.total)}</td>
+                <td className="py-3 px-4 border-b text-right text-sm text-gray-900 font-medium">{formatAmount(item.total)}</td>
               </tr>
             ))}
           </tbody>
@@ -294,63 +317,81 @@ const InvoiceReceipt: React.FC<InvoiceReceiptProps> = ({
         <div className="w-full md:w-1/2 space-y-2">
           <div className="flex justify-between text-sm text-gray-700">
             <span>Subtotal:</span>
-            <span>{formatCurrency(subtotal)}</span>
+            <span>{formatAmount(subtotal)}</span>
           </div>
           {totalDiscount > 0 && (
             <div className="flex justify-between text-sm text-gray-700">
               <span>Discount:</span>
-              <span>-{formatCurrency(totalDiscount)}</span>
+              <span>-{formatAmount(totalDiscount)}</span>
             </div>
           )}
           {totalTax > 0 && (
             <div className="flex justify-between text-sm text-gray-700">
               <span>Tax:</span>
-              <span>{formatCurrency(totalTax)}</span>
+              <span>{formatAmount(totalTax)}</span>
             </div>
           )}
           {invoice.shipping?.cost > 0 && (
             <div className="flex justify-between text-sm text-gray-700">
               <span>Shipping:</span>
-              <span>{formatCurrency(invoice.shipping.cost)}</span>
+              <span>{formatAmount(invoice.shipping.cost)}</span>
             </div>
           )}
           <div className="flex justify-between text-lg font-bold text-gray-900 border-t pt-2 mt-2">
-            <span>TOTAL:</span>
-            <span>{formatCurrency(finalTotal)}</span>
+            <span>TOTAL ({displayCurrencyCode}):</span>
+            <span>{formatAmount(finalTotal)}</span>
           </div>
           {invoice.paid > 0 && (
             <div className="flex justify-between text-sm text-gray-700">
               <span>Amount Paid:</span>
-              <span>{formatCurrency(invoice.paid)}</span>
+              <span>{formatAmount(invoice.paid)}</span>
             </div>
           )}
           {invoice.balance > 0 && (
             <div className="flex justify-between text-sm font-semibold text-red-600">
               <span>Balance Due:</span>
-              <span>{formatCurrency(invoice.balance)}</span>
+              <span>{formatAmount(invoice.balance)}</span>
             </div>
           )}
         </div>
       </div>
 
       {/* Payment Info */}
-      {invoice.payments && invoice.payments.length > 0 && (
-        <div className="mb-6 p-4 bg-blue-50 rounded-lg">
-          <h3 className="text-sm font-semibold text-gray-700 mb-2">PAYMENT INFORMATION:</h3>
-          <div className="text-sm">
-            <div className="flex justify-between">
-              <span>Payment Method:</span>
-              <span className="font-medium capitalize">{invoice.payments[0]?.method || 'Unknown'}</span>
-            </div>
-            {invoice.payments[0]?.reference && (
+      {invoice.payments && invoice.payments.length > 0 && (() => {
+        const payment = (invoice as any).payments[0];
+        const tenderedUSD = (payment as any)?.metadata?.tenderedAmount;
+        const changeUSD = (payment as any)?.metadata?.changeAmount;
+        
+        return (
+          <div className="mb-6 p-4 bg-blue-50 rounded-lg">
+            <h3 className="text-sm font-semibold text-gray-700 mb-2">PAYMENT INFORMATION:</h3>
+            <div className="text-sm space-y-1">
               <div className="flex justify-between">
-                <span>Reference:</span>
-                <span>{invoice.payments[0]?.reference}</span>
+                <span>Payment Method:</span>
+                <span className="font-medium capitalize">{payment?.method || 'Unknown'}</span>
               </div>
-            )}
+              {payment?.reference && (
+                <div className="flex justify-between">
+                  <span>Reference:</span>
+                  <span>{payment.reference}</span>
+                </div>
+              )}
+              {payment?.method === 'cash' && tenderedUSD && (
+                <>
+                  <div className="flex justify-between">
+                    <span>Amount Tendered:</span>
+                    <span className="font-medium">{formatAmount(tenderedUSD)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Change:</span>
+                    <span className="font-medium">{formatAmount(changeUSD || 0)}</span>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Notes */}
       {invoice.notes && (

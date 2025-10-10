@@ -464,6 +464,39 @@ export interface Tool {
   updatedAt: string;
 }
 
+// Sales Outlet Types
+export interface SalesOutlet {
+  _id: string;
+  outletCode: string;
+  name: string;
+  type: 'retail' | 'warehouse' | 'online' | 'mobile' | 'kiosk' | 'branch';
+  address: Address;
+  contact: {
+    phone: string;
+    email: string;
+    manager: string;
+  };
+  operatingHours: {
+    [key: string]: {
+      open: string;
+      close: string;
+      isClosed: boolean;
+    };
+  };
+  warehouse?: string;
+  stats: {
+    totalSales: number;
+    totalTransactions: number;
+    lastSaleDate?: string;
+    averageTransactionValue: number;
+  };
+  isActive: boolean;
+  createdBy: string;
+  updatedBy?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // Receipt Types
 export interface Receipt {
   receiptNumber: string;
@@ -479,11 +512,18 @@ export interface Receipt {
   totalTax?: number;
   totalDiscount?: number;
   total: number;
+  paid?: number;
   paymentMethod: string;
   tenderedAmount: number;
   change: number;
   cashier: string;
   payments?: Payment[];
+  currency?: {
+    baseCurrency: string;
+    displayCurrency: string;
+    exchangeRate: number;
+    exchangeRateDate: string;
+  };
   customer?: {
     name: string;
     phone?: string;
@@ -673,6 +713,12 @@ export interface Payment {
   date: string;
   processedBy: string;
   notes?: string;
+  metadata?: {
+    tenderedAmount?: number;
+    changeAmount?: number;
+    tenderedCurrency?: string;
+    [key: string]: any;
+  };
 }
 
 // Stock Movement Types

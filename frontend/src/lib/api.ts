@@ -282,8 +282,22 @@ export const settingsAPI = {
     headers: { 'Content-Type': 'multipart/form-data' }
   }),
   deleteLogo: () => api.delete('/settings/logo'),
+  refreshExchangeRates: () => api.post('/settings/exchange-rates/refresh'),
+  getExchangeRate: (currency: string, base: string = 'USD') => 
+    api.get(`/settings/exchange-rates/${currency}`, { params: { base } }),
 };
 
+
+// Sales Outlets API
+export const salesOutletsAPI = {
+  getSalesOutlets: (params?: any) => api.get('/sales-outlets', { params }),
+  getSalesOutletById: (id: string) => api.get(`/sales-outlets/${id}`),
+  createSalesOutlet: (data: any) => api.post('/sales-outlets', data),
+  updateSalesOutlet: (id: string, data: any) => api.put(`/sales-outlets/${id}`, data),
+  deleteSalesOutlet: (id: string) => api.delete(`/sales-outlets/${id}`),
+  getActiveOutlets: () => api.get('/sales-outlets/active/list'),
+  getOutletStats: (id: string) => api.get(`/sales-outlets/${id}/stats`),
+};
 
 // Workshop API
 export const workshopAPI = {

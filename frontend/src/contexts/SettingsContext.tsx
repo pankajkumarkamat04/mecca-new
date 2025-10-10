@@ -26,6 +26,22 @@ interface CompanySettings {
   };
   defaultCurrency: string;
   defaultTaxRate: number;
+  currencySettings: {
+    baseCurrency: string;
+    supportedCurrencies: Array<{
+      code: string;
+      name: string;
+      symbol: string;
+      exchangeRate: number;
+      isActive: boolean;
+      lastUpdated: Date;
+    }>;
+    defaultDisplayCurrency: string;
+    autoUpdateRates: boolean;
+    updateFrequency: string;
+    lastAutoUpdate: Date;
+    apiProvider: string;
+  };
   invoiceSettings: {
     prefix: string;
     numberFormat: string;

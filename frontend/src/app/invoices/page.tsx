@@ -11,9 +11,11 @@ import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
 import { invoicesAPI, customersAPI, productsAPI } from '@/lib/api';
 import CustomerSelector from '@/components/ui/CustomerSelector';
+import CurrencySelector from '@/components/ui/CurrencySelector';
 import { useSettings } from '@/contexts/SettingsContext';
 import { formatCurrency, formatDate, getStatusColor, buildPrintableInvoiceHTML, getLogoUrl } from '@/lib/utils';
 import { calculatePrice } from '@/lib/priceCalculator';
+import { formatAmountWithCurrency } from '@/lib/currencyUtils';
 import PriceSummary from '@/components/ui/PriceSummary';
 import InvoiceReceipt from '@/components/ui/InvoiceReceipt';
 import { downloadReceipt, printReceipt } from '@/lib/receiptUtils';
@@ -46,6 +48,7 @@ const InvoicesPage: React.FC = () => {
   const [filterStatus, setFilterStatus] = useState('all');
   const [showReceiptModal, setShowReceiptModal] = useState(false);
   const [receiptType, setReceiptType] = useState<'short' | 'full'>('short');
+  const [invoiceDisplayCurrency, setInvoiceDisplayCurrency] = useState<string>('USD');
 
   const queryClient = useQueryClient();
 
@@ -265,13 +268,15 @@ const InvoicesPage: React.FC = () => {
         const totalTax = toNumber(row.totalTax, computedTotalTax);
         const totalAmount = toNumber(row.total, subtotal - totalDiscount + totalTax + shippingCost);
         const paid = toNumber(row.paid);
+        const displayCurrency = row.currency?.displayCurrency || 'USD';
+        
         return (
           <div>
             <div className="text-sm font-medium text-gray-900">
-              {formatCurrency(totalAmount)}
+              {formatAmountWithCurrency(totalAmount, company?.currencySettings, displayCurrency)}
             </div>
             <div className="text-sm text-gray-500">
-              Paid: {formatCurrency(paid)}
+              Paid: {formatAmountWithCurrency(paid, company?.currencySettings, displayCurrency)}
             </div>
           </div>
         );
@@ -455,7 +460,10 @@ const InvoicesPage: React.FC = () => {
             <p className="text-gray-600">Manage invoices, payments, and billing</p>
           </div>
           <Button
-            onClick={() => setIsCreateModalOpen(true)}
+            onClick={() => {
+              setInvoiceDisplayCurrency(company?.currencySettings?.defaultDisplayCurrency || 'USD');
+              setIsCreateModalOpen(true);
+            }}
             leftIcon={<DocumentTextIcon className="h-4 w-4" />}
           >
             Create Invoice
@@ -554,12 +562,19 @@ const InvoicesPage: React.FC = () => {
                     />
                   </FormField>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <FormField label="Invoice Date" required error={methods.formState.errors.invoiceDate?.message as string}>
                     <Input type="date" {...methods.register('invoiceDate')} fullWidth />
                   </FormField>
                   <FormField label="Due Date" error={methods.formState.errors.dueDate?.message as string}>
                     <Input type="date" {...methods.register('dueDate')} fullWidth />
+                  </FormField>
+                  <FormField label="Display Currency">
+                    <CurrencySelector
+                      value={invoiceDisplayCurrency}
+                      onChange={(value) => setInvoiceDisplayCurrency(value)}
+                      fullWidth
+                    />
                   </FormField>
                 </div>
               </FormSection>
@@ -669,6 +684,8 @@ const InvoicesPage: React.FC = () => {
                     const payload: any = { ...values };
                     if (!payload.dueDate) delete payload.dueDate;
                     if (!payload.notes) delete payload.notes;
+                    // Add display currency to payload
+                    payload.displayCurrency = invoiceDisplayCurrency;
                     // customerPhone is now required, so we don't delete it
                     // Compute totals on backend; only send raw fields
                     await createInvoiceMutation.mutateAsync(payload);
@@ -784,6 +801,7 @@ const InvoicesPage: React.FC = () => {
                     const afterDiscount = subtotal - discountAmount;
                     const taxAmount = (afterDiscount * taxRate) / 100;
                     const itemTotal = afterDiscount + taxAmount;
+                    const displayCurrency = (selectedInvoice as any)?.currency?.displayCurrency || 'USD';
                     
                     return (
                       <div key={index} className="p-4 bg-gray-50 rounded-lg">
@@ -795,36 +813,36 @@ const InvoicesPage: React.FC = () => {
                                 : (item.name || 'Unknown Product')}
                             </p>
                             <p className="text-sm text-gray-600">
-                              Qty: {quantity} × {formatCurrency(unitPrice)}
+                              Qty: {quantity} × {formatAmountWithCurrency(unitPrice, company?.currencySettings, displayCurrency)}
                             </p>
                             {item.sku && (
                               <p className="text-xs text-gray-500">SKU: {item.sku}</p>
                             )}
                           </div>
-                          <p className="font-medium text-gray-900 text-lg">{formatCurrency(itemTotal)}</p>
+                          <p className="font-medium text-gray-900 text-lg">{formatAmountWithCurrency(itemTotal, company?.currencySettings, displayCurrency)}</p>
                         </div>
                         
                         {/* Tax and Discount Breakdown */}
                         <div className="text-sm text-gray-600 space-y-1">
                           <div className="flex justify-between">
                             <span>Subtotal:</span>
-                            <span>{formatCurrency(subtotal)}</span>
+                            <span>{formatAmountWithCurrency(subtotal, company?.currencySettings, displayCurrency)}</span>
                           </div>
                           {discount > 0 && (
                             <div className="flex justify-between text-green-600">
                               <span>Discount ({discount}%):</span>
-                              <span>-{formatCurrency(discountAmount)}</span>
+                              <span>-{formatAmountWithCurrency(discountAmount, company?.currencySettings, displayCurrency)}</span>
                             </div>
                           )}
                           {taxRate > 0 && (
                             <div className="flex justify-between text-red-600">
                               <span>Tax ({taxRate}%):</span>
-                              <span>+{formatCurrency(taxAmount)}</span>
+                              <span>+{formatAmountWithCurrency(taxAmount, company?.currencySettings, displayCurrency)}</span>
                             </div>
                           )}
                           <div className="flex justify-between font-medium text-gray-800 border-t pt-1">
                             <span>Total:</span>
-                            <span>{formatCurrency(itemTotal)}</span>
+                            <span>{formatAmountWithCurrency(itemTotal, company?.currencySettings, displayCurrency)}</span>
                           </div>
                         </div>
                       </div>
@@ -856,37 +874,39 @@ const InvoicesPage: React.FC = () => {
                   const totalAmount = toNumber(inv.total, subtotal - totalDiscount + totalTax + shippingCost);
                   const paid = toNumber(inv.paid);
                   const due = toNumber(inv.balance, Math.max(0, totalAmount - paid));
+                  const displayCurrency = inv.currency?.displayCurrency || 'USD';
+                  
                   return (
                     <>
                       <div className="flex justify-between text-sm text-gray-600 mb-2">
                         <span>Subtotal:</span>
-                        <span>{formatCurrency(subtotal)}</span>
+                        <span>{formatAmountWithCurrency(subtotal, company?.currencySettings, displayCurrency)}</span>
                       </div>
                       <div className="flex justify-between text-sm text-gray-600 mb-2">
                         <span>Total Discount:</span>
-                        <span>-{formatCurrency(totalDiscount)}</span>
+                        <span>-{formatAmountWithCurrency(totalDiscount, company?.currencySettings, displayCurrency)}</span>
                       </div>
                       <div className="flex justify-between text-sm text-gray-600 mb-2">
                         <span>Total Tax:</span>
-                        <span>{formatCurrency(totalTax)}</span>
+                        <span>{formatAmountWithCurrency(totalTax, company?.currencySettings, displayCurrency)}</span>
                       </div>
                       {shippingCost > 0 && (
                         <div className="flex justify-between text-sm text-gray-600 mb-2">
                           <span>Shipping:</span>
-                          <span>{formatCurrency(shippingCost)}</span>
+                          <span>{formatAmountWithCurrency(shippingCost, company?.currencySettings, displayCurrency)}</span>
                         </div>
                       )}
                       <div className="flex justify-between text-lg font-semibold text-gray-900 border-t border-gray-200 pt-2">
-                        <span>Total:</span>
-                        <span>{formatCurrency(totalAmount)}</span>
+                        <span>Total ({displayCurrency}):</span>
+                        <span>{formatAmountWithCurrency(totalAmount, company?.currencySettings, displayCurrency)}</span>
                       </div>
                       <div className="flex justify-between text-sm text-gray-600 mt-2">
                         <span>Paid:</span>
-                        <span>{formatCurrency(paid)}</span>
+                        <span>{formatAmountWithCurrency(paid, company?.currencySettings, displayCurrency)}</span>
                       </div>
                       <div className="flex justify-between text-sm font-medium text-gray-900">
                         <span>Due:</span>
-                        <span>{formatCurrency(due)}</span>
+                        <span>{formatAmountWithCurrency(due, company?.currencySettings, displayCurrency)}</span>
                       </div>
                     </>
                   );
