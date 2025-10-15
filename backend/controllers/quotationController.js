@@ -454,10 +454,11 @@ const convertQuotationToOrder = async (req, res) => {
       });
     }
 
-    if (quotation.status !== 'approved') {
+    // Only accepted quotations should be converted to orders
+    if (quotation.status !== 'accepted') {
       return res.status(400).json({
         success: false,
-        message: 'Only approved quotations can be converted to orders'
+        message: 'Only accepted quotations can be converted to orders'
       });
     }
 

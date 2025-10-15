@@ -123,6 +123,16 @@ const createInvoice = async (req, res) => {
     const invoiceData = req.body;
     invoiceData.createdBy = req.user._id;
 
+    // Normalize status defensively (validator also sanitizes)
+    if (invoiceData.status) {
+      const status = String(invoiceData.status).toLowerCase();
+      const allowed = new Set(['draft','pending','paid','partial','overdue','cancelled','refunded']);
+      const aliasMap = { unpaid: 'pending', processing: 'pending', open: 'pending', closed: 'paid' };
+      const normalized = aliasMap[status] || status;
+      if (!allowed.has(normalized)) delete invoiceData.status;
+      else invoiceData.status = normalized;
+    }
+
     // Generate invoice number if not provided
     if (!invoiceData.invoiceNumber) {
       invoiceData.invoiceNumber = await Invoice.generateInvoiceNumber(invoiceData.type);
@@ -166,13 +176,116 @@ const createInvoice = async (req, res) => {
       });
     }
 
+    // Process items to ensure all required fields are present
+    for (let i = 0; i < invoiceData.items.length; i++) {
+      const item = invoiceData.items[i];
+
+      // Normalize possibly empty strings to undefined
+      const isEmpty = (v) => v === '' || v === null || v === undefined;
+
+      // Fetch product and ensure existence
+      let product = null;
+      if (item.product) {
+        product = await Product.findById(item.product);
+        if (!product) {
+          return res.status(400).json({
+            success: false,
+            message: `Product not found for item ${i + 1}`
+          });
+        }
+      }
+
+      // Populate name/sku/description from product when missing
+      if (product) {
+        if (isEmpty(item.name)) item.name = product.name;
+        if (isEmpty(item.sku)) item.sku = product.sku;
+        if (isEmpty(item.description)) item.description = product.description;
+      }
+
+      // Validate name
+      if (isEmpty(item.name)) {
+        return res.status(400).json({
+          success: false,
+          message: `Item name is required for item ${i + 1}`
+        });
+      }
+
+      // Resolve numeric fields with sane defaults
+      const resolvedUnitPrice = !isEmpty(item.unitPrice)
+        ? Number(item.unitPrice)
+        : Number(product?.pricing?.sellingPrice ?? 0);
+      const resolvedQuantity = !isEmpty(item.quantity) ? Number(item.quantity) : 1;
+      const resolvedDiscount = !isEmpty(item.discount) ? Number(item.discount) : 0;
+      const resolvedTaxRate = !isEmpty(item.taxRate)
+        ? Number(item.taxRate)
+        : Number(product?.pricing?.taxRate ?? 0);
+
+      if (Number.isNaN(resolvedTaxRate) || resolvedTaxRate < 0 || resolvedTaxRate > 100) {
+        return res.status(400).json({
+          success: false,
+          message: `Tax rate must be a number between 0 and 100 for item ${i + 1}`
+        });
+      }
+
+      // Compute item totals (always compute to avoid stale/invalid totals from client)
+      const itemSubtotal = Math.max(0, (Number(resolvedUnitPrice) * Number(resolvedQuantity)) - Number(resolvedDiscount));
+      const itemTaxAmount = (itemSubtotal * resolvedTaxRate) / 100;
+      const itemTotal = itemSubtotal + itemTaxAmount;
+
+      // Assign normalized/calculated fields back
+      item.unitPrice = Number.isFinite(resolvedUnitPrice) ? resolvedUnitPrice : 0;
+      item.quantity = Number.isFinite(resolvedQuantity) ? resolvedQuantity : 1;
+      item.discount = Number.isFinite(resolvedDiscount) ? resolvedDiscount : 0;
+      item.taxRate = resolvedTaxRate; // can be 0
+      item.taxAmount = Number.isFinite(itemTaxAmount) ? itemTaxAmount : 0;
+      item.total = Number.isFinite(itemTotal) ? itemTotal : 0;
+
+      // Final validation for item total
+      if (Number.isNaN(item.total) || item.total < 0) {
+        return res.status(400).json({
+          success: false,
+          message: `Item total must be a non-negative number for item ${i + 1}`
+        });
+      }
+    }
+
+    // Calculate invoice totals
+    const subtotal = invoiceData.items.reduce((sum, item) => sum + (Number(item.unitPrice) * Number(item.quantity) - Number(item.discount || 0)), 0);
+    const totalTax = invoiceData.items.reduce((sum, item) => {
+      const itemSubtotal = (Number(item.unitPrice) * Number(item.quantity)) - Number(item.discount || 0);
+      return sum + ((itemSubtotal * Number(item.taxRate || 0)) / 100);
+    }, 0);
+    const totalDiscount = invoiceData.items.reduce((sum, item) => sum + Number(item.discount || 0), 0);
+    const shippingCost = Number(invoiceData.shippingCost || 0);
+    const total = subtotal + totalTax + shippingCost;
+
+    // Set calculated totals
+    invoiceData.subtotal = subtotal;
+    invoiceData.totalTax = totalTax;
+    invoiceData.totalDiscount = totalDiscount;
+    invoiceData.total = total;
+    invoiceData.balance = total - Number(invoiceData.paid || 0);
+
     // Get settings for currency information
     const settings = await Setting.getSingleton();
     const displayCurrency = invoiceData.displayCurrency || settings.company.currencySettings?.defaultDisplayCurrency || 'USD';
     
     // Add currency data to invoice if not already present
     if (!invoiceData.currency) {
-      invoiceData.currency = prepareCurrencyData(settings, displayCurrency);
+      // Handle ZWL currency specifically - ensure it has proper exchange rate
+      let currencyData = prepareCurrencyData(settings, displayCurrency);
+      
+      // If ZWL is requested but not found in settings, create default ZWL config
+      if (displayCurrency === 'ZWL' && (!currencyData.exchangeRate || currencyData.exchangeRate === 1)) {
+        currencyData = {
+          baseCurrency: 'USD',
+          displayCurrency: 'ZWL',
+          exchangeRate: 30, // Default ZWL rate if not configured
+          exchangeRateDate: new Date()
+        };
+      }
+      
+      invoiceData.currency = currencyData;
     }
 
     // Update product stock for sale invoices
@@ -250,7 +363,6 @@ const updateInvoice = async (req, res) => {
       { new: true, runValidators: true }
     )
     .populate('customer', 'firstName lastName email')
-    .populate('store', 'name code')
     .populate('items.product', 'name sku');
 
     if (!invoice) {

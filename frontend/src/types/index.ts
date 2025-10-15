@@ -670,6 +670,12 @@ export interface Invoice {
   paid: number;
   balance: number;
   payments: Payment[];
+  currency?: {
+    baseCurrency: string;
+    displayCurrency: string;
+    exchangeRate: number;
+    exchangeRateDate: string;
+  };
   invoiceDate: string;
   dueDate?: string;
   paymentTerms?: string;

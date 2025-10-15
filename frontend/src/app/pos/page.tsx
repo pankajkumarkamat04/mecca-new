@@ -218,8 +218,15 @@ const POSPage: React.FC = () => {
       createdBy: 'POS System',
       createdAt: receipt.date,
       updatedAt: receipt.date,
-      invoiceDate: receipt.invoiceDate || receipt.date
-    };
+      invoiceDate: receipt.invoiceDate || receipt.date,
+      // Include currency information from receipt
+      currency: (receipt as any).currency || {
+        baseCurrency: 'USD',
+        displayCurrency: 'USD',
+        exchangeRate: 1,
+        exchangeRateDate: new Date()
+      }
+    } as any;
   };
 
   const addToCart = (product: any) => {
@@ -337,6 +344,19 @@ const POSPage: React.FC = () => {
     return Number(changeUSD) || 0;
   };
 
+  const getRemaining = () => {
+    // Convert tendered amount from display currency to USD
+    const exchangeRate = getExchangeRate();
+    const tenderedUSD = displayCurrency === 'USD'
+      ? tenderedAmount
+      : tenderedAmount / exchangeRate;
+
+    // Calculate remaining in USD (formatAmount will convert to display currency)
+    const totalUSD = getTotal();
+    const remainingUSD = Math.max(0, totalUSD - tenderedUSD);
+    return Number(remainingUSD) || 0;
+  };
+
   // Removed customer lookup action
 
   const handleProcessSale = async () => {
@@ -362,9 +382,20 @@ const POSPage: React.FC = () => {
       ? tenderedAmount 
       : tenderedAmount / exchangeRate; // Convert ZWL to USD
     
-    if (paymentMethod === 'cash' && tenderedUSD < getTotal()) {
-      toast.error('Insufficient amount tendered');
+    // Allow partial payment: only warn if tendered is zero when cash selected
+    if (paymentMethod === 'cash' && tenderedUSD <= 0) {
+      toast.error('Enter amount tendered for cash payment');
       return;
+    }
+    
+    // Show warning for partial payment
+    if (paymentMethod === 'cash' && tenderedUSD < getTotal()) {
+      const remaining = getTotal() - tenderedUSD;
+      const remainingDisplay = formatAmount(remaining);
+      const confirmed = window.confirm(
+        `Partial payment detected. Remaining amount: ${remainingDisplay}\n\nDo you want to proceed with partial payment?`
+      );
+      if (!confirmed) return;
     }
 
     setIsProcessing(true);
@@ -381,7 +412,8 @@ const POSPage: React.FC = () => {
         customerPhone: customerPhone,
         salesOutlet: selectedOutletId, // Include sales outlet
         paymentMethod,
-        tenderedAmount: paymentMethod === 'cash' ? tenderedUSD : getTotal(), // Send USD amount
+        // Send display amount for tendered; backend will convert using exchangeRate
+        tenderedAmount: paymentMethod === 'cash' ? tenderedAmount : 0,
         total: getTotal(),
         displayCurrency: displayCurrency, // Include selected currency
       };
@@ -792,13 +824,21 @@ const POSPage: React.FC = () => {
                 Total to pay: {formatAmount(getTotal())}
               </p>
               {tenderedAmount > 0 && (
-                <div className="mt-2 text-sm">
+                <div className="mt-2 text-sm space-y-1">
                   <div className="flex justify-between">
                     <span>Change:</span>
                     <span className={`font-medium ${getChange() >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                       {formatAmount(getChange())}
                     </span>
                   </div>
+                  {getRemaining() > 0 && (
+                    <div className="flex justify-between text-red-600">
+                      <span>Remaining Balance:</span>
+                      <span className="font-medium">
+                        {formatAmount(getRemaining())}
+                      </span>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -1017,6 +1057,26 @@ const POSPage: React.FC = () => {
                             )}</span>
                           </div>
                         </>
+                      );
+                    }
+                    return null;
+                  })()}
+                  
+                  {/* Show remaining balance for partial payments */}
+                  {(() => {
+                    const receiptBalance = (receipt as any).balance || 0;
+                    const receiptCurrency = (receipt as any).currency?.displayCurrency || 'USD';
+                    
+                    if (receiptBalance > 0) {
+                      return (
+                        <div className="flex justify-between text-sm font-semibold text-red-600 border-t pt-2 mt-2">
+                          <span>Remaining Balance:</span>
+                          <span>{formatAmountWithCurrency(
+                            receiptBalance,
+                            company?.currencySettings,
+                            receiptCurrency
+                          )}</span>
+                        </div>
                       );
                     }
                     return null;

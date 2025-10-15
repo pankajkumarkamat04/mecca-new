@@ -29,7 +29,9 @@ const createInvoiceValidation = [
     .isMongoId()
     .withMessage('Valid product ID is required for each item'),
 
+  // Name can be derived on the server from the product
   body('items.*.name')
+    .optional()
     .notEmpty()
     .withMessage('Item name is required'),
 
@@ -59,13 +61,17 @@ const createInvoiceValidation = [
     .isFloat({ min: 0, max: 100 })
     .withMessage('Tax rate must be between 0 and 100'),
 
+  // Total is computed on the server; allow omission
   body('items.*.total')
+    .optional()
     .isNumeric()
     .withMessage('Item total must be a number')
     .isFloat({ min: 0 })
     .withMessage('Item total must be non-negative'),
 
+  // Subtotal is computed on the server; allow omission
   body('subtotal')
+    .optional()
     .isNumeric()
     .withMessage('Subtotal must be a number')
     .isFloat({ min: 0 })
@@ -85,7 +91,9 @@ const createInvoiceValidation = [
     .isFloat({ min: 0 })
     .withMessage('Total tax must be non-negative'),
 
+  // Total is computed on the server; allow omission
   body('total')
+    .optional()
     .isNumeric()
     .withMessage('Total must be a number')
     .isFloat({ min: 0 })
@@ -98,8 +106,20 @@ const createInvoiceValidation = [
     .isFloat({ min: 0 })
     .withMessage('Paid amount must be non-negative'),
 
+  // Normalize and validate status; map common aliases to allowed values
   body('status')
     .optional()
+    .customSanitizer((value) => {
+      if (!value) return value;
+      const v = String(value).toLowerCase();
+      const aliasMap = {
+        unpaid: 'pending',
+        processing: 'pending',
+        open: 'pending',
+        closed: 'paid',
+      };
+      return aliasMap[v] || v;
+    })
     .isIn(['draft', 'pending', 'paid', 'partial', 'overdue', 'cancelled', 'refunded'])
     .withMessage('Invalid status'),
 

@@ -1021,6 +1021,61 @@ const getRevenueAnalyticsChart = async (req, res) => {
   }
 };
 
+// @desc    Get products sold breakdown by currency (USD vs ZWL)
+// @route   GET /api/reports-analytics/sales-by-currency
+// @access  Private
+const getSalesByCurrency = async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query;
+    const dateFilter = startDate && endDate ? {
+      createdAt: { $gte: new Date(startDate), $lte: new Date(endDate) }
+    } : {};
+
+    // Aggregate from invoices because invoices store currency info
+    const currencyBreakdown = await Invoice.aggregate([
+      { $match: { ...dateFilter, type: 'sale' } },
+      {
+        $group: {
+          _id: '$currency.displayCurrency',
+          totalInvoices: { $sum: 1 },
+          totalRevenueBase: { $sum: '$total' },
+          totalPaidBase: { $sum: '$paid' }
+        }
+      },
+      { $sort: { totalRevenueBase: -1 } }
+    ]);
+
+    // Optional: product quantities by currency
+    const productByCurrency = await Invoice.aggregate([
+      { $match: { ...dateFilter, type: 'sale' } },
+      { $unwind: '$items' },
+      {
+        $group: {
+          _id: {
+            currency: '$currency.displayCurrency',
+            product: '$items.product'
+          },
+          quantitySold: { $sum: '$items.quantity' },
+          revenueBase: { $sum: '$items.total' }
+        }
+      },
+      {
+        $group: {
+          _id: '$_id.currency',
+          products: {
+            $push: { product: '$_id.product', quantitySold: '$quantitySold', revenueBase: '$revenueBase' }
+          }
+        }
+      }
+    ]);
+
+    res.json({ success: true, data: { currencyBreakdown, productByCurrency } });
+  } catch (error) {
+    console.error('Sales by currency error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
 // @desc    Get Workshop Analytics Chart Data
 // @route   GET /api/reports-analytics/charts/workshop-analytics
 // @access  Private
@@ -1132,5 +1187,7 @@ module.exports = {
   getSalesTrendsChart,
   getTopProductsChart,
   getRevenueAnalyticsChart,
-  getWorkshopAnalyticsChart
+  getWorkshopAnalyticsChart,
+  // New export added below
+  getSalesByCurrency
 };

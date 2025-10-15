@@ -10,12 +10,14 @@ import TextArea from '@/components/ui/TextArea';
 import Select from '@/components/ui/Select';
 import Button from '@/components/ui/Button';
 import CustomerSelector from '@/components/ui/CustomerSelector';
+import CurrencySelector from '@/components/ui/CurrencySelector';
 import FormProductSelector from '@/components/ui/FormProductSelector';
 import { quotationsAPI } from '@/lib/api';
 import { customersAPI } from '@/lib/api';
 import { productsAPI } from '@/lib/api';
 import { calculatePrice } from '@/lib/priceCalculator';
 import PriceSummary from '@/components/ui/PriceSummary';
+import { useSettings } from '@/contexts/SettingsContext';
 import { z } from 'zod';
 
 interface CreateQuotationFormProps {
@@ -38,6 +40,10 @@ const CreateQuotationForm: React.FC<CreateQuotationFormProps> = ({
   onSuccess,
   initialData,
 }) => {
+  const { company } = useSettings();
+  const [quotationDisplayCurrency, setQuotationDisplayCurrency] = useState<string>(
+    company?.currencySettings?.defaultDisplayCurrency || 'USD'
+  );
   const [items, setItems] = useState<any[]>(
     initialData?.items || [{ product: '', quantity: 1, unitPrice: 0, discount: 0, taxRate: 0 }]
   );
@@ -153,6 +159,7 @@ const CreateQuotationForm: React.FC<CreateQuotationFormProps> = ({
       validUntil: new Date(data.validUntil).toISOString(),
       quotationDate: new Date().toISOString(),
       status: 'draft',
+      displayCurrency: quotationDisplayCurrency,
     };
 
     console.log('Submitting quotation data:', submitData);
@@ -209,7 +216,7 @@ const CreateQuotationForm: React.FC<CreateQuotationFormProps> = ({
       {(methods) => (
         <div className="space-y-6">
           <FormSection title="Quotation Details">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Customer *</label>
                 <CustomerSelector
@@ -243,6 +250,17 @@ const CreateQuotationForm: React.FC<CreateQuotationFormProps> = ({
                     {methods.formState.errors.validUntil.message}
                   </p>
                 )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Display Currency
+                </label>
+                <CurrencySelector
+                  value={quotationDisplayCurrency}
+                  onChange={(value: string) => setQuotationDisplayCurrency(value)}
+                  fullWidth
+                />
               </div>
             </div>
 
@@ -286,6 +304,7 @@ const CreateQuotationForm: React.FC<CreateQuotationFormProps> = ({
                       </label>
                       <FormProductSelector
                         value={item.product}
+                        displayCurrency={quotationDisplayCurrency}
                         onChange={(value) => updateItem(index, 'product', value)}
                         placeholder="Select a product"
                       />
@@ -446,6 +465,7 @@ const CreateQuotationForm: React.FC<CreateQuotationFormProps> = ({
               showBreakdown={true}
               showItems={true}
               title=""
+              displayCurrency={quotationDisplayCurrency}
             />
           </FormSection>
 

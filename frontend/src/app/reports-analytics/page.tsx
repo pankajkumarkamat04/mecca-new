@@ -49,6 +49,13 @@ const ReportsAnalyticsPage: React.FC = () => {
     enabled: canViewOrders && activeTab === 'pos-sales',
   });
 
+  // Sales by Currency Query
+  const { data: salesByCurrencyData, isLoading: currencyLoading } = useQuery({
+    queryKey: ['reports-analytics-sales-by-currency', selectedPeriod],
+    queryFn: () => reportsAnalyticsAPI.getSalesByCurrency({ period: selectedPeriod }),
+    enabled: canViewOrders && activeTab === 'pos-sales',
+  });
+
   // Workshop Analytics Query
   const { data: workshopAnalytics, isLoading: workshopLoading } = useQuery({
     queryKey: ['reports-analytics-workshop', selectedPeriod],
@@ -353,6 +360,37 @@ const ReportsAnalyticsPage: React.FC = () => {
             </div>
           </div>
         )}
+
+        {/* Sales by Currency */}
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Sales by Currency</h3>
+          {currencyLoading ? (
+            <div className="flex justify-center items-center h-32">Loading...</div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {(salesByCurrencyData?.data?.data?.currencyBreakdown || []).map((c: any) => (
+                <div key={c._id} className="border rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm text-gray-600">Currency</div>
+                    <div className="text-sm font-medium text-gray-900">{c._id || 'USD'}</div>
+                  </div>
+                  <div className="flex items-center justify-between mt-2">
+                    <div className="text-sm text-gray-600">Invoices</div>
+                    <div className="text-sm font-medium text-gray-900">{c.totalInvoices}</div>
+                  </div>
+                  <div className="flex items-center justify-between mt-2">
+                    <div className="text-sm text-gray-600">Revenue (base)</div>
+                    <div className="text-sm font-medium text-gray-900">{formatCurrency(c.totalRevenueBase)}</div>
+                  </div>
+                  <div className="flex items-center justify-between mt-2">
+                    <div className="text-sm text-gray-600">Paid (base)</div>
+                    <div className="text-sm font-medium text-gray-900">{formatCurrency(c.totalPaidBase)}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
         {/* Charts Section */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

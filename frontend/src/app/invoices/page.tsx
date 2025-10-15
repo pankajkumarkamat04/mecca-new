@@ -586,6 +586,7 @@ const InvoicesPage: React.FC = () => {
                       <FormField label="Product" required error={(methods.formState.errors.items as any)?.[idx]?.product?.message as string}>
                         <FormProductSelector
                           value={methods.watch(`items.${idx}.product` as const)}
+                        displayCurrency={invoiceDisplayCurrency}
                           onChange={(productId) => {
                             methods.setValue(`items.${idx}.product` as const, productId);
                             
@@ -595,6 +596,10 @@ const InvoicesPage: React.FC = () => {
                               if (selectedProduct && selectedProduct.pricing?.sellingPrice) {
                                 methods.setValue(`items.${idx}.unitPrice` as const, selectedProduct.pricing.sellingPrice);
                               }
+                            // Auto-populate tax rate from product if available
+                            if (selectedProduct && selectedProduct.pricing && typeof selectedProduct.pricing.taxRate === 'number') {
+                              methods.setValue(`items.${idx}.taxRate` as const, Number(selectedProduct.pricing.taxRate) || 0);
+                            }
                             }
                           }}
                           placeholder="Select product..."
@@ -605,6 +610,15 @@ const InvoicesPage: React.FC = () => {
                       </FormField>
                       <FormField label="Unit Price" required error={(methods.formState.errors.items as any)?.[idx]?.unitPrice?.message as string}>
                         <Input type="number" step="0.01" {...methods.register(`items.${idx}.unitPrice` as const)} fullWidth />
+                        <p className="text-xs text-gray-500 mt-1">
+                          ≈ {
+                            formatAmountWithCurrency(
+                              Number(methods.watch(`items.${idx}.unitPrice` as const) || 0),
+                              company?.currencySettings,
+                              invoiceDisplayCurrency
+                            )
+                          } per unit
+                        </p>
                       </FormField>
                       <FormField label="Tax %" error={(methods.formState.errors.items as any)?.[idx]?.taxRate?.message as string}>
                         <Input type="number" step="0.01" {...methods.register(`items.${idx}.taxRate` as const)} fullWidth />
@@ -670,6 +684,7 @@ const InvoicesPage: React.FC = () => {
                       showBreakdown={true}
                       showItems={true}
                       title=""
+                      displayCurrency={invoiceDisplayCurrency}
                     />
                   );
                 })()}
@@ -1105,29 +1120,28 @@ export default InvoicesPage;
 // Header right block: company logo (if available) and total
 const InvoiceHeaderRight: React.FC<{ invoice: any }> = ({ invoice }) => {
   const { company } = useSettings();
-  
-  try {
-    return (
-      <div>
-        <div className="flex items-center justify-end gap-3">
-          {company?.logo?.url && (
-            <Image
-              width={40}
-              height={40}
-              src={getLogoUrl(company.logo.url)}
-              alt="Logo"
-              className="object-contain"
-            />
-          )}
-          <div className="text-2xl font-bold text-gray-900">
-            {formatCurrency(invoice?.total ?? invoice?.totalAmount ?? 0)}
-          </div>
+
+  const amountBase = typeof invoice?.total === 'number' ? invoice.total : (invoice?.totalAmount ?? 0);
+  const displayCurrency = invoice?.currency?.displayCurrency || company?.currencySettings?.defaultDisplayCurrency || 'USD';
+
+  const formatted = formatAmountWithCurrency(amountBase, company?.currencySettings, displayCurrency);
+
+  return (
+    <div>
+      <div className="flex items-center justify-end gap-3">
+        {company?.logo?.url && (
+          <Image
+            width={40}
+            height={40}
+            src={getLogoUrl(company.logo.url)}
+            alt="Logo"
+            className="object-contain"
+          />
+        )}
+        <div className="text-2xl font-bold text-gray-900">
+          {formatted}
         </div>
       </div>
-    );
-  } catch {
-    return (
-      <div className="text-2xl font-bold text-gray-900">{formatCurrency(invoice?.total ?? invoice?.totalAmount ?? 0)}</div>
-    );
-  }
+    </div>
+  );
 };

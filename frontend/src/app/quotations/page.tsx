@@ -91,6 +91,21 @@ const QuotationsPage: React.FC = () => {
     },
   });
 
+  // Update quotation status mutation
+  const updateStatusMutation = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: string }) => 
+      quotationsAPI.updateQuotation(id, { status }),
+    onSuccess: () => {
+      toast.success('Quotation status updated successfully');
+      queryClient.invalidateQueries({ queryKey: ['quotations'] });
+      queryClient.invalidateQueries({ queryKey: ['quotationStats'] });
+    },
+    onError: (error: any) => {
+      console.error('Error updating quotation status:', error);
+      toast.error(error.response?.data?.message || 'Failed to update quotation status');
+    },
+  });
+
   // Convert to order feature removed
 
   const quotations = quotationsData?.data?.data || [];
@@ -118,6 +133,12 @@ const QuotationsPage: React.FC = () => {
   const handleGeneratePickingList = (quotation: any) => {
     setSelectedQuotation(quotation);
     generatePickingListMutation.mutate(quotation._id);
+  };
+
+  const handleUpdateStatus = (quotation: any, newStatus: string) => {
+    if (window.confirm(`Are you sure you want to change the status to "${newStatus}"?`)) {
+      updateStatusMutation.mutate({ id: quotation._id, status: newStatus });
+    }
   };
 
   // const handleConvertToOrder = () => {};
@@ -152,8 +173,9 @@ const QuotationsPage: React.FC = () => {
   const getStatusBadge = (status: string) => {
     const statusConfig = {
       draft: { color: 'gray', icon: ClockIcon },
-      pending: { color: 'yellow', icon: ClockIcon },
-      approved: { color: 'green', icon: CheckCircleIcon },
+      sent: { color: 'blue', icon: DocumentTextIcon },
+      viewed: { color: 'yellow', icon: EyeIcon },
+      accepted: { color: 'green', icon: CheckCircleIcon },
       rejected: { color: 'red', icon: XCircleIcon },
       expired: { color: 'gray', icon: XCircleIcon },
       converted: { color: 'blue', icon: ShoppingCartIcon },
@@ -243,7 +265,7 @@ const QuotationsPage: React.FC = () => {
           >
             <PencilIcon className="h-4 w-4" />
           </Button>
-          {quotation.status === 'approved' && (
+          {quotation.status === 'accepted' && (
             <Button
               variant="ghost"
               size="sm"
@@ -253,7 +275,7 @@ const QuotationsPage: React.FC = () => {
               <ExclamationTriangleIcon className="h-4 w-4" />
             </Button>
           )}
-          {quotation.status === 'approved' && (
+          {quotation.status === 'accepted' && (
             <Button
               variant="ghost"
               size="sm"
@@ -263,7 +285,52 @@ const QuotationsPage: React.FC = () => {
               <DocumentTextIcon className="h-4 w-4" />
             </Button>
           )}
-          {/* Convert to Order action removed as requested */}
+          
+          {/* Status Update Buttons */}
+          {quotation.status === 'draft' && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleUpdateStatus(quotation, 'sent')}
+              title="Send Quotation"
+              className="text-blue-600 hover:text-blue-700"
+            >
+              <DocumentTextIcon className="h-4 w-4" />
+            </Button>
+          )}
+          {quotation.status === 'sent' && (
+            <>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleUpdateStatus(quotation, 'accepted')}
+                title="Accept Quotation"
+                className="text-green-600 hover:text-green-700"
+              >
+                <CheckCircleIcon className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleUpdateStatus(quotation, 'rejected')}
+                title="Reject Quotation"
+                className="text-red-600 hover:text-red-700"
+              >
+                <XCircleIcon className="h-4 w-4" />
+              </Button>
+            </>
+          )}
+          {quotation.status === 'accepted' && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleUpdateStatus(quotation, 'converted')}
+              title="Mark as Converted"
+              className="text-purple-600 hover:text-purple-700"
+            >
+              <ShoppingCartIcon className="h-4 w-4" />
+            </Button>
+          )}
           
           {/* Print Quotation */}
           <Button
@@ -488,7 +555,7 @@ const QuotationsPage: React.FC = () => {
                 >
                   Close
                 </Button>
-                {selectedQuotation.status === 'approved' && (
+                {selectedQuotation.status === 'accepted' && (
                   <Button
                     onClick={() => {
                       setShowDetailsModal(false);

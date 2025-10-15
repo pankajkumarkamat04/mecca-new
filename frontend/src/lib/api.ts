@@ -525,6 +525,8 @@ export const reportsAnalyticsAPI = {
   getTopProductsChart: (params?: any) => api.get('/reports-analytics/charts/top-products', { params }),
   getRevenueAnalyticsChart: (params?: any) => api.get('/reports-analytics/charts/revenue-analytics', { params }),
   getWorkshopAnalyticsChart: (params?: any) => api.get('/reports-analytics/charts/workshop-analytics', { params }),
+  // New: sales by currency
+  getSalesByCurrency: (params?: any) => api.get('/reports-analytics/sales-by-currency', { params }),
 };
 
 export default api;

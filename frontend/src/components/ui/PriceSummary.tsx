@@ -1,5 +1,7 @@
 import React from 'react';
 import { PriceCalculationResult, formatCurrency } from '@/lib/priceCalculator';
+import { formatAmountWithCurrency } from '@/lib/currencyUtils';
+import { useSettings } from '@/contexts/SettingsContext';
 
 interface PriceSummaryProps {
   calculation: PriceCalculationResult;
@@ -7,6 +9,7 @@ interface PriceSummaryProps {
   showItems?: boolean;
   className?: string;
   title?: string;
+  displayCurrency?: string;
 }
 
 const PriceSummary: React.FC<PriceSummaryProps> = ({ 
@@ -14,8 +17,15 @@ const PriceSummary: React.FC<PriceSummaryProps> = ({
   showBreakdown = true, 
   showItems = false,
   className = '',
-  title = 'Price Summary'
+  title = 'Price Summary',
+  displayCurrency = 'USD'
 }) => {
+  const { company } = useSettings();
+  
+  // Helper function to format amounts with correct currency
+  const formatAmount = (amount: number) => {
+    return formatAmountWithCurrency(amount, company?.currencySettings, displayCurrency);
+  };
   return (
     <div className={`bg-gray-50 p-4 rounded-lg ${className}`}>
       {title && (
@@ -36,21 +46,21 @@ const PriceSummary: React.FC<PriceSummaryProps> = ({
                       <div className="text-xs text-gray-500">SKU: {item.sku}</div>
                     )}
                     <div className="text-xs text-gray-500">
-                      {item.quantity} × {formatCurrency(item.unitPrice)}
+                      {item.quantity} × {formatAmount(item.unitPrice)}
                     </div>
                   </div>
                   <div className="text-right">
                     <div className="font-medium text-gray-900">
-                      {formatCurrency(item.total)}
+                      {formatAmount(item.total)}
                     </div>
                     {item.discount > 0 && (
                       <div className="text-xs text-green-600">
-                        -{formatCurrency(item.discountAmount)} ({item.discount}%)
+                        -{formatAmount(item.discountAmount)} ({item.discount}%)
                       </div>
                     )}
                     {item.taxRate > 0 && (
                       <div className="text-xs text-blue-600">
-                        +{formatCurrency(item.taxAmount)} ({item.taxRate}%)
+                        +{formatAmount(item.taxAmount)} ({item.taxRate}%)
                       </div>
                     )}
                   </div>
@@ -65,7 +75,7 @@ const PriceSummary: React.FC<PriceSummaryProps> = ({
       <div className="space-y-2">
         <div className="flex justify-between text-sm">
           <span>Subtotal:</span>
-          <span>{formatCurrency(calculation.subtotal)}</span>
+          <span>{formatAmount(calculation.subtotal)}</span>
         </div>
         
         {/* Discount breakdown */}
@@ -76,14 +86,14 @@ const PriceSummary: React.FC<PriceSummaryProps> = ({
                 {calculation.discountBreakdown.map((discount, index) => (
                   <div key={index} className="flex justify-between text-xs text-green-600">
                     <span>{discount.name}:</span>
-                    <span>-{formatCurrency(discount.amount)}</span>
+                    <span>-{formatAmount(discount.amount)}</span>
                   </div>
                 ))}
               </div>
             )}
             <div className="flex justify-between text-sm text-green-600">
               <span>Total Discount:</span>
-              <span>-{formatCurrency(calculation.totalDiscount)}</span>
+              <span>-{formatAmount(calculation.totalDiscount)}</span>
             </div>
           </>
         )}
@@ -96,14 +106,14 @@ const PriceSummary: React.FC<PriceSummaryProps> = ({
                 {calculation.taxBreakdown.map((tax, index) => (
                   <div key={index} className="flex justify-between text-xs text-blue-600">
                     <span>{tax.name}:</span>
-                    <span>+{formatCurrency(tax.amount)}</span>
+                    <span>+{formatAmount(tax.amount)}</span>
                   </div>
                 ))}
               </div>
             )}
             <div className="flex justify-between text-sm text-blue-600">
               <span>Total Tax:</span>
-              <span>+{formatCurrency(calculation.totalTax)}</span>
+              <span>+{formatAmount(calculation.totalTax)}</span>
             </div>
           </>
         )}
@@ -112,14 +122,14 @@ const PriceSummary: React.FC<PriceSummaryProps> = ({
         {calculation.shippingCost > 0 && (
           <div className="flex justify-between text-sm">
             <span>Shipping:</span>
-            <span>+{formatCurrency(calculation.shippingCost)}</span>
+            <span>+{formatAmount(calculation.shippingCost)}</span>
           </div>
         )}
         
         {/* Final total */}
         <div className="flex justify-between text-lg font-semibold border-t pt-2 mt-2">
           <span>Total:</span>
-          <span>{formatCurrency(calculation.total)}</span>
+          <span>{formatAmount(calculation.total)}</span>
         </div>
       </div>
     </div>

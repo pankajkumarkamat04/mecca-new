@@ -51,6 +51,7 @@ const createTransaction = async (req, res) => {
     const settings = await Setting.getSingleton();
     const displayCurrency = transactionData.displayCurrency || settings.company.currencySettings?.defaultDisplayCurrency || 'USD';
     const currencyData = prepareCurrencyData(settings, displayCurrency);
+    const exchangeRate = currencyData.exchangeRate || 1;
 
     // Validate items and stock availability (no stock changes here)
     for (const item of transactionData.items) {
@@ -85,9 +86,12 @@ const createTransaction = async (req, res) => {
       if (!product) {
         return res.status(400).json({ success: false, message: `Product not found: ${item.product}` });
       }
-      const unitPrice = product.pricing.sellingPrice;
+      
+      // Use price from frontend which is in BASE (USD); do NOT reconvert
+      const unitPriceBase = Number(item.price) || product.pricing.sellingPrice;
+      
       const quantity = Number(item.quantity) || 0;
-      const lineBase = unitPrice * quantity;
+      const lineBase = unitPriceBase * quantity;
       const taxRate = product.pricing.taxRate || 0;
       const lineTax = (lineBase * taxRate) / 100;
       subtotal += lineBase;
@@ -98,7 +102,7 @@ const createTransaction = async (req, res) => {
         description: product.description || undefined,
         sku: product.sku,
         quantity,
-        unitPrice,
+        unitPrice: unitPriceBase, // Store in base currency (USD)
         discount: 0,
         taxRate,
         total: 0 // calculated by pre-save, but we keep our totals above
@@ -107,12 +111,24 @@ const createTransaction = async (req, res) => {
 
     const total = subtotal - totalDiscount + totalTax + shippingCost;
 
-    // Validate tendered amount for cash payments
-    if (transactionData.paymentMethod === 'cash') {
-      const tendered = Number(transactionData.tenderedAmount) || 0;
-      if (tendered < total) {
-        return res.status(400).json({ success: false, message: 'Insufficient amount tendered' });
-      }
+    // Handle tendered amount and partial payments (currency-aware)
+    const paymentMethod = transactionData.paymentMethod || 'cash';
+    const tenderedDisplay = Number(transactionData.tenderedAmount) || 0;
+    const tenderedBase = convertToBaseCurrency(tenderedDisplay, exchangeRate);
+
+    // Build payments array (store amounts in base currency)
+    const payments = [];
+    if (tenderedBase > 0) {
+      payments.push({
+        method: paymentMethod,
+        amount: Number(tenderedBase.toFixed(2)),
+        metadata: {
+          tenderedDisplay: Number(tenderedDisplay.toFixed(2)),
+          exchangeRate
+        },
+        date: new Date(),
+        processedBy: req.user._id
+      });
     }
 
     // Now that validation passed, update stock ONCE and create stock movements
@@ -167,10 +183,15 @@ const createTransaction = async (req, res) => {
     }
 
     // Create invoice with computed totals (no due date for POS transactions)
+    // Determine paid/balance and status (support partial)
+    const paidAmount = Math.min(tenderedBase, total);
+    const balanceAmount = Math.max(0, total - paidAmount);
+    const invoiceStatus = balanceAmount === 0 ? 'paid' : (paidAmount > 0 ? 'partial' : 'pending');
+
     const invoice = new Invoice({
       invoiceNumber,
       type: 'sale',
-      status: transactionData.paymentMethod === 'cash' ? 'paid' : 'pending',
+      status: invoiceStatus,
       customer: transactionData.customer || undefined,
       customerPhone: transactionData.customerPhone,
       salesOutlet: transactionData.salesOutlet || undefined,
@@ -182,8 +203,8 @@ const createTransaction = async (req, res) => {
       totalDiscount,
       totalTax,
       total,
-      paid: transactionData.paymentMethod === 'cash' ? total : 0,
-      balance: transactionData.paymentMethod === 'cash' ? 0 : total,
+      paid: Number(paidAmount.toFixed(2)),
+      balance: Number(balanceAmount.toFixed(2)),
       currency: currencyData, // Store currency information
       payments: payments, // Include payment details with tender/change
       notes: transactionData.note || undefined,

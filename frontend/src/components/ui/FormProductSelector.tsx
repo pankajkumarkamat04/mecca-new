@@ -5,6 +5,8 @@ import { useQuery } from '@tanstack/react-query';
 import { productsAPI } from '@/lib/api';
 import { MagnifyingGlassIcon, CheckIcon } from '@heroicons/react/24/outline';
 import { Product } from '@/types';
+import { useSettings } from '@/contexts/SettingsContext';
+import { formatAmountWithCurrency } from '@/lib/currencyUtils';
 
 interface FormProductSelectorProps {
   value: string;
@@ -13,6 +15,7 @@ interface FormProductSelectorProps {
   disabled?: boolean;
   className?: string;
   error?: string;
+  displayCurrency?: string;
 }
 
 const FormProductSelector: React.FC<FormProductSelectorProps> = ({
@@ -21,8 +24,10 @@ const FormProductSelector: React.FC<FormProductSelectorProps> = ({
   placeholder = "Select a product...",
   disabled = false,
   className = "",
-  error
+  error,
+  displayCurrency = 'USD'
 }) => {
+  const { company } = useSettings();
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -39,6 +44,11 @@ const FormProductSelector: React.FC<FormProductSelectorProps> = ({
 
   const products = productsData?.data?.data || [];
   const selectedProduct = products.find((p: Product) => p._id === value);
+
+  const formatProductPrice = (priceUSD?: number) => {
+    const amount = Number(priceUSD || 0);
+    return formatAmountWithCurrency(amount, company?.currencySettings, displayCurrency);
+  };
 
   // Filter products based on search term
   const filteredProducts = products.filter((product: Product) =>
@@ -76,6 +86,9 @@ const FormProductSelector: React.FC<FormProductSelectorProps> = ({
               <div className="font-medium text-gray-900">{selectedProduct.name}</div>
               <div className="text-sm text-gray-500">
                 SKU: {selectedProduct.sku} • Stock: {selectedProduct.inventory?.currentStock || 0} {selectedProduct.inventory?.unit || ''}
+              </div>
+              <div className="text-sm text-gray-600">
+                Price: {formatProductPrice(selectedProduct.pricing?.sellingPrice)}
               </div>
             </div>
             {!disabled && (
@@ -123,7 +136,7 @@ const FormProductSelector: React.FC<FormProductSelectorProps> = ({
 
           {/* Products List */}
           <div className="py-1">
-            {isLoading ? (
+              {isLoading ? (
               <div className="px-3 py-2 text-sm text-gray-500">Loading products...</div>
             ) : filteredProducts.length === 0 ? (
               <div className="px-3 py-2 text-sm text-gray-500">
@@ -142,9 +155,14 @@ const FormProductSelector: React.FC<FormProductSelectorProps> = ({
                       SKU: {product.sku} • Stock: {product.inventory?.currentStock || 0} {product.inventory?.unit || ''}
                     </div>
                   </div>
-                  {selectedProduct?._id === product._id && (
-                    <CheckIcon className="h-4 w-4 text-red-600" />
-                  )}
+                  <div className="text-right">
+                    <div className="text-sm text-gray-900">
+                      {formatProductPrice(product.pricing?.sellingPrice)}
+                    </div>
+                    {selectedProduct?._id === product._id && (
+                      <CheckIcon className="h-4 w-4 text-red-600 inline-block ml-2" />
+                    )}
+                  </div>
                 </div>
               ))
             )}

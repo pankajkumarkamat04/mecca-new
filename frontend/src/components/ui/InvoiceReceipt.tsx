@@ -43,6 +43,7 @@ const InvoiceReceipt: React.FC<InvoiceReceiptProps> = ({
 
   // Helper function to format amounts with correct currency
   const formatAmount = (amount: number) => {
+    // Amount is stored in USD (base currency), convert to display currency
     const displayAmount = convertToDisplayCurrency(amount, exchangeRate);
     return formatCurrencyUtil(displayAmount, displayCurrencyCode, currencySymbol);
   };
