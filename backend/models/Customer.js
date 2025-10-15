@@ -112,6 +112,23 @@ const customerSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  taxSettings: {
+    isTaxExempt: {
+      type: Boolean,
+      default: false
+    },
+    taxExemptionReason: {
+      type: String,
+      trim: true,
+      maxlength: [200, 'Tax exemption reason cannot exceed 200 characters']
+    },
+    taxExemptionNumber: {
+      type: String,
+      trim: true,
+      maxlength: [50, 'Tax exemption number cannot exceed 50 characters']
+    },
+    taxExemptionExpiry: Date
+  },
   lastPurchase: Date,
   totalPurchases: {
     count: {

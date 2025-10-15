@@ -243,7 +243,33 @@ const OverviewTab: React.FC<{
     estimatedCost: job.jobCard?.estimatedCost || 0,
     laborHours: job.jobCard?.laborHours || 0,
     schedulingNotes: job.scheduled?.schedulingNotes || '',
+    // Vehicle Information
+    vehicleInfo: {
+      make: job.vehicleInfo?.make || '',
+      model: job.vehicleInfo?.model || '',
+      year: job.vehicleInfo?.year || '',
+      vin: job.vehicleInfo?.vin || '',
+      licensePlate: job.vehicleInfo?.licensePlate || '',
+      mileage: job.vehicleInfo?.mileage || '',
+    },
+    // Job Details
+    jobType: job.jobType || '',
+    priority: job.priority || '',
+    estimatedDuration: job.estimatedDuration || 0,
+    notes: job.notes || '',
+    internalNotes: job.internalNotes || '',
   });
+
+  // Determine which fields are editable based on job status
+  const isFieldEditable = (fieldName: string) => {
+    const restrictedFields = ['vehicleInfo', 'jobType', 'priority'];
+    const restrictedStatuses = ['in_progress', 'completed', 'cancelled'];
+    
+    if (restrictedFields.includes(fieldName) && restrictedStatuses.includes(job.status)) {
+      return false;
+    }
+    return true;
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -252,32 +278,151 @@ const OverviewTab: React.FC<{
 
   if (isEditing) {
     return (
-      <div className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Input
-            label="Work Order Number"
-            value={formData.workOrderNumber}
-            onChange={(e) => setFormData(prev => ({ ...prev, workOrderNumber: e.target.value }))}
-          />
-          <Input
-            label="Estimated Cost"
-            type="number"
-            value={formData.estimatedCost}
-            onChange={(e) => setFormData(prev => ({ ...prev, estimatedCost: parseFloat(e.target.value) }))}
-          />
-          <Input
-            label="Labor Hours"
-            type="number"
-            value={formData.laborHours}
-            onChange={(e) => setFormData(prev => ({ ...prev, laborHours: parseFloat(e.target.value) }))}
-          />
+      <div className="space-y-6">
+        {/* Job Information */}
+        <div className="bg-white border border-gray-200 rounded-lg p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Job Information</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Input
+              label="Work Order Number"
+              value={formData.workOrderNumber}
+              onChange={(e) => setFormData(prev => ({ ...prev, workOrderNumber: e.target.value }))}
+            />
+            <Input
+              label="Estimated Cost"
+              type="number"
+              value={formData.estimatedCost}
+              onChange={(e) => setFormData(prev => ({ ...prev, estimatedCost: parseFloat(e.target.value) }))}
+            />
+            <Input
+              label="Labor Hours"
+              type="number"
+              value={formData.laborHours}
+              onChange={(e) => setFormData(prev => ({ ...prev, laborHours: parseFloat(e.target.value) }))}
+            />
+            <Input
+              label="Estimated Duration (minutes)"
+              type="number"
+              value={formData.estimatedDuration}
+              onChange={(e) => setFormData(prev => ({ ...prev, estimatedDuration: parseInt(e.target.value) }))}
+            />
+            <Select
+              label="Job Type"
+              value={formData.jobType}
+              onChange={(e) => setFormData(prev => ({ ...prev, jobType: e.target.value }))}
+              disabled={!isFieldEditable('jobType')}
+              options={[
+                { value: '', label: 'Select Job Type' },
+                { value: 'repair', label: 'Repair' },
+                { value: 'maintenance', label: 'Maintenance' },
+                { value: 'inspection', label: 'Inspection' },
+                { value: 'custom', label: 'Custom' }
+              ]}
+            />
+            <Select
+              label="Priority"
+              value={formData.priority}
+              onChange={(e) => setFormData(prev => ({ ...prev, priority: e.target.value }))}
+              disabled={!isFieldEditable('priority')}
+              options={[
+                { value: '', label: 'Select Priority' },
+                { value: 'low', label: 'Low' },
+                { value: 'medium', label: 'Medium' },
+                { value: 'high', label: 'High' },
+                { value: 'urgent', label: 'Urgent' }
+              ]}
+            />
+          </div>
         </div>
-        <TextArea
-          label="Scheduling Notes"
-          value={formData.schedulingNotes}
-          onChange={(e) => setFormData(prev => ({ ...prev, schedulingNotes: e.target.value }))}
-          rows={3}
-        />
+
+        {/* Vehicle Information */}
+        <div className="bg-white border border-gray-200 rounded-lg p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Vehicle Information</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Input
+              label="Make"
+              value={formData.vehicleInfo.make}
+              onChange={(e) => setFormData(prev => ({ 
+                ...prev, 
+                vehicleInfo: { ...prev.vehicleInfo, make: e.target.value }
+              }))}
+              disabled={!isFieldEditable('vehicleInfo')}
+            />
+            <Input
+              label="Model"
+              value={formData.vehicleInfo.model}
+              onChange={(e) => setFormData(prev => ({ 
+                ...prev, 
+                vehicleInfo: { ...prev.vehicleInfo, model: e.target.value }
+              }))}
+              disabled={!isFieldEditable('vehicleInfo')}
+            />
+            <Input
+              label="Year"
+              type="number"
+              value={formData.vehicleInfo.year}
+              onChange={(e) => setFormData(prev => ({ 
+                ...prev, 
+                vehicleInfo: { ...prev.vehicleInfo, year: e.target.value }
+              }))}
+              disabled={!isFieldEditable('vehicleInfo')}
+            />
+            <Input
+              label="VIN"
+              value={formData.vehicleInfo.vin}
+              onChange={(e) => setFormData(prev => ({ 
+                ...prev, 
+                vehicleInfo: { ...prev.vehicleInfo, vin: e.target.value }
+              }))}
+              disabled={!isFieldEditable('vehicleInfo')}
+            />
+            <Input
+              label="License Plate"
+              value={formData.vehicleInfo.licensePlate}
+              onChange={(e) => setFormData(prev => ({ 
+                ...prev, 
+                vehicleInfo: { ...prev.vehicleInfo, licensePlate: e.target.value }
+              }))}
+              disabled={!isFieldEditable('vehicleInfo')}
+            />
+            <Input
+              label="Mileage"
+              type="number"
+              value={formData.vehicleInfo.mileage}
+              onChange={(e) => setFormData(prev => ({ 
+                ...prev, 
+                vehicleInfo: { ...prev.vehicleInfo, mileage: e.target.value }
+              }))}
+              disabled={!isFieldEditable('vehicleInfo')}
+            />
+          </div>
+        </div>
+
+        {/* Notes */}
+        <div className="bg-white border border-gray-200 rounded-lg p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Notes</h3>
+          <div className="space-y-4">
+            <TextArea
+              label="Customer Notes"
+              value={formData.notes}
+              onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+              rows={3}
+            />
+            <TextArea
+              label="Internal Notes"
+              value={formData.internalNotes}
+              onChange={(e) => setFormData(prev => ({ ...prev, internalNotes: e.target.value }))}
+              rows={3}
+            />
+            <TextArea
+              label="Scheduling Notes"
+              value={formData.schedulingNotes}
+              onChange={(e) => setFormData(prev => ({ ...prev, schedulingNotes: e.target.value }))}
+              rows={3}
+            />
+          </div>
+        </div>
+
         <div className="flex justify-end space-x-3">
           <Button type="button" variant="outline" onClick={onCancelEdit}>
             Cancel
@@ -311,8 +456,22 @@ const OverviewTab: React.FC<{
               <span className="text-sm font-semibold text-gray-900">{job.jobCard?.workOrderNumber || 'N/A'}</span>
             </div>
             <div className="flex justify-between items-center py-2 border-b border-gray-100">
-              <span className="text-sm font-medium text-gray-600">Version:</span>
-              <span className="text-sm text-gray-900">{job.jobCard?.version || 1}</span>
+              <span className="text-sm font-medium text-gray-600">Job Type:</span>
+              <span className="text-sm text-gray-900">{job.jobType || 'N/A'}</span>
+            </div>
+            <div className="flex justify-between items-center py-2 border-b border-gray-100">
+              <span className="text-sm font-medium text-gray-600">Priority:</span>
+              <Badge color={
+                job.priority === 'urgent' ? 'red' :
+                job.priority === 'high' ? 'orange' :
+                job.priority === 'medium' ? 'yellow' : 'green'
+              }>
+                {job.priority || 'N/A'}
+              </Badge>
+            </div>
+            <div className="flex justify-between items-center py-2 border-b border-gray-100">
+              <span className="text-sm font-medium text-gray-600">Estimated Duration:</span>
+              <span className="text-sm text-gray-900">{job.estimatedDuration ? `${job.estimatedDuration} min` : 'N/A'}</span>
             </div>
             <div className="flex justify-between items-center py-2">
               <span className="text-sm font-medium text-gray-600">Status:</span>
@@ -323,6 +482,42 @@ const OverviewTab: React.FC<{
               }>
                 {job.status?.replace('_', ' ') || 'Unknown'}
               </Badge>
+            </div>
+          </div>
+        </div>
+
+        {/* Vehicle Information Card */}
+        <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-6">
+          <div className="flex items-center mb-4">
+            <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center mr-3">
+              <DocumentTextIcon className="h-5 w-5 text-green-600" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900">Vehicle Information</h3>
+          </div>
+          <div className="space-y-3">
+            <div className="flex justify-between items-center py-2 border-b border-gray-100">
+              <span className="text-sm font-medium text-gray-600">Make:</span>
+              <span className="text-sm font-semibold text-gray-900">{job.vehicleInfo?.make || 'N/A'}</span>
+            </div>
+            <div className="flex justify-between items-center py-2 border-b border-gray-100">
+              <span className="text-sm font-medium text-gray-600">Model:</span>
+              <span className="text-sm font-semibold text-gray-900">{job.vehicleInfo?.model || 'N/A'}</span>
+            </div>
+            <div className="flex justify-between items-center py-2 border-b border-gray-100">
+              <span className="text-sm font-medium text-gray-600">Year:</span>
+              <span className="text-sm text-gray-900">{job.vehicleInfo?.year || 'N/A'}</span>
+            </div>
+            <div className="flex justify-between items-center py-2 border-b border-gray-100">
+              <span className="text-sm font-medium text-gray-600">VIN:</span>
+              <span className="text-sm text-gray-900">{job.vehicleInfo?.vin || 'N/A'}</span>
+            </div>
+            <div className="flex justify-between items-center py-2 border-b border-gray-100">
+              <span className="text-sm font-medium text-gray-600">License Plate:</span>
+              <span className="text-sm text-gray-900">{job.vehicleInfo?.licensePlate || 'N/A'}</span>
+            </div>
+            <div className="flex justify-between items-center py-2">
+              <span className="text-sm font-medium text-gray-600">Mileage:</span>
+              <span className="text-sm text-gray-900">{job.vehicleInfo?.mileage ? `${job.vehicleInfo.mileage.toLocaleString()} km` : 'N/A'}</span>
             </div>
           </div>
         </div>
@@ -364,17 +559,51 @@ const OverviewTab: React.FC<{
         </div>
       </div>
 
-      {job.scheduled?.schedulingNotes && (
+      {/* Notes Section */}
+      {(job.notes || job.internalNotes || job.scheduled?.schedulingNotes) && (
         <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-6">
           <div className="flex items-center mb-4">
             <div className="w-8 h-8 bg-yellow-100 rounded-lg flex items-center justify-center mr-3">
               <DocumentTextIcon className="h-5 w-5 text-yellow-600" />
             </div>
-            <h3 className="text-lg font-semibold text-gray-900">Scheduling Notes</h3>
+            <h3 className="text-lg font-semibold text-gray-900">Notes</h3>
           </div>
-          <p className="text-sm text-gray-700 leading-relaxed">
-            {job.scheduled.schedulingNotes}
-          </p>
+          <div className="space-y-4">
+            {job.notes && (
+              <div>
+                <h4 className="text-sm font-medium text-gray-700 mb-2">Customer Notes:</h4>
+                <p className="text-sm text-gray-600 leading-relaxed">{job.notes}</p>
+              </div>
+            )}
+            {job.internalNotes && (
+              <div>
+                <h4 className="text-sm font-medium text-gray-700 mb-2">Internal Notes:</h4>
+                <p className="text-sm text-gray-600 leading-relaxed">{job.internalNotes}</p>
+              </div>
+            )}
+            {job.scheduled?.schedulingNotes && (
+              <div>
+                <h4 className="text-sm font-medium text-gray-700 mb-2">Scheduling Notes:</h4>
+                <p className="text-sm text-gray-600 leading-relaxed">{job.scheduled.schedulingNotes}</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Field Restrictions Warning */}
+      {['in_progress', 'completed', 'cancelled'].includes(job.status) && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+          <div className="flex items-start">
+            <ExclamationTriangleIcon className="h-5 w-5 text-yellow-600 mt-0.5 mr-3" />
+            <div>
+              <h4 className="text-sm font-medium text-yellow-800">Field Restrictions</h4>
+              <p className="text-sm text-yellow-700 mt-1">
+                Some fields (Vehicle Information, Job Type, Priority) cannot be edited when the job is {job.status.replace('_', ' ')}. 
+                This ensures data integrity and prevents changes that could affect work in progress.
+              </p>
+            </div>
+          </div>
         </div>
       )}
     </div>

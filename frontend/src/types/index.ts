@@ -65,6 +65,11 @@ export interface Product {
   variations?: ProductVariation[];
   images?: ProductImage[];
   specifications?: ProductSpecification[];
+  taxSettings?: {
+    isTaxable: boolean;
+    allowTaxOverride: boolean;
+    taxExemptionCategories?: string[];
+  };
   isActive: boolean;
   createdBy: string;
   createdAt: string;
@@ -124,6 +129,12 @@ export interface Customer {
   type: 'individual' | 'business';
   address?: Address;
   preferences?: CustomerPreferences;
+  taxSettings?: {
+    isTaxExempt: boolean;
+    taxExemptionReason?: string;
+    taxExemptionNumber?: string;
+    taxExemptionExpiry?: string;
+  };
   totalPurchases: {
     amount: number;
     count: number;
@@ -154,6 +165,20 @@ export interface Supplier {
   totalPurchases: number;
   lastPurchaseDate?: string;
   rating: number;
+  isActive: boolean;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Warehouse Types
+export interface Warehouse {
+  _id: string;
+  name: string;
+  code: string;
+  location: Address;
+  capacity?: number;
+  manager?: string | User;
   isActive: boolean;
   createdBy: string;
   createdAt: string;
@@ -1086,6 +1111,65 @@ export interface TableProps {
   onRowClick?: (row: any) => void;
   selectable?: boolean;
   onSelectionChange?: (selectedRows: any[]) => void;
+}
+
+// Received Goods Types
+export interface ReceivedGoods {
+  _id: string;
+  receivedNumber: string;
+  supplier: Supplier;
+  warehouse: Warehouse;
+  receivedDate: string;
+  expectedDate: string;
+  status: 'pending' | 'received' | 'partially_received' | 'cancelled';
+  items: ReceivedGoodsItem[];
+  totalItems: number;
+  totalValue: number;
+  receivedBy: User;
+  verifiedBy?: User;
+  verificationDate?: string;
+  deliveryNote?: string;
+  invoiceNumber?: string;
+  transportDetails?: {
+    vehicleNumber?: string;
+    driverName?: string;
+    driverPhone?: string;
+  };
+  qualityCheck?: {
+    performed: boolean;
+    performedBy?: User;
+    performedDate?: string;
+    results: 'passed' | 'failed' | 'conditional';
+    notes?: string;
+  };
+  documents?: ReceivedGoodsDocument[];
+  notes?: string;
+  isActive: boolean;
+  createdBy: User;
+  lastUpdatedBy?: User;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ReceivedGoodsItem {
+  _id: string;
+  product: Product;
+  expectedQuantity: number;
+  receivedQuantity: number;
+  unitPrice: number;
+  totalValue: number;
+  batchNumber?: string;
+  expiryDate?: string;
+  condition: 'good' | 'damaged' | 'expired' | 'defective';
+  notes?: string;
+}
+
+export interface ReceivedGoodsDocument {
+  type: 'invoice' | 'delivery_note' | 'quality_certificate' | 'other';
+  fileName: string;
+  filePath: string;
+  uploadedBy: User;
+  uploadedAt: string;
 }
 
 // Modal Types

@@ -7,6 +7,7 @@ const Customer = require('../models/Customer');
 const WorkshopJob = require('../models/WorkshopJob');
 const StockMovement = require('../models/StockMovement');
 const Warehouse = require('../models/Warehouse');
+const SalesTransactionService = require('../services/salesTransactionService');
 
 // @desc    Get Order Analytics
 // @route   GET /api/reports-analytics/orders
@@ -1178,6 +1179,57 @@ const getWorkshopAnalyticsChart = async (req, res) => {
   }
 };
 
+// @desc    Get sales transactions by sales person
+// @route   GET /api/reports-analytics/sales-by-salesperson
+// @access  Private
+const getSalesBySalesPerson = async (req, res) => {
+  try {
+    const { salesPersonId, startDate, endDate, salesOutlet } = req.query;
+    
+    const transactions = await SalesTransactionService.getSalesBySalesPerson(salesPersonId, {
+      startDate,
+      endDate,
+      salesOutlet
+    });
+    
+    res.json({
+      success: true,
+      data: transactions
+    });
+  } catch (error) {
+    console.error('Get sales by sales person error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+};
+
+// @desc    Get sales summary by sales person
+// @route   GET /api/reports-analytics/sales-summary-by-salesperson
+// @access  Private
+const getSalesSummaryBySalesPerson = async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query;
+    
+    const summary = await SalesTransactionService.getSalesSummaryBySalesPerson({
+      startDate,
+      endDate
+    });
+    
+    res.json({
+      success: true,
+      data: summary
+    });
+  } catch (error) {
+    console.error('Get sales summary by sales person error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+};
+
 module.exports = {
   getOrderAnalytics,
   getPOSSalesAnalytics,
@@ -1188,6 +1240,7 @@ module.exports = {
   getTopProductsChart,
   getRevenueAnalyticsChart,
   getWorkshopAnalyticsChart,
-  // New export added below
-  getSalesByCurrency
+  getSalesByCurrency,
+  getSalesBySalesPerson,
+  getSalesSummaryBySalesPerson
 };

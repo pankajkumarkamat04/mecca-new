@@ -29,13 +29,13 @@ const orderRoutes = require('./routes/orders');
 const warehouseRoutes = require('./routes/warehouses');
 const purchaseOrderRoutes = require('./routes/purchaseOrders');
 const customerInquiryRoutes = require('./routes/customerInquiries');
-const deliveryRoutes = require('./routes/deliveries');
 const machineRoutes = require('./routes/machines');
 const toolRoutes = require('./routes/tools');
 const workstationRoutes = require('./routes/workstations');
 const technicianRoutes = require('./routes/technicians');
 const reportsAnalyticsRoutes = require('./routes/reportsAnalytics');
 const salesOutletRoutes = require('./routes/salesOutlets');
+const receivedGoodsRoutes = require('./routes/receivedGoods');
 
 // Import exchange rate scheduler
 const { startScheduler, stopScheduler } = require('./services/exchangeRateScheduler');
@@ -139,13 +139,13 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/warehouses', warehouseRoutes);
 app.use('/api/purchase-orders', purchaseOrderRoutes);
 app.use('/api/customer-inquiries', customerInquiryRoutes);
-app.use('/api/deliveries', deliveryRoutes);
 app.use('/api/machines', machineRoutes);
 app.use('/api/tools', toolRoutes);
 app.use('/api/workstations', workstationRoutes);
 app.use('/api/technicians', technicianRoutes);
 app.use('/api/reports-analytics', reportsAnalyticsRoutes);
 app.use('/api/sales-outlets', salesOutletRoutes);
+app.use('/api/received-goods', receivedGoodsRoutes);
 
 // API documentation endpoint
 app.get('/api', (req, res) => {

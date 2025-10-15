@@ -23,6 +23,17 @@ const ReportsAnalyticsPage: React.FC = () => {
   const { hasRole, hasPermission } = useAuth();
   const [selectedPeriod, setSelectedPeriod] = useState('30d');
   const [activeTab, setActiveTab] = useState('dashboard');
+  
+  // Sales Person Tracking States
+  const [salesPersonFilters, setSalesPersonFilters] = useState({
+    salesPersonId: '',
+    salesOutlet: '',
+    startDate: '',
+    endDate: '',
+    page: 1,
+    limit: 20,
+    reportType: 'summary' // 'summary' or 'detailed'
+  });
 
   // Check permissions
   const canViewOrders = hasRole('admin') || hasRole('manager') || hasRole('sales_person');
@@ -54,6 +65,23 @@ const ReportsAnalyticsPage: React.FC = () => {
     queryKey: ['reports-analytics-sales-by-currency', selectedPeriod],
     queryFn: () => reportsAnalyticsAPI.getSalesByCurrency({ period: selectedPeriod }),
     enabled: canViewOrders && activeTab === 'pos-sales',
+  });
+
+  // Sales by Sales Person - Summary Query
+  const { data: salesSummaryBySalesPerson, isLoading: salesSummaryLoading } = useQuery({
+    queryKey: ['reports-analytics-sales-summary-by-salesperson', salesPersonFilters.startDate, salesPersonFilters.endDate],
+    queryFn: () => reportsAnalyticsAPI.getSalesSummaryBySalesPerson({
+      startDate: salesPersonFilters.startDate,
+      endDate: salesPersonFilters.endDate
+    }),
+    enabled: canViewOrders && activeTab === 'sales-person' && salesPersonFilters.reportType === 'summary',
+  });
+
+  // Sales by Sales Person - Detailed Query
+  const { data: salesBySalesPerson, isLoading: salesPersonLoading } = useQuery({
+    queryKey: ['reports-analytics-sales-by-salesperson', salesPersonFilters],
+    queryFn: () => reportsAnalyticsAPI.getSalesBySalesPerson(salesPersonFilters),
+    enabled: canViewOrders && activeTab === 'sales-person' && salesPersonFilters.reportType === 'detailed' && !!salesPersonFilters.salesPersonId,
   });
 
   // Workshop Analytics Query
@@ -99,6 +127,7 @@ const ReportsAnalyticsPage: React.FC = () => {
     { id: 'dashboard', name: 'Dashboard', icon: ChartBarIcon, permission: true },
     { id: 'orders', name: 'Order Analytics', icon: ShoppingBagIcon, permission: canViewOrders },
     { id: 'pos-sales', name: 'POS Sales', icon: CurrencyDollarIcon, permission: canViewOrders },
+    { id: 'sales-person', name: 'Sales by Person', icon: UserGroupIcon, permission: canViewOrders },
     { id: 'workshop', name: 'Workshop', icon: WrenchScrewdriverIcon, permission: canViewWorkshop },
     { id: 'inventory', name: 'Inventory', icon: CubeIcon, permission: canViewInventory },
   ].filter(tab => tab.permission);
@@ -639,6 +668,192 @@ const ReportsAnalyticsPage: React.FC = () => {
     );
   };
 
+  const renderSalesPersonAnalytics = () => {
+    const isLoading = salesPersonFilters.reportType === 'summary' ? salesSummaryLoading : salesPersonLoading;
+    const summaryData = salesSummaryBySalesPerson?.data;
+    const detailedData = salesBySalesPerson?.data;
+    const data = salesPersonFilters.reportType === 'summary' ? summaryData : (detailedData as any)?.transactions;
+    const pagination = (detailedData as any)?.pagination;
+
+    if (isLoading) {
+      return <div className="flex justify-center items-center h-64">Loading...</div>;
+    }
+
+    if (!data) return <div>No data available</div>;
+
+    return (
+      <div className="space-y-6">
+        {/* Filters */}
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Report Filters</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Report Type</label>
+              <select
+                value={salesPersonFilters.reportType}
+                onChange={(e) => setSalesPersonFilters(prev => ({ ...prev, reportType: e.target.value, page: 1 }))}
+                className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              >
+                <option value="summary">Summary Report</option>
+                <option value="detailed">Detailed Transactions</option>
+              </select>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+              <input
+                type="date"
+                value={salesPersonFilters.startDate}
+                onChange={(e) => setSalesPersonFilters(prev => ({ ...prev, startDate: e.target.value, page: 1 }))}
+                className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+              <input
+                type="date"
+                value={salesPersonFilters.endDate}
+                onChange={(e) => setSalesPersonFilters(prev => ({ ...prev, endDate: e.target.value, page: 1 }))}
+                className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              />
+            </div>
+            
+            {salesPersonFilters.reportType === 'detailed' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Sales Person ID</label>
+                <input
+                  type="text"
+                  placeholder="Enter Sales Person ID"
+                  value={salesPersonFilters.salesPersonId}
+                  onChange={(e) => setSalesPersonFilters(prev => ({ ...prev, salesPersonId: e.target.value, page: 1 }))}
+                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                />
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Summary Report */}
+        {salesPersonFilters.reportType === 'summary' && (
+          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Sales Summary by Sales Person</h3>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sales Person</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Transactions</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Sales</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Average Sale</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Sale</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {data.map((person: any, index: number) => (
+                    <tr key={person._id || index} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">{person.salesPersonName}</div>
+                          <div className="text-sm text-gray-500">{person.salesPersonEmail}</div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {person.totalTransactions}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {formatCurrency(person.totalSales)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {formatCurrency(person.averageSale)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {person.lastSale ? formatDate(person.lastSale) : 'N/A'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* Detailed Report */}
+        {salesPersonFilters.reportType === 'detailed' && (
+          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Detailed Sales Transactions</h3>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Transaction #</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payment Method</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Invoice #</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {data.map((transaction: any, index: number) => (
+                    <tr key={transaction._id || index} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {transaction.transactionNumber}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {formatDate(transaction.date)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {transaction.customer ? `${transaction.customer.firstName} ${transaction.customer.lastName}` : 'Walk-in'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {formatCurrency(transaction.amount)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {transaction.paymentMethod}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {transaction.invoice?.invoiceNumber || 'N/A'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            
+            {/* Pagination */}
+            {pagination && (
+              <div className="mt-4 flex items-center justify-between">
+                <div className="text-sm text-gray-700">
+                  Showing {((pagination.page - 1) * pagination.limit) + 1} to {Math.min(pagination.page * pagination.limit, pagination.totalCount)} of {pagination.totalCount} results
+                </div>
+                <div className="flex space-x-2">
+                  <button
+                    onClick={() => setSalesPersonFilters(prev => ({ ...prev, page: Math.max(1, prev.page - 1) }))}
+                    disabled={!pagination.hasPrev}
+                    className="px-3 py-1 text-sm bg-gray-200 text-gray-700 rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-300"
+                  >
+                    Previous
+                  </button>
+                  <span className="px-3 py-1 text-sm text-gray-700">
+                    Page {pagination.page} of {pagination.totalPages}
+                  </span>
+                  <button
+                    onClick={() => setSalesPersonFilters(prev => ({ ...prev, page: prev.page + 1 }))}
+                    disabled={!pagination.hasNext}
+                    className="px-3 py-1 text-sm bg-gray-200 text-gray-700 rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-300"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const renderContent = () => {
     switch (activeTab) {
       case 'dashboard':
@@ -647,6 +862,8 @@ const ReportsAnalyticsPage: React.FC = () => {
         return renderOrderAnalytics();
       case 'pos-sales':
         return renderPOSSalesAnalytics();
+      case 'sales-person':
+        return renderSalesPersonAnalytics();
       case 'workshop':
         return renderWorkshopAnalytics();
       case 'inventory':

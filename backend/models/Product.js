@@ -56,6 +56,20 @@ const productSchema = new mongoose.Schema({
       default: 0,
       min: 0,
       max: 100
+    },
+    taxSettings: {
+      isTaxable: {
+        type: Boolean,
+        default: true
+      },
+      allowTaxOverride: {
+        type: Boolean,
+        default: true
+      },
+      taxExemptionCategories: [{
+        type: String,
+        trim: true
+      }]
     }
   },
   inventory: {

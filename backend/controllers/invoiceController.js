@@ -3,6 +3,7 @@ const Customer = require('../models/Customer');
 const Product = require('../models/Product');
 const Setting = require('../models/Setting');
 const { prepareCurrencyData } = require('../utils/currencyUtils');
+const SalesTransactionService = require('../services/salesTransactionService');
 
 // @desc    Get all invoices
 // @route   GET /api/invoices
@@ -315,6 +316,16 @@ const createInvoice = async (req, res) => {
 
     const invoice = new Invoice(invoiceData);
     await invoice.save();
+
+    // Create automatic finance transaction for sale invoices
+    if (invoiceData.type === 'sale') {
+      try {
+        await SalesTransactionService.createInvoiceTransaction(invoiceData, invoice, req.user);
+      } catch (error) {
+        console.error('Failed to create finance transaction for invoice sale:', error);
+        // Don't fail the invoice creation if finance transaction creation fails
+      }
+    }
 
     // Update customer purchase stats
     if (invoiceData.customer && invoiceData.type === 'sale') {

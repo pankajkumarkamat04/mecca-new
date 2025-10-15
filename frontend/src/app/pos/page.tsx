@@ -38,6 +38,7 @@ interface CartItem {
   quantity: number;
   price: number;
   total: number;
+  applyTax?: boolean; // Individual item tax override
 }
 
 const POSPage: React.FC = () => {
@@ -58,6 +59,7 @@ const POSPage: React.FC = () => {
   const [receiptType, setReceiptType] = useState<'short' | 'full'>('short');
   const [displayCurrency, setDisplayCurrency] = useState<string>('USD');
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [universalTaxOverride, setUniversalTaxOverride] = useState<boolean | undefined>(undefined);
   const [selectedOutletId, setSelectedOutletId] = useState<string>('');
   const [selectedOutlet, setSelectedOutlet] = useState<any>(null);
   const [showOutletModal, setShowOutletModal] = useState(false);
@@ -263,6 +265,14 @@ const POSPage: React.FC = () => {
     setCart(cart.filter(item => item.product._id !== productId));
   };
 
+  const updateItemTaxOverride = (productId: string, applyTax: boolean | undefined) => {
+    setCart(cart.map(item => 
+      item.product._id === productId 
+        ? { ...item, applyTax }
+        : item
+    ));
+  };
+
   // Get exchange rate for selected currency
   const getExchangeRate = () => {
     if (!company?.currencySettings || displayCurrency === 'USD') return 1;
@@ -406,6 +416,7 @@ const POSPage: React.FC = () => {
           product: item.product._id,
           quantity: item.quantity,
           price: item.price,
+          applyTax: item.applyTax, // Include individual item tax override
         })),
         customer: selectedCustomerId || undefined,
         customerName: customerName || undefined,
@@ -416,6 +427,7 @@ const POSPage: React.FC = () => {
         tenderedAmount: paymentMethod === 'cash' ? tenderedAmount : 0,
         total: getTotal(),
         displayCurrency: displayCurrency, // Include selected currency
+        applyTax: universalTaxOverride, // Include universal tax override
       };
       
       await processSaleMutation.mutateAsync(saleData);
@@ -622,37 +634,83 @@ const POSPage: React.FC = () => {
                 {cart.map((item) => {
                   const itemPrice = Number(item.price) || 0;
                   const itemTotal = Number(item.total) || 0;
+                  const productTaxRate = item.product.pricing?.taxRate || 0;
+                  const isProductTaxable = item.product.taxSettings?.isTaxable !== false;
                   
                   return (
-                    <div key={item.product._id} className="flex items-center justify-between border border-gray-200 rounded-lg p-3">
-                      <div className="flex-1">
-                        <h4 className="font-medium text-gray-900">{item.product.name || 'Unknown Product'}</h4>
-                        <p className="text-sm text-gray-500">{formatAmount(itemPrice)}</p>
+                    <div key={item.product._id} className="border border-gray-200 rounded-lg p-3 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <h4 className="font-medium text-gray-900">{item.product.name || 'Unknown Product'}</h4>
+                          <p className="text-sm text-gray-500">{formatAmount(itemPrice)}</p>
+                          {productTaxRate > 0 && (
+                            <p className="text-xs text-blue-600">Tax: {productTaxRate}%</p>
+                          )}
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <button
+                            onClick={() => updateQuantity(item.product._id, item.quantity - 1)}
+                            className="p-1 rounded-full hover:bg-gray-100"
+                          >
+                            <MinusIcon className="h-4 w-4" />
+                          </button>
+                          <span className="w-8 text-center font-medium">{item.quantity}</span>
+                          <button
+                            onClick={() => updateQuantity(item.product._id, item.quantity + 1)}
+                            className="p-1 rounded-full hover:bg-gray-100"
+                          >
+                            <PlusIcon className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => removeFromCart(item.product._id)}
+                            className="p-1 rounded-full hover:bg-red-100 text-red-600"
+                          >
+                            <XMarkIcon className="h-4 w-4" />
+                          </button>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-medium text-gray-900">{formatAmount(itemTotal)}</p>
+                        </div>
                       </div>
-                      <div className="flex items-center space-x-2">
-                        <button
-                          onClick={() => updateQuantity(item.product._id, item.quantity - 1)}
-                          className="p-1 rounded-full hover:bg-gray-100"
-                        >
-                          <MinusIcon className="h-4 w-4" />
-                        </button>
-                        <span className="w-8 text-center font-medium">{item.quantity}</span>
-                        <button
-                          onClick={() => updateQuantity(item.product._id, item.quantity + 1)}
-                          className="p-1 rounded-full hover:bg-gray-100"
-                        >
-                          <PlusIcon className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => removeFromCart(item.product._id)}
-                          className="p-1 rounded-full hover:bg-red-100 text-red-600"
-                        >
-                          <XMarkIcon className="h-4 w-4" />
-                        </button>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-medium text-gray-900">{formatAmount(itemTotal)}</p>
-                      </div>
+                      
+                      {/* Tax Override Controls */}
+                      {isProductTaxable && productTaxRate > 0 && (
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-gray-600">Apply Tax:</span>
+                          <div className="flex items-center space-x-2">
+                            <button
+                              onClick={() => updateItemTaxOverride(item.product._id, true)}
+                              className={`px-2 py-1 rounded text-xs ${
+                                item.applyTax === true 
+                                  ? 'bg-green-100 text-green-800 border border-green-300' 
+                                  : 'bg-gray-100 text-gray-600 border border-gray-300'
+                              }`}
+                            >
+                              Yes
+                            </button>
+                            <button
+                              onClick={() => updateItemTaxOverride(item.product._id, false)}
+                              className={`px-2 py-1 rounded text-xs ${
+                                item.applyTax === false 
+                                  ? 'bg-red-100 text-red-800 border border-red-300' 
+                                  : 'bg-gray-100 text-gray-600 border border-gray-300'
+                              }`}
+                            >
+                              No
+                            </button>
+                            <button
+                              onClick={() => updateItemTaxOverride(item.product._id, undefined)}
+                              className={`px-2 py-1 rounded text-xs ${
+                                item.applyTax === undefined 
+                                  ? 'bg-blue-100 text-blue-800 border border-blue-300' 
+                                  : 'bg-gray-100 text-gray-600 border border-gray-300'
+                              }`}
+                            >
+                              Auto
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -715,6 +773,46 @@ const POSPage: React.FC = () => {
               onChange={(e) => setCustomerName(e.target.value)}
               fullWidth
             />
+
+            {/* Universal Tax Override */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Tax Override</label>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => setUniversalTaxOverride(true)}
+                  className={`px-3 py-2 rounded text-sm ${
+                    universalTaxOverride === true 
+                      ? 'bg-green-100 text-green-800 border border-green-300' 
+                      : 'bg-gray-100 text-gray-600 border border-gray-300'
+                  }`}
+                >
+                  Apply Tax
+                </button>
+                <button
+                  onClick={() => setUniversalTaxOverride(false)}
+                  className={`px-3 py-2 rounded text-sm ${
+                    universalTaxOverride === false 
+                      ? 'bg-red-100 text-red-800 border border-red-300' 
+                      : 'bg-gray-100 text-gray-600 border border-gray-300'
+                  }`}
+                >
+                  No Tax
+                </button>
+                <button
+                  onClick={() => setUniversalTaxOverride(undefined)}
+                  className={`px-3 py-2 rounded text-sm ${
+                    universalTaxOverride === undefined 
+                      ? 'bg-blue-100 text-blue-800 border border-blue-300' 
+                      : 'bg-gray-100 text-gray-600 border border-gray-300'
+                  }`}
+                >
+                  Auto
+                </button>
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                Auto: Uses customer and product settings
+              </p>
+            </div>
 
             {/* Currency Selector */}
             <CurrencySelector

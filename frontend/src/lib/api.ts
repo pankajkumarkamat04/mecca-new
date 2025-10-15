@@ -531,6 +531,21 @@ export const reportsAnalyticsAPI = {
   getWorkshopAnalyticsChart: (params?: any) => api.get('/reports-analytics/charts/workshop-analytics', { params }),
   // New: sales by currency
   getSalesByCurrency: (params?: any) => api.get('/reports-analytics/sales-by-currency', { params }),
+  // New: sales by sales person
+  getSalesBySalesPerson: (params?: any) => api.get('/reports-analytics/sales-by-salesperson', { params }),
+  getSalesSummaryBySalesPerson: (params?: any) => api.get('/reports-analytics/sales-summary-by-salesperson', { params }),
+};
+
+// Received Goods API
+export const receivedGoodsAPI = {
+  createReceivedGoods: (data: any) => api.post('/received-goods', data),
+  getReceivedGoods: (params?: any) => api.get('/received-goods', { params }),
+  getReceivedGoodsById: (id: string) => api.get(`/received-goods/${id}`),
+  updateReceivedGoods: (id: string, data: any) => api.put(`/received-goods/${id}`, data),
+  receiveItems: (id: string, data: any) => api.post(`/received-goods/${id}/receive`, data),
+  addToInventory: (id: string) => api.post(`/received-goods/${id}/add-to-inventory`),
+  deleteReceivedGoods: (id: string) => api.delete(`/received-goods/${id}`),
+  getReceivedGoodsStats: (params?: any) => api.get('/received-goods/stats', { params }),
 };
 
 export default api;

@@ -7,6 +7,7 @@ const StockMovement = require('../models/StockMovement');
 const Setting = require('../models/Setting');
 const SalesOutlet = require('../models/SalesOutlet');
 const { prepareCurrencyData, convertToBaseCurrency } = require('../utils/currencyUtils');
+const SalesTransactionService = require('../services/salesTransactionService');
 
 // @desc    Open POS register
 // @route   POST /api/pos/registers/:registerId/open
@@ -75,6 +76,15 @@ const createTransaction = async (req, res) => {
     // Generate invoice number
     const invoiceNumber = await Invoice.generateInvoiceNumber('sale');
 
+    // Get customer tax exemption status
+    let customerTaxExempt = false;
+    if (transactionData.customer) {
+      const customer = await Customer.findById(transactionData.customer);
+      if (customer) {
+        customerTaxExempt = customer.taxSettings?.isTaxExempt || false;
+      }
+    }
+
     // Build invoice items from products to ensure correct pricing and tax
     const items = [];
     let subtotal = 0;
@@ -92,10 +102,35 @@ const createTransaction = async (req, res) => {
       
       const quantity = Number(item.quantity) || 0;
       const lineBase = unitPriceBase * quantity;
-      const taxRate = product.pricing.taxRate || 0;
-      const lineTax = (lineBase * taxRate) / 100;
+      
+      // Determine tax rate based on multiple factors
+      let effectiveTaxRate = 0;
+      
+      // 1. Check if universal tax override is applied
+      if (transactionData.applyTax !== undefined) {
+        effectiveTaxRate = transactionData.applyTax ? (product.pricing.taxRate || 0) : 0;
+      }
+      // 2. Check if customer is tax exempt
+      else if (customerTaxExempt) {
+        effectiveTaxRate = 0;
+      }
+      // 3. Check if product is taxable
+      else if (!product.taxSettings?.isTaxable) {
+        effectiveTaxRate = 0;
+      }
+      // 4. Check if item has specific tax override
+      else if (item.applyTax !== undefined) {
+        effectiveTaxRate = item.applyTax ? (product.pricing.taxRate || 0) : 0;
+      }
+      // 5. Use default product tax rate
+      else {
+        effectiveTaxRate = product.pricing.taxRate || 0;
+      }
+      
+      const lineTax = (lineBase * effectiveTaxRate) / 100;
       subtotal += lineBase;
       totalTax += lineTax;
+      
       items.push({
         product: product._id,
         name: product.name,
@@ -104,8 +139,15 @@ const createTransaction = async (req, res) => {
         quantity,
         unitPrice: unitPriceBase, // Store in base currency (USD)
         discount: 0,
-        taxRate,
-        total: 0 // calculated by pre-save, but we keep our totals above
+        taxRate: effectiveTaxRate, // Store the effective tax rate used
+        total: 0, // calculated by pre-save, but we keep our totals above
+        taxOverride: {
+          applied: transactionData.applyTax !== undefined || item.applyTax !== undefined,
+          universalOverride: transactionData.applyTax !== undefined,
+          itemOverride: item.applyTax !== undefined,
+          customerExempt: customerTaxExempt,
+          productTaxable: product.taxSettings?.isTaxable !== false
+        }
       });
     }
 
@@ -218,6 +260,14 @@ const createTransaction = async (req, res) => {
     });
 
     await invoice.save();
+
+    // Create automatic finance transaction for tracking sales by sales person
+    try {
+      await SalesTransactionService.createPOSTransaction(transactionData, invoice, req.user);
+    } catch (error) {
+      console.error('Failed to create finance transaction for POS sale:', error);
+      // Don't fail the POS transaction if finance transaction creation fails
+    }
 
     // Update sales outlet stats
     if (transactionData.salesOutlet) {

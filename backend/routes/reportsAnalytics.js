@@ -10,7 +10,9 @@ const {
   getTopProductsChart,
   getRevenueAnalyticsChart,
   getWorkshopAnalyticsChart,
-  getSalesByCurrency
+  getSalesByCurrency,
+  getSalesBySalesPerson,
+  getSalesSummaryBySalesPerson
 } = require('../controllers/reportsAnalyticsController');
 
 const router = express.Router();
@@ -68,5 +70,15 @@ router.get('/charts/workshop-analytics', authorize('admin', 'manager', 'workshop
 // @desc    Get products sold and revenue by currency (USD vs ZWL)
 // @access  Private (Admin, Manager, Sales Person)
 router.get('/sales-by-currency', authorize('admin', 'manager', 'sales_person'), getSalesByCurrency);
+
+// @route   GET /api/reports-analytics/sales-by-salesperson
+// @desc    Get sales transactions by sales person
+// @access  Private (Admin, Manager, Sales Person)
+router.get('/sales-by-salesperson', authorize('admin', 'manager', 'sales_person'), getSalesBySalesPerson);
+
+// @route   GET /api/reports-analytics/sales-summary-by-salesperson
+// @desc    Get sales summary by sales person
+// @access  Private (Admin, Manager, Sales Person)
+router.get('/sales-summary-by-salesperson', authorize('admin', 'manager', 'sales_person'), getSalesSummaryBySalesPerson);
 
 module.exports = router;

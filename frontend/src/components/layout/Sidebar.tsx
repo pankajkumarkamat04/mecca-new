@@ -32,7 +32,6 @@ import {
   ExclamationTriangleIcon,
   WrenchScrewdriverIcon,
   ClipboardDocumentCheckIcon,
-  TruckIcon as DeliveryIcon,
   ChevronDownIcon,
   ChevronRightIcon,
   CurrencyDollarIcon,
@@ -80,16 +79,12 @@ const getWarehouseSidebarItems = (userRole: string): SidebarItem[] => {
           href: '/warehouse-portal/inventory',
           icon: ArchiveBoxIcon,
         },
-        // Deliveries visible for manager only
-        ...(userRole === 'warehouse_manager'
-          ? [
-              {
-                name: 'Deliveries',
-                href: '/warehouse-portal/deliveries',
-                icon: DeliveryIcon,
-              } as SidebarItem,
-            ]
-          : []),
+        // Received Goods visible for manager and employees
+        {
+          name: 'Received Goods',
+          href: '/received-goods',
+          icon: TruckIcon,
+        },
       ],
     },
   ];
@@ -358,23 +353,23 @@ const getSidebarItems = (userRole: string): SidebarItem[] => {
     );
   }
 
-  // Deliveries (belongs to Inventory group above, but for warehouse roles show root if needed)
-  if (['admin', 'manager', 'warehouse_manager'].includes(userRole)) {
-    // Add Deliveries into Inventory group if exists; otherwise show standalone
+  // Received Goods (for warehouse management)
+  if (['admin', 'manager', 'warehouse_manager', 'warehouse_employee'].includes(userRole)) {
+    // Add Received Goods into Inventory group if exists; otherwise show standalone
     const inventoryGroup = baseItems.find((i) => i.name === 'Inventory');
     if (inventoryGroup && inventoryGroup.children) {
       inventoryGroup.children.push({
-        name: 'Deliveries',
-        href: '/deliveries',
-        icon: DeliveryIcon,
-        permission: { module: 'deliveries', action: 'read' },
+        name: 'Received Goods',
+        href: '/received-goods',
+        icon: TruckIcon,
+        permission: { module: 'received_goods', action: 'read' },
       });
     } else {
       baseItems.push({
-        name: 'Deliveries',
-        href: '/deliveries',
-        icon: DeliveryIcon,
-        permission: { module: 'deliveries', action: 'read' },
+        name: 'Received Goods',
+        href: '/received-goods',
+        icon: TruckIcon,
+        permission: { module: 'received_goods', action: 'read' },
       });
     }
   }
