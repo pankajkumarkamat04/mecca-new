@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { cn } from '@/lib/utils';
+import { usePreventNumberInputScroll } from '@/lib/hooks/usePreventNumberInputScroll';
 
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
@@ -24,6 +25,7 @@ const Input: React.FC<InputProps> = ({
   ...props
 }) => {
   const inputId = id || `input-${Math.random().toString(36).substr(2, 9)}`;
+  const { onWheel, onKeyDown } = usePreventNumberInputScroll();
   
   const baseClasses = 'block rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm';
   const errorClasses = error ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : '';
@@ -54,6 +56,8 @@ const Input: React.FC<InputProps> = ({
             widthClasses,
             className
           )}
+          onWheel={onWheel}
+          onKeyDown={onKeyDown}
           {...props}
         />
         

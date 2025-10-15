@@ -10,6 +10,9 @@ const {
   returnTool,
   addMaintenanceRecord,
   calibrateTool,
+  performStockCount,
+  adjustInventory,
+  getInventoryDiscrepancies,
   getToolStats
 } = require('../controllers/toolController');
 const { auth } = require('../middleware/auth');
@@ -21,6 +24,11 @@ router.use(auth);
 // @desc    Get tool statistics
 // @access  Private
 router.get('/stats', getToolStats);
+
+// @route   GET /api/tools/inventory-discrepancies
+// @desc    Get tools with inventory discrepancies
+// @access  Private
+router.get('/inventory-discrepancies', getInventoryDiscrepancies);
 
 // @route   GET /api/tools
 // @desc    Get all tools
@@ -66,5 +74,15 @@ router.post('/:id/maintenance', addMaintenanceRecord);
 // @desc    Calibrate tool
 // @access  Private
 router.post('/:id/calibrate', calibrateTool);
+
+// @route   POST /api/tools/:id/stock-count
+// @desc    Perform stock count for a tool
+// @access  Private
+router.post('/:id/stock-count', performStockCount);
+
+// @route   POST /api/tools/:id/adjust-inventory
+// @desc    Adjust tool inventory
+// @access  Private
+router.post('/:id/adjust-inventory', adjustInventory);
 
 module.exports = router;

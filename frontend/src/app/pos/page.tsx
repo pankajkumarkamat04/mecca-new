@@ -1035,7 +1035,13 @@ const POSPage: React.FC = () => {
                     // Get tendered and change from payment metadata
                     const paymentData = (receipt as any).payments?.[0];
                     const storedTenderedUSD = (paymentData as any)?.metadata?.tenderedAmount || ((receipt as any).paid ?? 0);
-                    const storedChangeUSD = (paymentData as any)?.metadata?.changeAmount || 0;
+                    let storedChangeUSD = (paymentData as any)?.metadata?.changeAmount;
+                    
+                    // Fallback: calculate change if not stored in metadata
+                    if (storedChangeUSD === undefined || storedChangeUSD === null) {
+                      const totalUSD = (receipt as any).total || 0;
+                      storedChangeUSD = Math.max(0, storedTenderedUSD - totalUSD);
+                    }
                     
                     if (paymentData?.method === 'cash') {
                       return (

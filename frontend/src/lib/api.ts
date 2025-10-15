@@ -421,6 +421,10 @@ export const toolsAPI = {
   addMaintenanceRecord: (id: string, data: any) => api.post(`/tools/${id}/maintenance`, data),
   calibrateTool: (id: string, data: any) => api.post(`/tools/${id}/calibrate`, data),
   getToolStats: () => api.get('/tools/stats'),
+  // New inventory management endpoints
+  performStockCount: (id: string, data: any) => api.post(`/tools/${id}/stock-count`, data),
+  adjustInventory: (id: string, data: any) => api.post(`/tools/${id}/adjust-inventory`, data),
+  getInventoryDiscrepancies: () => api.get('/tools/inventory-discrepancies'),
 };
 
 // Workstations API

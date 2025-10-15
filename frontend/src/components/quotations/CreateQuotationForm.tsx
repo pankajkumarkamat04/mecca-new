@@ -17,6 +17,7 @@ import { customersAPI } from '@/lib/api';
 import { productsAPI } from '@/lib/api';
 import { calculatePrice } from '@/lib/priceCalculator';
 import PriceSummary from '@/components/ui/PriceSummary';
+import { formatAmountWithCurrency } from '@/lib/currencyUtils';
 import { useSettings } from '@/contexts/SettingsContext';
 import { z } from 'zod';
 
@@ -339,6 +340,13 @@ const CreateQuotationForm: React.FC<CreateQuotationFormProps> = ({
                         className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
                         required
                       />
+                      <p className="mt-1 text-xs text-gray-500">
+                        {formatAmountWithCurrency(
+                          item.unitPrice || 0,
+                          company?.currencySettings,
+                          quotationDisplayCurrency
+                        )}
+                      </p>
                     </div>
 
                     <div>
@@ -369,7 +377,11 @@ const CreateQuotationForm: React.FC<CreateQuotationFormProps> = ({
                   </div>
 
                   <div className="mt-2 text-sm text-gray-600">
-                    Total: ${item.total?.toFixed(2) || '0.00'}
+                    Total: {formatAmountWithCurrency(
+                      item.total || 0,
+                      company?.currencySettings,
+                      quotationDisplayCurrency
+                    )}
                   </div>
                 </div>
               ))}

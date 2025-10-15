@@ -37,12 +37,27 @@ const toolSchema = new mongoose.Schema({
     bin: { type: String, trim: true }
   },
   specifications: {
-    size: { type: String, trim: true },
+    size: { type: String, trim: true }, // e.g., "3", "10mm", "1/2 inch"
     weight: { type: Number, min: 0 },
-    powerSource: { type: String, enum: ['manual', 'electric', 'pneumatic', 'hydraulic', 'battery'] },
+    powerSource: { type: String, enum: ['', 'manual', 'electric', 'pneumatic', 'hydraulic', 'battery'], default: '' },
     voltage: { type: String, trim: true },
     torque: { type: String, trim: true },
     capacity: { type: String, trim: true }
+  },
+  inventory: {
+    quantity: { type: Number, default: 1, min: 0 }, // Total quantity of this tool
+    availableQuantity: { type: Number, default: 1, min: 0 }, // Currently available quantity
+    inUseQuantity: { type: Number, default: 0, min: 0 }, // Currently in use
+    misplacedQuantity: { type: Number, default: 0, min: 0 }, // Misplaced/lost tools
+    lastStockCount: { type: Date, default: Date.now },
+    stockCountHistory: [{
+      countedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+      countedAt: { type: Date, default: Date.now },
+      expectedQuantity: { type: Number, min: 0 },
+      actualQuantity: { type: Number, min: 0 },
+      discrepancy: { type: Number, default: 0 }, // actual - expected
+      notes: { type: String, trim: true }
+    }]
   },
   purchaseInfo: {
     purchaseDate: Date,
@@ -193,6 +208,69 @@ toolSchema.methods.calibrate = function(calibrationDate, certificate) {
   this.calibration.nextCalibration = nextDate;
 };
 
+toolSchema.methods.performStockCount = function(countedBy, actualQuantity, notes) {
+  const expectedQuantity = this.inventory.quantity;
+  const discrepancy = actualQuantity - expectedQuantity;
+  
+  // Add to stock count history
+  this.inventory.stockCountHistory.push({
+    countedBy,
+    countedAt: new Date(),
+    expectedQuantity,
+    actualQuantity,
+    discrepancy,
+    notes
+  });
+  
+  // Update inventory quantities
+  this.inventory.quantity = actualQuantity;
+  this.inventory.lastStockCount = new Date();
+  
+  // Adjust misplaced quantity based on discrepancy
+  if (discrepancy < 0) {
+    this.inventory.misplacedQuantity += Math.abs(discrepancy);
+  } else if (discrepancy > 0) {
+    // Found tools that were previously misplaced
+    this.inventory.misplacedQuantity = Math.max(0, this.inventory.misplacedQuantity - discrepancy);
+  }
+  
+  // Update available quantity
+  this.inventory.availableQuantity = Math.max(0, actualQuantity - this.inventory.inUseQuantity);
+};
+
+toolSchema.methods.adjustInventory = function(adjustmentType, quantity, reason, performedBy) {
+  const adjustment = {
+    type: adjustmentType, // 'found', 'lost', 'damaged', 'returned'
+    quantity: Math.abs(quantity),
+    reason,
+    performedBy,
+    performedAt: new Date()
+  };
+  
+  switch (adjustmentType) {
+    case 'found':
+      this.inventory.quantity += quantity;
+      this.inventory.availableQuantity += quantity;
+      this.inventory.misplacedQuantity = Math.max(0, this.inventory.misplacedQuantity - quantity);
+      break;
+    case 'lost':
+    case 'damaged':
+      this.inventory.quantity -= quantity;
+      this.inventory.availableQuantity -= quantity;
+      this.inventory.misplacedQuantity += quantity;
+      break;
+    case 'returned':
+      this.inventory.quantity += quantity;
+      this.inventory.availableQuantity += quantity;
+      break;
+  }
+  
+  // Ensure quantities don't go negative
+  this.inventory.quantity = Math.max(0, this.inventory.quantity);
+  this.inventory.availableQuantity = Math.max(0, this.inventory.availableQuantity);
+  this.inventory.inUseQuantity = Math.max(0, this.inventory.inUseQuantity);
+};
+
 // Pre-save middleware
 toolSchema.pre('save', function(next) {
   // Update status based on availability
@@ -200,6 +278,13 @@ toolSchema.pre('save', function(next) {
     this.status = 'in_use';
   } else if (this.availability.isAvailable && this.status === 'in_use') {
     this.status = 'available';
+  }
+  
+  // Ensure inventory quantities are consistent
+  if (this.inventory) {
+    this.inventory.availableQuantity = Math.max(0, 
+      this.inventory.quantity - this.inventory.inUseQuantity - this.inventory.misplacedQuantity
+    );
   }
   
   next();

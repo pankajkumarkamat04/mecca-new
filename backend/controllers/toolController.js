@@ -104,6 +104,11 @@ const createTool = async (req, res) => {
       createdBy: req.user._id
     };
 
+    // Sanitize specifications - remove empty powerSource
+    if (toolData.specifications && toolData.specifications.powerSource === '') {
+      delete toolData.specifications.powerSource;
+    }
+
     const tool = new Tool(toolData);
     await tool.save();
 
@@ -142,6 +147,11 @@ const updateTool = async (req, res) => {
         success: false,
         message: 'Tool not found'
       });
+    }
+
+    // Sanitize specifications - remove empty powerSource
+    if (req.body.specifications && req.body.specifications.powerSource === '') {
+      delete req.body.specifications.powerSource;
     }
 
     Object.assign(tool, req.body);
@@ -360,6 +370,109 @@ const calibrateTool = async (req, res) => {
   }
 };
 
+// @desc    Perform stock count for a tool
+// @route   POST /api/tools/:id/stock-count
+// @access  Private
+const performStockCount = async (req, res) => {
+  try {
+    const { actualQuantity, notes } = req.body;
+    const tool = await Tool.findById(req.params.id);
+
+    if (!tool) {
+      return res.status(404).json({
+        success: false,
+        message: 'Tool not found'
+      });
+    }
+
+    tool.performStockCount(req.user._id, actualQuantity, notes);
+    tool.lastUpdatedBy = req.user._id;
+    await tool.save();
+
+    const updatedTool = await Tool.findById(tool._id)
+      .populate('inventory.stockCountHistory.countedBy', 'firstName lastName');
+
+    res.json({
+      success: true,
+      message: 'Stock count completed successfully',
+      data: updatedTool
+    });
+  } catch (error) {
+    console.error('Perform stock count error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+};
+
+// @desc    Adjust tool inventory
+// @route   POST /api/tools/:id/adjust-inventory
+// @access  Private
+const adjustInventory = async (req, res) => {
+  try {
+    const { adjustmentType, quantity, reason } = req.body;
+    const tool = await Tool.findById(req.params.id);
+
+    if (!tool) {
+      return res.status(404).json({
+        success: false,
+        message: 'Tool not found'
+      });
+    }
+
+    if (!['found', 'lost', 'damaged', 'returned'].includes(adjustmentType)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid adjustment type'
+      });
+    }
+
+    tool.adjustInventory(adjustmentType, quantity, reason, req.user._id);
+    tool.lastUpdatedBy = req.user._id;
+    await tool.save();
+
+    const updatedTool = await Tool.findById(tool._id);
+
+    res.json({
+      success: true,
+      message: 'Inventory adjusted successfully',
+      data: updatedTool
+    });
+  } catch (error) {
+    console.error('Adjust inventory error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+};
+
+// @desc    Get tools with inventory discrepancies
+// @route   GET /api/tools/inventory-discrepancies
+// @access  Private
+const getInventoryDiscrepancies = async (req, res) => {
+  try {
+    const tools = await Tool.find({ 
+      isActive: true,
+      'inventory.misplacedQuantity': { $gt: 0 }
+    })
+    .populate('createdBy', 'firstName lastName')
+    .sort({ 'inventory.misplacedQuantity': -1 });
+
+    res.json({
+      success: true,
+      data: tools
+    });
+  } catch (error) {
+    console.error('Get inventory discrepancies error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+};
+
 // @desc    Get tool statistics
 // @route   GET /api/tools/stats
 // @access  Private
@@ -400,6 +513,20 @@ const getToolStats = async (req, res) => {
       { $group: { _id: '$condition', count: { $sum: 1 } } }
     ]);
 
+    // Get inventory statistics
+    const inventoryStats = await Tool.aggregate([
+      { $match: { isActive: true } },
+      {
+        $group: {
+          _id: null,
+          totalQuantity: { $sum: '$inventory.quantity' },
+          totalAvailable: { $sum: '$inventory.availableQuantity' },
+          totalInUse: { $sum: '$inventory.inUseQuantity' },
+          totalMisplaced: { $sum: '$inventory.misplacedQuantity' }
+        }
+      }
+    ]);
+
     res.json({
       success: true,
       data: {
@@ -409,6 +536,12 @@ const getToolStats = async (req, res) => {
         maintenance: maintenanceTools,
         overdueMaintenance,
         overdueCalibration,
+        inventory: inventoryStats[0] || {
+          totalQuantity: 0,
+          totalAvailable: 0,
+          totalInUse: 0,
+          totalMisplaced: 0
+        },
         byCategory: categoryStats.reduce((acc, item) => {
           acc[item._id] = item.count;
           return acc;
@@ -438,5 +571,8 @@ module.exports = {
   returnTool,
   addMaintenanceRecord,
   calibrateTool,
+  performStockCount,
+  adjustInventory,
+  getInventoryDiscrepancies,
   getToolStats
 };

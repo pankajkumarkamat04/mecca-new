@@ -116,6 +116,9 @@ const createTransaction = async (req, res) => {
     const tenderedDisplay = Number(transactionData.tenderedAmount) || 0;
     const tenderedBase = convertToBaseCurrency(tenderedDisplay, exchangeRate);
 
+    // Calculate change amount
+    const changeAmount = Math.max(0, tenderedBase - total);
+    
     // Build payments array (store amounts in base currency)
     const payments = [];
     if (tenderedBase > 0) {
@@ -124,6 +127,8 @@ const createTransaction = async (req, res) => {
         amount: Number(tenderedBase.toFixed(2)),
         metadata: {
           tenderedDisplay: Number(tenderedDisplay.toFixed(2)),
+          tenderedAmount: Number(tenderedBase.toFixed(2)),
+          changeAmount: Number(changeAmount.toFixed(2)),
           exchangeRate
         },
         date: new Date(),
