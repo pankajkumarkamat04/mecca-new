@@ -13,6 +13,7 @@ export const routePermissionMap: Array<{
   { prefix: '/pos', permission: { module: 'pos', action: 'read' } },
   { prefix: '/sales-outlets', roles: ['admin', 'manager'] },
   { prefix: '/workshop', permission: { module: 'workshop', action: 'read' } },
+  { prefix: '/service-templates', permission: { module: 'workshop', action: 'read' } },
   { prefix: '/users', permission: { module: 'users', action: 'read' } },
   { prefix: '/products', permission: { module: 'products', action: 'read' } },
   { prefix: '/customers', permission: { module: 'customers', action: 'read' } },

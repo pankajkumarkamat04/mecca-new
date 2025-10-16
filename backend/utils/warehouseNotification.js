@@ -15,7 +15,12 @@ const notifyWarehouseOfNewOrder = async (order, source = 'direct') => {
     
     if (warehouses.length === 0) {
       console.log('⚠️ No active warehouses found for notification');
-      return;
+      return {
+        success: true,
+        warehousesNotified: 0,
+        orderNumber: order.orderNumber,
+        message: 'No active warehouses found'
+      };
     }
 
     // Prepare order summary for warehouse
@@ -104,7 +109,13 @@ const notifyWarehouseOfOrderUpdate = async (order, updateType = 'status') => {
     
     if (warehouses.length === 0) {
       console.log('⚠️ No active warehouses found for update notification');
-      return;
+      return {
+        success: true,
+        warehousesNotified: 0,
+        orderNumber: order.orderNumber,
+        updateType: updateType,
+        message: 'No active warehouses found'
+      };
     }
 
     // Notify each warehouse

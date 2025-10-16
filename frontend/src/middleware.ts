@@ -18,6 +18,7 @@ const protectedRoutes = {
   '/accounts': ['admin', 'manager'],
   '/transactions': ['admin', 'manager'],
   '/workshop': ['admin', 'manager', 'workshop_employee'],
+  '/service-templates': ['admin', 'manager', 'workshop_employee'],
   '/reports': ['admin', 'manager'],
   '/reports-analytics': ['admin', 'manager', 'sales_person', 'warehouse_manager', 'warehouse_employee', 'workshop_employee'],
   '/settings': ['admin', 'manager'],
@@ -35,7 +36,7 @@ const customerRoutes = [
 // Define department-specific routes
 const departmentRoutes = {
   sales_person: ['/dashboard', '/pos', '/customers', '/invoices', '/customer-inquiries', '/quotations', '/orders', '/support', '/profile'],
-  workshop_employee: ['/workshop', '/customers', '/support', '/profile'],
+  workshop_employee: ['/workshop', '/service-templates', '/customers', '/support', '/profile'],
   warehouse_manager: ['/warehouse-portal', '/inventory', '/received-goods', '/deliveries', '/profile'],
   warehouse_employee: ['/warehouse-portal', '/inventory', '/received-goods', '/deliveries', '/profile'],
 };

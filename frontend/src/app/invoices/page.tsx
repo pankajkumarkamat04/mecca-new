@@ -15,7 +15,7 @@ import CurrencySelector from '@/components/ui/CurrencySelector';
 import { useSettings } from '@/contexts/SettingsContext';
 import { formatCurrency, formatDate, getStatusColor, buildPrintableInvoiceHTML, getLogoUrl } from '@/lib/utils';
 import { calculatePrice } from '@/lib/priceCalculator';
-import { formatAmountWithCurrency } from '@/lib/currencyUtils';
+import { formatAmountWithCurrency, convertToDisplayCurrency, convertToBaseCurrency, getExchangeRate } from '@/lib/currencyUtils';
 import PriceSummary from '@/components/ui/PriceSummary';
 import InvoiceReceipt from '@/components/ui/InvoiceReceipt';
 import { downloadReceipt, printReceipt } from '@/lib/receiptUtils';
@@ -336,8 +336,14 @@ const InvoicesPage: React.FC = () => {
                   const totalTax = toNumber(inv.totalTax, computedTotalTax);
                   const totalAmount = toNumber(inv.total, subtotal - totalDiscount + totalTax + shippingCost);
                   const paid = toNumber(inv.paid);
-                  const due = Math.max(0, totalAmount - paid);
-                  setPaymentForm({ amount: String(due.toFixed(2)), method: 'cash', reference: '', date: new Date().toISOString().slice(0,10) });
+                  const dueUSD = Math.max(0, totalAmount - paid);
+                  
+                  // Convert to invoice's display currency
+                  const displayCurrency = inv.currency?.displayCurrency || 'USD';
+                  const exchangeRate = getExchangeRate(company?.currencySettings, displayCurrency);
+                  const dueDisplay = convertToDisplayCurrency(dueUSD, exchangeRate);
+                  
+                  setPaymentForm({ amount: String(dueDisplay.toFixed(2)), method: 'cash', reference: '', date: new Date().toISOString().slice(0,10) });
                   setIsPayModalOpen(true);
                 }}
               >
@@ -977,8 +983,14 @@ const InvoicesPage: React.FC = () => {
                         const totalTax = toNumber(inv.totalTax, computedTotalTax);
                         const totalAmount = toNumber(inv.total, subtotal - totalDiscount + totalTax + shippingCost);
                         const paid = toNumber(inv.paid);
-                        const due = Math.max(0, totalAmount - paid);
-                        setPaymentForm({ amount: String(due.toFixed(2)), method: 'cash', reference: '', date: new Date().toISOString().slice(0,10) });
+                        const dueUSD = Math.max(0, totalAmount - paid);
+                        
+                        // Convert to invoice's display currency
+                        const displayCurrency = inv.currency?.displayCurrency || 'USD';
+                        const exchangeRate = getExchangeRate(company?.currencySettings, displayCurrency);
+                        const dueDisplay = convertToDisplayCurrency(dueUSD, exchangeRate);
+                        
+                        setPaymentForm({ amount: String(dueDisplay.toFixed(2)), method: 'cash', reference: '', date: new Date().toISOString().slice(0,10) });
                         setIsPayModalOpen(true);
                       }}>Pay</Button>
                     </div>
@@ -1022,7 +1034,9 @@ const InvoicesPage: React.FC = () => {
         <Modal isOpen={isPayModalOpen} onClose={() => setIsPayModalOpen(false)} title="Record Payment" size="md">
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Amount</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Amount ({selectedInvoice?.currency?.displayCurrency || 'USD'})
+              </label>
               <Input value={paymentForm.amount} onChange={(e) => setPaymentForm(prev => ({ ...prev, amount: e.target.value }))} fullWidth />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -1052,10 +1066,16 @@ const InvoicesPage: React.FC = () => {
               <Button variant="outline" onClick={() => setIsPayModalOpen(false)}>Cancel</Button>
               <Button onClick={async () => {
                 if (!selectedInvoice) return;
-                const amountNum = Number(paymentForm.amount);
-                if (!Number.isFinite(amountNum) || amountNum <= 0) { toast.error('Enter a valid amount'); return; }
+                const amountDisplay = Number(paymentForm.amount);
+                if (!Number.isFinite(amountDisplay) || amountDisplay <= 0) { toast.error('Enter a valid amount'); return; }
+                
+                // Convert from display currency to USD (base currency) for backend
+                const displayCurrency = selectedInvoice.currency?.displayCurrency || 'USD';
+                const exchangeRate = getExchangeRate(company?.currencySettings, displayCurrency);
+                const amountUSD = convertToBaseCurrency(amountDisplay, exchangeRate);
+                
                 await addPaymentMutation.mutateAsync({ id: (selectedInvoice as any)._id, payload: {
-                  amount: amountNum,
+                  amount: amountUSD,
                   method: paymentForm.method,
                   reference: paymentForm.reference || undefined,
                   date: paymentForm.date,

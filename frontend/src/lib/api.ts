@@ -260,7 +260,7 @@ export const ordersAPI = {
   getOrderById: (id: string) => api.get(`/orders/${id}`),
   createOrder: (orderData: any) => api.post('/orders', orderData),
   updateOrder: (id: string, orderData: any) => api.put(`/orders/${id}`, orderData),
-  deleteOrder: (id: string) => api.delete(`/orders/${id}`),
+  deleteOrder: (id: string, deleteInvoice: boolean = false) => api.delete(`/orders/${id}?deleteInvoice=${deleteInvoice}`),
   updateOrderStatus: (id: string, status: string, notes?: string) => 
     api.put(`/orders/${id}/status`, { status, notes }),
   updatePaymentStatus: (id: string, paymentData: any) => 
@@ -311,6 +311,8 @@ export const workshopAPI = {
     api.put(`/workshop/${id}/progress`, data),
   completeJob: (id: string) => api.post(`/workshop/${id}/complete`),
   cancelJob: (id: string) => api.put(`/workshop/${id}/cancel`),
+  applyServiceTemplate: (id: string, data: { templateId: string; customizations?: any }) =>
+    api.post(`/workshop/${id}/apply-template`, data),
 };
 
 // Warehouse API
@@ -546,6 +548,16 @@ export const receivedGoodsAPI = {
   addToInventory: (id: string) => api.post(`/received-goods/${id}/add-to-inventory`),
   deleteReceivedGoods: (id: string) => api.delete(`/received-goods/${id}`),
   getReceivedGoodsStats: (params?: any) => api.get('/received-goods/stats', { params }),
+};
+
+export const serviceTemplateAPI = {
+  createServiceTemplate: (data: any) => api.post('/service-templates', data),
+  getServiceTemplates: (params?: any) => api.get('/service-templates', { params }),
+  getServiceTemplateById: (id: string) => api.get(`/service-templates/${id}`),
+  updateServiceTemplate: (id: string, data: any) => api.put(`/service-templates/${id}`, data),
+  deleteServiceTemplate: (id: string) => api.delete(`/service-templates/${id}`),
+  getServiceTemplatesByCategory: (category: string) => api.get(`/service-templates/category/${category}`),
+  searchServiceTemplates: (query: string) => api.get(`/service-templates/search/${query}`),
 };
 
 export default api;

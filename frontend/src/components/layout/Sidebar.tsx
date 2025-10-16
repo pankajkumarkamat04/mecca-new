@@ -190,6 +190,11 @@ const getWorkshopSidebarItems = (userRole: string): SidebarItem[] => {
       icon: WrenchScrewdriverIcon,
     },
     {
+      name: 'Service Templates',
+      href: '/service-templates',
+      icon: ClipboardDocumentCheckIcon,
+    },
+    {
       name: 'Customers',
       href: '/customers',
       icon: UserGroupIcon,
@@ -385,6 +390,12 @@ const getSidebarItems = (userRole: string): SidebarItem[] => {
           name: 'Workshop',
           href: '/workshop',
           icon: WrenchScrewdriverIcon,
+          permission: { module: 'workshop', action: 'read' },
+        },
+        {
+          name: 'Service Templates',
+          href: '/service-templates',
+          icon: ClipboardDocumentCheckIcon,
           permission: { module: 'workshop', action: 'read' },
         },
         {

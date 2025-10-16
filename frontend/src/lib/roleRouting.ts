@@ -15,12 +15,12 @@ export const ROLE_ROUTES: Record<UserRole, RoleRoute> = {
   admin: {
     role: 'admin',
     defaultPath: '/dashboard',
-    allowedPaths: ['/dashboard', '/users', '/products', '/customers', '/suppliers', '/invoices', '/inventory', '/pos', '/sales-outlets', '/support', '/accounts', '/transactions', '/workshop', '/reports', '/reports-analytics', '/settings', '/analytics', '/customer-inquiries', '/quotations', '/orders', '/deliveries', '/warehouses', '/warehouse-portal', '/stock-alerts', '/purchase-orders', '/resources', '/received-goods', '/profile']
+    allowedPaths: ['/dashboard', '/users', '/products', '/customers', '/suppliers', '/invoices', '/inventory', '/pos', '/sales-outlets', '/support', '/accounts', '/transactions', '/workshop', '/service-templates', '/reports', '/reports-analytics', '/settings', '/analytics', '/customer-inquiries', '/quotations', '/orders', '/deliveries', '/warehouses', '/warehouse-portal', '/stock-alerts', '/purchase-orders', '/resources', '/received-goods', '/profile']
   },
   manager: {
     role: 'manager',
     defaultPath: '/dashboard',
-    allowedPaths: ['/dashboard', '/users', '/products', '/customers', '/suppliers', '/invoices', '/inventory', '/pos', '/sales-outlets', '/support', '/accounts', '/transactions', '/workshop', '/reports', '/reports-analytics', '/settings', '/customer-inquiries', '/quotations', '/orders', '/deliveries', '/warehouses', '/warehouse-portal', '/stock-alerts', '/purchase-orders', '/resources', '/received-goods', '/profile']
+    allowedPaths: ['/dashboard', '/users', '/products', '/customers', '/suppliers', '/invoices', '/inventory', '/pos', '/sales-outlets', '/support', '/accounts', '/transactions', '/workshop', '/service-templates', '/reports', '/reports-analytics', '/settings', '/customer-inquiries', '/quotations', '/orders', '/deliveries', '/warehouses', '/warehouse-portal', '/stock-alerts', '/purchase-orders', '/resources', '/received-goods', '/profile']
   },
   sales_person: {
     role: 'sales_person',
@@ -30,7 +30,7 @@ export const ROLE_ROUTES: Record<UserRole, RoleRoute> = {
   workshop_employee: {
     role: 'workshop_employee',
     defaultPath: '/workshop',
-    allowedPaths: ['/workshop', '/customers', '/support', '/reports-analytics', '/profile']
+    allowedPaths: ['/workshop', '/service-templates', '/customers', '/support', '/reports-analytics', '/profile']
   },
   customer: {
     role: 'customer',

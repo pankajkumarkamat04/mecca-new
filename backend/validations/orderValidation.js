@@ -68,7 +68,7 @@ const createOrderValidation = [
 
   body('orderStatus')
     .optional()
-    .isIn(['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled', 'returned'])
+    .isIn(['pending', 'confirmed', 'processing', 'ready_for_pickup', 'shipped', 'delivered', 'cancelled', 'returned'])
     .withMessage('Invalid order status'),
 
   body('fulfillmentStatus')
@@ -205,7 +205,7 @@ const updateOrderValidation = [
 
   body('orderStatus')
     .optional()
-    .isIn(['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled', 'returned'])
+    .isIn(['pending', 'confirmed', 'processing', 'ready_for_pickup', 'shipped', 'delivered', 'cancelled', 'returned'])
     .withMessage('Invalid order status'),
 
   body('fulfillmentStatus')
@@ -271,7 +271,7 @@ const updateOrderStatusValidation = [
     .withMessage('Valid order ID is required'),
 
   body('status')
-    .isIn(['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled', 'returned'])
+    .isIn(['pending', 'confirmed', 'processing', 'ready_for_pickup', 'shipped', 'delivered', 'cancelled', 'returned'])
     .withMessage('Invalid order status'),
 
   body('notes')
@@ -343,7 +343,7 @@ const getOrdersValidation = [
 
   query('status')
     .optional()
-    .isIn(['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled', 'returned'])
+    .isIn(['pending', 'confirmed', 'processing', 'ready_for_pickup', 'shipped', 'delivered', 'cancelled', 'returned'])
     .withMessage('Invalid status'),
 
   query('paymentStatus')

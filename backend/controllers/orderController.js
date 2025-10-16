@@ -269,7 +269,7 @@ const createOrder = async (req, res) => {
 
     // Notify warehouse of new order
     const notificationResult = await notifyWarehouseOfNewOrder(order, orderData.source || 'direct');
-    if (!notificationResult.success) {
+    if (notificationResult && !notificationResult.success) {
       console.error('Failed to notify warehouse:', notificationResult.error);
     }
 
@@ -362,6 +362,76 @@ const updateOrder = async (req, res) => {
       .populate('assignedTo', 'firstName lastName')
       .populate('items.product', 'name sku description');
 
+    // Sync with associated invoice if it exists and items were updated
+    if (updatedOrder.invoice && updateData.items) {
+      try {
+        const Invoice = require('../models/Invoice');
+        const invoice = await Invoice.findById(updatedOrder.invoice);
+        
+        if (invoice) {
+          // Update invoice items to match order items
+          invoice.items = updatedOrder.items.map(item => ({
+            product: item.product,
+            name: item.name,
+            description: item.description,
+            sku: item.sku,
+            quantity: item.quantity,
+            unitPrice: item.unitPrice,
+            discount: item.discount,
+            taxRate: item.taxRate,
+            total: item.total
+          }));
+          
+          // Update invoice totals
+          invoice.subtotal = updatedOrder.subtotal;
+          invoice.totalDiscount = updatedOrder.totalDiscount;
+          invoice.totalTax = updatedOrder.totalTax;
+          invoice.total = updatedOrder.totalAmount;
+          invoice.updatedBy = req.user._id;
+          
+          await invoice.save();
+          console.log(`Invoice ${invoice.invoiceNumber} updated to match order ${updatedOrder.orderNumber}`);
+        }
+      } catch (invoiceError) {
+        console.error('Failed to sync invoice with order update:', invoiceError);
+        // Don't fail the order update if invoice sync fails
+      }
+    }
+
+    // Sync with associated transaction if it exists and items were updated
+    if (updatedOrder.invoice && updateData.items) {
+      try {
+        const Transaction = require('../models/Transaction');
+        // Find transaction related to this invoice
+        const transaction = await Transaction.findOne({ 
+          'entries.invoice': updatedOrder.invoice 
+        });
+        
+        if (transaction) {
+          // Update transaction entries to reflect new amounts
+          const invoiceEntry = transaction.entries.find(entry => 
+            entry.invoice && entry.invoice.toString() === updatedOrder.invoice.toString()
+          );
+          
+          if (invoiceEntry) {
+            invoiceEntry.amount = updatedOrder.totalAmount;
+            invoiceEntry.description = `Invoice ${updatedOrder.invoice} - Updated from Order ${updatedOrder.orderNumber}`;
+            
+            // Recalculate transaction total
+            transaction.amount = transaction.entries.reduce((sum, entry) => 
+              sum + (Number(entry.debit) || 0) + (Number(entry.credit) || 0), 0
+            );
+            
+            await transaction.save();
+            console.log(`Transaction ${transaction._id} updated to match order ${updatedOrder.orderNumber}`);
+          }
+        }
+      } catch (transactionError) {
+        console.error('Failed to sync transaction with order update:', transactionError);
+        // Don't fail the order update if transaction sync fails
+      }
+    }
+
     res.json({
       success: true,
       data: updatedOrder
@@ -396,12 +466,33 @@ const deleteOrder = async (req, res) => {
       });
     }
 
+    const deleteInvoice = req.query.deleteInvoice === 'true';
+    let invoiceDeleted = false;
+
+    // Handle invoice deletion if requested
+    if (deleteInvoice && order.invoice) {
+      try {
+        const Invoice = require('../models/Invoice');
+        await Invoice.findByIdAndDelete(order.invoice);
+        invoiceDeleted = true;
+        console.log(`Invoice ${order.invoice} deleted along with order ${order.orderNumber}`);
+      } catch (invoiceError) {
+        console.error('Failed to delete associated invoice:', invoiceError);
+        // Continue with order deletion even if invoice deletion fails
+      }
+    }
+
     order.isActive = false;
     await order.save();
 
+    const message = invoiceDeleted 
+      ? 'Order and associated invoice deleted successfully'
+      : 'Order deleted successfully';
+
     res.json({
       success: true,
-      message: 'Order deleted successfully'
+      message: message,
+      invoiceDeleted: invoiceDeleted
     });
   } catch (error) {
     console.error('Delete order error:', error);

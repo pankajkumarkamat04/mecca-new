@@ -63,7 +63,7 @@ class SalesTransactionService {
         reference: invoice.invoiceNumber,
         referenceId: invoice._id,
         amount: totalAmount,
-        currency: invoice.currency?.displayCurrency || 'USD',
+        currency: 'USD', // Always store finance transactions in USD (base currency)
         entries: entries,
         customer: saleData.customer || null,
         invoice: invoice._id,
@@ -94,12 +94,10 @@ class SalesTransactionService {
       // Update account balances
       await this.updateAccountBalances(transaction);
       
-      console.log(`✅ Auto-created finance transaction ${transaction.transactionNumber} for POS sale ${invoice.invoiceNumber}`);
       
       return transaction;
       
     } catch (error) {
-      console.error('Error creating POS finance transaction:', error);
       throw error;
     }
   }
@@ -169,7 +167,7 @@ class SalesTransactionService {
         reference: invoice.invoiceNumber,
         referenceId: invoice._id,
         amount: totalAmount,
-        currency: invoice.currency?.displayCurrency || 'USD',
+        currency: 'USD', // Always store finance transactions in USD (base currency)
         entries: entries,
         customer: invoiceData.customer || null,
         invoice: invoice._id,
@@ -198,12 +196,10 @@ class SalesTransactionService {
       // Update account balances
       await this.updateAccountBalances(transaction);
       
-      console.log(`✅ Auto-created finance transaction ${transaction.transactionNumber} for invoice ${invoice.invoiceNumber}`);
       
       return transaction;
       
     } catch (error) {
-      console.error('Error creating invoice finance transaction:', error);
       throw error;
     }
   }
@@ -269,7 +265,6 @@ class SalesTransactionService {
       createdBy: '000000000000000000000000' // System user ID
     });
     await account.save();
-    console.log(`✅ Created account: ${account.name} (${account.code})`);
     return account;
   }
   

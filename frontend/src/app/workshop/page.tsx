@@ -15,6 +15,7 @@ import JobCardManager from '@/components/workshop/JobCardManager';
 import JobProgressVisualization from '@/components/workshop/JobProgressVisualization';
 import CustomerSelector from '@/components/ui/CustomerSelector';
 import FormProductSelector from '@/components/ui/FormProductSelector';
+import ServiceTemplateSelector from '@/components/workshop/ServiceTemplateSelector';
 import { WorkshopJob } from '@/types';
 import { enhancedWorkshopAPI, machinesAPI, workstationsAPI, customersAPI, productsAPI } from '@/lib/api';
 import api from '@/lib/api';
@@ -1474,7 +1475,9 @@ const CreateJobForm: React.FC<{
       schedulingNotes: ''
     },
     // Tasks
-    tasks: [] as any[]
+    tasks: [] as any[],
+    // Service Template
+    serviceTemplate: null as any
   });
 
   // Fetch customers for dropdown
@@ -1557,6 +1560,48 @@ const CreateJobForm: React.FC<{
         orderNumber: prev.customerInfo.orderNumber // Keep existing order number
       }
     }));
+  };
+
+  const handleServiceTemplateSelect = (template: any) => {
+    if (template) {
+      // Apply template data to form
+      setFormData(prev => ({
+        ...prev,
+        title: template.name,
+        description: template.description,
+        priority: template.priority,
+        'scheduled.estimatedDuration': template.estimatedDuration,
+        serviceTemplate: template,
+        // Add template tasks
+        tasks: template.tasks?.map((task: any) => ({
+          title: task.name,
+          description: task.description,
+          priority: template.priority,
+          estimatedDuration: task.estimatedDuration,
+          status: 'todo'
+        })) || [],
+        // Add template parts
+        parts: template.requiredParts?.map((part: any) => ({
+          productName: part.name,
+          quantityRequired: part.quantity,
+          notes: part.optional ? 'Optional part' : undefined,
+          status: 'pending'
+        })) || [],
+        // Add template tools
+        tools: template.requiredTools?.map((tool: any) => ({
+          name: tool.name,
+          category: 'specialty_tool',
+          notes: tool.optional ? 'Optional tool' : undefined,
+          isAvailable: true
+        })) || []
+      }));
+    } else {
+      // Clear template data
+      setFormData(prev => ({
+        ...prev,
+        serviceTemplate: null
+      }));
+    }
   };
 
   const addSublet = () => {
@@ -1687,6 +1732,22 @@ const CreateJobForm: React.FC<{
             rows={3}
           />
         </div>
+      </div>
+
+      {/* Service Template Selection */}
+      <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+        <div className="flex items-center mb-4">
+          <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center mr-3">
+            <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900">Service Template</h3>
+        </div>
+        <ServiceTemplateSelector
+          onSelect={handleServiceTemplateSelect}
+          selectedTemplate={formData.serviceTemplate}
+        />
       </div>
 
       {/* Customer and Vehicle Information */}

@@ -114,7 +114,7 @@ const OrdersPage: React.FC = () => {
 
   // Delete order mutation
   const deleteOrderMutation = useMutation({
-    mutationFn: (id: string) => ordersAPI.deleteOrder(id),
+    mutationFn: ({ id, deleteInvoice }: { id: string; deleteInvoice: boolean }) => ordersAPI.deleteOrder(id, deleteInvoice),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['orders'] });
       toast.success('Order deleted successfully');
@@ -180,9 +180,17 @@ const OrdersPage: React.FC = () => {
     }
   });
 
-  const handleDelete = (id: string) => {
-    if (window.confirm('Are you sure you want to delete this order?')) {
-      deleteOrderMutation.mutate(id);
+  const handleDelete = (id: string, hasInvoice: boolean = false) => {
+    if (hasInvoice) {
+      const deleteInvoice = window.confirm(
+        'This order has an associated invoice. Do you want to delete the invoice as well?\n\n' +
+        'Click OK to delete both order and invoice, or Cancel to delete only the order.'
+      );
+      deleteOrderMutation.mutate({ id, deleteInvoice });
+    } else {
+      if (window.confirm('Are you sure you want to delete this order?')) {
+        deleteOrderMutation.mutate({ id, deleteInvoice: false });
+      }
     }
   };
 
@@ -404,7 +412,7 @@ const OrdersPage: React.FC = () => {
           </button>
           {['pending', 'confirmed'].includes(row.orderStatus) && (
             <button
-              onClick={() => handleDelete(row._id)}
+              onClick={() => handleDelete(row._id, !!row.invoice)}
               className="text-red-600 hover:text-red-800"
               title="Delete"
             >

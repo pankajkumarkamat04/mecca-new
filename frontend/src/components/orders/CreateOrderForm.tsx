@@ -131,9 +131,20 @@ const CreateOrderForm: React.FC<CreateOrderFormProps> = ({ onClose, onSuccess, i
     return afterDiscount + taxAmount;
   };
 
+  const isValidProduct = (product: any) => {
+    if (!product) return false;
+    if (typeof product === 'string') {
+      return product.trim() !== '';
+    }
+    if (typeof product === 'object') {
+      return product._id || product.id;
+    }
+    return false;
+  };
+
   const calculateTotals = () => {
     // Only calculate totals for items with products selected
-    const validItems = formData.items.filter((item: any) => item.product && item.product.trim() !== '');
+    const validItems = formData.items.filter((item: any) => isValidProduct(item.product));
     
     const subtotal = validItems.reduce((sum: number, item: any) => {
       const discountAmount = (item.unitPrice * item.quantity * item.discount) / 100;
@@ -160,7 +171,7 @@ const CreateOrderForm: React.FC<CreateOrderFormProps> = ({ onClose, onSuccess, i
 
   const handleSubmit = () => {
     // Filter out empty items (items without product selected)
-    const validItems = formData.items.filter((item: any) => item.product && item.product.trim() !== '');
+    const validItems = formData.items.filter((item: any) => isValidProduct(item.product));
     
     if (!formData.customer || validItems.length === 0) {
       alert('Please select a customer and add at least one item with a product selected');
@@ -339,16 +350,21 @@ const CreateOrderForm: React.FC<CreateOrderFormProps> = ({ onClose, onSuccess, i
                     {item.product ? formatCurrency(calculateItemTotal(item)) : '$0.00'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    {formData.items.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveItem(index)}
-                        className="text-red-600 hover:text-red-800"
-                        title="Remove item"
-                      >
-                        <TrashIcon className="h-4 w-4" />
-                      </button>
-                    )}
+                    <div className="flex items-center space-x-2">
+                      {formData.items.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveItem(index)}
+                          className="text-red-600 hover:text-red-800"
+                          title="Remove item"
+                        >
+                          <TrashIcon className="h-4 w-4" />
+                        </button>
+                      )}
+                      {formData.items.length === 1 && (
+                        <span className="text-gray-400 text-xs">Cannot remove last item</span>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -358,7 +374,7 @@ const CreateOrderForm: React.FC<CreateOrderFormProps> = ({ onClose, onSuccess, i
       </div>
 
       {/* Totals */}
-      {formData.items.some((item: any) => item.product && item.product.trim() !== '') && (
+      {formData.items.some((item: any) => isValidProduct(item.product)) && (
         <div className="border-t pt-4">
           <div className="flex justify-end">
             <div className="w-64 space-y-2">
@@ -407,7 +423,7 @@ const CreateOrderForm: React.FC<CreateOrderFormProps> = ({ onClose, onSuccess, i
         <Button
           type="button"
           onClick={handleSubmit}
-          disabled={!formData.customer || !formData.items.some((item: any) => item.product && item.product.trim() !== '')}
+          disabled={!formData.customer || !formData.items.some((item: any) => isValidProduct(item.product))}
         >
           {initialData ? 'Update Order' : 'Create Order'}
         </Button>
