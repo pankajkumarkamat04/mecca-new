@@ -6,7 +6,7 @@ const StockMovement = require('../models/StockMovement');
 const Machine = require('../models/Machine');
 const Tool = require('../models/Tool');
 const WorkStation = require('../models/WorkStation');
-const Technician = require('../models/Technician');
+const ServiceTemplate = require('../models/ServiceTemplate');
 
 // Internal helper to process completion: deduct inventory and create invoice
 async function processJobCompletion(jobId, userId) {
@@ -2843,6 +2843,121 @@ const getAvailableTools = async (req, res) => {
   }
 };
 
+// @desc    Apply service template to job
+// @route   POST /api/workshop/jobs/:id/apply-template
+// @access  Private
+const applyServiceTemplate = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { templateId, customizations = {} } = req.body;
+
+    const job = await WorkshopJob.findById(id);
+    if (!job) {
+      return res.status(404).json({
+        success: false,
+        message: 'Job not found'
+      });
+    }
+
+    const template = await ServiceTemplate.findById(templateId);
+    if (!template) {
+      return res.status(404).json({
+        success: false,
+        message: 'Service template not found'
+      });
+    }
+
+    // Apply template data to job
+    const updatedJob = {
+      title: customizations.title || template.name,
+      description: customizations.description || template.description,
+      priority: customizations.priority || template.priority,
+      'scheduled.estimatedDuration': customizations.estimatedDuration || template.estimatedDuration,
+      serviceTemplate: {
+        template: template._id,
+        templateName: template.name,
+        appliedAt: new Date(),
+        appliedBy: req.user._id,
+        customizations: {
+          modifiedTasks: [],
+          addedTasks: [],
+          removedTasks: [],
+          modifiedParts: [],
+          addedParts: [],
+          removedParts: []
+        }
+      }
+    };
+
+    // Add template tasks to job
+    if (template.tasks && template.tasks.length > 0) {
+      const templateTasks = template.tasks.map(task => ({
+        title: task.name,
+        description: task.description,
+        priority: template.priority,
+        estimatedDuration: task.estimatedDuration,
+        status: 'todo',
+        createdBy: req.user._id
+      }));
+      
+      updatedJob.tasks = [...(job.tasks || []), ...templateTasks];
+    }
+
+    // Add template parts to job
+    if (template.requiredParts && template.requiredParts.length > 0) {
+      const templateParts = template.requiredParts.map(part => ({
+        productName: part.name,
+        quantityRequired: part.quantity,
+        notes: part.optional ? 'Optional part' : undefined,
+        status: 'pending',
+        createdBy: req.user._id
+      }));
+      
+      updatedJob.parts = [...(job.parts || []), ...templateParts];
+    }
+
+    // Add template tools to job
+    if (template.requiredTools && template.requiredTools.length > 0) {
+      const templateTools = template.requiredTools.map(tool => ({
+        name: tool.name,
+        category: 'specialty_tool',
+        notes: tool.optional ? 'Optional tool' : undefined,
+        isAvailable: true,
+        createdBy: req.user._id
+      }));
+      
+      updatedJob.tools = [...(job.tools || []), ...templateTools];
+    }
+
+    // Update job with template data
+    Object.assign(job, updatedJob);
+    job.lastUpdatedBy = req.user._id;
+    await job.save();
+
+    const populatedJob = await WorkshopJob.findById(job._id)
+      .populate('customer', 'firstName lastName email phone')
+      .populate('serviceTemplate.template', 'name description category')
+      .populate('tasks.assignee', 'firstName lastName')
+      .populate('parts.product', 'name sku pricing')
+      .populate('tools.toolId', 'name category')
+      .populate('resources.assignedTechnicians.user', 'firstName lastName')
+      .populate('resources.requiredMachines.machineId', 'name type')
+      .populate('resources.workStations.stationId', 'name type');
+
+    res.json({
+      success: true,
+      message: 'Service template applied successfully',
+      data: populatedJob
+    });
+  } catch (error) {
+    console.error('Apply service template error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+};
+
 module.exports = {
   createJob,
   getJobs,
@@ -2881,7 +2996,8 @@ module.exports = {
   getAvailableMachines,
   updateJobResources,
   updateJobTask,
-  getJobVisualization
+  getJobVisualization,
+  applyServiceTemplate
 };
 
 

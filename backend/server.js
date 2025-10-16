@@ -36,6 +36,7 @@ const technicianRoutes = require('./routes/technicians');
 const reportsAnalyticsRoutes = require('./routes/reportsAnalytics');
 const salesOutletRoutes = require('./routes/salesOutlets');
 const receivedGoodsRoutes = require('./routes/receivedGoods');
+const serviceTemplateRoutes = require('./routes/serviceTemplates');
 
 // Import exchange rate scheduler
 const { startScheduler, stopScheduler } = require('./services/exchangeRateScheduler');
@@ -146,6 +147,7 @@ app.use('/api/technicians', technicianRoutes);
 app.use('/api/reports-analytics', reportsAnalyticsRoutes);
 app.use('/api/sales-outlets', salesOutletRoutes);
 app.use('/api/received-goods', receivedGoodsRoutes);
+app.use('/api/service-templates', serviceTemplateRoutes);
 
 // API documentation endpoint
 app.get('/api', (req, res) => {

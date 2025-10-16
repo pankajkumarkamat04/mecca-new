@@ -166,6 +166,22 @@ const workshopJobSchema = new mongoose.Schema({
   // Repair request summary and notes
   repairRequest: { type: String, trim: true },
 
+  // Service template reference for predefined services
+  serviceTemplate: {
+    template: { type: mongoose.Schema.Types.ObjectId, ref: 'ServiceTemplate' },
+    templateName: { type: String, trim: true }, // Cached name for performance
+    appliedAt: { type: Date, default: Date.now },
+    appliedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    customizations: {
+      modifiedTasks: [{ type: mongoose.Schema.Types.ObjectId }], // Task IDs that were modified
+      addedTasks: [{ type: mongoose.Schema.Types.ObjectId }], // Task IDs that were added
+      removedTasks: [{ type: mongoose.Schema.Types.ObjectId }], // Task IDs that were removed
+      modifiedParts: [{ type: mongoose.Schema.Types.ObjectId }], // Part IDs that were modified
+      addedParts: [{ type: mongoose.Schema.Types.ObjectId }], // Part IDs that were added
+      removedParts: [{ type: mongoose.Schema.Types.ObjectId }] // Part IDs that were removed
+    }
+  },
+
   // Sublets and parts lists captured on job card
   sublets: [{
     description: { type: String, trim: true },

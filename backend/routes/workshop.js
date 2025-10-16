@@ -36,7 +36,8 @@ const {
   getAvailableMachines,
   updateJobResources,
   updateJobTask,
-  getJobVisualization
+  getJobVisualization,
+  applyServiceTemplate
 } = require('../controllers/workshopController');
 
 const router = express.Router();
@@ -87,6 +88,7 @@ router.get('/:id/available-resources', auth, getAvailableResources);
 router.put('/:id/job-card', auth, checkPermission('workshop', 'update'), updateJobCard);
 router.post('/:id/customer-comment', auth, addCustomerComment);
 router.post('/:id/status-update', auth, checkPermission('workshop', 'update'), addStatusUpdate);
+router.post('/:id/apply-template', auth, checkPermission('workshop', 'update'), applyServiceTemplate);
 
 // Resource conflict detection
 router.get('/:id/check-conflicts', auth, checkResourceConflicts);
