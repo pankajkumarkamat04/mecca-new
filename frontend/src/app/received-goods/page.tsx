@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Layout from '@/components/layout/Layout';
 import { receivedGoodsAPI, suppliersAPI, warehouseAPI, productsAPI } from '@/lib/api';
+import ProductSelector from '@/components/ui/ProductSelector';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { toast } from 'react-hot-toast';
@@ -39,6 +40,17 @@ const ReceivedGoodsPage: React.FC = () => {
     search: '',
     page: 1,
     limit: 20
+  });
+
+  // Create form state
+  const [createForm, setCreateForm] = useState<any>({
+    supplier: '',
+    warehouse: '',
+    expectedDate: '',
+    notes: '',
+    items: [
+      { product: null, expectedQuantity: 1, unitPrice: 0 }
+    ]
   });
 
   // Check permissions
@@ -155,6 +167,106 @@ const ReceivedGoodsPage: React.FC = () => {
     }
   };
 
+  // Create form helpers
+  const supplierOptions = (suppliersData?.data?.data || []) as any[];
+  const warehouseOptions = (warehousesData?.data?.data || []) as any[];
+  const productOptions = (productsData?.data?.data || []) as any[];
+
+  const getProductById = (id: string) => productOptions.find((p: any) => p._id === id);
+
+  const handleProductSelect = (index: number, product: any | null) => {
+    setCreateForm((prev: any) => {
+      const items = [...prev.items];
+      const next = { ...items[index] } as any;
+      if (product) {
+        next.product = product; // Store the full product object
+        const price = product?.pricing?.costPrice ?? product?.pricing?.price ?? product?.pricing?.sellingPrice ?? 0;
+        next.unitPrice = Number(price) || 0;
+      } else {
+        next.product = null;
+      }
+      items[index] = next;
+      return { ...prev, items };
+    });
+  };
+
+  const handleAddItemRow = () => {
+    setCreateForm((prev: any) => ({
+      ...prev,
+      items: [...prev.items, { product: null, expectedQuantity: 1, unitPrice: 0 }]
+    }));
+  };
+
+  const handleRemoveItemRow = (index: number) => {
+    setCreateForm((prev: any) => ({
+      ...prev,
+      items: prev.items.filter((_: any, i: number) => i !== index)
+    }));
+  };
+
+  const handleItemChange = (index: number, field: string, value: any) => {
+    setCreateForm((prev: any) => {
+      const items = [...prev.items];
+      const next = { ...items[index] } as any;
+      if (field === 'product') {
+        next.product = value;
+        const prod = getProductById(value);
+        const price = prod?.pricing?.costPrice ?? prod?.pricing?.price ?? 0;
+        next.unitPrice = Number(price) || 0;
+      } else if (field === 'expectedQuantity') {
+        next.expectedQuantity = Math.max(0, Number(value) || 0);
+      } else if (field === 'unitPrice') {
+        next.unitPrice = Math.max(0, Number(value) || 0);
+      }
+      items[index] = next;
+      return { ...prev, items };
+    });
+  };
+
+  const computeItemTotal = (item: any) => {
+    const qty = Number(item.expectedQuantity) || 0;
+    const price = Number(item.unitPrice) || 0;
+    return qty * price;
+  };
+
+  const computeFormTotal = () => {
+    return (createForm.items || []).reduce((sum: number, it: any) => sum + computeItemTotal(it), 0);
+  };
+
+  const handleCreateSubmit = () => {
+    if (!createForm.supplier) {
+      toast.error('Please select a supplier');
+      return;
+    }
+    if (!createForm.warehouse) {
+      toast.error('Please select a warehouse');
+      return;
+    }
+    if (!createForm.expectedDate) {
+      toast.error('Please select an expected date');
+      return;
+    }
+    const validItems = (createForm.items || []).filter((it: any) => it.product && (Number(it.expectedQuantity) || 0) > 0);
+    if (validItems.length === 0) {
+      toast.error('Please add at least one item with expected quantity');
+      return;
+    }
+
+    const payload = {
+      supplier: createForm.supplier,
+      warehouse: createForm.warehouse,
+      expectedDate: createForm.expectedDate,
+      notes: createForm.notes,
+      items: validItems.map((it: any) => ({
+        product: it.product._id, // Extract product ID from product object
+        expectedQuantity: Number(it.expectedQuantity) || 0,
+        unitPrice: Number(it.unitPrice) || 0,
+      }))
+    };
+
+    createMutation.mutate(payload as any);
+  };
+
   // Status badge component
   const StatusBadge = ({ status }: { status: string }) => {
     const statusConfig = {
@@ -224,7 +336,7 @@ const ReceivedGoodsPage: React.FC = () => {
                 className="w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500"
               >
                 <option value="">All Suppliers</option>
-                {suppliersData?.data?.map((supplier: any) => (
+                {(suppliersData?.data?.data || []).map((supplier: any) => (
                   <option key={supplier._id} value={supplier._id}>
                     {supplier.name}
                   </option>
@@ -240,7 +352,7 @@ const ReceivedGoodsPage: React.FC = () => {
                 className="w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500"
               >
                 <option value="">All Warehouses</option>
-                {warehousesData?.data?.map((warehouse: any) => (
+                {(warehousesData?.data?.data || []).map((warehouse: any) => (
                   <option key={warehouse._id} value={warehouse._id}>
                     {warehouse.name}
                   </option>
@@ -446,8 +558,117 @@ const ReceivedGoodsPage: React.FC = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
             <h2 className="text-xl font-semibold mb-4">Create Received Goods</h2>
-            <p className="text-gray-600 mb-4">Create received goods form will be implemented here</p>
-            <div className="flex justify-end space-x-2">
+            <div className="space-y-6">
+              {/* Header fields */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Supplier</label>
+                  <select
+                    value={createForm.supplier}
+                    onChange={(e) => setCreateForm((prev: any) => ({ ...prev, supplier: e.target.value }))}
+                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500"
+                  >
+                    <option value="">Select Supplier</option>
+                    {supplierOptions.map((s: any) => (
+                      <option key={s._id} value={s._id}>{s.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Warehouse</label>
+                  <select
+                    value={createForm.warehouse}
+                    onChange={(e) => setCreateForm((prev: any) => ({ ...prev, warehouse: e.target.value }))}
+                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500"
+                  >
+                    <option value="">Select Warehouse</option>
+                    {warehouseOptions.map((w: any) => (
+                      <option key={w._id} value={w._id}>{w.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Expected Date</label>
+                  <input
+                    type="date"
+                    value={createForm.expectedDate}
+                    onChange={(e) => setCreateForm((prev: any) => ({ ...prev, expectedDate: e.target.value }))}
+                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                  <textarea
+                    value={createForm.notes}
+                    onChange={(e) => setCreateForm((prev: any) => ({ ...prev, notes: e.target.value }))}
+                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500"
+                    rows={3}
+                    placeholder="Optional notes"
+                  />
+                </div>
+              </div>
+
+              {/* Items */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="block text-sm font-medium text-gray-700">Items</label>
+                  <button onClick={handleAddItemRow} className="text-sm px-3 py-1 bg-gray-100 border border-gray-300 rounded hover:bg-gray-200">Add Item</button>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Product</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Expected Qty</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Unit Price</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Total</th>
+                        <th className="px-4 py-2"></th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {(createForm.items || []).map((it: any, idx: number) => (
+                        <tr key={idx}>
+                          <td className="px-4 py-2">
+                            <ProductSelector
+                              selectedProduct={it.product || null}
+                              onProductSelect={(product: any) => handleProductSelect(idx, product)}
+                              placeholder="Select Product"
+                            />
+                          </td>
+                          <td className="px-4 py-2">
+                            <input
+                              type="number"
+                              min={0}
+                              value={it.expectedQuantity}
+                              onChange={(e) => handleItemChange(idx, 'expectedQuantity', e.target.value)}
+                              className="w-28 rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500"
+                            />
+                          </td>
+                          <td className="px-4 py-2">
+                            <input
+                              type="number"
+                              min={0}
+                              value={it.unitPrice}
+                              onChange={(e) => handleItemChange(idx, 'unitPrice', e.target.value)}
+                              className="w-32 rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500"
+                            />
+                          </td>
+                          <td className="px-4 py-2 text-sm text-gray-900">{formatCurrency(computeItemTotal(it))}</td>
+                          <td className="px-4 py-2 text-right">
+                            <button onClick={() => handleRemoveItemRow(idx)} className="text-red-600 hover:text-red-800 text-sm">Remove</button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="flex justify-end text-sm text-gray-700">
+                  <span className="font-medium mr-2">Total Value:</span>
+                  <span>{formatCurrency(computeFormTotal())}</span>
+                </div>
+              </div>
+            </div>
+            <div className="flex justify-end space-x-2 mt-6">
               <button
                 onClick={() => setIsCreateModalOpen(false)}
                 className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
@@ -455,7 +676,7 @@ const ReceivedGoodsPage: React.FC = () => {
                 Cancel
               </button>
               <button
-                onClick={() => setIsCreateModalOpen(false)}
+                onClick={handleCreateSubmit}
                 className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
               >
                 Create

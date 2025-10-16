@@ -105,6 +105,11 @@ const createTransaction = async (req, res) => {
       
       // Determine tax rate based on multiple factors
       let effectiveTaxRate = 0;
+
+      // 0. Respect explicit item-level taxRate override if valid (0-100)
+      if (typeof item.taxRate === 'number' && item.taxRate >= 0 && item.taxRate <= 100) {
+        effectiveTaxRate = item.taxRate;
+      } else {
       
       // 1. Check if universal tax override is applied
       if (transactionData.applyTax !== undefined) {
@@ -125,6 +130,7 @@ const createTransaction = async (req, res) => {
       // 5. Use default product tax rate
       else {
         effectiveTaxRate = product.pricing.taxRate || 0;
+      }
       }
       
       const lineTax = (lineBase * effectiveTaxRate) / 100;

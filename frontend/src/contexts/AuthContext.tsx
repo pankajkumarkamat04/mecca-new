@@ -233,6 +233,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         stockAlerts: ['read', 'create', 'update', 'delete'],
         purchaseOrders: ['read', 'create', 'update', 'delete'],
         resources: ['read', 'create', 'update', 'delete'],
+        receivedGoods: ['read', 'create', 'update', 'delete'],
       },
       manager: {
         users: ['read', 'create', 'update'],
@@ -258,6 +259,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         stockAlerts: ['read', 'create', 'update', 'delete'],
         purchaseOrders: ['read', 'create', 'update', 'delete'],
         resources: ['read', 'create', 'update', 'delete'],
+        receivedGoods: ['read', 'create', 'update', 'delete'],
       },
       customer: {
         users: ['read'],
@@ -283,6 +285,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         warehouses: ['read'],
         stockAlerts: ['read', 'create', 'update', 'delete'],
         purchaseOrders: ['read', 'create', 'update'],
+        receivedGoods: ['read', 'create', 'update', 'delete'],
         // Basic user permissions
         users: ['read'],
         // Customer creation allowed for all roles
@@ -297,6 +300,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         warehouses: ['read'],
         stockAlerts: ['read', 'update'],
         purchaseOrders: ['read'],
+        receivedGoods: ['read', 'create', 'update'],
         // Customer creation allowed for all roles
         customers: ['read', 'create', 'update'],
         reportsAnalytics: ['read'],

@@ -338,13 +338,51 @@ const updateJob = async (req, res) => {
       }
     }
 
-    const update = { ...updateData, lastUpdatedBy: req.user._id };
-    const job = await WorkshopJob.findByIdAndUpdate(req.params.id, update, { new: true, runValidators: true })
+  const update = { ...updateData, lastUpdatedBy: req.user._id };
+  let job = await WorkshopJob.findByIdAndUpdate(req.params.id, update, { new: true, runValidators: true })
       .populate('customer', 'firstName lastName email')
       .populate('tasks.assignee', 'firstName lastName')
       .populate('parts.product', 'name sku pricing inventory')
       .populate('createdBy', 'firstName lastName');
     if (!job) return res.status(404).json({ success: false, message: 'Job not found' });
+
+  // Auto-calculate progress strictly from task completion (no categories/tools influence)
+  try {
+    const totalTasks = Array.isArray(job.tasks) ? job.tasks.length : 0;
+    const completedTasks = totalTasks > 0 ? job.tasks.filter(t => String(t.status) === 'completed').length : 0;
+    const computedProgress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : (job.progress || 0);
+
+    if (typeof computedProgress === 'number' && computedProgress !== job.progress) {
+      // Append progress history entry
+      if (!Array.isArray(job.progressHistory)) job.progressHistory = [];
+      job.progressHistory.push({
+        progress: computedProgress,
+        status: job.status,
+        step: 'auto_task_progress',
+        message: `Progress updated from tasks: ${completedTasks}/${totalTasks} completed`,
+        updatedBy: req.user._id,
+        updatedAt: new Date()
+      });
+
+      job.progress = computedProgress;
+
+      // If all tasks completed, mark job as completed (idempotent)
+      if (computedProgress === 100 && job.status !== 'completed') {
+        job.status = 'completed';
+      }
+
+      await job.save();
+
+      // Re-populate relations potentially dropped by save
+      job = await WorkshopJob.findById(job._id)
+        .populate('customer', 'firstName lastName email')
+        .populate('tasks.assignee', 'firstName lastName')
+        .populate('parts.product', 'name sku pricing inventory')
+        .populate('createdBy', 'firstName lastName');
+    }
+  } catch (e) {
+    console.error('Auto progress calculation failed:', e);
+  }
 
     // If status transitioned to completed, process completion side-effects
     if (String(req.body?.status) === 'completed' && previous.status !== 'completed') {

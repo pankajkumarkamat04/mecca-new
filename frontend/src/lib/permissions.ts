@@ -33,6 +33,7 @@ export const routePermissionMap: Array<{
   { prefix: '/purchase-orders', permission: { module: 'purchaseOrders', action: 'read' } },
   { prefix: '/analytics', permission: { module: 'reports', action: 'read' } },
   { prefix: '/resources', permission: { module: 'resources', action: 'read' } },
+  { prefix: '/received-goods', permission: { module: 'receivedGoods', action: 'read' } },
   // Customer portal
   { prefix: '/customer', roles: ['customer'] },
   { prefix: '/profile' },

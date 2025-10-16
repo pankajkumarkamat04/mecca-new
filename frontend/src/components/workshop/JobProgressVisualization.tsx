@@ -20,6 +20,15 @@ import {
   PauseIcon,
   StopIcon
 } from '@heroicons/react/24/outline';
+import { Pie } from 'react-chartjs-2';
+import {
+  Chart as ChartJS,
+  ArcElement,
+  Tooltip as ChartTooltip,
+  Legend
+} from 'chart.js';
+
+ChartJS.register(ArcElement, ChartTooltip, Legend);
 
 interface JobProgressVisualizationProps {
   jobId: string;
@@ -123,6 +132,27 @@ const JobProgressVisualization: React.FC<JobProgressVisualizationProps> = ({ job
             </div>
             <div className="text-sm text-gray-600">Pending</div>
           </div>
+        </div>
+
+        {/* Donut chart to visualize completion strictly by tasks */}
+        <div className="mt-6 max-w-xs">
+          <Pie
+            data={{
+              labels: ['Completed', 'Remaining'],
+              datasets: [
+                {
+                  data: [job.progress || 0, 100 - (job.progress || 0)],
+                  backgroundColor: ['#16a34a', '#e5e7eb'],
+                  borderWidth: 0,
+                },
+              ],
+            }}
+            options={{
+              plugins: { legend: { display: true, position: 'bottom' } },
+              maintainAspectRatio: false,
+            }}
+            height={180}
+          />
         </div>
       </div>
 

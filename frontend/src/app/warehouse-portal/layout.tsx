@@ -110,6 +110,12 @@ const WarehousePortalLayoutInner: React.FC<{ children: React.ReactNode }> = ({ c
       current: pathname === '/warehouse-portal/inventory',
     },
     {
+      name: 'Received Goods',
+      href: '/received-goods',
+      icon: TruckIcon,
+      current: pathname === '/received-goods',
+    },
+    {
       name: 'Employees',
       href: '/warehouse-portal/employees',
       icon: UserGroupIcon,

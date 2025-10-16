@@ -11,6 +11,7 @@ const protectedRoutes = {
   '/suppliers': ['admin', 'manager'],
   '/invoices': ['admin', 'manager', 'sales_person'],
   '/inventory': ['admin', 'manager', 'warehouse_manager', 'warehouse_employee'],
+  '/received-goods': ['admin', 'manager', 'warehouse_manager', 'warehouse_employee'],
   '/pos': ['admin', 'manager', 'sales_person'],
   '/sales-outlets': ['admin', 'manager'],
   '/support': ['admin', 'manager', 'sales_person', 'workshop_employee'],
@@ -20,6 +21,7 @@ const protectedRoutes = {
   '/reports': ['admin', 'manager'],
   '/reports-analytics': ['admin', 'manager', 'sales_person', 'warehouse_manager', 'warehouse_employee', 'workshop_employee'],
   '/settings': ['admin', 'manager'],
+  '/warehouse-portal': ['admin', 'manager', 'warehouse_manager', 'warehouse_employee'],
 };
 
 // Define customer routes
@@ -34,8 +36,8 @@ const customerRoutes = [
 const departmentRoutes = {
   sales_person: ['/dashboard', '/pos', '/customers', '/invoices', '/customer-inquiries', '/quotations', '/orders', '/support', '/profile'],
   workshop_employee: ['/workshop', '/customers', '/support', '/profile'],
-  warehouse_manager: ['/warehouse-portal', '/inventory', '/deliveries', '/profile'],
-  warehouse_employee: ['/warehouse-portal', '/inventory', '/deliveries', '/profile'],
+  warehouse_manager: ['/warehouse-portal', '/inventory', '/received-goods', '/deliveries', '/profile'],
+  warehouse_employee: ['/warehouse-portal', '/inventory', '/received-goods', '/deliveries', '/profile'],
 };
 
 export function middleware(request: NextRequest) {

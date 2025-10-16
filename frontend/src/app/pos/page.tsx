@@ -39,6 +39,7 @@ interface CartItem {
   price: number;
   total: number;
   applyTax?: boolean; // Individual item tax override
+  taxRate?: number; // Individual item tax rate override (0-100)
 }
 
 const POSPage: React.FC = () => {
@@ -320,7 +321,8 @@ const POSPage: React.FC = () => {
       quantity: item.quantity,
       unitPrice: item.price,
       discount: 0, // POS doesn't use discounts per item
-      taxRate: (item.product?.pricing?.taxRate ?? company?.defaultTaxRate ?? 0)
+      // Prefer per-item override if provided; otherwise fall back to product/default
+      taxRate: (typeof item.taxRate === 'number' ? item.taxRate : (item.product?.pricing?.taxRate ?? company?.defaultTaxRate ?? 0))
     }));
 
     return calculatePrice(priceItems);
@@ -417,6 +419,7 @@ const POSPage: React.FC = () => {
           quantity: item.quantity,
           price: item.price,
           applyTax: item.applyTax, // Include individual item tax override
+          taxRate: typeof item.taxRate === 'number' ? item.taxRate : undefined, // Include per-item tax rate override
         })),
         customer: selectedCustomerId || undefined,
         customerName: customerName || undefined,
@@ -708,6 +711,31 @@ const POSPage: React.FC = () => {
                             >
                               Auto
                             </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Tax Rate Editor */}
+                      {isProductTaxable && (
+                        <div className="flex items-center justify-between text-sm">
+                          <label className="text-gray-600 flex-1">Tax Rate (%):</label>
+                          <div className="flex items-center space-x-2">
+                            <input
+                              type="number"
+                              min={0}
+                              max={100}
+                              value={typeof item.taxRate === 'number' ? item.taxRate : (productTaxRate || 0)}
+                              onChange={(e) => {
+                                const next = Math.max(0, Math.min(100, Number(e.target.value) || 0));
+                                setCart(cart.map(ci =>
+                                  ci.product._id === item.product._id
+                                    ? { ...ci, taxRate: next }
+                                    : ci
+                                ));
+                              }}
+                              className="w-24 rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 text-right"
+                            />
+                            <span className="text-gray-500">%</span>
                           </div>
                         </div>
                       )}
