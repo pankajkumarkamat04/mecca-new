@@ -173,7 +173,7 @@ const purchaseOrderSchema = new mongoose.Schema({
 
 // Virtual for completion percentage
 purchaseOrderSchema.virtual('completionPercentage').get(function() {
-  if (this.items.length === 0) return 0;
+  if (!this.items || this.items.length === 0) return 0;
   
   const totalQuantity = this.items.reduce((sum, item) => sum + item.quantity, 0);
   const receivedQuantity = this.items.reduce((sum, item) => sum + item.receivedQuantity, 0);
@@ -225,13 +225,17 @@ purchaseOrderSchema.index({ assignedTo: 1 });
 // Pre-save middleware to calculate totals
 purchaseOrderSchema.pre('save', function(next) {
   // Calculate item totals
-  this.items.forEach(item => {
-    item.totalCost = item.quantity * item.unitCost;
-    item.pendingQuantity = item.quantity - item.receivedQuantity;
-  });
+  if (this.items && this.items.length > 0) {
+    this.items.forEach(item => {
+      item.totalCost = item.quantity * item.unitCost;
+      item.pendingQuantity = item.quantity - item.receivedQuantity;
+    });
 
-  // Calculate subtotal
-  this.subtotal = this.items.reduce((sum, item) => sum + item.totalCost, 0);
+    // Calculate subtotal
+    this.subtotal = this.items.reduce((sum, item) => sum + item.totalCost, 0);
+  } else {
+    this.subtotal = 0;
+  }
 
   // Calculate discount amount
   this.discountAmount = (this.subtotal * this.discount) / 100;
@@ -324,6 +328,8 @@ purchaseOrderSchema.statics.getStatistics = async function() {
 
 // Instance method to mark as received
 purchaseOrderSchema.methods.markAsReceived = function(receivedItems, receivedBy) {
+  if (!this.items || this.items.length === 0) return;
+  
   receivedItems.forEach(receivedItem => {
     const item = this.items.id(receivedItem.itemId);
     if (item) {

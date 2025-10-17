@@ -425,7 +425,7 @@ const SuppliersPage: React.FC = () => {
 
               <FormSection title="Business Details">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField label="Payment Terms (Days)" required error={methods.formState.errors.paymentTerms?.message as string}>
+                  <FormField label="Payment Terms (Days)" error={methods.formState.errors.paymentTerms?.message as string}>
                     <Input type="number" {...methods.register('paymentTerms')} fullWidth />
                   </FormField>
                   <FormField label="Credit Limit" error={methods.formState.errors.creditLimit?.message as string}>

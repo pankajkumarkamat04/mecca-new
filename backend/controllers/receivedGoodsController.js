@@ -1,148 +1,35 @@
 const ReceivedGoods = require('../models/ReceivedGoods');
+const PurchaseOrder = require('../models/PurchaseOrder');
 const Product = require('../models/Product');
 const Supplier = require('../models/Supplier');
-const Warehouse = require('../models/Warehouse');
 const StockMovement = require('../models/StockMovement');
-const { validationResult } = require('express-validator');
-
-// @desc    Create received goods
-// @route   POST /api/received-goods
-// @access  Private
-const createReceivedGoods = async (req, res) => {
-  try {
-    // Check for validation errors
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({
-        success: false,
-        message: 'Validation failed',
-        errors: errors.array()
-      });
-    }
-
-    const {
-      supplier,
-      warehouse,
-      expectedDate,
-      items,
-      deliveryNote,
-      invoiceNumber,
-      transportDetails,
-      notes
-    } = req.body;
-
-    // Validate supplier exists
-    const supplierExists = await Supplier.findById(supplier);
-    if (!supplierExists) {
-      return res.status(400).json({
-        success: false,
-        message: 'Supplier not found'
-      });
-    }
-
-    // Validate warehouse exists
-    const warehouseExists = await Warehouse.findById(warehouse);
-    if (!warehouseExists) {
-      return res.status(400).json({
-        success: false,
-        message: 'Warehouse not found'
-      });
-    }
-
-    // Validate products exist and calculate totals
-    const validatedItems = [];
-    let totalValue = 0;
-
-    for (const item of items) {
-      const product = await Product.findById(item.product);
-      if (!product) {
-        return res.status(400).json({
-          success: false,
-          message: `Product not found: ${item.product}`
-        });
-      }
-
-      const itemTotal = item.expectedQuantity * item.unitPrice;
-      totalValue += itemTotal;
-
-      validatedItems.push({
-        product: product._id,
-        expectedQuantity: item.expectedQuantity,
-        receivedQuantity: 0,
-        unitPrice: item.unitPrice,
-        totalValue: itemTotal,
-        batchNumber: item.batchNumber || undefined,
-        expiryDate: item.expiryDate || undefined,
-        condition: item.condition || 'good',
-        notes: item.notes || undefined
-      });
-    }
-
-    // Generate received goods number
-    const receivedNumber = await ReceivedGoods.generateReceivedNumber();
-
-    const receivedGoods = new ReceivedGoods({
-      receivedNumber,
-      supplier,
-      warehouse,
-      expectedDate,
-      items: validatedItems,
-      totalValue,
-      deliveryNote,
-      invoiceNumber,
-      transportDetails,
-      notes,
-      receivedBy: req.user._id,
-      createdBy: req.user._id
-    });
-
-    await receivedGoods.save();
-
-    // Populate the response
-    await receivedGoods.populate([
-      { path: 'supplier', select: 'name contactPerson email phone' },
-      { path: 'warehouse', select: 'name code location' },
-      { path: 'items.product', select: 'name sku category' },
-      { path: 'receivedBy', select: 'firstName lastName email' }
-    ]);
-
-    res.status(201).json({
-      success: true,
-      message: 'Received goods created successfully',
-      data: receivedGoods
-    });
-
-  } catch (error) {
-    console.error('Create received goods error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error'
-    });
-  }
-};
 
 // @desc    Get all received goods
 // @route   GET /api/received-goods
 // @access  Private
 const getReceivedGoods = async (req, res) => {
   try {
-    const {
-      page = 1,
-      limit = 20,
-      status,
-      supplier,
-      warehouse,
-      startDate,
-      endDate,
-      search
-    } = req.query;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+    const search = req.query.search || '';
+    const status = req.query.status || '';
+    const supplier = req.query.supplier || '';
+    const startDate = req.query.startDate || '';
+    const endDate = req.query.endDate || '';
 
     // Build filter
-    const filter = {};
-    
+    const filter = { isActive: true };
+    if (search) {
+      filter.$or = [
+        { receiptNumber: { $regex: search, $options: 'i' } },
+        { purchaseOrderNumber: { $regex: search, $options: 'i' } },
+        { supplierName: { $regex: search, $options: 'i' } },
+        { trackingNumber: { $regex: search, $options: 'i' } }
+      ];
+    }
     if (status) filter.status = status;
     if (supplier) filter.supplier = supplier;
-    if (warehouse) filter.warehouse = warehouse;
     
     if (startDate || endDate) {
       filter.receivedDate = {};
@@ -150,42 +37,29 @@ const getReceivedGoods = async (req, res) => {
       if (endDate) filter.receivedDate.$lte = new Date(endDate);
     }
 
-    if (search) {
-      filter.$or = [
-        { receivedNumber: { $regex: search, $options: 'i' } },
-        { deliveryNote: { $regex: search, $options: 'i' } },
-        { invoiceNumber: { $regex: search, $options: 'i' } }
-      ];
-    }
-
-    const skip = (parseInt(page) - 1) * parseInt(limit);
-
-    const [receivedGoods, totalCount] = await Promise.all([
-      ReceivedGoods.find(filter)
-        .populate('supplier', 'name contactPerson email phone')
-        .populate('warehouse', 'name code location')
-        .populate('items.product', 'name sku category')
-        .populate('receivedBy', 'firstName lastName email')
-        .populate('verifiedBy', 'firstName lastName email')
+    const receivedGoods = await ReceivedGoods.find(filter)
+      .populate('purchaseOrder', 'orderNumber status')
+      .populate('supplier', 'name email phone')
+      .populate('warehouse', 'name code')
+      .populate('receivedBy', 'firstName lastName')
+      .populate('approvedBy', 'firstName lastName')
+      .populate('createdBy', 'firstName lastName')
         .sort({ receivedDate: -1 })
         .skip(skip)
-        .limit(parseInt(limit)),
-      ReceivedGoods.countDocuments(filter)
-    ]);
+      .limit(limit);
+
+    const total = await ReceivedGoods.countDocuments(filter);
 
     res.json({
       success: true,
       data: receivedGoods,
       pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
-        totalCount,
-        totalPages: Math.ceil(totalCount / parseInt(limit)),
-        hasNext: page * limit < totalCount,
-        hasPrev: page > 1
+        page,
+        limit,
+        total,
+        pages: Math.ceil(total / limit)
       }
     });
-
   } catch (error) {
     console.error('Get received goods error:', error);
     res.status(500).json({
@@ -201,13 +75,15 @@ const getReceivedGoods = async (req, res) => {
 const getReceivedGoodsById = async (req, res) => {
   try {
     const receivedGoods = await ReceivedGoods.findById(req.params.id)
-      .populate('supplier', 'name contactPerson email phone address')
-      .populate('warehouse', 'name code location address')
-      .populate('items.product', 'name sku category pricing inventory')
-      .populate('receivedBy', 'firstName lastName email')
-      .populate('verifiedBy', 'firstName lastName email')
-      .populate('qualityCheck.performedBy', 'firstName lastName email')
-      .populate('documents.uploadedBy', 'firstName lastName email');
+      .populate('purchaseOrder', 'orderNumber status items')
+      .populate('supplier', 'name email phone address')
+      .populate('warehouse', 'name code')
+      .populate('items.product', 'name sku description')
+      .populate('receivedBy', 'firstName lastName')
+      .populate('approvedBy', 'firstName lastName')
+      .populate('createdBy', 'firstName lastName')
+      .populate('lastUpdatedBy', 'firstName lastName')
+      .populate('qualityControl.inspectedBy', 'firstName lastName');
 
     if (!receivedGoods) {
       return res.status(404).json({
@@ -220,7 +96,6 @@ const getReceivedGoodsById = async (req, res) => {
       success: true,
       data: receivedGoods
     });
-
   } catch (error) {
     console.error('Get received goods by ID error:', error);
     res.status(500).json({
@@ -230,170 +105,134 @@ const getReceivedGoodsById = async (req, res) => {
   }
 };
 
-// @desc    Update received goods
-// @route   PUT /api/received-goods/:id
+// @desc    Create received goods from purchase order
+// @route   POST /api/received-goods
 // @access  Private
-const updateReceivedGoods = async (req, res) => {
+const createReceivedGoods = async (req, res) => {
   try {
-    // Check for validation errors
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({
-        success: false,
-        message: 'Validation failed',
-        errors: errors.array()
-      });
-    }
+    const { purchaseOrderId, receivedItems, deliveryInfo, notes } = req.body;
 
-    const receivedGoods = await ReceivedGoods.findById(req.params.id);
-    if (!receivedGoods) {
+    // Find the purchase order
+    const purchaseOrder = await PurchaseOrder.findById(purchaseOrderId)
+      .populate('supplier', 'name email phone')
+      .populate('warehouse', 'name code');
+
+    if (!purchaseOrder) {
       return res.status(404).json({
         success: false,
-        message: 'Received goods not found'
+        message: 'Purchase order not found'
       });
     }
 
-    // Check if already fully received
-    if (receivedGoods.status === 'received') {
+    // Validate that PO is in correct status
+    if (!['confirmed', 'partial'].includes(purchaseOrder.status)) {
       return res.status(400).json({
         success: false,
-        message: 'Cannot update fully received goods'
+        message: 'Purchase order must be confirmed or partial to receive goods'
       });
     }
 
-    const {
-      supplier,
-      warehouse,
-      expectedDate,
-      items,
-      deliveryNote,
-      invoiceNumber,
-      transportDetails,
-      notes
-    } = req.body;
+    // Process received items
+    const processedItems = [];
+    for (const receivedItem of receivedItems) {
+      const orderItem = purchaseOrder.items.id(receivedItem.itemId);
+      if (!orderItem) continue;
 
-    // Update basic fields
-    if (supplier) receivedGoods.supplier = supplier;
-    if (warehouse) receivedGoods.warehouse = warehouse;
-    if (expectedDate) receivedGoods.expectedDate = expectedDate;
-    if (deliveryNote) receivedGoods.deliveryNote = deliveryNote;
-    if (invoiceNumber) receivedGoods.invoiceNumber = invoiceNumber;
-    if (transportDetails) receivedGoods.transportDetails = transportDetails;
-    if (notes) receivedGoods.notes = notes;
+      const product = await Product.findById(orderItem.product);
+      if (!product) continue;
 
-    // Update items if provided
-    if (items) {
-      const validatedItems = [];
-      let totalValue = 0;
-
-      for (const item of items) {
-        const product = await Product.findById(item.product);
-        if (!product) {
+      // Validate received quantity
+      const totalReceived = orderItem.receivedQuantity + receivedItem.quantity;
+      if (totalReceived > orderItem.quantity) {
           return res.status(400).json({
             success: false,
-            message: `Product not found: ${item.product}`
-          });
-        }
-
-        const itemTotal = item.expectedQuantity * item.unitPrice;
-        totalValue += itemTotal;
-
-        validatedItems.push({
-          product: product._id,
-          expectedQuantity: item.expectedQuantity,
-          receivedQuantity: item.receivedQuantity || 0,
-          unitPrice: item.unitPrice,
-          totalValue: itemTotal,
-          batchNumber: item.batchNumber || undefined,
-          expiryDate: item.expiryDate || undefined,
-          condition: item.condition || 'good',
-          notes: item.notes || undefined
+          message: `Received quantity exceeds ordered quantity for ${product.name}`
         });
       }
 
-      receivedGoods.items = validatedItems;
-      receivedGoods.totalValue = totalValue;
-    }
-
-    receivedGoods.lastUpdatedBy = req.user._id;
-    await receivedGoods.save();
-
-    // Populate the response
-    await receivedGoods.populate([
-      { path: 'supplier', select: 'name contactPerson email phone' },
-      { path: 'warehouse', select: 'name code location' },
-      { path: 'items.product', select: 'name sku category' },
-      { path: 'receivedBy', select: 'firstName lastName email' }
-    ]);
-
-    res.json({
-      success: true,
-      message: 'Received goods updated successfully',
-      data: receivedGoods
-    });
-
-  } catch (error) {
-    console.error('Update received goods error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error'
-    });
-  }
-};
-
-// @desc    Receive items (update received quantities)
-// @route   POST /api/received-goods/:id/receive
-// @access  Private
-const receiveItems = async (req, res) => {
-  try {
-    const { items, qualityCheck, notes } = req.body;
-
-    const receivedGoods = await ReceivedGoods.findById(req.params.id);
-    if (!receivedGoods) {
-      return res.status(404).json({
-        success: false,
-        message: 'Received goods not found'
+      processedItems.push({
+        purchaseOrderItem: orderItem._id,
+          product: product._id,
+        productName: product.name,
+        productSku: product.sku,
+        orderedQuantity: orderItem.quantity,
+        receivedQuantity: receivedItem.quantity,
+        unitCost: orderItem.unitCost,
+        totalCost: receivedItem.quantity * orderItem.unitCost,
+        batchNumber: receivedItem.batchNumber,
+        expiryDate: receivedItem.expiryDate,
+        serialNumbers: receivedItem.serialNumbers,
+        condition: receivedItem.condition || 'good',
+        qualityNotes: receivedItem.qualityNotes,
+        supplier: purchaseOrder.supplier._id,
+        supplierName: purchaseOrder.supplier.name
       });
     }
 
-    // Update received quantities
-    for (const receivedItem of items) {
-      const item = receivedGoods.items.id(receivedItem.itemId);
-      if (item) {
-        item.receivedQuantity = receivedItem.receivedQuantity;
-        if (receivedItem.batchNumber) item.batchNumber = receivedItem.batchNumber;
-        if (receivedItem.expiryDate) item.expiryDate = receivedItem.expiryDate;
-        if (receivedItem.condition) item.condition = receivedItem.condition;
-        if (receivedItem.notes) item.notes = receivedItem.notes;
+    // Create received goods record
+    const receivedGoods = new ReceivedGoods({
+      purchaseOrder: purchaseOrder._id,
+      purchaseOrderNumber: purchaseOrder.orderNumber,
+      supplier: purchaseOrder.supplier._id,
+      supplierName: purchaseOrder.supplier.name,
+      warehouse: purchaseOrder.warehouse,
+      warehouseName: purchaseOrder.warehouse?.name,
+      receivedDate: new Date(),
+      deliveryDate: deliveryInfo?.deliveryDate,
+      deliveryMethod: deliveryInfo?.deliveryMethod || 'delivery',
+      carrier: deliveryInfo?.carrier,
+      trackingNumber: deliveryInfo?.trackingNumber,
+      items: processedItems,
+      notes,
+      receivedBy: req.user._id,
+      createdBy: req.user._id
+    });
+
+    await receivedGoods.save();
+
+    // Update purchase order items
+    for (const receivedItem of receivedItems) {
+      const orderItem = purchaseOrder.items.id(receivedItem.itemId);
+      if (orderItem) {
+        orderItem.receivedQuantity += receivedItem.quantity;
+        orderItem.pendingQuantity = orderItem.quantity - orderItem.receivedQuantity;
+        if (receivedItem.batchNumber) orderItem.batchNumber = receivedItem.batchNumber;
+        if (receivedItem.expiryDate) orderItem.expiryDate = receivedItem.expiryDate;
+        if (receivedItem.serialNumbers) orderItem.serialNumbers = receivedItem.serialNumbers;
       }
     }
 
-    // Update quality check if provided
-    if (qualityCheck) {
-      receivedGoods.qualityCheck = {
-        performed: true,
-        performedBy: req.user._id,
-        performedDate: new Date(),
-        results: qualityCheck.results,
-        notes: qualityCheck.notes
-      };
+    // Update purchase order status
+    const allItemsReceived = purchaseOrder.items.every(item => item.receivedQuantity >= item.quantity);
+    const someItemsReceived = purchaseOrder.items.some(item => item.receivedQuantity > 0);
+
+    if (allItemsReceived) {
+      purchaseOrder.status = 'completed';
+    } else if (someItemsReceived) {
+      purchaseOrder.status = 'partial';
     }
 
-    if (notes) {
-      receivedGoods.notes = notes;
-    }
+    purchaseOrder.receivedBy = req.user._id;
+    purchaseOrder.receivedAt = new Date();
+    purchaseOrder.lastUpdatedBy = req.user._id;
 
-    receivedGoods.lastUpdatedBy = req.user._id;
-    await receivedGoods.save();
+    await purchaseOrder.save();
 
-    res.json({
+    // Populate the response
+    const populatedReceivedGoods = await ReceivedGoods.findById(receivedGoods._id)
+      .populate('purchaseOrder', 'orderNumber status')
+      .populate('supplier', 'name email phone')
+      .populate('warehouse', 'name code')
+      .populate('receivedBy', 'firstName lastName')
+      .populate('createdBy', 'firstName lastName');
+
+    res.status(201).json({
       success: true,
-      message: 'Items received successfully',
-      data: receivedGoods
+      message: 'Received goods created successfully',
+      data: populatedReceivedGoods
     });
-
   } catch (error) {
-    console.error('Receive items error:', error);
+    console.error('Create received goods error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error'
@@ -401,14 +240,14 @@ const receiveItems = async (req, res) => {
   }
 };
 
-// @desc    Add to inventory (transfer received goods to stock)
-// @route   POST /api/received-goods/:id/add-to-inventory
+// @desc    Approve received goods
+// @route   POST /api/received-goods/:id/approve
 // @access  Private
-const addToInventory = async (req, res) => {
+const approveReceivedGoods = async (req, res) => {
   try {
-    const receivedGoods = await ReceivedGoods.findById(req.params.id)
-      .populate('items.product')
-      .populate('warehouse');
+    const { notes } = req.body;
+
+    const receivedGoods = await ReceivedGoods.findById(req.params.id);
 
     if (!receivedGoods) {
       return res.status(404).json({
@@ -417,60 +256,76 @@ const addToInventory = async (req, res) => {
       });
     }
 
-    // Check if all items are received
-    if (!receivedGoods.isFullyReceived) {
+    if (!['pending', 'inspected', 'partial_approval', 'conditional', 'partial'].includes(receivedGoods.status)) {
       return res.status(400).json({
         success: false,
-        message: 'Cannot add to inventory until all items are received'
+        message: `Only pending, inspected, partial_approval, conditional, or partial received goods can be approved. Current status: ${receivedGoods.status}`
       });
     }
 
-    // Update product inventory and create stock movements
-    const stockMovements = [];
+    // Approve the receipt
+    await receivedGoods.approve(req.user._id, notes);
 
+    // Update supplier purchase statistics
+    const Supplier = require('../models/Supplier');
+    const supplier = await Supplier.findById(receivedGoods.supplier);
+    if (supplier) {
+      const totalAmount = receivedGoods.items.reduce((sum, item) => sum + item.totalCost, 0);
+      await supplier.updatePurchaseStats(totalAmount);
+    }
+
+    // Update inventory for approved items
     for (const item of receivedGoods.items) {
-      const product = item.product;
-      
-      // Update product inventory
-      product.inventory.currentStock += item.receivedQuantity;
-      await product.save();
-
+      const product = await Product.findById(item.product);
+      if (product) {
       // Create stock movement
       const stockMovement = new StockMovement({
         product: product._id,
-        warehouse: receivedGoods.warehouse._id,
-        movementType: 'received',
+          warehouse: receivedGoods.warehouse,
+          warehouseName: receivedGoods.warehouseName,
+          movementType: 'receiving',
         quantity: item.receivedQuantity,
-        unitCost: item.unitPrice,
-        reference: receivedGoods.receivedNumber,
+          unitCost: item.unitCost,
+          totalCost: item.totalCost,
+          previousStock: product.inventory.currentStock,
+          newStock: product.inventory.currentStock + item.receivedQuantity,
+          reference: receivedGoods.receiptNumber,
+          referenceType: 'received_goods',
         referenceId: receivedGoods._id,
+          reason: 'Received goods approval',
+          notes: notes,
         batchNumber: item.batchNumber,
         expiryDate: item.expiryDate,
-        notes: `Received from ${receivedGoods.supplier}`,
+          serialNumbers: item.serialNumbers,
         createdBy: req.user._id
       });
 
       await stockMovement.save();
-      stockMovements.push(stockMovement);
+
+        // Update product stock
+        product.inventory.currentStock += item.receivedQuantity;
+        product.inventory.lastMovement = new Date();
+        if (receivedGoods.warehouse) {
+          product.inventory.warehouse = receivedGoods.warehouse;
+        }
+        await product.save();
+      }
     }
 
-    // Mark as verified
-    receivedGoods.verifiedBy = req.user._id;
-    receivedGoods.verificationDate = new Date();
-    receivedGoods.lastUpdatedBy = req.user._id;
-    await receivedGoods.save();
+    const populatedReceivedGoods = await ReceivedGoods.findById(receivedGoods._id)
+      .populate('purchaseOrder', 'orderNumber status')
+      .populate('supplier', 'name email phone')
+      .populate('warehouse', 'name code')
+      .populate('approvedBy', 'firstName lastName')
+      .populate('lastUpdatedBy', 'firstName lastName');
 
     res.json({
       success: true,
-      message: 'Items added to inventory successfully',
-      data: {
-        receivedGoods,
-        stockMovements: stockMovements.length
-      }
+      message: 'Received goods approved successfully',
+      data: populatedReceivedGoods
     });
-
   } catch (error) {
-    console.error('Add to inventory error:', error);
+    console.error('Approve received goods error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error'
@@ -478,11 +333,13 @@ const addToInventory = async (req, res) => {
   }
 };
 
-// @desc    Delete received goods
-// @route   DELETE /api/received-goods/:id
+// @desc    Inspect received goods
+// @route   POST /api/received-goods/:id/inspect
 // @access  Private
-const deleteReceivedGoods = async (req, res) => {
+const inspectReceivedGoods = async (req, res) => {
   try {
+    const { inspectionResults, notes } = req.body;
+
     const receivedGoods = await ReceivedGoods.findById(req.params.id);
 
     if (!receivedGoods) {
@@ -492,23 +349,44 @@ const deleteReceivedGoods = async (req, res) => {
       });
     }
 
-    // Check if already added to inventory
-    if (receivedGoods.verifiedBy) {
+    if (receivedGoods.status !== 'pending') {
       return res.status(400).json({
         success: false,
-        message: 'Cannot delete received goods that have been added to inventory'
+        message: 'Only pending received goods can be inspected'
       });
     }
 
-    await ReceivedGoods.findByIdAndDelete(req.params.id);
+    // Update inspection details
+    receivedGoods.qualityControl = {
+      inspectedBy: req.user._id,
+      inspectedAt: new Date(),
+      inspectionResults: {
+        passed: inspectionResults.passed,
+        failedItems: inspectionResults.failedItems || [],
+        notes: inspectionResults.notes
+      }
+    };
+
+    receivedGoods.status = inspectionResults.passed ? 'inspected' : 'rejected';
+    receivedGoods.inspectionNotes = notes;
+    receivedGoods.lastUpdatedBy = req.user._id;
+
+    await receivedGoods.save();
+
+    const populatedReceivedGoods = await ReceivedGoods.findById(receivedGoods._id)
+      .populate('purchaseOrder', 'orderNumber status')
+      .populate('supplier', 'name email phone')
+      .populate('warehouse', 'name code')
+      .populate('qualityControl.inspectedBy', 'firstName lastName')
+      .populate('lastUpdatedBy', 'firstName lastName');
 
     res.json({
       success: true,
-      message: 'Received goods deleted successfully'
+      message: 'Inspection completed successfully',
+      data: populatedReceivedGoods
     });
-
   } catch (error) {
-    console.error('Delete received goods error:', error);
+    console.error('Inspect received goods error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error'
@@ -521,53 +399,48 @@ const deleteReceivedGoods = async (req, res) => {
 // @access  Private
 const getReceivedGoodsStats = async (req, res) => {
   try {
-    const { startDate, endDate, warehouse } = req.query;
-
-    const filter = {};
-    if (startDate || endDate) {
-      filter.receivedDate = {};
-      if (startDate) filter.receivedDate.$gte = new Date(startDate);
-      if (endDate) filter.receivedDate.$lte = new Date(endDate);
-    }
-    if (warehouse) filter.warehouse = warehouse;
-
     const stats = await ReceivedGoods.aggregate([
-      { $match: filter },
       {
         $group: {
           _id: null,
-          totalReceived: { $sum: 1 },
-          totalValue: { $sum: '$totalValue' },
-          pending: {
+          totalReceipts: { $sum: 1 },
+          pendingReceipts: {
             $sum: { $cond: [{ $eq: ['$status', 'pending'] }, 1, 0] }
           },
-          partiallyReceived: {
-            $sum: { $cond: [{ $eq: ['$status', 'partially_received'] }, 1, 0] }
+          inspectedReceipts: {
+            $sum: { $cond: [{ $eq: ['$status', 'inspected'] }, 1, 0] }
           },
-          fullyReceived: {
-            $sum: { $cond: [{ $eq: ['$status', 'received'] }, 1, 0] }
+          approvedReceipts: {
+            $sum: { $cond: [{ $eq: ['$status', 'approved'] }, 1, 0] }
           },
-          cancelled: {
-            $sum: { $cond: [{ $eq: ['$status', 'cancelled'] }, 1, 0] }
-          }
+          rejectedReceipts: {
+            $sum: { $cond: [{ $eq: ['$status', 'rejected'] }, 1, 0] }
+          },
+          totalValue: { $sum: '$totalValue' },
+          totalItems: { $sum: '$totalItems' }
         }
       }
     ]);
 
-    const result = stats[0] || {
-      totalReceived: 0,
+    if (stats.length === 0) {
+      return res.json({
+        success: true,
+        data: {
+          totalReceipts: 0,
+          pendingReceipts: 0,
+          inspectedReceipts: 0,
+          approvedReceipts: 0,
+          rejectedReceipts: 0,
       totalValue: 0,
-      pending: 0,
-      partiallyReceived: 0,
-      fullyReceived: 0,
-      cancelled: 0
-    };
+          totalItems: 0
+        }
+      });
+    }
 
     res.json({
       success: true,
-      data: result
+      data: stats[0]
     });
-
   } catch (error) {
     console.error('Get received goods stats error:', error);
     res.status(500).json({
@@ -577,13 +450,122 @@ const getReceivedGoodsStats = async (req, res) => {
   }
 };
 
+
+// Resolve discrepancies
+const resolveDiscrepancy = async (req, res) => {
+  try {
+    const { resolutionData } = req.body;
+    const receivedGoods = await ReceivedGoods.findById(req.params.id);
+
+    if (!receivedGoods) {
+      return res.status(404).json({
+        success: false,
+        message: 'Received goods not found'
+      });
+    }
+
+    if (!['conditional', 'partial'].includes(receivedGoods.status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'No discrepancies to resolve'
+      });
+    }
+
+    await receivedGoods.resolveDiscrepancy(resolutionData, req.user._id);
+
+    const populatedReceivedGoods = await ReceivedGoods.findById(req.params.id)
+      .populate('purchaseOrder', 'orderNumber status')
+      .populate('supplier', 'name email phone')
+      .populate('warehouse', 'name code')
+      .populate('receivedBy', 'name email')
+      .populate('qualityControl.inspectedBy', 'name email');
+
+    res.json({
+      success: true,
+      message: 'Discrepancies resolved successfully',
+      data: populatedReceivedGoods
+    });
+  } catch (error) {
+    console.error('Resolve discrepancy error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+};
+
+// Enhanced quality inspection
+const performQualityInspection = async (req, res) => {
+  try {
+    // The data is sent directly as the request body, not wrapped in inspectionData
+    const inspectionData = req.body;
+    console.log('🔍 [DEBUG] Backend received request body:', JSON.stringify(req.body, null, 2));
+    console.log('🔍 [DEBUG] Backend using inspectionData directly:', JSON.stringify(inspectionData, null, 2));
+    
+    // Validate inspectionData
+    if (!inspectionData) {
+      console.log('❌ [DEBUG] No inspectionData provided');
+      return res.status(400).json({
+        success: false,
+        message: 'Inspection data is required'
+      });
+    }
+
+    if (!inspectionData.items || !Array.isArray(inspectionData.items)) {
+      console.log('❌ [DEBUG] Invalid inspectionData.items:', inspectionData.items);
+      return res.status(400).json({
+        success: false,
+        message: 'Inspection items data is required'
+      });
+    }
+    
+    const receivedGoods = await ReceivedGoods.findById(req.params.id);
+
+    if (!receivedGoods) {
+      return res.status(404).json({
+        success: false,
+        message: 'Received goods not found'
+      });
+    }
+
+    // Allow quality inspection for more statuses to enable re-inspection
+    if (!['pending', 'inspected', 'conditional'].includes(receivedGoods.status)) {
+      return res.status(400).json({
+        success: false,
+        message: `Cannot perform quality inspection for status: ${receivedGoods.status}`
+      });
+    }
+
+    await receivedGoods.performQualityInspection(inspectionData, req.user._id);
+
+    const populatedReceivedGoods = await ReceivedGoods.findById(req.params.id)
+      .populate('purchaseOrder', 'orderNumber status')
+      .populate('supplier', 'name email phone')
+      .populate('warehouse', 'name code')
+      .populate('receivedBy', 'name email')
+      .populate('qualityControl.inspectedBy', 'name email');
+
+    res.json({
+      success: true,
+      message: 'Quality inspection completed successfully',
+      data: populatedReceivedGoods
+    });
+  } catch (error) {
+    console.error('Quality inspection error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+};
+
 module.exports = {
-  createReceivedGoods,
   getReceivedGoods,
   getReceivedGoodsById,
-  updateReceivedGoods,
-  receiveItems,
-  addToInventory,
-  deleteReceivedGoods,
-  getReceivedGoodsStats
+  createReceivedGoods,
+  approveReceivedGoods,
+  inspectReceivedGoods,
+  getReceivedGoodsStats,
+  resolveDiscrepancy,
+  performQualityInspection
 };

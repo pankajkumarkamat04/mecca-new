@@ -43,8 +43,6 @@ const { startScheduler, stopScheduler } = require('./services/exchangeRateSchedu
 
 const app = express();
 
-// Security middleware
-app.use(helmet());
 
 // Rate limiting
 const limiter = rateLimit({

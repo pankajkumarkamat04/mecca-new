@@ -2,6 +2,7 @@ const PurchaseOrder = require('../models/PurchaseOrder');
 const Product = require('../models/Product');
 const Supplier = require('../models/Supplier');
 const StockMovement = require('../models/StockMovement');
+const ReceivedGoods = require('../models/ReceivedGoods');
 
 // Email function for purchase orders
 const sendPurchaseOrderEmail = async (purchaseOrder) => {
@@ -170,6 +171,10 @@ const createPurchaseOrder = async (req, res) => {
 
     const purchaseOrder = new PurchaseOrder(orderData);
     await purchaseOrder.save();
+
+    // Update supplier purchase statistics
+    const totalAmount = purchaseOrder.items.reduce((sum, item) => sum + item.totalCost, 0);
+    await supplier.updatePurchaseStats(totalAmount);
 
     const populatedOrder = await PurchaseOrder.findById(purchaseOrder._id)
       .populate('supplier', 'name email phone')
@@ -367,9 +372,11 @@ const confirmPurchaseOrder = async (req, res) => {
 // @access  Private
 const receivePurchaseOrder = async (req, res) => {
   try {
-    const { receivedItems, notes } = req.body;
+    const { receivedItems, deliveryInfo, notes } = req.body;
 
-    const purchaseOrder = await PurchaseOrder.findById(req.params.id);
+    const purchaseOrder = await PurchaseOrder.findById(req.params.id)
+      .populate('supplier', 'name email phone')
+      .populate('warehouse', 'name code');
 
     if (!purchaseOrder) {
       return res.status(404).json({
@@ -385,8 +392,8 @@ const receivePurchaseOrder = async (req, res) => {
       });
     }
 
-    const stockMovements = [];
-
+    // Process received items
+    const processedItems = [];
     for (const receivedItem of receivedItems) {
       const orderItem = purchaseOrder.items.id(receivedItem.itemId);
       if (!orderItem) continue;
@@ -394,7 +401,7 @@ const receivePurchaseOrder = async (req, res) => {
       const product = await Product.findById(orderItem.product);
       if (!product) continue;
 
-      // Validate received quantity doesn't exceed ordered quantity
+      // Validate received quantity
       const totalReceived = orderItem.receivedQuantity + receivedItem.quantity;
       if (totalReceived > orderItem.quantity) {
         return res.status(400).json({
@@ -403,53 +410,114 @@ const receivePurchaseOrder = async (req, res) => {
         });
       }
 
-      // Create stock movement
-      const stockMovement = new StockMovement({
+      processedItems.push({
+        purchaseOrderItem: orderItem._id,
         product: product._id,
-        warehouse: purchaseOrder.warehouse,
-        warehouseName: purchaseOrder.warehouse?.name,
-        movementType: 'receiving',
-        quantity: receivedItem.quantity,
+        productName: product.name,
+        productSku: product.sku,
+        orderedQuantity: orderItem.quantity,
+        receivedQuantity: receivedItem.quantity,
         unitCost: orderItem.unitCost,
         totalCost: receivedItem.quantity * orderItem.unitCost,
-        previousStock: product.inventory.currentStock,
-        newStock: product.inventory.currentStock + receivedItem.quantity,
-        reference: purchaseOrder.orderNumber,
-        referenceType: 'purchase_order',
-        referenceId: purchaseOrder._id,
-        reason: 'Purchase order receiving',
-        notes: notes,
         batchNumber: receivedItem.batchNumber,
         expiryDate: receivedItem.expiryDate,
         serialNumbers: receivedItem.serialNumbers,
+        condition: receivedItem.condition || 'good',
+        qualityNotes: receivedItem.qualityNotes,
+        supplier: purchaseOrder.supplier._id,
+        supplierName: purchaseOrder.supplier.name
+      });
+    }
+
+    // Generate receipt number
+    const date = new Date();
+    const year = date.getFullYear();
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const day = date.getDate().toString().padStart(2, '0');
+    const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+    const receiptNumber = `RG-${year}${month}${day}-${random}`;
+
+    // Create received goods record
+    const receivedGoods = new ReceivedGoods({
+      receiptNumber,
+      purchaseOrder: purchaseOrder._id,
+      purchaseOrderNumber: purchaseOrder.orderNumber,
+      supplier: purchaseOrder.supplier._id,
+      supplierName: purchaseOrder.supplier.name,
+      warehouse: purchaseOrder.warehouse,
+      warehouseName: purchaseOrder.warehouse?.name,
+      receivedDate: new Date(),
+      deliveryDate: deliveryInfo?.deliveryDate,
+      deliveryMethod: deliveryInfo?.deliveryMethod || 'delivery',
+      carrier: deliveryInfo?.carrier,
+      trackingNumber: deliveryInfo?.trackingNumber,
+      items: processedItems,
+      notes,
+      receivedBy: req.user._id,
         createdBy: req.user._id
       });
 
-      await stockMovement.save();
-
-      // Update product stock
-      product.inventory.currentStock += receivedItem.quantity;
-      product.inventory.lastMovement = new Date();
-      if (purchaseOrder.warehouse) {
-        product.inventory.warehouse = purchaseOrder.warehouse;
+    try {
+      await receivedGoods.save();
+    } catch (saveError) {
+      console.error('ReceivedGoods save error:', saveError);
+      if (saveError.code === 11000) {
+        
+        
+        // Check if it's the receiptNumber duplicate
+        if (saveError.keyPattern && saveError.keyPattern.receiptNumber) {
+          return res.status(400).json({
+            success: false,
+            message: `Receipt number ${receiptNumber} already exists. Please try again.`
+          });
+        }
+        
+        // Check if it's the old receivedNumber field
+        if (saveError.keyPattern && saveError.keyPattern.receivedNumber) {
+          return res.status(400).json({
+            success: false,
+            message: 'Database index conflict detected. Please contact administrator.'
+          });
+        }
       }
-      await product.save();
-
-      stockMovements.push(stockMovement._id);
+      throw saveError; // Re-throw if not handled
     }
 
-    // Mark items as received
-    await purchaseOrder.markAsReceived(receivedItems, req.user._id);
-
-    // Check for low stock alerts
+    // Update purchase order items (but don't update inventory yet)
     for (const receivedItem of receivedItems) {
       const orderItem = purchaseOrder.items.id(receivedItem.itemId);
       if (orderItem) {
-        const product = await Product.findById(orderItem.product);
-        // Note: Stock alerts are now calculated in real-time based on inventory data
-        // No need to create static alerts when receiving purchase orders
+        orderItem.receivedQuantity += receivedItem.quantity;
+        orderItem.pendingQuantity = orderItem.quantity - orderItem.receivedQuantity;
+        if (receivedItem.batchNumber) orderItem.batchNumber = receivedItem.batchNumber;
+        if (receivedItem.expiryDate) orderItem.expiryDate = receivedItem.expiryDate;
+        if (receivedItem.serialNumbers) orderItem.serialNumbers = receivedItem.serialNumbers;
       }
     }
+
+    // Update purchase order status
+    const allItemsReceived = purchaseOrder.items.every(item => item.receivedQuantity >= item.quantity);
+    const someItemsReceived = purchaseOrder.items.some(item => item.receivedQuantity > 0);
+
+    if (allItemsReceived) {
+      purchaseOrder.status = 'completed';
+    } else if (someItemsReceived) {
+      purchaseOrder.status = 'partial';
+    }
+
+    purchaseOrder.receivedBy = req.user._id;
+    purchaseOrder.receivedAt = new Date();
+    purchaseOrder.lastUpdatedBy = req.user._id;
+
+    await purchaseOrder.save();
+
+    // Populate the response
+    const populatedReceivedGoods = await ReceivedGoods.findById(receivedGoods._id)
+      .populate('purchaseOrder', 'orderNumber status')
+      .populate('supplier', 'name email phone')
+      .populate('warehouse', 'name code')
+      .populate('receivedBy', 'firstName lastName')
+      .populate('createdBy', 'firstName lastName');
 
     const populatedOrder = await PurchaseOrder.findById(purchaseOrder._id)
       .populate('supplier', 'name email phone')
@@ -459,10 +527,10 @@ const receivePurchaseOrder = async (req, res) => {
 
     res.json({
       success: true,
-      message: 'Purchase order items received successfully',
+      message: 'Purchase order items received and sent to Received Goods for inspection',
       data: {
         purchaseOrder: populatedOrder,
-        stockMovements
+        receivedGoods: populatedReceivedGoods
       }
     });
   } catch (error) {

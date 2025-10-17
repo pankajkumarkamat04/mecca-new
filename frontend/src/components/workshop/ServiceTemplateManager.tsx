@@ -81,7 +81,10 @@ const ServiceTemplateManager: React.FC = () => {
   const createMutation = useMutation({
     mutationFn: serviceTemplateAPI.createServiceTemplate,
     onSuccess: () => {
+      // Invalidate all serviceTemplates queries to ensure the list refreshes
       queryClient.invalidateQueries({ queryKey: ['serviceTemplates'] });
+      // Also refetch the current query to ensure immediate update
+      queryClient.refetchQueries({ queryKey: ['serviceTemplates', page, limit, searchQuery, selectedCategory] });
       setIsCreateModalOpen(false);
       resetForm();
       toast.success('Service template created successfully');
@@ -95,7 +98,10 @@ const ServiceTemplateManager: React.FC = () => {
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: any }) => serviceTemplateAPI.updateServiceTemplate(id, data),
     onSuccess: () => {
+      // Invalidate all serviceTemplates queries to ensure the list refreshes
       queryClient.invalidateQueries({ queryKey: ['serviceTemplates'] });
+      // Also refetch the current query to ensure immediate update
+      queryClient.refetchQueries({ queryKey: ['serviceTemplates', page, limit, searchQuery, selectedCategory] });
       setIsEditModalOpen(false);
       setSelectedTemplate(null);
       resetForm();
@@ -110,7 +116,10 @@ const ServiceTemplateManager: React.FC = () => {
   const deleteMutation = useMutation({
     mutationFn: serviceTemplateAPI.deleteServiceTemplate,
     onSuccess: () => {
+      // Invalidate all serviceTemplates queries to ensure the list refreshes
       queryClient.invalidateQueries({ queryKey: ['serviceTemplates'] });
+      // Also refetch the current query to ensure immediate update
+      queryClient.refetchQueries({ queryKey: ['serviceTemplates', page, limit, searchQuery, selectedCategory] });
       toast.success('Service template deleted successfully');
     },
     onError: (error: any) => {
@@ -134,16 +143,36 @@ const ServiceTemplateManager: React.FC = () => {
   };
 
   const handleCreate = () => {
-    if (!formData.name || !formData.category) {
-      toast.error('Name and category are required');
+    if (!formData.name.trim()) {
+      toast.error('Service name is required');
+      return;
+    }
+    if (!formData.category || formData.category === '') {
+      toast.error('Service category is required');
+      return;
+    }
+    if (formData.estimatedDuration <= 0) {
+      toast.error('Estimated duration must be greater than 0');
       return;
     }
     createMutation.mutate(formData);
   };
 
   const handleUpdate = () => {
-    if (!selectedTemplate || !formData.name || !formData.category) {
-      toast.error('Name and category are required');
+    if (!selectedTemplate) {
+      toast.error('No template selected');
+      return;
+    }
+    if (!formData.name.trim()) {
+      toast.error('Service name is required');
+      return;
+    }
+    if (!formData.category || formData.category === '') {
+      toast.error('Service category is required');
+      return;
+    }
+    if (formData.estimatedDuration <= 0) {
+      toast.error('Estimated duration must be greater than 0');
       return;
     }
     updateMutation.mutate({ id: selectedTemplate._id, data: formData });
@@ -316,6 +345,7 @@ const ServiceTemplateManager: React.FC = () => {
   ];
 
   const categories = [
+    { value: '', label: 'Select Category' },
     { value: 'engine', label: 'Engine' },
     { value: 'transmission', label: 'Transmission' },
     { value: 'suspension', label: 'Suspension' },
@@ -372,10 +402,10 @@ const ServiceTemplateManager: React.FC = () => {
 
       {/* Data Table */}
       <DataTable
-        data={templatesData?.data?.serviceTemplates || []}
+        data={templatesData?.data?.data?.serviceTemplates || []}
         columns={columns}
         loading={isLoading}
-        pagination={templatesData?.data?.pagination}
+        pagination={templatesData?.data?.data?.pagination}
         onPageChange={setPage}
       />
 
@@ -725,6 +755,177 @@ const ServiceTemplateManager: React.FC = () => {
                 options={priorities}
               />
             </div>
+          </div>
+
+          {/* Tasks Section */}
+          <div>
+            <div className="flex justify-between items-center mb-3">
+              <h3 className="text-lg font-medium text-gray-900">Tasks</h3>
+              <Button variant="outline" size="sm" onClick={addTask}>
+                <PlusIcon className="h-4 w-4 mr-1" />
+                Add Task
+              </Button>
+            </div>
+            <div className="space-y-3">
+              {formData.tasks.map((task, index) => (
+                <div key={index} className="border border-gray-200 rounded-lg p-4">
+                  <div className="grid grid-cols-2 gap-4 mb-3">
+                    <Input
+                      placeholder="Task name"
+                      value={task.name}
+                      onChange={(e) => updateTask(index, 'name', e.target.value)}
+                    />
+                    <Input
+                      type="number"
+                      placeholder="Duration (minutes)"
+                      value={task.estimatedDuration}
+                      onChange={(e) => updateTask(index, 'estimatedDuration', Number(e.target.value))}
+                      min="1"
+                    />
+                  </div>
+                  <textarea
+                    placeholder="Task description"
+                    value={task.description}
+                    onChange={(e) => updateTask(index, 'description', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mb-3"
+                    rows={2}
+                  />
+                  <div className="flex justify-between items-center">
+                    <label className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={task.required}
+                        onChange={(e) => updateTask(index, 'required', e.target.checked)}
+                        className="mr-2"
+                      />
+                      Required
+                    </label>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => removeTask(index)}
+                      className="text-red-600"
+                    >
+                      <TrashIcon className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Required Parts Section */}
+          <div>
+            <div className="flex justify-between items-center mb-3">
+              <h3 className="text-lg font-medium text-gray-900">Required Parts</h3>
+              <Button variant="outline" size="sm" onClick={addPart}>
+                <PlusIcon className="h-4 w-4 mr-1" />
+                Add Part
+              </Button>
+            </div>
+            <div className="space-y-3">
+              {formData.requiredParts.map((part, index) => (
+                <div key={index} className="border border-gray-200 rounded-lg p-4">
+                  <div className="grid grid-cols-3 gap-4">
+                    <Input
+                      placeholder="Part name"
+                      value={part.name}
+                      onChange={(e) => updatePart(index, 'name', e.target.value)}
+                    />
+                    <Input
+                      type="number"
+                      placeholder="Quantity"
+                      value={part.quantity}
+                      onChange={(e) => updatePart(index, 'quantity', Number(e.target.value))}
+                      min="1"
+                    />
+                    <div className="flex items-center justify-between">
+                      <label className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={part.optional}
+                          onChange={(e) => updatePart(index, 'optional', e.target.checked)}
+                          className="mr-2"
+                        />
+                        Optional
+                      </label>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => removePart(index)}
+                        className="text-red-600"
+                      >
+                        <TrashIcon className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Required Tools Section */}
+          <div>
+            <div className="flex justify-between items-center mb-3">
+              <h3 className="text-lg font-medium text-gray-900">Required Tools</h3>
+              <Button variant="outline" size="sm" onClick={addTool}>
+                <PlusIcon className="h-4 w-4 mr-1" />
+                Add Tool
+              </Button>
+            </div>
+            <div className="space-y-3">
+              {formData.requiredTools.map((tool, index) => (
+                <div key={index} className="border border-gray-200 rounded-lg p-4">
+                  <div className="grid grid-cols-3 gap-4">
+                    <Input
+                      placeholder="Tool name"
+                      value={tool.name}
+                      onChange={(e) => updateTool(index, 'name', e.target.value)}
+                    />
+                    <Input
+                      type="number"
+                      placeholder="Quantity"
+                      value={tool.quantity}
+                      onChange={(e) => updateTool(index, 'quantity', Number(e.target.value))}
+                      min="1"
+                    />
+                    <div className="flex items-center justify-between">
+                      <label className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={tool.optional}
+                          onChange={(e) => updateTool(index, 'optional', e.target.checked)}
+                          className="mr-2"
+                        />
+                        Optional
+                      </label>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => removeTool(index)}
+                        className="text-red-600"
+                      >
+                        <TrashIcon className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Notes Section */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Notes
+            </label>
+            <textarea
+              value={formData.notes}
+              onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              rows={3}
+              placeholder="Additional notes..."
+            />
           </div>
 
           <div className="flex justify-end space-x-3">

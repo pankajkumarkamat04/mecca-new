@@ -33,7 +33,7 @@ router.get('/profile', auth, getUserProfile);
 // @route   PUT /api/users/profile
 // @desc    Update user profile
 // @access  Private
-router.put('/profile', auth, updateProfileValidation, validate, updateUserProfile);
+router.put('/profile', auth, ...validate(updateProfileValidation), updateUserProfile);
 
 // @route   GET /api/users/:id/stats
 // @desc    Get user statistics
@@ -48,7 +48,7 @@ router.get('/:id', auth, validateObjectId(), getUserById);
 // @route   PUT /api/users/:id
 // @desc    Update user
 // @access  Private
-router.put('/:id', auth, validateObjectId(), updateUserValidation, validate, updateUser);
+router.put('/:id', auth, validateObjectId(), ...validate(updateUserValidation), updateUser);
 
 // @route   DELETE /api/users/:id
 // @desc    Delete user

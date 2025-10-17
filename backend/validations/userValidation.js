@@ -93,7 +93,12 @@ const updateUserValidation = [
   body('isActive')
     .optional()
     .isBoolean()
-    .withMessage('isActive must be a boolean value')
+    .withMessage('isActive must be a boolean value'),
+  
+  body('warehouse')
+    .optional()
+    .isMongoId()
+    .withMessage('Invalid warehouse ID')
 ];
 
 // Update profile validation

@@ -20,6 +20,17 @@ const createServiceTemplate = async (req, res) => {
     });
   } catch (error) {
     console.error('Create service template error:', error);
+    
+    // Handle validation errors
+    if (error.name === 'ValidationError') {
+      const errors = Object.values(error.errors).map((err) => err.message);
+      return res.status(400).json({
+        success: false,
+        message: 'Validation failed',
+        errors: errors
+      });
+    }
+    
     res.status(500).json({
       success: false,
       message: 'Server error'
@@ -135,6 +146,17 @@ const updateServiceTemplate = async (req, res) => {
     });
   } catch (error) {
     console.error('Update service template error:', error);
+    
+    // Handle validation errors
+    if (error.name === 'ValidationError') {
+      const errors = Object.values(error.errors).map((err) => err.message);
+      return res.status(400).json({
+        success: false,
+        message: 'Validation failed',
+        errors: errors
+      });
+    }
+    
     res.status(500).json({
       success: false,
       message: 'Server error'

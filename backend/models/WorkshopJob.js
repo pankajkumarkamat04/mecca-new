@@ -25,7 +25,7 @@ const jobTaskSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 const jobPartSchema = new mongoose.Schema({
-  product: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
+  product: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: false },
   productName: { type: String, trim: true }, // Cached name for performance
   productSku: { type: String, trim: true }, // Cached SKU for performance
   quantityRequired: { type: Number, required: true, min: 0 },

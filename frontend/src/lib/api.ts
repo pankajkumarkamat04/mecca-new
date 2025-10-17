@@ -543,10 +543,13 @@ export const receivedGoodsAPI = {
   createReceivedGoods: (data: any) => api.post('/received-goods', data),
   getReceivedGoods: (params?: any) => api.get('/received-goods', { params }),
   getReceivedGoodsById: (id: string) => api.get(`/received-goods/${id}`),
-  updateReceivedGoods: (id: string, data: any) => api.put(`/received-goods/${id}`, data),
-  receiveItems: (id: string, data: any) => api.post(`/received-goods/${id}/receive`, data),
-  addToInventory: (id: string) => api.post(`/received-goods/${id}/add-to-inventory`),
-  deleteReceivedGoods: (id: string) => api.delete(`/received-goods/${id}`),
+  inspectReceivedGoods: (id: string, data: any) => api.post(`/received-goods/${id}/inspect`, data),
+  approveReceivedGoods: (id: string, data: any) => api.post(`/received-goods/${id}/approve`, data),
+  resolveDiscrepancy: (id: string, data: any) => api.post(`/received-goods/${id}/resolve-discrepancy`, data),
+  performQualityInspection: (id: string, inspectionData: any) => {
+    console.log('🔍 [DEBUG] API call - performQualityInspection:', { id, inspectionData });
+    return api.post(`/received-goods/${id}/quality-inspection`, inspectionData);
+  },
   getReceivedGoodsStats: (params?: any) => api.get('/received-goods/stats', { params }),
 };
 

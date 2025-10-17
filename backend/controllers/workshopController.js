@@ -2905,13 +2905,29 @@ const applyServiceTemplate = async (req, res) => {
 
     // Add template parts to job
     if (template.requiredParts && template.requiredParts.length > 0) {
-      const templateParts = template.requiredParts.map(part => ({
-        productName: part.name,
-        quantityRequired: part.quantity,
-        notes: part.optional ? 'Optional part' : undefined,
-        status: 'pending',
-        createdBy: req.user._id
-      }));
+      const templateParts = [];
+      
+      for (const part of template.requiredParts) {
+        // Try to find a matching product by name
+        const Product = require('../models/Product');
+        const matchingProduct = await Product.findOne({ 
+          name: { $regex: new RegExp(part.name, 'i') } 
+        });
+        
+        templateParts.push({
+          product: matchingProduct ? matchingProduct._id : undefined,
+          productName: part.name,
+          productSku: matchingProduct ? matchingProduct.sku : undefined,
+          quantityRequired: part.quantity,
+          quantityAvailable: matchingProduct ? (matchingProduct.inventory?.currentStock || 0) : 0,
+          unitCost: matchingProduct ? (matchingProduct.pricing?.costPrice || 0) : 0,
+          totalCost: matchingProduct ? ((matchingProduct.pricing?.costPrice || 0) * part.quantity) : 0,
+          isAvailable: matchingProduct ? ((matchingProduct.inventory?.currentStock || 0) >= part.quantity) : false,
+          notes: part.optional ? 'Optional part' : undefined,
+          status: matchingProduct ? 'pending' : 'shortage',
+          createdBy: req.user._id
+        });
+      }
       
       updatedJob.parts = [...(job.parts || []), ...templateParts];
     }

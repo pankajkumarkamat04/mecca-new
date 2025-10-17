@@ -62,7 +62,7 @@ const stockMovementSchema = new mongoose.Schema({
   },
   referenceType: {
     type: String,
-    enum: ['purchase_order', 'sale', 'invoice', 'transfer', 'adjustment', 'manual', 'receiving', 'picking', 'packing', 'shipping', 'cycle_count', 'stock_take'],
+    enum: ['purchase_order', 'sale', 'invoice', 'transfer', 'adjustment', 'manual', 'receiving', 'picking', 'packing', 'shipping', 'cycle_count', 'stock_take', 'received_goods'],
     default: 'manual'
   },
   referenceId: {

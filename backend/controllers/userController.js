@@ -189,6 +189,26 @@ const createUser = async (req, res) => {
         assignedBy: req.user._id
       };
     }
+    
+    // Check for existing users with same email or phone before creation
+    const existingEmail = await User.findOne({ email: userData.email });
+    const existingPhone = await User.findOne({ phone: userData.phone });
+    
+    if (existingEmail) {
+      return res.status(400).json({
+        success: false,
+        message: 'User with this email already exists',
+        field: 'email'
+      });
+    }
+    
+    if (existingPhone) {
+      return res.status(400).json({
+        success: false,
+        message: 'User with this phone number already exists',
+        field: 'phone'
+      });
+    }
 
     const user = new User(userData);
     await user.save();
@@ -217,16 +237,42 @@ const createUser = async (req, res) => {
       data: userResponse
     });
   } catch (error) {
-    console.error('Create user error:', error);
+    
     if (error.code === 11000) {
+      // Check which field caused the duplicate error
+      const duplicateField = Object.keys(error.keyPattern)[0];
+      let message = 'Duplicate field error';
+      
+      console.log('🔍 [DEBUG] Duplicate value:', error.keyValue);
+      
+      if (duplicateField === 'email') {
+        message = 'User with this email already exists';
+      } else if (duplicateField === 'phone') {
+        message = 'User with this phone number already exists';
+      } else {
+        message = `User with this ${duplicateField} already exists`;
+      }
+      
       return res.status(400).json({
         success: false,
-        message: 'User with this email already exists'
+        message: message,
+        field: duplicateField
       });
     }
+    
+    if (error.name === 'ValidationError') {
+      const errors = Object.values(error.errors).map(err => err.message);
+      return res.status(400).json({
+        success: false,
+        message: 'Validation error',
+        errors: errors
+      });
+    }
+    
     res.status(500).json({
       success: false,
-      message: 'Server error'
+      message: 'Server error',
+      error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
     });
   }
 };
@@ -238,10 +284,29 @@ const updateUser = async (req, res) => {
   try {
     const { id } = req.params;
     const updateData = req.body;
+    
+    // Validate user ID
+    if (!id || !id.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid user ID format'
+      });
+    }
+    
     updateData.updatedBy = req.user._id;
 
     // Don't allow updating password through this route
     delete updateData.password;
+
+    // Check if user exists before updating
+    const existingUser = await User.findById(id);
+    
+    if (!existingUser) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
 
     const user = await User.findByIdAndUpdate(
       id,
@@ -262,10 +327,46 @@ const updateUser = async (req, res) => {
       data: user
     });
   } catch (error) {
-    console.error('Update user error:', error);
+    // Check for specific error types
+    if (error.name === 'ValidationError') {
+      const errors = Object.values(error.errors).map(err => err.message);
+      return res.status(400).json({
+        success: false,
+        message: 'Validation error',
+        errors: errors
+      });
+    }
+    
+    if (error.name === 'CastError') {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid user ID format'
+      });
+    }
+    
+    if (error.code === 11000) {
+      const duplicateField = Object.keys(error.keyPattern)[0];
+      
+      let message = 'Duplicate field error';
+      if (duplicateField === 'email') {
+        message = 'User with this email already exists';
+      } else if (duplicateField === 'phone') {
+        message = 'User with this phone number already exists';
+      } else {
+        message = `User with this ${duplicateField} already exists`;
+      }
+      
+      return res.status(400).json({
+        success: false,
+        message: message,
+        field: duplicateField
+      });
+    }
+    
     res.status(500).json({
       success: false,
-      message: 'Server error'
+      message: 'Server error',
+      error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
     });
   }
 };

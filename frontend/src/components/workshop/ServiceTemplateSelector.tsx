@@ -61,7 +61,7 @@ const ServiceTemplateSelector: React.FC<ServiceTemplateSelectorProps> = ({
     enabled: isModalOpen,
   });
 
-  const templates = templatesData?.data?.serviceTemplates || [];
+  const templates = templatesData?.data?.data?.serviceTemplates || [];
 
   const categories = [
     { value: '', label: 'All Categories' },

@@ -47,7 +47,10 @@ const createSupplierValidation = [
   
   body('businessInfo.website')
     .optional()
-    .isURL()
+    .custom((value) => {
+      if (!value || value === '') return true; // Allow empty strings
+      return /^https?:\/\/.+/.test(value); // Validate URL format if provided
+    })
     .withMessage('Invalid website URL'),
   
   body('address.street')
@@ -148,7 +151,10 @@ const updateSupplierValidation = [
   
   body('businessInfo.website')
     .optional()
-    .isURL()
+    .custom((value) => {
+      if (!value || value === '') return true; // Allow empty strings
+      return /^https?:\/\/.+/.test(value); // Validate URL format if provided
+    })
     .withMessage('Invalid website URL'),
   
   body('paymentTerms')

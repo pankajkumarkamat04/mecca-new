@@ -18,7 +18,7 @@ const fs = require('fs');
 const path = require('path');
 require('dotenv').config();
 
-// Models - Import all models for comprehensive cleanup
+// Models - Import existing models for cleanup
 const User = require('./models/User');
 const Product = require('./models/Product');
 const Category = require('./models/Category');
@@ -26,12 +26,12 @@ const Account = require('./models/Account');
 const Attendance = require('./models/Attendance');
 const Customer = require('./models/Customer');
 const CustomerInquiry = require('./models/CustomerInquiry');
-const Delivery = require('./models/Delivery');
 const Invoice = require('./models/Invoice');
 const Machine = require('./models/Machine');
 const Order = require('./models/Order');
 const PurchaseOrder = require('./models/PurchaseOrder');
 const Quotation = require('./models/Quotation');
+const ReceivedGoods = require('./models/ReceivedGoods');
 const Setting = require('./models/Setting');
 const StockMovement = require('./models/StockMovement');
 const Supplier = require('./models/Supplier');
@@ -60,13 +60,13 @@ async function clearCollections() {
       Category.deleteMany({}),
       Customer.deleteMany({}),
       CustomerInquiry.deleteMany({}),
-      Delivery.deleteMany({}),
       Invoice.deleteMany({}),
       Machine.deleteMany({}),
       Order.deleteMany({}),
       Product.deleteMany({}),
       PurchaseOrder.deleteMany({}),
       Quotation.deleteMany({}),
+      ReceivedGoods.deleteMany({}),
       Setting.deleteMany({}),
       StockMovement.deleteMany({}),
       Supplier.deleteMany({}),
@@ -84,8 +84,8 @@ async function clearCollections() {
     
     console.log('✅ Successfully cleared all collections:');
     console.log('   📊 Account, Attendance, Category, Customer, CustomerInquiry');
-    console.log('   📦 Delivery, Invoice, Machine, Order, Product, PurchaseOrder');
-    console.log('   🛠️  Quotation, Setting, StockMovement, Supplier, Support');
+    console.log('   📦 Invoice, Machine, Order, Product, PurchaseOrder, Quotation');
+    console.log('   🛠️  ReceivedGoods, Setting, StockMovement, Supplier, Support');
     console.log('   👥 Technician, Tool, Transaction, User, Warehouse');
     console.log('   🔧 WorkshopJob, WorkStation');
     console.log('');
@@ -273,7 +273,7 @@ async function seed() {
   console.log('═'.repeat(50));
   console.log('🧹 COMPREHENSIVE DATABASE CLEANUP COMPLETED:');
   console.log('─'.repeat(30));
-  console.log('• Cleared ALL 23 collections from database');
+  console.log('• Cleared ALL 22 collections from database');
   console.log('• Fresh start with clean data structure');
   console.log('• No conflicting or duplicate records');
   console.log('');
