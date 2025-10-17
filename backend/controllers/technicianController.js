@@ -154,6 +154,14 @@ const createTechnician = async (req, res) => {
       }
     });
 
+    // Handle workInfo.workStation - remove if empty string or null
+    if (cleanedOtherData.workInfo && cleanedOtherData.workInfo.workStation === '') {
+      delete cleanedOtherData.workInfo.workStation;
+    }
+    if (cleanedOtherData.workInfo && cleanedOtherData.workInfo.workStation === null) {
+      delete cleanedOtherData.workInfo.workStation;
+    }
+
     // Note: user field is already extracted separately above, so it won't be in cleanedOtherData
 
     console.log('Cleaned otherData:', cleanedOtherData);

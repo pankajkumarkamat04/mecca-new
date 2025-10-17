@@ -98,8 +98,24 @@ const getMachineById = async (req, res) => {
 // @access  Private
 const createMachine = async (req, res) => {
   try {
+    // Clean up the request body to handle empty ObjectId fields
+    const cleanedData = { ...req.body };
+    
+    // Handle availability fields - remove if empty strings or null
+    if (cleanedData.availability) {
+      if (cleanedData.availability.currentJob === '' || cleanedData.availability.currentJob === null) {
+        delete cleanedData.availability.currentJob;
+      }
+      if (cleanedData.availability.bookedBy === '' || cleanedData.availability.bookedBy === null) {
+        delete cleanedData.availability.bookedBy;
+      }
+      if (cleanedData.availability.bookedUntil === '' || cleanedData.availability.bookedUntil === null) {
+        delete cleanedData.availability.bookedUntil;
+      }
+    }
+
     const machineData = {
-      ...req.body,
+      ...cleanedData,
       createdBy: req.user._id
     };
 

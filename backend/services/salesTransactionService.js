@@ -293,16 +293,20 @@ class SalesTransactionService {
   
   /**
    * Get sales transactions by sales person
-   * @param {String} salesPersonId - Sales person user ID
+   * @param {String} salesPersonId - Sales person user ID (optional - if not provided, returns all sales)
    * @param {Object} options - Query options
    * @returns {Object} Transactions with pagination info
    */
   static async getSalesBySalesPerson(salesPersonId, options = {}) {
     const filter = {
-      'metadata.salesPerson.id': salesPersonId,
       type: 'sale',
       status: 'posted'
     };
+    
+    // Only filter by sales person if provided
+    if (salesPersonId) {
+      filter['metadata.salesPerson.id'] = salesPersonId;
+    }
     
     if (options.startDate) filter.date = { ...filter.date, $gte: new Date(options.startDate) };
     if (options.endDate) filter.date = { ...filter.date, $lte: new Date(options.endDate) };
@@ -318,6 +322,7 @@ class SalesTransactionService {
         .populate('customer', 'firstName lastName email')
         .populate('invoice', 'invoiceNumber total status')
         .populate('entries.account', 'name code type')
+        .populate('createdBy', 'firstName lastName email')
         .sort({ date: -1 })
         .skip(skip)
         .limit(limit),
@@ -347,8 +352,8 @@ class SalesTransactionService {
       {
         $match: {
           type: 'sale',
-          status: 'posted',
-          'metadata.salesPerson.id': { $exists: true }
+          status: 'posted'
+          // Removed the salesPerson.id filter to include all transactions
         }
       }
     ];
@@ -363,13 +368,71 @@ class SalesTransactionService {
     pipeline.push(
       {
         $group: {
-          _id: '$metadata.salesPerson.id',
-          salesPersonName: { $first: '$metadata.salesPerson.name' },
-          salesPersonEmail: { $first: '$metadata.salesPerson.email' },
+          _id: {
+            $cond: [
+              { $and: [
+                { $ne: ['$metadata.salesPerson.id', null] },
+                { $ne: ['$metadata.salesPerson.id', undefined] }
+              ]},
+              '$metadata.salesPerson.id',
+              '$createdBy' // Use createdBy if no salesPerson metadata
+            ]
+          },
+          salesPersonName: {
+            $first: {
+              $cond: [
+                { $and: [
+                  { $ne: ['$metadata.salesPerson.name', null] },
+                  { $ne: ['$metadata.salesPerson.name', undefined] },
+                  { $ne: ['$metadata.salesPerson.name', ''] }
+                ]},
+                '$metadata.salesPerson.name',
+                { $concat: ['$createdBy.firstName', ' ', '$createdBy.lastName'] }
+              ]
+            }
+          },
+          salesPersonEmail: {
+            $first: {
+              $cond: [
+                { $and: [
+                  { $ne: ['$metadata.salesPerson.email', null] },
+                  { $ne: ['$metadata.salesPerson.email', undefined] }
+                ]},
+                '$metadata.salesPerson.email',
+                '$createdBy.email'
+              ]
+            }
+          },
           totalTransactions: { $sum: 1 },
           totalSales: { $sum: '$amount' },
           averageSale: { $avg: '$amount' },
           lastSale: { $max: '$date' }
+        }
+      },
+      {
+        $lookup: {
+          from: 'users',
+          localField: '_id',
+          foreignField: '_id',
+          as: 'user'
+        }
+      },
+      {
+        $addFields: {
+          salesPersonName: {
+            $cond: [
+              { $eq: ['$salesPersonName', null] },
+              { $concat: [{ $arrayElemAt: ['$user.firstName', 0] }, ' ', { $arrayElemAt: ['$user.lastName', 0] }] },
+              '$salesPersonName'
+            ]
+          },
+          salesPersonEmail: {
+            $cond: [
+              { $eq: ['$salesPersonEmail', null] },
+              { $arrayElemAt: ['$user.email', 0] },
+              '$salesPersonEmail'
+            ]
+          }
         }
       },
       {

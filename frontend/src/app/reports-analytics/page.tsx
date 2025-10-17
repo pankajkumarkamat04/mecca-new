@@ -22,7 +22,7 @@ import {
 const ReportsAnalyticsPage: React.FC = () => {
   const { hasRole, hasPermission } = useAuth();
   const [selectedPeriod, setSelectedPeriod] = useState('30d');
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState('orders');
   
   // Sales Person Tracking States
   const [salesPersonFilters, setSalesPersonFilters] = useState({
@@ -40,11 +40,6 @@ const ReportsAnalyticsPage: React.FC = () => {
   const canViewWorkshop = hasRole('admin') || hasRole('manager') || hasRole('workshop_employee');
   const canViewInventory = hasRole('admin') || hasRole('manager') || hasRole('warehouse_manager') || hasRole('warehouse_employee');
 
-  // Dashboard Summary Query
-  const { data: dashboardData, isLoading: dashboardLoading } = useQuery({
-    queryKey: ['reports-analytics-dashboard'],
-    queryFn: () => reportsAnalyticsAPI.getDashboardSummary(),
-  });
 
   // Order Analytics Query
   const { data: orderAnalytics, isLoading: orderLoading } = useQuery({
@@ -124,7 +119,6 @@ const ReportsAnalyticsPage: React.FC = () => {
   });
 
   const tabs = [
-    { id: 'dashboard', name: 'Dashboard', icon: ChartBarIcon, permission: true },
     { id: 'orders', name: 'Order Analytics', icon: ShoppingBagIcon, permission: canViewOrders },
     { id: 'pos-sales', name: 'POS Sales', icon: CurrencyDollarIcon, permission: canViewOrders },
     { id: 'sales-person', name: 'Sales by Person', icon: UserGroupIcon, permission: canViewOrders },
@@ -154,75 +148,6 @@ const ReportsAnalyticsPage: React.FC = () => {
     </div>
   );
 
-  const renderDashboard = () => {
-    if (dashboardLoading) {
-      return <div className="flex justify-center items-center h-64">Loading...</div>;
-    }
-
-
-    const data = dashboardData?.data?.data;
-    if (!data) return <div>No data available</div>;
-
-    return (
-      <div className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <StatCard
-            title="Total Orders (30d)"
-            value={data.orders?.total || 0}
-            icon={ShoppingBagIcon}
-            color="blue"
-          />
-          <StatCard
-            title="Total Revenue (30d)"
-            value={formatCurrency(data.orders?.revenue || 0)}
-            icon={CurrencyDollarIcon}
-            color="green"
-          />
-          <StatCard
-            title="Workshop Jobs (30d)"
-            value={data.workshop?.total || 0}
-            icon={WrenchScrewdriverIcon}
-            color="purple"
-          />
-          <StatCard
-            title="Total Products"
-            value={data.inventory?.total || 0}
-            icon={CubeIcon}
-            color="indigo"
-          />
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <StatCard
-            title="Pending Orders"
-            value={data.orders?.pending || 0}
-            icon={ExclamationTriangleIcon}
-            color="yellow"
-          />
-          <StatCard
-            title="Active Jobs"
-            value={data.workshop?.inProgress || 0}
-            icon={WrenchScrewdriverIcon}
-            color="orange"
-          />
-          <StatCard
-            title="Low Stock Items"
-            value={data.inventory?.lowStock || 0}
-            icon={ExclamationTriangleIcon}
-            color="red"
-          />
-          <StatCard
-            title="Today's Sales"
-            value={data.sales?.today || 0}
-            icon={CurrencyDollarIcon}
-            color="green"
-          />
-        </div>
-
-
-      </div>
-    );
-  };
 
   const renderOrderAnalytics = () => {
     if (orderLoading) {
@@ -312,7 +237,7 @@ const ReportsAnalyticsPage: React.FC = () => {
               <BarChart
                 data={(topProductsChart?.data?.data?.topProductsByQuantity || []).map((p: any) => ({
                   name: p.name || 'Unknown',
-                  value: p.totalQuantity,
+                  value: Number(p.totalQuantity) || 0,
                 }))}
               />
             )}
@@ -450,7 +375,7 @@ const ReportsAnalyticsPage: React.FC = () => {
               <BarChart
                 data={(revenueAnalyticsChart?.data?.data?.paymentMethodBreakdown || []).map((p: any) => ({
                   name: p._id || 'Unknown',
-                  value: p.totalAmount,
+                  value: Number(p.totalAmount) || 0,
                 }))}
               />
             )}
@@ -566,7 +491,7 @@ const ReportsAnalyticsPage: React.FC = () => {
               <BarChart
                 data={(workshopAnalyticsChart?.data?.data?.topTechnicians || []).map((t: any) => ({
                   name: t.technicianName || 'Unknown',
-                  value: t.jobCount,
+                  value: Number(t.jobCount) || 0,
                 }))}
               />
             )}
@@ -672,7 +597,18 @@ const ReportsAnalyticsPage: React.FC = () => {
     const isLoading = salesPersonFilters.reportType === 'summary' ? salesSummaryLoading : salesPersonLoading;
     const summaryData = salesSummaryBySalesPerson?.data;
     const detailedData = salesBySalesPerson?.data;
-    const data = salesPersonFilters.reportType === 'summary' ? summaryData : (detailedData as any)?.transactions;
+    const data = salesPersonFilters.reportType === 'summary' 
+      ? (Array.isArray(summaryData) ? summaryData : [])
+      : (Array.isArray((detailedData as any)?.transactions) ? (detailedData as any)?.transactions : []);
+    
+    // Debug logging to understand data structure
+    console.log('Sales Person Analytics Debug:', {
+      reportType: salesPersonFilters.reportType,
+      summaryData: summaryData,
+      detailedData: detailedData,
+      finalData: data,
+      isArray: Array.isArray(data)
+    });
     const pagination = (detailedData as any)?.pagination;
 
     if (isLoading) {
@@ -856,8 +792,6 @@ const ReportsAnalyticsPage: React.FC = () => {
 
   const renderContent = () => {
     switch (activeTab) {
-      case 'dashboard':
-        return renderDashboard();
       case 'orders':
         return renderOrderAnalytics();
       case 'pos-sales':
@@ -883,22 +817,20 @@ const ReportsAnalyticsPage: React.FC = () => {
             <p className="text-gray-600">Real-time insights and analytics for your business</p>
           </div>
           
-          {activeTab !== 'dashboard' && (
-            <div className="flex items-center space-x-4">
-              <label className="text-sm font-medium text-gray-700">Period:</label>
-              <select
-                value={selectedPeriod}
-                onChange={(e) => setSelectedPeriod(e.target.value)}
-                className="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-              >
-                {periodOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
+          <div className="flex items-center space-x-4">
+            <label className="text-sm font-medium text-gray-700">Period:</label>
+            <select
+              value={selectedPeriod}
+              onChange={(e) => setSelectedPeriod(e.target.value)}
+              className="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+            >
+              {periodOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
         {/* Tabs */}

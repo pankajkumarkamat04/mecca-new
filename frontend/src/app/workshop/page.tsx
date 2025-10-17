@@ -17,7 +17,7 @@ import CustomerSelector from '@/components/ui/CustomerSelector';
 import FormProductSelector from '@/components/ui/FormProductSelector';
 import ServiceTemplateSelector from '@/components/workshop/ServiceTemplateSelector';
 import { WorkshopJob } from '@/types';
-import { enhancedWorkshopAPI, machinesAPI, workstationsAPI, customersAPI, productsAPI } from '@/lib/api';
+import { enhancedWorkshopAPI, workstationsAPI, customersAPI, productsAPI, machinesAPI, toolsAPI } from '@/lib/api';
 import api from '@/lib/api';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { formatDate, formatCurrency } from '@/lib/utils';
@@ -42,6 +42,454 @@ import {
   XMarkIcon,
   CubeIcon
 } from '@heroicons/react/24/outline';
+
+// Comprehensive Task Management Modal Component
+const TaskManagementModal: React.FC<{
+  job: any;
+  onClose: () => void;
+  addTaskMutation: any;
+  updateTaskStatusMutation: any;
+}> = ({ job, onClose, addTaskMutation, updateTaskStatusMutation }) => {
+  const [isAddingTask, setIsAddingTask] = useState(false);
+  const [editingTask, setEditingTask] = useState<any>(null);
+  const [newTask, setNewTask] = useState({
+    title: '',
+    description: '',
+    priority: 'medium',
+    estimatedDuration: '',
+    assignee: '',
+    notes: ''
+  });
+
+  // Fetch fresh job data to ensure tasks are up-to-date
+  const { data: jobData, isLoading: isJobLoading, refetch } = useQuery({
+    queryKey: ['workshop-job', job._id],
+    queryFn: () => enhancedWorkshopAPI.getJobById(job._id),
+    refetchOnWindowFocus: false,
+    staleTime: 0,
+  });
+
+  const currentJob = jobData?.data?.data || job;
+
+  // Fetch available technicians for task assignment
+  const { data: techniciansData } = useQuery({
+    queryKey: ['available-technicians'],
+    queryFn: () => enhancedWorkshopAPI.getAvailableResources(currentJob._id, 'technicians'),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  const availableTechnicians = techniciansData?.data?.data?.technicians || [];
+
+  const handleAddTask = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTask.title.trim()) {
+      toast.error('Please enter a task title');
+      return;
+    }
+
+    try {
+      await addTaskMutation.mutateAsync({
+        jobId: currentJob._id,
+        data: {
+          title: newTask.title,
+          description: newTask.description,
+          priority: newTask.priority,
+          estimatedDuration: parseInt(newTask.estimatedDuration) || 0,
+          assignee: newTask.assignee || undefined,
+          notes: newTask.notes || undefined
+        }
+      });
+      
+      // Reset form
+      setNewTask({
+        title: '',
+        description: '',
+        priority: 'medium',
+        estimatedDuration: '',
+        assignee: '',
+        notes: ''
+      });
+      setIsAddingTask(false);
+    } catch (error) {
+      console.error('Error adding task:', error);
+    }
+  };
+
+  const handleUpdateTaskStatus = async (taskId: string, status: string) => {
+    try {
+      await updateTaskStatusMutation.mutateAsync({
+        jobId: currentJob._id,
+        taskId,
+        data: { status }
+      });
+    } catch (error) {
+      console.error('Error updating task status:', error);
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'todo': return 'gray';
+      case 'in_progress': return 'orange';
+      case 'completed': return 'green';
+      case 'on_hold': return 'yellow';
+      default: return 'gray';
+    }
+  };
+
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case 'urgent': return 'red';
+      case 'high': return 'orange';
+      case 'medium': return 'blue';
+      case 'low': return 'gray';
+      default: return 'gray';
+    }
+  };
+
+  const formatDuration = (minutes: number) => {
+    if (minutes < 60) return `${minutes}m`;
+    const hours = Math.floor(minutes / 60);
+    const remainingMinutes = minutes % 60;
+    return remainingMinutes > 0 ? `${hours}h ${remainingMinutes}m` : `${hours}h`;
+  };
+
+  if (isJobLoading && !jobData) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Job Header */}
+      <div className="border-b border-gray-200 pb-4">
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-xl font-semibold text-gray-900">{currentJob.title}</h2>
+          <div className="flex items-center gap-2">
+            <Badge color={getStatusColor(currentJob.status)}>
+              {currentJob.status.replace('_', ' ')}
+            </Badge>
+            <span className="text-sm text-gray-600">
+              {currentJob.progress || 0}% Complete
+            </span>
+          </div>
+        </div>
+        {currentJob.description && (
+          <p className="text-gray-600">{currentJob.description}</p>
+        )}
+      </div>
+
+      {/* Task Statistics */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="bg-gray-50 p-4 rounded-lg">
+          <div className="text-2xl font-bold text-gray-900">
+            {currentJob.tasks?.length || 0}
+          </div>
+          <div className="text-sm text-gray-600">Total Tasks</div>
+        </div>
+        <div className="bg-blue-50 p-4 rounded-lg">
+          <div className="text-2xl font-bold text-blue-600">
+            {currentJob.tasks?.filter((t: any) => t.status === 'todo').length || 0}
+          </div>
+          <div className="text-sm text-blue-600">Pending</div>
+        </div>
+        <div className="bg-orange-50 p-4 rounded-lg">
+          <div className="text-2xl font-bold text-orange-600">
+            {currentJob.tasks?.filter((t: any) => t.status === 'in_progress').length || 0}
+          </div>
+          <div className="text-sm text-orange-600">In Progress</div>
+        </div>
+        <div className="bg-green-50 p-4 rounded-lg">
+          <div className="text-2xl font-bold text-green-600">
+            {currentJob.tasks?.filter((t: any) => t.status === 'completed').length || 0}
+          </div>
+          <div className="text-sm text-green-600">Completed</div>
+        </div>
+      </div>
+
+      {/* Add Task Section */}
+      {!isAddingTask ? (
+        <div className="flex justify-between items-center">
+          <h3 className="text-lg font-medium text-gray-900">Tasks</h3>
+          <Button
+            onClick={() => setIsAddingTask(true)}
+            disabled={currentJob.status === 'completed'}
+            className="bg-blue-600 hover:bg-blue-700"
+          >
+            <PlusIcon className="h-4 w-4 mr-2" />
+            Add Task
+          </Button>
+        </div>
+      ) : (
+        <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-medium text-gray-900">Add New Task</h3>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsAddingTask(false);
+                setNewTask({
+                  title: '',
+                  description: '',
+                  priority: 'medium',
+                  estimatedDuration: '',
+                  assignee: '',
+                  notes: ''
+                });
+              }}
+            >
+              Cancel
+            </Button>
+          </div>
+          
+          <form onSubmit={handleAddTask} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Input
+                label="Task Title *"
+                value={newTask.title}
+                onChange={(e) => setNewTask(prev => ({ ...prev, title: e.target.value }))}
+                placeholder="Enter task title"
+                required
+              />
+              <Select
+                label="Priority"
+                value={newTask.priority}
+                onChange={(e) => setNewTask(prev => ({ ...prev, priority: e.target.value }))}
+                options={[
+                  { value: 'low', label: 'Low' },
+                  { value: 'medium', label: 'Medium' },
+                  { value: 'high', label: 'High' },
+                  { value: 'urgent', label: 'Urgent' }
+                ]}
+              />
+            </div>
+            
+            <TextArea
+              label="Description"
+              value={newTask.description}
+              onChange={(e) => setNewTask(prev => ({ ...prev, description: e.target.value }))}
+              placeholder="Task description"
+              rows={3}
+            />
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Input
+                label="Estimated Duration (minutes)"
+                type="number"
+                value={newTask.estimatedDuration}
+                onChange={(e) => setNewTask(prev => ({ ...prev, estimatedDuration: e.target.value }))}
+                placeholder="Enter duration in minutes"
+              />
+              <Select
+                label="Assign to Technician"
+                value={newTask.assignee}
+                onChange={(e) => setNewTask(prev => ({ ...prev, assignee: e.target.value }))}
+                options={[
+                  { value: '', label: 'Unassigned' },
+                  ...availableTechnicians.map((tech: any) => ({
+                    value: tech._id,
+                    label: tech.user ? `${tech.user.firstName} ${tech.user.lastName}` : tech.employeeId
+                  }))
+                ]}
+              />
+            </div>
+            
+            <TextArea
+              label="Notes"
+              value={newTask.notes}
+              onChange={(e) => setNewTask(prev => ({ ...prev, notes: e.target.value }))}
+              placeholder="Additional notes or instructions"
+              rows={2}
+            />
+            
+            <div className="flex justify-end space-x-3">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setIsAddingTask(false);
+                  setNewTask({
+                    title: '',
+                    description: '',
+                    priority: 'medium',
+                    estimatedDuration: '',
+                    assignee: '',
+                    notes: ''
+                  });
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                loading={addTaskMutation.isPending}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                Add Task
+              </Button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Tasks List */}
+      <div className="space-y-4">
+        {currentJob.tasks?.length === 0 ? (
+          <div className="text-center py-12 text-gray-500">
+            <ClipboardDocumentListIcon className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+            <p className="text-lg font-medium">No tasks yet</p>
+            <p className="text-sm">Add tasks to organize the work steps for this job</p>
+          </div>
+        ) : (
+          currentJob.tasks?.map((task: any, index: number) => (
+            <div key={task._id || index} className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+              <div className="flex items-start justify-between mb-4">
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-2">
+                    <h4 className="text-lg font-medium text-gray-900">{task.title}</h4>
+                    <Badge color={getStatusColor(task.status)}>
+                      {task.status.replace('_', ' ')}
+                    </Badge>
+                    <Badge color={getPriorityColor(task.priority)}>
+                      {task.priority}
+                    </Badge>
+                  </div>
+                  
+                  {task.description && (
+                    <p className="text-gray-600 mb-3">{task.description}</p>
+                  )}
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                    {task.estimatedDuration > 0 && (
+                      <div className="flex items-center text-gray-600">
+                        <ClockIcon className="h-4 w-4 mr-2" />
+                        <span>Est. {formatDuration(task.estimatedDuration)}</span>
+                      </div>
+                    )}
+                    
+                    {task.assignee && (
+                      <div className="flex items-center text-gray-600">
+                        <UserIcon className="h-4 w-4 mr-2" />
+                        <span>
+                          {task.assignee.firstName ? 
+                            `${task.assignee.firstName} ${task.assignee.lastName}` : 
+                            'Assigned'
+                          }
+                        </span>
+                      </div>
+                    )}
+                    
+                    {task.createdAt && (
+                      <div className="flex items-center text-gray-600">
+                        <span>Created {formatDate(task.createdAt)}</span>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {task.notes && (
+                    <div className="mt-3 p-3 bg-gray-50 rounded-lg">
+                      <p className="text-sm text-gray-700">
+                        <strong>Notes:</strong> {task.notes}
+                      </p>
+                    </div>
+                  )}
+                </div>
+                
+                {/* Task Actions */}
+                <div className="flex flex-col gap-2 ml-4">
+                  {task.status === 'todo' && (
+                    <Button
+                      size="sm"
+                      onClick={() => handleUpdateTaskStatus(task._id, 'in_progress')}
+                      disabled={currentJob.status === 'completed'}
+                      className="bg-orange-600 hover:bg-orange-700 text-white"
+                    >
+                      Start
+                    </Button>
+                  )}
+                  
+                  {task.status === 'in_progress' && (
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        onClick={() => handleUpdateTaskStatus(task._id, 'completed')}
+                        disabled={currentJob.status === 'completed'}
+                        className="bg-green-600 hover:bg-green-700 text-white"
+                      >
+                        Complete
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleUpdateTaskStatus(task._id, 'on_hold')}
+                        disabled={currentJob.status === 'completed'}
+                        className="text-yellow-600 border-yellow-600 hover:bg-yellow-50"
+                      >
+                        Hold
+                      </Button>
+                    </div>
+                  )}
+                  
+                  {task.status === 'completed' && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleUpdateTaskStatus(task._id, 'in_progress')}
+                      disabled={currentJob.status === 'completed'}
+                      className="text-orange-600 border-orange-600 hover:bg-orange-50"
+                    >
+                      Reopen
+                    </Button>
+                  )}
+                  
+                  {task.status === 'on_hold' && (
+                    <Button
+                      size="sm"
+                      onClick={() => handleUpdateTaskStatus(task._id, 'in_progress')}
+                      disabled={currentJob.status === 'completed'}
+                      className="bg-orange-600 hover:bg-orange-700 text-white"
+                    >
+                      Resume
+                    </Button>
+                  )}
+                </div>
+              </div>
+              
+              {/* Task Progress Timeline */}
+              <div className="border-t border-gray-200 pt-4">
+                <div className="flex items-center justify-between text-xs text-gray-500">
+                  <span>Created: {formatDate(task.createdAt)}</span>
+                  {task.startedAt && <span>Started: {formatDate(task.startedAt)}</span>}
+                  {task.completedAt && <span>Completed: {formatDate(task.completedAt)}</span>}
+                </div>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* Footer Actions */}
+      <div className="flex justify-end space-x-3 pt-6 border-t border-gray-200">
+        <Button
+          variant="outline"
+          onClick={onClose}
+        >
+          Close
+        </Button>
+        <Button
+          onClick={() => refetch()}
+          variant="outline"
+          className="text-blue-600 border-blue-600 hover:bg-blue-50"
+        >
+          Refresh
+        </Button>
+      </div>
+    </div>
+  );
+};
 
 // Job Completion Modal Component
 const JobCompletionModal: React.FC<{
@@ -469,6 +917,7 @@ const WorkshopPage: React.FC = () => {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isResourceModalOpen, setIsResourceModalOpen] = useState(false);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
+  const [isTaskManagementModalOpen, setIsTaskManagementModalOpen] = useState(false);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [isJobCardModalOpen, setIsJobCardModalOpen] = useState(false);
   const [isProgressModalOpen, setIsProgressModalOpen] = useState(false);
@@ -697,7 +1146,6 @@ const WorkshopPage: React.FC = () => {
       await api.post(`/workshop/${selectedJob._id}/complete`, {
         ...completionData,
         status: 'completed',
-        progress: 100,
         completedAt: new Date().toISOString()
       });
 
@@ -714,16 +1162,7 @@ const WorkshopPage: React.FC = () => {
     }
   };
 
-  const handleIncrementProgress = async (jobId: string) => {
-    try {
-      await api.put(`/workshop/${jobId}`, { incrementProgress: true });
-      queryClient.invalidateQueries({ queryKey: ['workshop-jobs'] });
-      toast.success('Job progress updated');
-    } catch (error: any) {
-      console.error('Increment progress error:', error);
-      toast.error(error.response?.data?.message || 'Failed to update progress');
-    }
-  };
+  // Removed handleIncrementProgress - progress is now calculated automatically from task completion
 
   const handleAddTask = (data: any) => {
     if (selectedJob) {
@@ -927,7 +1366,26 @@ const WorkshopPage: React.FC = () => {
             <UserPlusIcon className="h-4 w-4" />
           </Button>
           
-          {/* 3. Task Update */}
+          {/* 4. Manage Tasks */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setSelectedJob(job);
+              setIsTaskManagementModalOpen(true);
+            }}
+            disabled={job.status === 'completed'}
+            title={job.status === 'completed' ? "Cannot manage tasks for completed job" : "Manage Tasks"}
+            className={
+              job.status === 'completed'
+                ? "opacity-50 cursor-not-allowed"
+                : "text-purple-600 hover:text-purple-700 hover:bg-purple-50"
+            }
+          >
+            <ClipboardDocumentListIcon className="h-4 w-4" />
+          </Button>
+          
+          {/* 5. Task Update */}
           <Button
             variant="ghost"
             size="sm"
@@ -1239,6 +1697,29 @@ const WorkshopPage: React.FC = () => {
         )}
       </Modal>
 
+      {/* Comprehensive Task Management Modal */}
+      <Modal
+        isOpen={isTaskManagementModalOpen}
+        onClose={() => {
+          setIsTaskManagementModalOpen(false);
+          setSelectedJob(null);
+        }}
+        title="Manage Tasks"
+        size="xl"
+      >
+        {selectedJob && (
+          <TaskManagementModal
+            job={selectedJob}
+            onClose={() => {
+              setIsTaskManagementModalOpen(false);
+              setSelectedJob(null);
+            }}
+            addTaskMutation={addTaskMutation}
+            updateTaskStatusMutation={updateTaskStatusMutation}
+          />
+        )}
+      </Modal>
+
       {/* Job Details Modal */}
       <Modal
         isOpen={isDetailsOpen}
@@ -1432,9 +1913,6 @@ const CreateJobForm: React.FC<{
     sublets: [
       { description: '', amount: 0 }
     ],
-    // Parts (will be managed separately)
-    parts: [],
-    // Tools
     // Reports/Notes
     reports: '',
     // Vehicle Pre-check (matching the pre-check form)
@@ -1477,7 +1955,30 @@ const CreateJobForm: React.FC<{
     // Tasks
     tasks: [] as any[],
     // Service Template
-    serviceTemplate: null as any
+    serviceTemplate: null as any,
+    // Resources from template
+    tools: [] as any[],
+    parts: [] as any[],
+    machines: [] as any[],
+    // Assigned technician
+    assignedTechnician: null as any
+  });
+
+  // Warning state for unavailable resources
+  const [resourceWarning, setResourceWarning] = useState<{
+    show: boolean;
+    unavailableResources: {
+      tools: any[];
+      machines: any[];
+      parts: any[];
+    };
+  }>({
+    show: false,
+    unavailableResources: {
+      tools: [],
+      machines: [],
+      parts: []
+    }
   });
 
   // Fetch customers for dropdown
@@ -1562,8 +2063,37 @@ const CreateJobForm: React.FC<{
     }));
   };
 
-  const handleServiceTemplateSelect = (template: any) => {
+  const handleServiceTemplateSelect = async (template: any) => {
     if (template) {
+      // Check resource availability first
+      const availabilityData = await checkResourceAvailability(template);
+      
+      // Check for unavailable resources
+      const unavailableTools = availabilityData?.tools?.filter((tool: any) => !tool.isAvailable && !tool.optional) || [];
+      const unavailableMachines = availabilityData?.machines?.filter((machine: any) => !machine.isAvailable && !machine.optional) || [];
+      const unavailableParts = availabilityData?.parts?.filter((part: any) => !part.isAvailable && !part.optional) || [];
+      
+      // Show warning if there are unavailable resources
+      if (unavailableTools.length > 0 || unavailableMachines.length > 0 || unavailableParts.length > 0) {
+        setResourceWarning({
+          show: true,
+          unavailableResources: {
+            tools: unavailableTools,
+            machines: unavailableMachines,
+            parts: unavailableParts
+          }
+        });
+      } else {
+        setResourceWarning({
+          show: false,
+          unavailableResources: {
+            tools: [],
+            machines: [],
+            parts: []
+          }
+        });
+      }
+      
       // Apply template data to form
       setFormData(prev => ({
         ...prev,
@@ -1580,19 +2110,53 @@ const CreateJobForm: React.FC<{
           estimatedDuration: task.estimatedDuration,
           status: 'todo'
         })) || [],
-        // Add template parts
-        parts: template.requiredParts?.map((part: any) => ({
-          productName: part.name,
-          quantityRequired: part.quantity,
-          notes: part.optional ? 'Optional part' : undefined,
-          status: 'pending'
-        })) || [],
-        // Add template tools
-        tools: template.requiredTools?.map((tool: any) => ({
+               // Add template parts with availability info
+               parts: availabilityData?.parts?.map((part: any) => ({
+                 productName: part.name,
+                 quantityRequired: part.quantity,
+                 notes: part.optional ? 'Optional part' : undefined,
+                 status: part.isAvailable ? 'pending' : 'shortage',
+                 availabilityStatus: part.availabilityStatus,
+                 productId: part.productId
+               })) || template.requiredParts?.map((part: any) => ({
+                 productName: part.name,
+                 quantityRequired: part.quantity,
+                 notes: part.optional ? 'Optional part' : undefined,
+                 status: 'pending'
+               })) || [],
+        // Add template tools with availability info
+        tools: availabilityData?.tools?.map((tool: any) => ({
           name: tool.name,
           category: 'specialty_tool',
           notes: tool.optional ? 'Optional tool' : undefined,
-          isAvailable: true
+          isAvailable: tool.isAvailable,
+          availabilityStatus: tool.availabilityStatus,
+          toolId: tool.toolId,
+          quantity: tool.quantity
+        })) || template.requiredTools?.map((tool: any) => ({
+          name: tool.name,
+          category: 'specialty_tool',
+          notes: tool.optional ? 'Optional tool' : undefined,
+          isAvailable: true,
+          toolId: tool.toolId,
+          quantity: tool.quantity
+        })) || [],
+        // Add template machines with availability info
+        machines: availabilityData?.machines?.map((machine: any) => ({
+          name: machine.name,
+          category: 'workshop_machine',
+          notes: machine.optional ? 'Optional machine' : undefined,
+          isAvailable: machine.isAvailable,
+          availabilityStatus: machine.availabilityStatus,
+          machineId: machine.machineId,
+          quantity: machine.quantity
+        })) || template.requiredMachines?.map((machine: any) => ({
+          name: machine.name,
+          category: 'workshop_machine',
+          notes: machine.optional ? 'Optional machine' : undefined,
+          isAvailable: true,
+          machineId: machine.machineId,
+          quantity: machine.quantity
         })) || []
       }));
     } else {
@@ -1601,6 +2165,88 @@ const CreateJobForm: React.FC<{
         ...prev,
         serviceTemplate: null
       }));
+    }
+  };
+
+  // Check availability of resources from template
+  const checkResourceAvailability = async (template: any) => {
+    try {
+      // Get all resources at once
+      const [toolsResponse, machinesResponse] = await Promise.all([
+        toolsAPI.getTools(),
+        machinesAPI.getMachines()
+      ]);
+
+      const allTools = toolsResponse.data?.data || [];
+      const allMachines = machinesResponse.data?.data || [];
+
+      // Check tools availability
+      const toolsAvailability = template.requiredTools?.map((tool: any) => {
+        if (tool.toolId) {
+          const toolData = allTools.find((t: any) => t._id === tool.toolId);
+          return {
+            ...tool,
+            isAvailable: toolData?.availability?.isAvailable || false,
+            availabilityStatus: toolData?.availability?.isAvailable ? 'Available' : 'In Use',
+            toolData
+          };
+        }
+        return tool;
+      }) || [];
+
+      // Check machines availability
+      const machinesAvailability = template.requiredMachines?.map((machine: any) => {
+        if (machine.machineId) {
+          const machineData = allMachines.find((m: any) => m._id === machine.machineId);
+          return {
+            ...machine,
+            isAvailable: machineData?.availability?.isAvailable || false,
+            availabilityStatus: machineData?.availability?.isAvailable ? 'Available' : 'Booked',
+            machineData
+          };
+        }
+        return machine;
+      }) || [];
+
+      // Check parts availability
+      const partsAvailability = await Promise.all(
+        template.requiredParts?.map(async (part: any) => {
+          if (part.productId) {
+            try {
+              const response = await productsAPI.getProductById(part.productId);
+              const productData = response.data.data;
+              const currentStock = productData.inventory?.currentStock || 0;
+              const requiredQuantity = part.quantity || 1;
+              return {
+                ...part,
+                isAvailable: currentStock >= requiredQuantity,
+                availabilityStatus: currentStock >= requiredQuantity ? 
+                  `Available (${currentStock} in stock)` : 
+                  `Low Stock (${currentStock} available, ${requiredQuantity} needed)`,
+                productData
+              };
+            } catch (error) {
+              return {
+                ...part,
+                isAvailable: false,
+                availabilityStatus: 'Not Found',
+                productData: null
+              };
+            }
+          }
+          return part;
+        }) || []
+      );
+
+      return {
+        tools: toolsAvailability,
+        machines: machinesAvailability,
+        parts: partsAvailability
+      };
+    } catch (error) {
+      console.error('Error checking resource availability:', error);
+      toast.error('Failed to check resource availability');
+      return null;
     }
   };
 
@@ -1691,6 +2337,95 @@ const CreateJobForm: React.FC<{
         </div>
       </div>
 
+      {/* Resource Availability Warning */}
+      {resourceWarning.show && (
+        <div className="bg-yellow-50 border-l-4 border-yellow-400 p-6 rounded-lg shadow-sm">
+          <div className="flex items-start">
+            <div className="flex-shrink-0">
+              <svg className="h-6 w-6 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
+            <div className="ml-3 flex-1">
+              <h3 className="text-lg font-medium text-yellow-800 mb-2">
+                ⚠️ Some Required Resources Are Not Available
+              </h3>
+              <p className="text-sm text-yellow-700 mb-4">
+                The following required resources from the selected service template are currently unavailable. 
+                You can still create the job, but these resources will need to be addressed before work can begin.
+              </p>
+              
+              <div className="space-y-4">
+                {/* Unavailable Parts */}
+                {resourceWarning.unavailableResources.parts.length > 0 && (
+                  <div>
+                    <h4 className="font-medium text-yellow-800 mb-2">📦 Unavailable Parts ({resourceWarning.unavailableResources.parts.length})</h4>
+                    <ul className="list-disc list-inside space-y-1">
+                      {resourceWarning.unavailableResources.parts.map((part: any, index: number) => (
+                        <li key={index} className="text-sm text-yellow-700">
+                          <strong>{part.name}</strong> - {part.availabilityStatus}
+                          {part.quantity && ` (Qty: ${part.quantity})`}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Unavailable Tools */}
+                {resourceWarning.unavailableResources.tools.length > 0 && (
+                  <div>
+                    <h4 className="font-medium text-yellow-800 mb-2">🔧 Unavailable Tools ({resourceWarning.unavailableResources.tools.length})</h4>
+                    <ul className="list-disc list-inside space-y-1">
+                      {resourceWarning.unavailableResources.tools.map((tool: any, index: number) => (
+                        <li key={index} className="text-sm text-yellow-700">
+                          <strong>{tool.name}</strong> - {tool.availabilityStatus}
+                          {tool.quantity && ` (Qty: ${tool.quantity})`}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Unavailable Machines */}
+                {resourceWarning.unavailableResources.machines.length > 0 && (
+                  <div>
+                    <h4 className="font-medium text-yellow-800 mb-2">⚙️ Unavailable Machines ({resourceWarning.unavailableResources.machines.length})</h4>
+                    <ul className="list-disc list-inside space-y-1">
+                      {resourceWarning.unavailableResources.machines.map((machine: any, index: number) => (
+                        <li key={index} className="text-sm text-yellow-700">
+                          <strong>{machine.name}</strong> - {machine.availabilityStatus}
+                          {machine.quantity && ` (Qty: ${machine.quantity})`}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+
+              <div className="mt-4 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setResourceWarning({ show: false, unavailableResources: { tools: [], machines: [], parts: [] } })}
+                  className="px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700 text-sm font-medium"
+                >
+                  I Understand, Continue Anyway
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setResourceWarning({ show: false, unavailableResources: { tools: [], machines: [], parts: [] } });
+                    setFormData(prev => ({ ...prev, serviceTemplate: null, parts: [], tools: [], machines: [] }));
+                  }}
+                  className="px-4 py-2 bg-white text-yellow-700 border border-yellow-600 rounded-md hover:bg-yellow-50 text-sm font-medium"
+                >
+                  Clear Template Selection
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Job Title */}
       <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
         <div className="space-y-4">
@@ -1734,8 +2469,8 @@ const CreateJobForm: React.FC<{
         </div>
       </div>
 
-      {/* Service Template Selection */}
-      <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+      {/* Service Template Selection - HIDDEN */}
+      {/* <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
         <div className="flex items-center mb-4">
           <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center mr-3">
             <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1748,7 +2483,155 @@ const CreateJobForm: React.FC<{
           onSelect={handleServiceTemplateSelect}
           selectedTemplate={formData.serviceTemplate}
         />
-      </div>
+        
+        {/* Template Resources Display */}
+        {/* {formData.serviceTemplate && (
+          <div className="mt-6 space-y-4">
+            <h4 className="text-md font-medium text-gray-900">Template Resources</h4>
+            
+            {/* Required Parts */}
+            {/* {formData.parts && formData.parts.length > 0 && (
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h5 className="font-medium text-gray-800 mb-3 flex items-center">
+                  <span className="mr-2">📦</span>
+                  Required Parts ({formData.parts.length})
+                </h5>
+                <div className="space-y-2">
+                  {formData.parts.map((part: any, index: number) => (
+                    <div key={index} className="flex items-center justify-between bg-white rounded-md p-3 border">
+                      <div className="flex-1">
+                        <div className="font-medium text-gray-900">{part.productName}</div>
+                        <div className="text-sm text-gray-600">
+                          Quantity: {part.quantityRequired}
+                          {part.notes && ` • ${part.notes}`}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          part.status === 'pending' ? 'bg-green-100 text-green-800' : 
+                          part.status === 'shortage' ? 'bg-red-100 text-red-800' : 
+                          'bg-gray-100 text-gray-800'
+                        }`}>
+                          {part.status === 'pending' ? 'Available' : 
+                           part.status === 'shortage' ? 'Low Stock' : 
+                           part.status}
+                        </span>
+                        {part.availabilityStatus && (
+                          <div className="text-xs text-gray-500 mt-1">
+                            {part.availabilityStatus}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Required Tools */}
+            {/* {formData.tools && formData.tools.length > 0 && (
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h5 className="font-medium text-gray-800 mb-3 flex items-center">
+                  <span className="mr-2">🔧</span>
+                  Required Tools ({formData.tools.length})
+                </h5>
+                <div className="space-y-2">
+                  {formData.tools.map((tool: any, index: number) => (
+                    <div key={index} className="flex items-center justify-between bg-white rounded-md p-3 border">
+                      <div className="flex-1">
+                        <div className="font-medium text-gray-900">{tool.name}</div>
+                        <div className="text-sm text-gray-600">
+                          Category: {tool.category}
+                          {tool.notes && ` • ${tool.notes}`}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          tool.isAvailable ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                        }`}>
+                          {tool.isAvailable ? 'Available' : 'In Use'}
+                        </span>
+                        {tool.availabilityStatus && (
+                          <div className="text-xs text-gray-500 mt-1">
+                            {tool.availabilityStatus}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Required Machines */}
+            {/* {formData.machines && formData.machines.length > 0 && (
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h5 className="font-medium text-gray-800 mb-3 flex items-center">
+                  <span className="mr-2">⚙️</span>
+                  Required Machines ({formData.machines.length})
+                </h5>
+                <div className="space-y-2">
+                  {formData.machines.map((machine: any, index: number) => (
+                    <div key={index} className="flex items-center justify-between bg-white rounded-md p-3 border">
+                      <div className="flex-1">
+                        <div className="font-medium text-gray-900">{machine.name}</div>
+                        <div className="text-sm text-gray-600">
+                          Category: {machine.category}
+                          {machine.notes && ` • ${machine.notes}`}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          machine.isAvailable ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                        }`}>
+                          {machine.isAvailable ? 'Available' : 'Booked'}
+                        </span>
+                        {machine.availabilityStatus && (
+                          <div className="text-xs text-gray-500 mt-1">
+                            {machine.availabilityStatus}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Template Tasks */}
+            {/* {formData.tasks && formData.tasks.length > 0 && (
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h5 className="font-medium text-gray-800 mb-3 flex items-center">
+                  <span className="mr-2">📋</span>
+                  Template Tasks ({formData.tasks.length})
+                </h5>
+                <div className="space-y-2">
+                  {formData.tasks.map((task: any, index: number) => (
+                    <div key={index} className="flex items-center justify-between bg-white rounded-md p-3 border">
+                      <div className="flex-1">
+                        <div className="font-medium text-gray-900">{task.title}</div>
+                        {task.description && (
+                          <div className="text-sm text-gray-600">{task.description}</div>
+                        )}
+                      </div>
+                      <div className="text-right">
+                        <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                          {task.status}
+                        </span>
+                        {task.estimatedDuration > 0 && (
+                          <div className="text-xs text-gray-500 mt-1">
+                            Est. {task.estimatedDuration}m
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div> */}
 
       {/* Customer and Vehicle Information */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -2387,7 +3270,7 @@ const EditJobForm: React.FC<{
     priority: job?.priority || 'medium',
     status: job?.status || 'scheduled',
     deadline: job?.deadline ? new Date(job.deadline).toISOString().split('T')[0] : '',
-    progress: job?.progress || 0,
+    // Progress is now calculated automatically from task completion
     estimatedDuration: job?.estimatedDuration || ''
   });
 
@@ -2769,14 +3652,7 @@ const EditJobForm: React.FC<{
                 value={jobInfo.deadline}
                 onChange={(e) => setJobInfo(prev => ({ ...prev, deadline: e.target.value }))}
           />
-          <Input
-            label="Progress (%)"
-            type="number"
-            min="0"
-            max="100"
-                value={jobInfo.progress}
-                onChange={(e) => setJobInfo(prev => ({ ...prev, progress: parseInt(e.target.value) }))}
-          />
+          {/* Progress is now calculated automatically from task completion - removed manual input */}
           <Input
             label="Estimated Duration (minutes)"
             type="number"
@@ -3658,6 +4534,25 @@ const JobDetailsView: React.FC<{
   onClose: () => void;
   updateTaskStatusMutation: any;
 }> = ({ job, onClose, updateTaskStatusMutation }) => {
+  // Fetch fresh job data to ensure tasks are up-to-date
+  const { data: jobData, isLoading: isJobLoading } = useQuery({
+    queryKey: ['workshop-job', job._id],
+    queryFn: () => enhancedWorkshopAPI.getJobById(job._id),
+    refetchOnWindowFocus: false,
+    staleTime: 0, // Always refetch to get latest task status
+  });
+
+  // Use fresh job data if available, otherwise fall back to prop
+  const currentJob = jobData?.data?.data || job;
+
+  // Show loading state if query is loading and no cached data
+  if (isJobLoading && !jobData) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'scheduled': return 'blue';
@@ -3674,13 +4569,13 @@ const JobDetailsView: React.FC<{
       {/* Job Header */}
       <div className="border-b border-gray-200 pb-4">
         <div className="flex items-center justify-between mb-2">
-          <h2 className="text-xl font-semibold text-gray-900">{job.title}</h2>
-          <Badge color={getStatusColor(job.status)}>
-            {job.status.replace('_', ' ')}
+          <h2 className="text-xl font-semibold text-gray-900">{currentJob.title}</h2>
+          <Badge color={getStatusColor(currentJob.status)}>
+            {currentJob.status.replace('_', ' ')}
           </Badge>
         </div>
-        {job.description && (
-          <p className="text-gray-600">{job.description}</p>
+        {currentJob.description && (
+          <p className="text-gray-600">{currentJob.description}</p>
         )}
       </div>
 
@@ -3691,23 +4586,23 @@ const JobDetailsView: React.FC<{
           <div className="space-y-2">
             <div className="flex justify-between">
               <span className="text-sm text-gray-600">Priority:</span>
-              <Badge color={job.priority === 'urgent' ? 'red' : job.priority === 'high' ? 'orange' : 'blue'}>
-                {job.priority}
+              <Badge color={currentJob.priority === 'urgent' ? 'red' : currentJob.priority === 'high' ? 'orange' : 'blue'}>
+                {currentJob.priority}
               </Badge>
             </div>
             <div className="flex justify-between">
               <span className="text-sm text-gray-600">Created:</span>
-              <span className="text-sm text-gray-900">{formatDate(job.createdAt)}</span>
+              <span className="text-sm text-gray-900">{formatDate(currentJob.createdAt)}</span>
             </div>
-            {job.deadline && (
+            {currentJob.deadline && (
               <div className="flex justify-between">
                 <span className="text-sm text-gray-600">Deadline:</span>
-                <span className="text-sm text-gray-900">{formatDate(job.deadline)}</span>
+                <span className="text-sm text-gray-900">{formatDate(currentJob.deadline)}</span>
               </div>
             )}
               <div className="flex justify-between">
                 <span className="text-sm text-gray-600">Job Card:</span>
-              <span className="text-sm text-gray-900">{job.jobCard?.cardNumber || 'N/A'}</span>
+              <span className="text-sm text-gray-900">{currentJob.jobCard?.cardNumber || 'N/A'}</span>
               </div>
           </div>
         </div>
@@ -3718,12 +4613,12 @@ const JobDetailsView: React.FC<{
             <div>
               <div className="flex justify-between text-sm mb-1">
                 <span className="text-gray-600">Completion</span>
-                <span className="text-gray-900">{job.progress || 0}%</span>
+                <span className="text-gray-900">{currentJob.progress || 0}%</span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-3">
                 <div 
                   className="bg-blue-600 h-3 rounded-full transition-all duration-300" 
-                  style={{ width: `${job.progress || 0}%` }}
+                  style={{ width: `${currentJob.progress || 0}%` }}
                 ></div>
               </div>
             </div>
@@ -3732,33 +4627,33 @@ const JobDetailsView: React.FC<{
       </div>
 
       {/* Vehicle Information */}
-      {job.vehicle && (
+      {currentJob.vehicle && (
         <div>
           <h3 className="text-lg font-medium text-gray-900 mb-3">Vehicle Information</h3>
           <div className="bg-gray-50 p-4 rounded-lg">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {job.vehicle.make && (
+              {currentJob.vehicle.make && (
                 <div>
                   <span className="text-sm text-gray-600">Make:</span>
-                  <span className="text-sm text-gray-900 ml-2">{job.vehicle.make}</span>
+                  <span className="text-sm text-gray-900 ml-2">{currentJob.vehicle.make}</span>
                 </div>
               )}
-              {job.vehicle.model && (
+              {currentJob.vehicle.model && (
                 <div>
                   <span className="text-sm text-gray-600">Model:</span>
-                  <span className="text-sm text-gray-900 ml-2">{job.vehicle.model}</span>
+                  <span className="text-sm text-gray-900 ml-2">{currentJob.vehicle.model}</span>
                 </div>
               )}
-              {job.vehicle.regNumber && (
+              {currentJob.vehicle.regNumber && (
                 <div>
                   <span className="text-sm text-gray-600">Registration:</span>
-                  <span className="text-sm text-gray-900 ml-2">{job.vehicle.regNumber}</span>
+                  <span className="text-sm text-gray-900 ml-2">{currentJob.vehicle.regNumber}</span>
                 </div>
               )}
-              {job.vehicle.vinNumber && (
+              {currentJob.vehicle.vinNumber && (
                 <div>
                   <span className="text-sm text-gray-600">VIN:</span>
-                  <span className="text-sm text-gray-900 ml-2">{job.vehicle.vinNumber}</span>
+                  <span className="text-sm text-gray-900 ml-2">{currentJob.vehicle.vinNumber}</span>
                 </div>
               )}
             </div>
@@ -3767,21 +4662,21 @@ const JobDetailsView: React.FC<{
       )}
 
       {/* Repair Request */}
-      {job.repairRequest && (
+      {currentJob.repairRequest && (
         <div>
           <h3 className="text-lg font-medium text-gray-900 mb-3">Repair Request</h3>
           <div className="bg-gray-50 p-4 rounded-lg">
-            <p className="text-gray-900">{job.repairRequest}</p>
+            <p className="text-gray-900">{currentJob.repairRequest}</p>
           </div>
         </div>
       )}
 
       {/* Assigned Technicians */}
-      {job.resources?.assignedTechnicians?.length > 0 && (
+      {currentJob.resources?.assignedTechnicians?.length > 0 && (
         <div>
           <h3 className="text-lg font-medium text-gray-900 mb-3">Assigned Technicians</h3>
           <div className="space-y-2">
-            {job.resources?.assignedTechnicians?.map((tech: any, index: number) => (
+            {currentJob.resources?.assignedTechnicians?.map((tech: any, index: number) => (
               <div key={index} className="flex items-center bg-blue-50 p-3 rounded-lg">
                 <UserIcon className="h-5 w-5 text-blue-600 mr-3" />
                 <div>
@@ -3795,11 +4690,11 @@ const JobDetailsView: React.FC<{
       )}
 
       {/* Tasks */}
-      {job.tasks?.length > 0 && (
+      {currentJob.tasks?.length > 0 && (
         <div>
           <h3 className="text-lg font-medium text-gray-900 mb-3">Tasks</h3>
           <div className="space-y-2">
-            {job.tasks?.map((task: any, index: number) => (
+            {currentJob.tasks?.map((task: any, index: number) => (
               <div key={index} className="border border-gray-200 p-3 rounded-lg">
                 <div className="flex items-center justify-between mb-2">
                   <h4 className="text-sm font-medium text-gray-900">{task.title}</h4>
@@ -3818,14 +4713,14 @@ const JobDetailsView: React.FC<{
                         <Button
                           size="sm"
                           variant="outline"
-                          disabled={job.status === 'completed'}
+                          disabled={currentJob.status === 'completed'}
                           onClick={() => updateTaskStatusMutation.mutate({
-                            jobId: job._id,
+                            jobId: currentJob._id,
                             taskId: task._id,
                             data: { status: 'in_progress' }
                           })}
-                          className={`text-xs px-2 py-1 ${job.status === 'completed' ? 'opacity-50 cursor-not-allowed' : ''}`}
-                          title={job.status === 'completed' ? 'Cannot update tasks in completed job' : 'Start task'}
+                          className={`text-xs px-2 py-1 ${currentJob.status === 'completed' ? 'opacity-50 cursor-not-allowed' : ''}`}
+                          title={currentJob.status === 'completed' ? 'Cannot update tasks in completed job' : 'Start task'}
                         >
                           Start
                         </Button>
@@ -3834,14 +4729,14 @@ const JobDetailsView: React.FC<{
                         <Button
                           size="sm"
                           variant="outline"
-                          disabled={job.status === 'completed'}
+                          disabled={currentJob.status === 'completed'}
                           onClick={() => updateTaskStatusMutation.mutate({
-                            jobId: job._id,
+                            jobId: currentJob._id,
                             taskId: task._id,
                             data: { status: 'completed' }
                           })}
-                          className={`text-xs px-2 py-1 ${job.status === 'completed' ? 'opacity-50 cursor-not-allowed' : 'text-green-600 hover:text-green-700'}`}
-                          title={job.status === 'completed' ? 'Cannot update tasks in completed job' : 'Complete task'}
+                          className={`text-xs px-2 py-1 ${currentJob.status === 'completed' ? 'opacity-50 cursor-not-allowed' : 'text-green-600 hover:text-green-700'}`}
+                          title={currentJob.status === 'completed' ? 'Cannot update tasks in completed job' : 'Complete task'}
                         >
                           Complete
                         </Button>
@@ -3850,14 +4745,14 @@ const JobDetailsView: React.FC<{
                         <Button
                           size="sm"
                           variant="outline"
-                          disabled={job.status === 'completed'}
+                          disabled={currentJob.status === 'completed'}
                           onClick={() => updateTaskStatusMutation.mutate({
-                            jobId: job._id,
+                            jobId: currentJob._id,
                             taskId: task._id,
                             data: { status: 'in_progress' }
                           })}
-                          className={`text-xs px-2 py-1 ${job.status === 'completed' ? 'opacity-50 cursor-not-allowed' : 'text-orange-600 hover:text-orange-700'}`}
-                          title={job.status === 'completed' ? 'Cannot update tasks in completed job' : 'Reopen task'}
+                          className={`text-xs px-2 py-1 ${currentJob.status === 'completed' ? 'opacity-50 cursor-not-allowed' : 'text-orange-600 hover:text-orange-700'}`}
+                          title={currentJob.status === 'completed' ? 'Cannot update tasks in completed job' : 'Reopen task'}
                         >
                           Reopen
                         </Button>

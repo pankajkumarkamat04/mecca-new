@@ -283,7 +283,7 @@ const updateJob = async (req, res) => {
     const previous = await WorkshopJob.findById(req.params.id).select('status');
     if (!previous) return res.status(404).json({ success: false, message: 'Job not found' });
 
-    const { partQuantities, incrementProgress, ...updateData } = req.body;
+    const { partQuantities, ...updateData } = req.body;
     
     // Handle part quantity updates if provided
     if (partQuantities && Array.isArray(partQuantities) && partQuantities.length > 0) {
@@ -320,23 +320,7 @@ const updateJob = async (req, res) => {
       }
     }
 
-    // Handle progress increment if requested
-    if (incrementProgress) {
-      if (previous.status === 'in_progress' && previous.progress < 75) {
-        const newProgress = Math.min(75, (previous.progress || 0) + 5);
-        updateData.progress = newProgress;
-        
-        if (!updateData.progressHistory) updateData.progressHistory = [];
-        updateData.progressHistory.push({
-          progress: newProgress,
-          status: previous.status,
-          step: 'update',
-          message: 'Job progress updated',
-          updatedBy: req.user._id,
-          updatedAt: new Date()
-        });
-      }
-    }
+    // Remove incrementProgress logic - progress is now only calculated from task completion
 
   const update = { ...updateData, lastUpdatedBy: req.user._id };
   let job = await WorkshopJob.findByIdAndUpdate(req.params.id, update, { new: true, runValidators: true })
@@ -685,7 +669,9 @@ async function createJobInvoice(job, partsUsed, partsReturned) {
     dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
     notes: job.completionDetails?.completionNotes || `Invoice for job: ${job.title}`,
     createdBy: job.lastUpdatedBy,
-    isWorkshopTransaction: true // Mark as workshop transaction
+    isWorkshopTransaction: true, // Mark as workshop transaction
+    workshopJob: job._id, // Link to workshop job
+    workshopJobNumber: job.jobNumber || job.title // Use job number or title
   });
 
   await invoice.save();
@@ -964,15 +950,19 @@ const assignTechnician = async (req, res) => {
     technician.assignJob(job._id, role);
     await technician.save();
 
-    // Update job status and progress when resources are assigned
+    // Update job status when resources are assigned (progress calculated from tasks only)
     if (job.status === 'scheduled') {
       job.status = 'in_progress';
-      job.progress = 30;
+      // Calculate progress based on task completion
+      const totalTasks = job.tasks.length;
+      const completedTasks = job.tasks.filter(task => task.status === 'completed').length;
+      job.progress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+      
       job.progressHistory.push({
-        progress: 30,
+        progress: job.progress,
         status: 'in_progress',
         step: 'resource_assignment',
-        message: 'Resources assigned - work started',
+        message: `Resources assigned - work started (${completedTasks}/${totalTasks} tasks completed)`,
         updatedBy: req.user._id,
         updatedAt: new Date()
       });
@@ -1132,25 +1122,24 @@ const updateTaskStatus = async (req, res) => {
       task.completedAt = new Date();
     }
 
-    // Update job progress by 5% for each completed task
-    if (status === 'completed') {
-      const completedTasks = job.tasks.filter(task => task.status === 'completed').length;
-      const newProgress = Math.min(100, 30 + (completedTasks * 5)); // Start from 30% after resource assignment, then 5% per task
+    // Update job progress based on task completion percentage
+    const totalTasks = job.tasks.length;
+    const completedTasks = job.tasks.filter(task => task.status === 'completed').length;
+    const newProgress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+    
+    if (newProgress !== job.progress) {
+      job.progress = newProgress;
       
-      if (newProgress > job.progress) {
-        job.progress = newProgress;
-        
-        // Add progress history entry
-        if (!job.progressHistory) job.progressHistory = [];
-        job.progressHistory.push({
-          progress: newProgress,
-          status: job.status,
-          step: 'task_completion',
-          message: `Task completed - progress updated to ${newProgress}%`,
-          updatedBy: req.user._id,
-          updatedAt: new Date()
-        });
-      }
+      // Add progress history entry
+      if (!job.progressHistory) job.progressHistory = [];
+      job.progressHistory.push({
+        progress: newProgress,
+        status: job.status,
+        step: 'task_completion',
+        message: `Progress updated: ${completedTasks}/${totalTasks} tasks completed (${newProgress}%)`,
+        updatedBy: req.user._id,
+        updatedAt: new Date()
+      });
     }
     
     job.lastUpdatedBy = req.user._id;
@@ -1224,15 +1213,19 @@ const bookMachine = async (req, res) => {
       });
     }
 
-    // Update job status and progress when resources are assigned
+    // Update job status when resources are assigned (progress calculated from tasks only)
     if (job.status === 'scheduled') {
       job.status = 'in_progress';
-      job.progress = 20;
+      // Calculate progress based on task completion
+      const totalTasks = job.tasks.length;
+      const completedTasks = job.tasks.filter(task => task.status === 'completed').length;
+      job.progress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+      
       job.progressHistory.push({
-        progress: 20,
+        progress: job.progress,
         status: 'in_progress',
         step: 'resource_assignment',
-        message: 'Machine booked - work started',
+        message: `Machine booked - work started (${completedTasks}/${totalTasks} tasks completed)`,
         updatedBy: req.user._id,
         updatedAt: new Date()
       });
@@ -1429,15 +1422,19 @@ const assignTool = async (req, res) => {
       });
     }
 
-    // Update job status and progress when resources are assigned
+    // Update job status when resources are assigned (progress calculated from tasks only)
     if (job.status === 'scheduled') {
       job.status = 'in_progress';
-      job.progress = 20;
+      // Calculate progress based on task completion
+      const totalTasks = job.tasks.length;
+      const completedTasks = job.tasks.filter(task => task.status === 'completed').length;
+      job.progress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+      
       job.progressHistory.push({
-        progress: 20,
+        progress: job.progress,
         status: 'in_progress',
         step: 'resource_assignment',
-        message: 'Tool assigned - work started',
+        message: `Tool assigned - work started (${completedTasks}/${totalTasks} tasks completed)`,
         updatedBy: req.user._id,
         updatedAt: new Date()
       });
@@ -1645,18 +1642,22 @@ const assignResources = async (req, res) => {
       }
     }
 
-    // Update job status and progress if resources were assigned
+    // Update job status when resources are assigned (progress calculated from tasks only)
     if (assignedResources.technicians.length > 0 || assignedResources.tools.length > 0 || 
         assignedResources.machines.length > 0 || assignedResources.parts.length > 0) {
       
       if (job.status === 'scheduled') {
         job.status = 'in_progress';
-        job.progress = 30;
+        // Calculate progress based on task completion
+        const totalTasks = job.tasks.length;
+        const completedTasks = job.tasks.filter(task => task.status === 'completed').length;
+        job.progress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+        
         job.progressHistory.push({
-          progress: 30,
+          progress: job.progress,
           status: 'in_progress',
           step: 'resource_assignment',
-          message: 'Resources assigned - work started',
+          message: `Resources assigned - work started (${completedTasks}/${totalTasks} tasks completed)`,
           updatedBy: req.user._id,
           updatedAt: new Date()
         });
@@ -2649,15 +2650,19 @@ const updateJobResources = async (req, res) => {
     if (machines && machines.added && machines.added.length > 0) resourcesAdded = true;
     if (parts && parts.added && parts.added.length > 0) resourcesAdded = true;
 
-    // Update job status and progress when resources are assigned
+    // Update job status when resources are assigned (progress calculated from tasks only)
     if (resourcesAdded && job.status === 'scheduled') {
       job.status = 'in_progress';
-      job.progress = 20;
+      // Calculate progress based on task completion
+      const totalTasks = job.tasks.length;
+      const completedTasks = job.tasks.filter(task => task.status === 'completed').length;
+      job.progress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+      
       job.progressHistory.push({
-        progress: 20,
+        progress: job.progress,
         status: 'in_progress',
         step: 'resource_assignment',
-        message: 'Resources assigned - work started',
+        message: `Resources assigned - work started (${completedTasks}/${totalTasks} tasks completed)`,
         updatedBy: req.user._id,
         updatedAt: new Date()
       });

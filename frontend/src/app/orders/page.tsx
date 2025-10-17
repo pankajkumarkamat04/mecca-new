@@ -44,7 +44,6 @@ const OrdersPage: React.FC = () => {
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showStatusModal, setShowStatusModal] = useState(false);
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [selectedWarehouseId, setSelectedWarehouseId] = useState('');
   const [showConvertModal, setShowConvertModal] = useState(false);
@@ -138,19 +137,6 @@ const OrdersPage: React.FC = () => {
     }
   });
 
-  // Update payment mutation
-  const updatePaymentMutation = useMutation({
-    mutationFn: ({ id, paymentData }: { id: string; paymentData: OrderPayment }) => 
-      ordersAPI.updatePaymentStatus(id, paymentData),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['orders'] });
-      setShowPaymentModal(false);
-      toast.success('Payment status updated successfully');
-    },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.message || 'Failed to update payment');
-    }
-  });
 
   // Assign order mutation
   const assignOrderMutation = useMutation({
@@ -200,11 +186,6 @@ const OrdersPage: React.FC = () => {
     }
   };
 
-  const handlePaymentUpdate = (paymentData: any) => {
-    if (selectedOrder) {
-      updatePaymentMutation.mutate({ id: selectedOrder._id, paymentData });
-    }
-  };
 
   const handleAssign = () => {
     if (selectedOrder && selectedWarehouseId) {
@@ -380,16 +361,6 @@ const OrdersPage: React.FC = () => {
               <PencilIcon className="h-4 w-4" />
             </button>
           )}
-          <button
-            onClick={() => {
-              setSelectedOrder(row);
-              setShowPaymentModal(true);
-            }}
-            className="text-purple-600 hover:text-purple-800"
-            title="Change Payment Status"
-          >
-            <CurrencyDollarIcon className="h-4 w-4" />
-          </button>
           <button
             onClick={() => {
               setSelectedOrder(row);
@@ -703,70 +674,6 @@ const OrdersPage: React.FC = () => {
           )}
         </Modal>
 
-        {/* Payment Update Modal */}
-        <Modal
-          isOpen={showPaymentModal}
-          onClose={() => setShowPaymentModal(false)}
-          title="Update Payment Status"
-          size="md"
-        >
-          {selectedOrder && (
-            <div className="space-y-4">
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <h3 className="text-sm font-medium text-gray-900 mb-2">Order Information</h3>
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <span className="text-gray-600">Order:</span>
-                    <span className="ml-2 font-medium">{selectedOrder.orderNumber}</span>
-                  </div>
-                  <div>
-                    <span className="text-gray-600">Total:</span>
-                    <span className="ml-2 font-medium">{formatCurrency(selectedOrder.totalAmount)}</span>
-                  </div>
-                  <div>
-                    <span className="text-gray-600">Current Status:</span>
-                    <span className="ml-2">{getStatusBadge(selectedOrder.paymentStatus, 'payment')}</span>
-                  </div>
-                </div>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Change Payment Status To</label>
-                <Select
-                  value=""
-                  onChange={(e) => {
-                    if (e.target.value) {
-                      handlePaymentUpdate({ paymentStatus: e.target.value });
-                    }
-                  }}
-                  options={[
-                    { value: '', label: 'Select New Status' },
-                    { value: 'pending', label: 'Pending Payment' },
-                    { value: 'partial', label: 'Partial Payment' },
-                    { value: 'paid', label: 'Fully Paid' },
-                    { value: 'refunded', label: 'Refunded' },
-                    { value: 'cancelled', label: 'Payment Cancelled' },
-                  ]}
-                />
-              </div>
-              
-              <div className="bg-blue-50 p-3 rounded-lg">
-                <p className="text-sm text-blue-800">
-                  <strong>Note:</strong> Changing the payment status will also update the corresponding invoice status automatically.
-                </p>
-              </div>
-              
-              <div className="flex justify-end space-x-3">
-                <Button
-                  variant="outline"
-                  onClick={() => setShowPaymentModal(false)}
-                >
-                  Cancel
-                </Button>
-              </div>
-            </div>
-          )}
-        </Modal>
 
         {/* Assign Order Modal */}
         <Modal

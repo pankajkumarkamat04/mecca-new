@@ -297,11 +297,34 @@ const getWorkshopAnalytics = async (req, res) => {
     const inProgressJobs = await WorkshopJob.countDocuments({ ...dateFilter, status: 'in_progress' });
     const pendingJobs = await WorkshopJob.countDocuments({ ...dateFilter, status: 'pending' });
 
-    // Revenue Analytics
-    const revenueData = await WorkshopJob.aggregate([
-      { $match: dateFilter },
-      { $group: { _id: null, totalRevenue: { $sum: '$estimatedCost' } } }
+    // Revenue Analytics - Use actual paid transactions from workshop invoices
+    const revenueStartDate = startDate ? new Date(startDate) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const revenueEndDate = endDate ? new Date(endDate) : new Date();
+    
+    const revenueData = await Transaction.aggregate([
+      { 
+        $match: { 
+          type: 'sale',
+          date: { $gte: revenueStartDate, $lte: revenueEndDate },
+          invoice: { $exists: true }
+        } 
+      },
+      {
+        $lookup: {
+          from: 'invoices',
+          localField: 'invoice',
+          foreignField: '_id',
+          as: 'invoiceData'
+        }
+      },
+      {
+        $match: {
+          'invoiceData.isWorkshopTransaction': true
+        }
+      },
+      { $group: { _id: null, totalRevenue: { $sum: '$amount' } } }
     ]);
+
 
     // Job Type Distribution
     const jobTypeStats = await WorkshopJob.aggregate([
@@ -633,9 +656,28 @@ const getDashboardSummary = async (req, res) => {
         { $group: { _id: null, total: { $sum: '$totalAmount' } } }
       ]),
       WorkshopJob.countDocuments({ createdAt: { $gte: thirtyDaysAgo } }),
-      WorkshopJob.aggregate([
-        { $match: { createdAt: { $gte: thirtyDaysAgo } } },
-        { $group: { _id: null, total: { $sum: '$estimatedCost' } } }
+      Transaction.aggregate([
+        { 
+          $match: { 
+            type: 'sale',
+            date: { $gte: thirtyDaysAgo },
+            invoice: { $exists: true }
+          } 
+        },
+        {
+          $lookup: {
+            from: 'invoices',
+            localField: 'invoice',
+            foreignField: '_id',
+            as: 'invoiceData'
+          }
+        },
+        {
+          $match: {
+            'invoiceData.isWorkshopTransaction': true
+          }
+        },
+        { $group: { _id: null, total: { $sum: '$amount' } } }
       ]),
       Product.countDocuments(),
       Product.aggregate([
@@ -791,18 +833,40 @@ const getSalesTrendsChart = async (req, res) => {
       { $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1 } }
     ]);
 
-    // Daily workshop trends
-    const dailyWorkshopTrends = await WorkshopJob.aggregate([
-      { $match: dateFilter },
+    // Daily workshop trends - Use actual paid transactions from workshop invoices
+    const trendsStartDate = startDate ? new Date(startDate) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const trendsEndDate = endDate ? new Date(endDate) : new Date();
+    
+    const dailyWorkshopTrends = await Transaction.aggregate([
+      { 
+        $match: { 
+          type: 'sale',
+          date: { $gte: trendsStartDate, $lte: trendsEndDate },
+          invoice: { $exists: true }
+        } 
+      },
+      {
+        $lookup: {
+          from: 'invoices',
+          localField: 'invoice',
+          foreignField: '_id',
+          as: 'invoiceData'
+        }
+      },
+      {
+        $match: {
+          'invoiceData.isWorkshopTransaction': true
+        }
+      },
       {
         $group: {
           _id: {
-            year: { $year: '$createdAt' },
-            month: { $month: '$createdAt' },
-            day: { $dayOfMonth: '$createdAt' }
+            year: { $year: '$date' },
+            month: { $month: '$date' },
+            day: { $dayOfMonth: '$date' }
           },
           count: { $sum: 1 },
-          revenue: { $sum: '$estimatedCost' }
+          revenue: { $sum: '$amount' }
         }
       },
       { $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1 } }

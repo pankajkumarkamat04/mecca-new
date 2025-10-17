@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
-import { toolsAPI } from '@/lib/api';
+import { toolsAPI, techniciansAPI, machinesAPI } from '@/lib/api';
 import Layout from '@/components/layout/Layout';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
@@ -957,8 +957,353 @@ const ToolManagement: React.FC = () => {
   );
 };
 
-// Technician Management Component (simplified for this demo)
+// Technician Management Component
 const TechnicianManagement: React.FC = () => {
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isSkillOpen, setIsSkillOpen] = useState(false);
+  const [isCertificationOpen, setIsCertificationOpen] = useState(false);
+  const [selectedTechnician, setSelectedTechnician] = useState<any>(null);
+  const [formData, setFormData] = useState({
+    name: '',
+    employeeId: '',
+    department: 'workshop',
+    position: 'technician',
+    hireDate: '',
+    employmentStatus: 'active',
+    workInfo: {
+      workStation: null,
+      preferredShift: 'morning',
+      maxHoursPerWeek: 40
+    },
+    contactInfo: {
+      phone: '',
+      email: '',
+      address: ''
+    },
+    skills: [],
+    certifications: [],
+    preferences: {
+      maxConcurrentJobs: 3,
+      preferredJobTypes: [],
+      availability: []
+    },
+    notes: ''
+  });
+  const [skillData, setSkillData] = useState({
+    name: '',
+    category: '',
+    level: 'intermediate',
+    yearsExperience: 0
+  });
+  const [certificationData, setCertificationData] = useState({
+    name: '',
+    issuingBody: '',
+    certificateNumber: '',
+    issuedDate: '',
+    expiryDate: '',
+    notes: ''
+  });
+
+  const queryClient = useQueryClient();
+
+  // Fetch technicians
+  const { data: techniciansData, isLoading } = useQuery({
+    queryKey: ['technicians'],
+    queryFn: () => techniciansAPI.getTechnicians(),
+  });
+
+  const technicians = techniciansData?.data?.data?.technicians || [];
+
+  // Create technician mutation
+  const createTechnicianMutation = useMutation({
+    mutationFn: (data: any) => techniciansAPI.createTechnician(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['technicians'] });
+      setIsCreateOpen(false);
+      resetForm();
+      toast.success('Technician created successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to create technician');
+    }
+  });
+
+  // Update technician mutation
+  const updateTechnicianMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => techniciansAPI.updateTechnician(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['technicians'] });
+      setIsEditOpen(false);
+      setSelectedTechnician(null);
+      resetForm();
+      toast.success('Technician updated successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to update technician');
+    }
+  });
+
+  // Delete technician mutation
+  const deleteTechnicianMutation = useMutation({
+    mutationFn: (id: string) => techniciansAPI.deleteTechnician(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['technicians'] });
+      toast.success('Technician deleted successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to delete technician');
+    }
+  });
+
+  // Add skill mutation
+  const addSkillMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => techniciansAPI.addSkill(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['technicians'] });
+      setIsSkillOpen(false);
+      setSkillData({ name: '', category: '', level: 'intermediate', yearsExperience: 0 });
+      toast.success('Skill added successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to add skill');
+    }
+  });
+
+  // Add certification mutation
+  const addCertificationMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => techniciansAPI.addCertification(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['technicians'] });
+      setIsCertificationOpen(false);
+      setCertificationData({ name: '', issuingBody: '', certificateNumber: '', issuedDate: '', expiryDate: '', notes: '' });
+      toast.success('Certification added successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to add certification');
+    }
+  });
+
+  const resetForm = () => {
+    setFormData({
+      name: '',
+      employeeId: '',
+      department: 'workshop',
+      position: 'technician',
+      hireDate: '',
+      employmentStatus: 'active',
+      workInfo: {
+        workStation: null,
+        preferredShift: 'morning',
+        maxHoursPerWeek: 40
+      },
+      contactInfo: {
+        phone: '',
+        email: '',
+        address: ''
+      },
+      skills: [],
+      certifications: [],
+      preferences: {
+        maxConcurrentJobs: 3,
+        preferredJobTypes: [],
+        availability: []
+      },
+      notes: ''
+    });
+  };
+
+  const handleCreate = () => {
+    if (!formData.name.trim()) {
+      toast.error('Please enter technician name');
+      return;
+    }
+    createTechnicianMutation.mutate(formData);
+  };
+
+  const handleEdit = (technician: any) => {
+    setSelectedTechnician(technician);
+    setFormData({
+      name: technician.name || '',
+      employeeId: technician.employeeId || '',
+      department: technician.department || 'workshop',
+      position: technician.position || 'technician',
+      hireDate: technician.hireDate ? new Date(technician.hireDate).toISOString().split('T')[0] : '',
+      employmentStatus: technician.employmentStatus || 'active',
+      workInfo: {
+        workStation: technician.workInfo?.workStation || null,
+        preferredShift: technician.workInfo?.preferredShift || 'morning',
+        maxHoursPerWeek: technician.workInfo?.maxHoursPerWeek || 40
+      },
+      contactInfo: {
+        phone: technician.contactInfo?.phone || '',
+        email: technician.contactInfo?.email || '',
+        address: technician.contactInfo?.address || ''
+      },
+      skills: technician.skills || [],
+      certifications: technician.certifications || [],
+      preferences: {
+        maxConcurrentJobs: technician.preferences?.maxConcurrentJobs || 3,
+        preferredJobTypes: technician.preferences?.preferredJobTypes || [],
+        availability: technician.preferences?.availability || []
+      },
+      notes: technician.notes || ''
+    });
+    setIsEditOpen(true);
+  };
+
+  const handleUpdate = () => {
+    if (selectedTechnician) {
+      if (!formData.name.trim()) {
+        toast.error('Please enter technician name');
+        return;
+      }
+      updateTechnicianMutation.mutate({ id: selectedTechnician._id, data: formData });
+    }
+  };
+
+  const handleDelete = (id: string) => {
+    if (confirm('Are you sure you want to delete this technician?')) {
+      deleteTechnicianMutation.mutate(id);
+    }
+  };
+
+  const handleAddSkill = (technician: any) => {
+    setSelectedTechnician(technician);
+    setIsSkillOpen(true);
+  };
+
+  const handleAddCertification = (technician: any) => {
+    setSelectedTechnician(technician);
+    setIsCertificationOpen(true);
+  };
+
+  const addSkill = () => {
+    if (selectedTechnician) {
+      addSkillMutation.mutate({ id: selectedTechnician._id, data: skillData });
+    }
+  };
+
+  const addCertification = () => {
+    if (selectedTechnician) {
+      addCertificationMutation.mutate({ id: selectedTechnician._id, data: certificationData });
+    }
+  };
+
+  const columns = [
+    {
+      key: 'name',
+      label: 'Technician',
+      render: (technician: any) => (
+        <div>
+          <div className="font-medium text-gray-900">{technician.name}</div>
+          <div className="text-sm text-gray-500">
+            {technician.employeeId && `ID: ${technician.employeeId} • `}
+            {technician.position} • {technician.department}
+          </div>
+        </div>
+      )
+    },
+    {
+      key: 'employmentStatus',
+      label: 'Status',
+      render: (technician: any) => (
+        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+          technician.employmentStatus === 'active' ? 'bg-green-100 text-green-800' :
+          technician.employmentStatus === 'on_leave' ? 'bg-yellow-100 text-yellow-800' :
+          technician.employmentStatus === 'inactive' ? 'bg-red-100 text-red-800' :
+          'bg-gray-100 text-gray-800'
+        }`}>
+          {(technician.employmentStatus || 'unknown').replace('_', ' ').toUpperCase()}
+        </span>
+      )
+    },
+    {
+      key: 'skills',
+      label: 'Skills',
+      render: (technician: any) => (
+        <div className="text-sm">
+          <div className="font-medium">{technician.skills?.length || 0} Skills</div>
+          <div className="text-gray-500">
+            {technician.skills?.slice(0, 2).map((skill: any, index: number) => (
+              <span key={index}>
+                {skill.name}
+                {index < Math.min(technician.skills.length, 2) - 1 && ', '}
+              </span>
+            ))}
+            {technician.skills?.length > 2 && '...'}
+          </div>
+        </div>
+      )
+    },
+    {
+      key: 'certifications',
+      label: 'Certifications',
+      render: (technician: any) => (
+        <div className="text-sm">
+          <div className="font-medium">{technician.certifications?.length || 0} Active</div>
+          <div className="text-gray-500">
+            {technician.certifications?.filter((cert: any) => cert.isActive).length || 0} Valid
+          </div>
+        </div>
+      )
+    },
+    {
+      key: 'workInfo',
+      label: 'Work Info',
+      render: (technician: any) => (
+        <div className="text-sm">
+          <div className="font-medium">{technician.workInfo?.preferredShift || 'morning'} Shift</div>
+          <div className="text-gray-500">{technician.workInfo?.maxHoursPerWeek || 40}h/week</div>
+        </div>
+      )
+    },
+    {
+      key: 'actions',
+      label: 'Actions',
+      render: (technician: any) => (
+        <div className="flex space-x-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleEdit(technician)}
+            className="text-blue-600 hover:text-blue-700"
+            title="Edit Technician"
+          >
+            <PencilIcon className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleAddSkill(technician)}
+            className="text-green-600 hover:text-green-700"
+            title="Add Skill"
+          >
+            <PlusIcon className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleAddCertification(technician)}
+            className="text-purple-600 hover:text-purple-700"
+            title="Add Certification"
+          >
+            <CogIcon className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleDelete(technician._id)}
+            className="text-red-600 hover:text-red-700"
+            title="Delete Technician"
+          >
+            <TrashIcon className="h-4 w-4" />
+          </Button>
+        </div>
+      )
+    }
+  ];
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -966,21 +1311,877 @@ const TechnicianManagement: React.FC = () => {
           <h2 className="text-2xl font-bold text-gray-900">Technician Management</h2>
           <p className="text-gray-600">Manage workshop technicians and staff</p>
         </div>
-        <Button>
+        <Button onClick={() => setIsCreateOpen(true)}>
           <PlusIcon className="h-5 w-5 mr-2" />
           Add Technician
         </Button>
       </div>
-      <div className="bg-gray-50 p-8 rounded-lg text-center">
-        <UserGroupIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-        <p className="text-gray-600">Technician management functionality coming soon...</p>
-      </div>
+
+      <DataTable
+        data={technicians}
+        columns={columns}
+        loading={isLoading}
+      />
+
+      {/* Create Technician Modal */}
+      <Modal
+        isOpen={isCreateOpen}
+        onClose={() => {
+          setIsCreateOpen(false);
+          resetForm();
+        }}
+        title="Add New Technician"
+        size="lg"
+      >
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Input
+              label="Technician Name"
+              value={formData.name}
+              onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+              required
+            />
+            <Input
+              label="Employee ID"
+              value={formData.employeeId}
+              onChange={(e) => setFormData(prev => ({ ...prev, employeeId: e.target.value }))}
+              placeholder="Optional"
+            />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Select
+              label="Department"
+              value={formData.department}
+              onChange={(e) => setFormData(prev => ({ ...prev, department: e.target.value }))}
+              options={[
+                { value: 'workshop', label: 'Workshop' },
+                { value: 'diagnostics', label: 'Diagnostics' },
+                { value: 'body_shop', label: 'Body Shop' },
+                { value: 'paint_shop', label: 'Paint Shop' },
+                { value: 'assembly', label: 'Assembly' },
+                { value: 'quality_control', label: 'Quality Control' }
+              ]}
+            />
+            <Select
+              label="Position"
+              value={formData.position}
+              onChange={(e) => setFormData(prev => ({ ...prev, position: e.target.value }))}
+              options={[
+                { value: 'junior_technician', label: 'Junior Technician' },
+                { value: 'technician', label: 'Technician' },
+                { value: 'senior_technician', label: 'Senior Technician' },
+                { value: 'lead_technician', label: 'Lead Technician' },
+                { value: 'specialist', label: 'Specialist' },
+                { value: 'supervisor', label: 'Supervisor' }
+              ]}
+            />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Input
+              label="Hire Date"
+              type="date"
+              value={formData.hireDate}
+              onChange={(e) => setFormData(prev => ({ ...prev, hireDate: e.target.value }))}
+            />
+            <Select
+              label="Employment Status"
+              value={formData.employmentStatus}
+              onChange={(e) => setFormData(prev => ({ ...prev, employmentStatus: e.target.value }))}
+              options={[
+                { value: 'active', label: 'Active' },
+                { value: 'on_leave', label: 'On Leave' },
+                { value: 'terminated', label: 'Terminated' },
+                { value: 'retired', label: 'Retired' }
+              ]}
+            />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Select
+              label="Preferred Shift"
+              value={formData.workInfo.preferredShift}
+              onChange={(e) => setFormData(prev => ({ 
+                ...prev, 
+                workInfo: { ...prev.workInfo, preferredShift: e.target.value }
+              }))}
+              options={[
+                { value: 'morning', label: 'Morning Shift' },
+                { value: 'afternoon', label: 'Afternoon Shift' },
+                { value: 'night', label: 'Night Shift' },
+                { value: 'flexible', label: 'Flexible' }
+              ]}
+            />
+            <Input
+              label="Max Hours per Week"
+              type="number"
+              min="1"
+              max="80"
+              value={formData.workInfo.maxHoursPerWeek}
+              onChange={(e) => setFormData(prev => ({ 
+                ...prev, 
+                workInfo: { ...prev.workInfo, maxHoursPerWeek: parseInt(e.target.value) || 40 }
+              }))}
+            />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Input
+              label="Phone"
+              value={formData.contactInfo.phone}
+              onChange={(e) => setFormData(prev => ({ 
+                ...prev, 
+                contactInfo: { ...prev.contactInfo, phone: e.target.value }
+              }))}
+            />
+            <Input
+              label="Email"
+              type="email"
+              value={formData.contactInfo.email}
+              onChange={(e) => setFormData(prev => ({ 
+                ...prev, 
+                contactInfo: { ...prev.contactInfo, email: e.target.value }
+              }))}
+            />
+          </div>
+          <Input
+            label="Address"
+            value={formData.contactInfo.address}
+            onChange={(e) => setFormData(prev => ({ 
+              ...prev, 
+              contactInfo: { ...prev.contactInfo, address: e.target.value }
+            }))}
+          />
+          <TextArea
+            label="Notes"
+            value={formData.notes}
+            onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+            rows={3}
+          />
+          <div className="flex justify-end space-x-3">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsCreateOpen(false);
+                resetForm();
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleCreate}
+              loading={createTechnicianMutation.isPending}
+            >
+              Add Technician
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Edit Technician Modal */}
+      <Modal
+        isOpen={isEditOpen}
+        onClose={() => {
+          setIsEditOpen(false);
+          setSelectedTechnician(null);
+          resetForm();
+        }}
+        title="Edit Technician"
+        size="lg"
+      >
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Input
+              label="Technician Name"
+              value={formData.name}
+              onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+              required
+            />
+            <Input
+              label="Employee ID"
+              value={formData.employeeId}
+              onChange={(e) => setFormData(prev => ({ ...prev, employeeId: e.target.value }))}
+              placeholder="Optional"
+            />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Select
+              label="Department"
+              value={formData.department}
+              onChange={(e) => setFormData(prev => ({ ...prev, department: e.target.value }))}
+              options={[
+                { value: 'workshop', label: 'Workshop' },
+                { value: 'diagnostics', label: 'Diagnostics' },
+                { value: 'body_shop', label: 'Body Shop' },
+                { value: 'paint_shop', label: 'Paint Shop' },
+                { value: 'assembly', label: 'Assembly' },
+                { value: 'quality_control', label: 'Quality Control' }
+              ]}
+            />
+            <Select
+              label="Position"
+              value={formData.position}
+              onChange={(e) => setFormData(prev => ({ ...prev, position: e.target.value }))}
+              options={[
+                { value: 'junior_technician', label: 'Junior Technician' },
+                { value: 'technician', label: 'Technician' },
+                { value: 'senior_technician', label: 'Senior Technician' },
+                { value: 'lead_technician', label: 'Lead Technician' },
+                { value: 'specialist', label: 'Specialist' },
+                { value: 'supervisor', label: 'Supervisor' }
+              ]}
+            />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Input
+              label="Hire Date"
+              type="date"
+              value={formData.hireDate}
+              onChange={(e) => setFormData(prev => ({ ...prev, hireDate: e.target.value }))}
+            />
+            <Select
+              label="Employment Status"
+              value={formData.employmentStatus}
+              onChange={(e) => setFormData(prev => ({ ...prev, employmentStatus: e.target.value }))}
+              options={[
+                { value: 'active', label: 'Active' },
+                { value: 'on_leave', label: 'On Leave' },
+                { value: 'terminated', label: 'Terminated' },
+                { value: 'retired', label: 'Retired' }
+              ]}
+            />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Select
+              label="Preferred Shift"
+              value={formData.workInfo.preferredShift}
+              onChange={(e) => setFormData(prev => ({ 
+                ...prev, 
+                workInfo: { ...prev.workInfo, preferredShift: e.target.value }
+              }))}
+              options={[
+                { value: 'morning', label: 'Morning Shift' },
+                { value: 'afternoon', label: 'Afternoon Shift' },
+                { value: 'night', label: 'Night Shift' },
+                { value: 'flexible', label: 'Flexible' }
+              ]}
+            />
+            <Input
+              label="Max Hours per Week"
+              type="number"
+              min="1"
+              max="80"
+              value={formData.workInfo.maxHoursPerWeek}
+              onChange={(e) => setFormData(prev => ({ 
+                ...prev, 
+                workInfo: { ...prev.workInfo, maxHoursPerWeek: parseInt(e.target.value) || 40 }
+              }))}
+            />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Input
+              label="Phone"
+              value={formData.contactInfo.phone}
+              onChange={(e) => setFormData(prev => ({ 
+                ...prev, 
+                contactInfo: { ...prev.contactInfo, phone: e.target.value }
+              }))}
+            />
+            <Input
+              label="Email"
+              type="email"
+              value={formData.contactInfo.email}
+              onChange={(e) => setFormData(prev => ({ 
+                ...prev, 
+                contactInfo: { ...prev.contactInfo, email: e.target.value }
+              }))}
+            />
+          </div>
+          <Input
+            label="Address"
+            value={formData.contactInfo.address}
+            onChange={(e) => setFormData(prev => ({ 
+              ...prev, 
+              contactInfo: { ...prev.contactInfo, address: e.target.value }
+            }))}
+          />
+          <TextArea
+            label="Notes"
+            value={formData.notes}
+            onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+            rows={3}
+          />
+          <div className="flex justify-end space-x-3">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsEditOpen(false);
+                setSelectedTechnician(null);
+                resetForm();
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleUpdate}
+              loading={updateTechnicianMutation.isPending}
+            >
+              Update Technician
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Add Skill Modal */}
+      <Modal
+        isOpen={isSkillOpen}
+        onClose={() => {
+          setIsSkillOpen(false);
+          setSelectedTechnician(null);
+          setSkillData({ name: '', category: '', level: 'intermediate', yearsExperience: 0 });
+        }}
+        title="Add Skill"
+        size="md"
+      >
+        <div className="space-y-4">
+          <div className="bg-gray-50 p-4 rounded-lg">
+            <h3 className="font-medium text-gray-900 mb-2">Technician: {selectedTechnician?.name}</h3>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Input
+              label="Skill Name"
+              value={skillData.name}
+              onChange={(e) => setSkillData(prev => ({ ...prev, name: e.target.value }))}
+              required
+            />
+            <Input
+              label="Category"
+              value={skillData.category}
+              onChange={(e) => setSkillData(prev => ({ ...prev, category: e.target.value }))}
+              placeholder="e.g., Mechanical, Electrical"
+            />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Select
+              label="Skill Level"
+              value={skillData.level}
+              onChange={(e) => setSkillData(prev => ({ ...prev, level: e.target.value }))}
+              options={[
+                { value: 'beginner', label: 'Beginner' },
+                { value: 'intermediate', label: 'Intermediate' },
+                { value: 'advanced', label: 'Advanced' },
+                { value: 'expert', label: 'Expert' }
+              ]}
+            />
+            <Input
+              label="Years of Experience"
+              type="number"
+              min="0"
+              value={skillData.yearsExperience}
+              onChange={(e) => setSkillData(prev => ({ ...prev, yearsExperience: parseInt(e.target.value) || 0 }))}
+            />
+          </div>
+          <div className="flex justify-end space-x-3">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsSkillOpen(false);
+                setSelectedTechnician(null);
+                setSkillData({ name: '', category: '', level: 'intermediate', yearsExperience: 0 });
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={addSkill}
+              loading={addSkillMutation.isPending}
+            >
+              Add Skill
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Add Certification Modal */}
+      <Modal
+        isOpen={isCertificationOpen}
+        onClose={() => {
+          setIsCertificationOpen(false);
+          setSelectedTechnician(null);
+          setCertificationData({ name: '', issuingBody: '', certificateNumber: '', issuedDate: '', expiryDate: '', notes: '' });
+        }}
+        title="Add Certification"
+        size="md"
+      >
+        <div className="space-y-4">
+          <div className="bg-gray-50 p-4 rounded-lg">
+            <h3 className="font-medium text-gray-900 mb-2">Technician: {selectedTechnician?.name}</h3>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Input
+              label="Certification Name"
+              value={certificationData.name}
+              onChange={(e) => setCertificationData(prev => ({ ...prev, name: e.target.value }))}
+              required
+            />
+            <Input
+              label="Issuing Body"
+              value={certificationData.issuingBody}
+              onChange={(e) => setCertificationData(prev => ({ ...prev, issuingBody: e.target.value }))}
+              required
+            />
+          </div>
+          <Input
+            label="Certificate Number"
+            value={certificationData.certificateNumber}
+            onChange={(e) => setCertificationData(prev => ({ ...prev, certificateNumber: e.target.value }))}
+            required
+          />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Input
+              label="Issued Date"
+              type="date"
+              value={certificationData.issuedDate}
+              onChange={(e) => setCertificationData(prev => ({ ...prev, issuedDate: e.target.value }))}
+              required
+            />
+            <Input
+              label="Expiry Date"
+              type="date"
+              value={certificationData.expiryDate}
+              onChange={(e) => setCertificationData(prev => ({ ...prev, expiryDate: e.target.value }))}
+              required
+            />
+          </div>
+          <TextArea
+            label="Notes"
+            value={certificationData.notes}
+            onChange={(e) => setCertificationData(prev => ({ ...prev, notes: e.target.value }))}
+            rows={3}
+          />
+          <div className="flex justify-end space-x-3">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsCertificationOpen(false);
+                setSelectedTechnician(null);
+                setCertificationData({ name: '', issuingBody: '', certificateNumber: '', issuedDate: '', expiryDate: '', notes: '' });
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={addCertification}
+              loading={addCertificationMutation.isPending}
+            >
+              Add Certification
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };
 
-// Machine Management Component (simplified for this demo)
+// Machine Management Component
 const MachineManagement: React.FC = () => {
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isMaintenanceOpen, setIsMaintenanceOpen] = useState(false);
+  const [isBookingOpen, setIsBookingOpen] = useState(false);
+  const [selectedMachine, setSelectedMachine] = useState<any>(null);
+  const [formData, setFormData] = useState({
+    name: '',
+    model: '',
+    manufacturer: '',
+    serialNumber: '',
+    category: '',
+    status: 'operational',
+    location: '',
+    specifications: {
+      capacity: '',
+      powerRating: '',
+      dimensions: '',
+      weight: 0,
+      operatingTemperature: '',
+      operatingPressure: ''
+    },
+    availability: {
+      isAvailable: true,
+      currentJob: null,
+      bookedBy: null,
+      bookedUntil: null
+    },
+    maintenance: {
+      lastMaintenance: '',
+      nextMaintenance: '',
+      maintenanceInterval: 30,
+      maintenanceHistory: []
+    },
+    purchaseInfo: {
+      purchaseDate: '',
+      purchasePrice: 0,
+      supplier: '',
+      warrantyExpiry: ''
+    },
+    notes: ''
+  });
+  const [maintenanceData, setMaintenanceData] = useState({
+    type: 'routine',
+    description: '',
+    cost: 0,
+    notes: ''
+  });
+  const [bookingData, setBookingData] = useState({
+    jobId: '',
+    until: ''
+  });
+
+  const queryClient = useQueryClient();
+
+  // Fetch machines
+  const { data: machinesData, isLoading } = useQuery({
+    queryKey: ['machines'],
+    queryFn: () => machinesAPI.getMachines(),
+  });
+
+  const machines = machinesData?.data?.data?.machines || [];
+
+  // Create machine mutation
+  const createMachineMutation = useMutation({
+    mutationFn: (data: any) => machinesAPI.createMachine(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['machines'] });
+      setIsCreateOpen(false);
+      resetForm();
+      toast.success('Machine created successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to create machine');
+    }
+  });
+
+  // Update machine mutation
+  const updateMachineMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => machinesAPI.updateMachine(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['machines'] });
+      setIsEditOpen(false);
+      setSelectedMachine(null);
+      resetForm();
+      toast.success('Machine updated successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to update machine');
+    }
+  });
+
+  // Delete machine mutation
+  const deleteMachineMutation = useMutation({
+    mutationFn: (id: string) => machinesAPI.deleteMachine(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['machines'] });
+      toast.success('Machine deleted successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to delete machine');
+    }
+  });
+
+  // Book machine mutation
+  const bookMachineMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => machinesAPI.bookMachine(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['machines'] });
+      setIsBookingOpen(false);
+      setBookingData({ jobId: '', until: '' });
+      toast.success('Machine booked successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to book machine');
+    }
+  });
+
+  // Release machine mutation
+  const releaseMachineMutation = useMutation({
+    mutationFn: (id: string) => machinesAPI.releaseMachine(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['machines'] });
+      toast.success('Machine released successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to release machine');
+    }
+  });
+
+  // Add maintenance record mutation
+  const addMaintenanceMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => machinesAPI.addMaintenanceRecord(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['machines'] });
+      setIsMaintenanceOpen(false);
+      setMaintenanceData({ type: 'routine', description: '', cost: 0, notes: '' });
+      toast.success('Maintenance record added successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to add maintenance record');
+    }
+  });
+
+  const resetForm = () => {
+    setFormData({
+      name: '',
+      model: '',
+      manufacturer: '',
+      serialNumber: '',
+      category: '',
+      status: 'operational',
+      location: '',
+      specifications: {
+        capacity: '',
+        powerRating: '',
+        dimensions: '',
+        weight: 0,
+        operatingTemperature: '',
+        operatingPressure: ''
+      },
+      availability: {
+        isAvailable: true,
+        currentJob: null,
+        bookedBy: null,
+        bookedUntil: null
+      },
+      maintenance: {
+        lastMaintenance: '',
+        nextMaintenance: '',
+        maintenanceInterval: 30,
+        maintenanceHistory: []
+      },
+      purchaseInfo: {
+        purchaseDate: '',
+        purchasePrice: 0,
+        supplier: '',
+        warrantyExpiry: ''
+      },
+      notes: ''
+    });
+  };
+
+  const handleCreate = () => {
+    if (!formData.name.trim()) {
+      toast.error('Please enter machine name');
+      return;
+    }
+    createMachineMutation.mutate(formData);
+  };
+
+  const handleEdit = (machine: any) => {
+    setSelectedMachine(machine);
+    setFormData({
+      name: machine.name || '',
+      model: machine.model || '',
+      manufacturer: machine.manufacturer || '',
+      serialNumber: machine.serialNumber || '',
+      category: machine.category || '',
+      status: machine.status || 'operational',
+      location: machine.location || '',
+      specifications: {
+        capacity: machine.specifications?.capacity || '',
+        powerRating: machine.specifications?.powerRating || '',
+        dimensions: machine.specifications?.dimensions || '',
+        weight: machine.specifications?.weight || 0,
+        operatingTemperature: machine.specifications?.operatingTemperature || '',
+        operatingPressure: machine.specifications?.operatingPressure || ''
+      },
+      availability: {
+        isAvailable: machine.availability?.isAvailable || true,
+        currentJob: machine.availability?.currentJob || null,
+        bookedBy: machine.availability?.bookedBy || null,
+        bookedUntil: machine.availability?.bookedUntil || null
+      },
+      maintenance: {
+        lastMaintenance: machine.maintenance?.lastMaintenance || '',
+        nextMaintenance: machine.maintenance?.nextMaintenance || '',
+        maintenanceInterval: machine.maintenance?.maintenanceInterval || 30,
+        maintenanceHistory: machine.maintenance?.maintenanceHistory || []
+      },
+      purchaseInfo: {
+        purchaseDate: machine.purchaseInfo?.purchaseDate ? new Date(machine.purchaseInfo.purchaseDate).toISOString().split('T')[0] : '',
+        purchasePrice: machine.purchaseInfo?.purchasePrice || 0,
+        supplier: machine.purchaseInfo?.supplier || '',
+        warrantyExpiry: machine.purchaseInfo?.warrantyExpiry ? new Date(machine.purchaseInfo.warrantyExpiry).toISOString().split('T')[0] : ''
+      },
+      notes: machine.notes || ''
+    });
+    setIsEditOpen(true);
+  };
+
+  const handleUpdate = () => {
+    if (selectedMachine) {
+      if (!formData.name.trim()) {
+        toast.error('Please enter machine name');
+        return;
+      }
+      updateMachineMutation.mutate({ id: selectedMachine._id, data: formData });
+    }
+  };
+
+  const handleDelete = (id: string) => {
+    if (confirm('Are you sure you want to delete this machine?')) {
+      deleteMachineMutation.mutate(id);
+    }
+  };
+
+  const handleBookMachine = (machine: any) => {
+    setSelectedMachine(machine);
+    setIsBookingOpen(true);
+  };
+
+  const handleReleaseMachine = (id: string) => {
+    if (confirm('Are you sure you want to release this machine?')) {
+      releaseMachineMutation.mutate(id);
+    }
+  };
+
+  const handleAddMaintenance = (machine: any) => {
+    setSelectedMachine(machine);
+    setIsMaintenanceOpen(true);
+  };
+
+  const bookMachine = () => {
+    if (selectedMachine) {
+      bookMachineMutation.mutate({ id: selectedMachine._id, data: bookingData });
+    }
+  };
+
+  const addMaintenance = () => {
+    if (selectedMachine) {
+      addMaintenanceMutation.mutate({ id: selectedMachine._id, data: maintenanceData });
+    }
+  };
+
+  const columns = [
+    {
+      key: 'name',
+      label: 'Machine',
+      render: (machine: any) => (
+        <div>
+          <div className="font-medium text-gray-900">{machine.name}</div>
+          <div className="text-sm text-gray-500">
+            {machine.model} • {machine.manufacturer}
+            {machine.serialNumber && ` • SN: ${machine.serialNumber}`}
+          </div>
+        </div>
+      )
+    },
+    {
+      key: 'status',
+      label: 'Status',
+      render: (machine: any) => (
+        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+          machine.status === 'operational' ? 'bg-green-100 text-green-800' :
+          machine.status === 'maintenance' ? 'bg-yellow-100 text-yellow-800' :
+          machine.status === 'broken' ? 'bg-red-100 text-red-800' :
+          'bg-gray-100 text-gray-800'
+        }`}>
+          {(machine.status || 'unknown').toUpperCase()}
+        </span>
+      )
+    },
+    {
+      key: 'availability',
+      label: 'Availability',
+      render: (machine: any) => (
+        <div className="text-sm">
+          <div className={`font-medium ${machine.availability?.isAvailable ? 'text-green-600' : 'text-red-600'}`}>
+            {machine.availability?.isAvailable ? 'Available' : 'Booked'}
+          </div>
+          {machine.availability?.bookedUntil && (
+            <div className="text-gray-500">
+              Until: {new Date(machine.availability.bookedUntil).toLocaleDateString()}
+            </div>
+          )}
+        </div>
+      )
+    },
+    {
+      key: 'category',
+      label: 'Category'
+    },
+    {
+      key: 'location',
+      label: 'Location'
+    },
+    {
+      key: 'maintenance',
+      label: 'Maintenance',
+      render: (machine: any) => (
+        <div className="text-sm">
+          <div className="font-medium">
+            {machine.maintenance?.maintenanceHistory?.length || 0} Records
+          </div>
+          <div className="text-gray-500">
+            Next: {machine.maintenance?.nextMaintenance ? 
+              new Date(machine.maintenance.nextMaintenance).toLocaleDateString() : 'N/A'}
+          </div>
+        </div>
+      )
+    },
+    {
+      key: 'actions',
+      label: 'Actions',
+      render: (machine: any) => (
+        <div className="flex space-x-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleEdit(machine)}
+            className="text-blue-600 hover:text-blue-700"
+            title="Edit Machine"
+          >
+            <PencilIcon className="h-4 w-4" />
+          </Button>
+          {machine.availability?.isAvailable ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleBookMachine(machine)}
+              className="text-green-600 hover:text-green-700"
+              title="Book Machine"
+            >
+              <ArrowRightIcon className="h-4 w-4" />
+            </Button>
+          ) : (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleReleaseMachine(machine._id)}
+              className="text-orange-600 hover:text-orange-700"
+              title="Release Machine"
+            >
+              <ArrowRightIcon className="h-4 w-4" />
+            </Button>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleAddMaintenance(machine)}
+            className="text-purple-600 hover:text-purple-700"
+            title="Add Maintenance"
+          >
+            <CogIcon className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleDelete(machine._id)}
+            className="text-red-600 hover:text-red-700"
+            title="Delete Machine"
+          >
+            <TrashIcon className="h-4 w-4" />
+          </Button>
+        </div>
+      )
+    }
+  ];
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -988,15 +2189,536 @@ const MachineManagement: React.FC = () => {
           <h2 className="text-2xl font-bold text-gray-900">Machine Management</h2>
           <p className="text-gray-600">Manage workshop machines and equipment</p>
         </div>
-        <Button>
+        <Button onClick={() => setIsCreateOpen(true)}>
           <PlusIcon className="h-5 w-5 mr-2" />
           Add Machine
         </Button>
       </div>
-      <div className="bg-gray-50 p-8 rounded-lg text-center">
-        <CogIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-        <p className="text-gray-600">Machine management functionality coming soon...</p>
-      </div>
+
+      <DataTable
+        data={machines}
+        columns={columns}
+        loading={isLoading}
+      />
+
+      {/* Create Machine Modal */}
+      <Modal
+        isOpen={isCreateOpen}
+        onClose={() => {
+          setIsCreateOpen(false);
+          resetForm();
+        }}
+        title="Add New Machine"
+        size="lg"
+      >
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Input
+              label="Machine Name"
+              value={formData.name}
+              onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+              required
+            />
+            <Input
+              label="Model"
+              value={formData.model}
+              onChange={(e) => setFormData(prev => ({ ...prev, model: e.target.value }))}
+            />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Input
+              label="Manufacturer"
+              value={formData.manufacturer}
+              onChange={(e) => setFormData(prev => ({ ...prev, manufacturer: e.target.value }))}
+            />
+            <Input
+              label="Serial Number"
+              value={formData.serialNumber}
+              onChange={(e) => setFormData(prev => ({ ...prev, serialNumber: e.target.value }))}
+            />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Select
+              label="Category"
+              value={formData.category}
+              onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
+              options={[
+                { value: '', label: 'Select Category' },
+                { value: 'diagnostic', label: 'Diagnostic' },
+                { value: 'repair', label: 'Repair' },
+                { value: 'lifting', label: 'Lifting' },
+                { value: 'welding', label: 'Welding' },
+                { value: 'machining', label: 'Machining' },
+                { value: 'testing', label: 'Testing' },
+                { value: 'other', label: 'Other' }
+              ]}
+            />
+            <Select
+              label="Status"
+              value={formData.status}
+              onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value }))}
+              options={[
+                { value: 'operational', label: 'Operational' },
+                { value: 'maintenance', label: 'Maintenance' },
+                { value: 'broken', label: 'Broken' },
+                { value: 'retired', label: 'Retired' }
+              ]}
+            />
+          </div>
+          <Input
+            label="Location"
+            value={formData.location}
+            onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
+          />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Input
+              label="Capacity"
+              value={formData.specifications.capacity}
+              onChange={(e) => setFormData(prev => ({ 
+                ...prev, 
+                specifications: { ...prev.specifications, capacity: e.target.value }
+              }))}
+              placeholder="e.g., 1000kg, 500mm"
+            />
+            <Input
+              label="Power Rating"
+              value={formData.specifications.powerRating}
+              onChange={(e) => setFormData(prev => ({ 
+                ...prev, 
+                specifications: { ...prev.specifications, powerRating: e.target.value }
+              }))}
+              placeholder="e.g., 5kW, 220V"
+            />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Input
+              label="Dimensions"
+              value={formData.specifications.dimensions}
+              onChange={(e) => setFormData(prev => ({ 
+                ...prev, 
+                specifications: { ...prev.specifications, dimensions: e.target.value }
+              }))}
+              placeholder="e.g., 2000x1500x1200mm"
+            />
+            <Input
+              label="Weight (kg)"
+              type="number"
+              value={formData.specifications.weight}
+              onChange={(e) => setFormData(prev => ({ 
+                ...prev, 
+                specifications: { ...prev.specifications, weight: parseFloat(e.target.value) || 0 }
+              }))}
+            />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Input
+              label="Operating Temperature"
+              value={formData.specifications.operatingTemperature}
+              onChange={(e) => setFormData(prev => ({ 
+                ...prev, 
+                specifications: { ...prev.specifications, operatingTemperature: e.target.value }
+              }))}
+              placeholder="e.g., 0-40°C"
+            />
+            <Input
+              label="Operating Pressure"
+              value={formData.specifications.operatingPressure}
+              onChange={(e) => setFormData(prev => ({ 
+                ...prev, 
+                specifications: { ...prev.specifications, operatingPressure: e.target.value }
+              }))}
+              placeholder="e.g., 10 bar"
+            />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Input
+              label="Purchase Date"
+              type="date"
+              value={formData.purchaseInfo.purchaseDate}
+              onChange={(e) => setFormData(prev => ({ 
+                ...prev, 
+                purchaseInfo: { ...prev.purchaseInfo, purchaseDate: e.target.value }
+              }))}
+            />
+            <Input
+              label="Purchase Price"
+              type="number"
+              value={formData.purchaseInfo.purchasePrice}
+              onChange={(e) => setFormData(prev => ({ 
+                ...prev, 
+                purchaseInfo: { ...prev.purchaseInfo, purchasePrice: parseFloat(e.target.value) || 0 }
+              }))}
+            />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Input
+              label="Supplier"
+              value={formData.purchaseInfo.supplier}
+              onChange={(e) => setFormData(prev => ({ 
+                ...prev, 
+                purchaseInfo: { ...prev.purchaseInfo, supplier: e.target.value }
+              }))}
+            />
+            <Input
+              label="Warranty Expiry"
+              type="date"
+              value={formData.purchaseInfo.warrantyExpiry}
+              onChange={(e) => setFormData(prev => ({ 
+                ...prev, 
+                purchaseInfo: { ...prev.purchaseInfo, warrantyExpiry: e.target.value }
+              }))}
+            />
+          </div>
+          <TextArea
+            label="Notes"
+            value={formData.notes}
+            onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+            rows={3}
+          />
+          <div className="flex justify-end space-x-3">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsCreateOpen(false);
+                resetForm();
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleCreate}
+              loading={createMachineMutation.isPending}
+            >
+              Add Machine
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Edit Machine Modal */}
+      <Modal
+        isOpen={isEditOpen}
+        onClose={() => {
+          setIsEditOpen(false);
+          setSelectedMachine(null);
+          resetForm();
+        }}
+        title="Edit Machine"
+        size="lg"
+      >
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Input
+              label="Machine Name"
+              value={formData.name}
+              onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+              required
+            />
+            <Input
+              label="Model"
+              value={formData.model}
+              onChange={(e) => setFormData(prev => ({ ...prev, model: e.target.value }))}
+            />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Input
+              label="Manufacturer"
+              value={formData.manufacturer}
+              onChange={(e) => setFormData(prev => ({ ...prev, manufacturer: e.target.value }))}
+            />
+            <Input
+              label="Serial Number"
+              value={formData.serialNumber}
+              onChange={(e) => setFormData(prev => ({ ...prev, serialNumber: e.target.value }))}
+            />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Select
+              label="Category"
+              value={formData.category}
+              onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
+              options={[
+                { value: '', label: 'Select Category' },
+                { value: 'diagnostic', label: 'Diagnostic' },
+                { value: 'repair', label: 'Repair' },
+                { value: 'lifting', label: 'Lifting' },
+                { value: 'welding', label: 'Welding' },
+                { value: 'machining', label: 'Machining' },
+                { value: 'testing', label: 'Testing' },
+                { value: 'other', label: 'Other' }
+              ]}
+            />
+            <Select
+              label="Status"
+              value={formData.status}
+              onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value }))}
+              options={[
+                { value: 'operational', label: 'Operational' },
+                { value: 'maintenance', label: 'Maintenance' },
+                { value: 'broken', label: 'Broken' },
+                { value: 'retired', label: 'Retired' }
+              ]}
+            />
+          </div>
+          <Input
+            label="Location"
+            value={formData.location}
+            onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
+          />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Input
+              label="Capacity"
+              value={formData.specifications.capacity}
+              onChange={(e) => setFormData(prev => ({ 
+                ...prev, 
+                specifications: { ...prev.specifications, capacity: e.target.value }
+              }))}
+              placeholder="e.g., 1000kg, 500mm"
+            />
+            <Input
+              label="Power Rating"
+              value={formData.specifications.powerRating}
+              onChange={(e) => setFormData(prev => ({ 
+                ...prev, 
+                specifications: { ...prev.specifications, powerRating: e.target.value }
+              }))}
+              placeholder="e.g., 5kW, 220V"
+            />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Input
+              label="Dimensions"
+              value={formData.specifications.dimensions}
+              onChange={(e) => setFormData(prev => ({ 
+                ...prev, 
+                specifications: { ...prev.specifications, dimensions: e.target.value }
+              }))}
+              placeholder="e.g., 2000x1500x1200mm"
+            />
+            <Input
+              label="Weight (kg)"
+              type="number"
+              value={formData.specifications.weight}
+              onChange={(e) => setFormData(prev => ({ 
+                ...prev, 
+                specifications: { ...prev.specifications, weight: parseFloat(e.target.value) || 0 }
+              }))}
+            />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Input
+              label="Operating Temperature"
+              value={formData.specifications.operatingTemperature}
+              onChange={(e) => setFormData(prev => ({ 
+                ...prev, 
+                specifications: { ...prev.specifications, operatingTemperature: e.target.value }
+              }))}
+              placeholder="e.g., 0-40°C"
+            />
+            <Input
+              label="Operating Pressure"
+              value={formData.specifications.operatingPressure}
+              onChange={(e) => setFormData(prev => ({ 
+                ...prev, 
+                specifications: { ...prev.specifications, operatingPressure: e.target.value }
+              }))}
+              placeholder="e.g., 10 bar"
+            />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Input
+              label="Purchase Date"
+              type="date"
+              value={formData.purchaseInfo.purchaseDate}
+              onChange={(e) => setFormData(prev => ({ 
+                ...prev, 
+                purchaseInfo: { ...prev.purchaseInfo, purchaseDate: e.target.value }
+              }))}
+            />
+            <Input
+              label="Purchase Price"
+              type="number"
+              value={formData.purchaseInfo.purchasePrice}
+              onChange={(e) => setFormData(prev => ({ 
+                ...prev, 
+                purchaseInfo: { ...prev.purchaseInfo, purchasePrice: parseFloat(e.target.value) || 0 }
+              }))}
+            />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Input
+              label="Supplier"
+              value={formData.purchaseInfo.supplier}
+              onChange={(e) => setFormData(prev => ({ 
+                ...prev, 
+                purchaseInfo: { ...prev.purchaseInfo, supplier: e.target.value }
+              }))}
+            />
+            <Input
+              label="Warranty Expiry"
+              type="date"
+              value={formData.purchaseInfo.warrantyExpiry}
+              onChange={(e) => setFormData(prev => ({ 
+                ...prev, 
+                purchaseInfo: { ...prev.purchaseInfo, warrantyExpiry: e.target.value }
+              }))}
+            />
+          </div>
+          <TextArea
+            label="Notes"
+            value={formData.notes}
+            onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+            rows={3}
+          />
+          <div className="flex justify-end space-x-3">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsEditOpen(false);
+                setSelectedMachine(null);
+                resetForm();
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleUpdate}
+              loading={updateMachineMutation.isPending}
+            >
+              Update Machine
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Book Machine Modal */}
+      <Modal
+        isOpen={isBookingOpen}
+        onClose={() => {
+          setIsBookingOpen(false);
+          setSelectedMachine(null);
+          setBookingData({ jobId: '', until: '' });
+        }}
+        title="Book Machine"
+        size="md"
+      >
+        <div className="space-y-4">
+          <div className="bg-gray-50 p-4 rounded-lg">
+            <h3 className="font-medium text-gray-900 mb-2">Machine: {selectedMachine?.name}</h3>
+            <p className="text-sm text-gray-600">
+              Model: {selectedMachine?.model} • Manufacturer: {selectedMachine?.manufacturer}
+            </p>
+          </div>
+          <Input
+            label="Job ID"
+            value={bookingData.jobId}
+            onChange={(e) => setBookingData(prev => ({ ...prev, jobId: e.target.value }))}
+            required
+            placeholder="Enter job ID or reference"
+          />
+          <Input
+            label="Book Until"
+            type="datetime-local"
+            value={bookingData.until}
+            onChange={(e) => setBookingData(prev => ({ ...prev, until: e.target.value }))}
+            required
+          />
+          <div className="flex justify-end space-x-3">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsBookingOpen(false);
+                setSelectedMachine(null);
+                setBookingData({ jobId: '', until: '' });
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={bookMachine}
+              loading={bookMachineMutation.isPending}
+            >
+              Book Machine
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Add Maintenance Modal */}
+      <Modal
+        isOpen={isMaintenanceOpen}
+        onClose={() => {
+          setIsMaintenanceOpen(false);
+          setSelectedMachine(null);
+          setMaintenanceData({ type: 'routine', description: '', cost: 0, notes: '' });
+        }}
+        title="Add Maintenance Record"
+        size="md"
+      >
+        <div className="space-y-4">
+          <div className="bg-gray-50 p-4 rounded-lg">
+            <h3 className="font-medium text-gray-900 mb-2">Machine: {selectedMachine?.name}</h3>
+            <p className="text-sm text-gray-600">
+              Model: {selectedMachine?.model} • Serial: {selectedMachine?.serialNumber}
+            </p>
+          </div>
+          <Select
+            label="Maintenance Type"
+            value={maintenanceData.type}
+            onChange={(e) => setMaintenanceData(prev => ({ ...prev, type: e.target.value }))}
+            options={[
+              { value: 'routine', label: 'Routine Maintenance' },
+              { value: 'preventive', label: 'Preventive Maintenance' },
+              { value: 'corrective', label: 'Corrective Maintenance' },
+              { value: 'emergency', label: 'Emergency Repair' },
+              { value: 'calibration', label: 'Calibration' },
+              { value: 'inspection', label: 'Inspection' }
+            ]}
+          />
+          <TextArea
+            label="Description"
+            value={maintenanceData.description}
+            onChange={(e) => setMaintenanceData(prev => ({ ...prev, description: e.target.value }))}
+            rows={3}
+            required
+            placeholder="Describe the maintenance work performed..."
+          />
+          <Input
+            label="Cost"
+            type="number"
+            min="0"
+            step="0.01"
+            value={maintenanceData.cost}
+            onChange={(e) => setMaintenanceData(prev => ({ ...prev, cost: parseFloat(e.target.value) || 0 }))}
+            placeholder="Enter maintenance cost"
+          />
+          <TextArea
+            label="Notes"
+            value={maintenanceData.notes}
+            onChange={(e) => setMaintenanceData(prev => ({ ...prev, notes: e.target.value }))}
+            rows={2}
+            placeholder="Additional notes or recommendations..."
+          />
+          <div className="flex justify-end space-x-3">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsMaintenanceOpen(false);
+                setSelectedMachine(null);
+                setMaintenanceData({ type: 'routine', description: '', cost: 0, notes: '' });
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={addMaintenance}
+              loading={addMaintenanceMutation.isPending}
+            >
+              Add Maintenance Record
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };

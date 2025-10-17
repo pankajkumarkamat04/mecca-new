@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { serviceTemplateAPI } from '@/lib/api';
+import { serviceTemplateAPI, productsAPI, machinesAPI, toolsAPI } from '@/lib/api';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
 import Modal from '@/components/ui/Modal';
 import DataTable from '@/components/ui/DataTable';
+import FormProductSelector from '@/components/ui/FormProductSelector';
+import FormToolSelector from '@/components/ui/FormToolSelector';
+import FormMachineSelector from '@/components/ui/FormMachineSelector';
 import { toast } from 'react-hot-toast';
 import { PlusIcon, PencilIcon, TrashIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 
@@ -18,11 +21,19 @@ interface ServiceTemplate {
   estimatedCost: number;
   priority: string;
   requiredTools: Array<{
+    toolId?: string;
     name: string;
     quantity: number;
     optional: boolean;
   }>;
   requiredParts: Array<{
+    productId?: string;
+    name: string;
+    quantity: number;
+    optional: boolean;
+  }>;
+  requiredMachines: Array<{
+    machineId?: string;
     name: string;
     quantity: number;
     optional: boolean;
@@ -60,8 +71,9 @@ const ServiceTemplateManager: React.FC = () => {
     estimatedDuration: 0,
     estimatedCost: 0,
     priority: 'medium',
-    requiredTools: [] as Array<{ name: string; quantity: number; optional: boolean }>,
-    requiredParts: [] as Array<{ name: string; quantity: number; optional: boolean }>,
+    requiredTools: [] as Array<{ toolId?: string; name: string; quantity: number; optional: boolean }>,
+    requiredParts: [] as Array<{ productId?: string; name: string; quantity: number; optional: boolean }>,
+    requiredMachines: [] as Array<{ machineId?: string; name: string; quantity: number; optional: boolean }>,
     tasks: [] as Array<{ name: string; description: string; estimatedDuration: number; order: number; required: boolean }>,
     notes: ''
   });
@@ -137,6 +149,7 @@ const ServiceTemplateManager: React.FC = () => {
       priority: 'medium',
       requiredTools: [],
       requiredParts: [],
+      requiredMachines: [],
       tasks: [],
       notes: ''
     });
@@ -189,6 +202,7 @@ const ServiceTemplateManager: React.FC = () => {
       priority: template.priority,
       requiredTools: template.requiredTools || [],
       requiredParts: template.requiredParts || [],
+      requiredMachines: template.requiredMachines || [],
       tasks: template.tasks || [],
       notes: template.notes || ''
     });
@@ -204,7 +218,7 @@ const ServiceTemplateManager: React.FC = () => {
   const addTool = () => {
     setFormData(prev => ({
       ...prev,
-      requiredTools: [...prev.requiredTools, { name: '', quantity: 1, optional: false }]
+      requiredTools: [...prev.requiredTools, { toolId: '', name: '', quantity: 1, optional: false }]
     }));
   };
 
@@ -227,7 +241,14 @@ const ServiceTemplateManager: React.FC = () => {
   const addPart = () => {
     setFormData(prev => ({
       ...prev,
-      requiredParts: [...prev.requiredParts, { name: '', quantity: 1, optional: false }]
+      requiredParts: [...prev.requiredParts, { productId: '', name: '', quantity: 1, optional: false }]
+    }));
+  };
+
+  const addMachine = () => {
+    setFormData(prev => ({
+      ...prev,
+      requiredMachines: [...prev.requiredMachines, { machineId: '', name: '', quantity: 1, optional: false }]
     }));
   };
 
@@ -238,6 +259,13 @@ const ServiceTemplateManager: React.FC = () => {
     }));
   };
 
+  const removeMachine = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      requiredMachines: prev.requiredMachines.filter((_, i) => i !== index)
+    }));
+  };
+
   const updatePart = (index: number, field: string, value: any) => {
     setFormData(prev => ({
       ...prev,
@@ -245,6 +273,54 @@ const ServiceTemplateManager: React.FC = () => {
         i === index ? { ...part, [field]: value } : part
       )
     }));
+  };
+
+  const updateMachine = (index: number, field: string, value: any) => {
+    setFormData(prev => ({
+      ...prev,
+      requiredMachines: prev.requiredMachines.map((machine, i) => 
+        i === index ? { ...machine, [field]: value } : machine
+      )
+    }));
+  };
+
+  // Handle product selection for parts
+  const handleProductSelect = (index: number, productId: string) => {
+    // Fetch product details to get the name
+    productsAPI.getProductById(productId).then(response => {
+      const product = response.data.data;
+      updatePart(index, 'productId', productId);
+      updatePart(index, 'name', product.name);
+    }).catch(error => {
+      console.error('Error fetching product:', error);
+      toast.error('Failed to fetch product details');
+    });
+  };
+
+  // Handle tool selection for tools
+  const handleToolSelect = (index: number, toolId: string) => {
+    // Fetch tool details to get the name
+    toolsAPI.getToolById(toolId).then(response => {
+      const tool = response.data.data;
+      updateTool(index, 'toolId', toolId);
+      updateTool(index, 'name', tool.name);
+    }).catch(error => {
+      console.error('Error fetching tool:', error);
+      toast.error('Failed to fetch tool details');
+    });
+  };
+
+  // Handle machine selection for machines
+  const handleMachineSelect = (index: number, machineId: string) => {
+    // Fetch machine details to get the name
+    machinesAPI.getMachineById(machineId).then(response => {
+      const machine = response.data.data;
+      updateMachine(index, 'machineId', machineId);
+      updateMachine(index, 'name', machine.name);
+    }).catch(error => {
+      console.error('Error fetching machine:', error);
+      toast.error('Failed to fetch machine details');
+    });
   };
 
   const addTask = () => {
@@ -558,12 +634,20 @@ const ServiceTemplateManager: React.FC = () => {
             <div className="space-y-3">
               {formData.requiredParts.map((part, index) => (
                 <div key={index} className="border border-gray-200 rounded-lg p-4">
-                  <div className="grid grid-cols-3 gap-4">
-                    <Input
-                      placeholder="Part name"
-                      value={part.name}
-                      onChange={(e) => updatePart(index, 'name', e.target.value)}
-                    />
+                  <div className="grid grid-cols-1 gap-4 mb-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Select Product *
+                      </label>
+                      <FormProductSelector
+                        value={part.productId || ''}
+                        onChange={(productId) => handleProductSelect(index, productId)}
+                        placeholder="Search and select a product..."
+                        className="w-full"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
                     <Input
                       type="number"
                       placeholder="Quantity"
@@ -608,12 +692,20 @@ const ServiceTemplateManager: React.FC = () => {
             <div className="space-y-3">
               {formData.requiredTools.map((tool, index) => (
                 <div key={index} className="border border-gray-200 rounded-lg p-4">
-                  <div className="grid grid-cols-3 gap-4">
-                    <Input
-                      placeholder="Tool name"
-                      value={tool.name}
-                      onChange={(e) => updateTool(index, 'name', e.target.value)}
-                    />
+                  <div className="grid grid-cols-1 gap-4 mb-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Select Tool *
+                      </label>
+                      <FormToolSelector
+                        value={tool.toolId || ''}
+                        onChange={(toolId) => handleToolSelect(index, toolId)}
+                        placeholder="Search and select a tool..."
+                        className="w-full"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
                     <Input
                       type="number"
                       placeholder="Quantity"
@@ -635,6 +727,64 @@ const ServiceTemplateManager: React.FC = () => {
                         variant="outline"
                         size="sm"
                         onClick={() => removeTool(index)}
+                        className="text-red-600"
+                      >
+                        <TrashIcon className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Required Machines Section */}
+          <div>
+            <div className="flex justify-between items-center mb-3">
+              <h3 className="text-lg font-medium text-gray-900">Required Machines</h3>
+              <Button variant="outline" size="sm" onClick={addMachine}>
+                <PlusIcon className="h-4 w-4 mr-1" />
+                Add Machine
+              </Button>
+            </div>
+            <div className="space-y-3">
+              {formData.requiredMachines.map((machine, index) => (
+                <div key={index} className="border border-gray-200 rounded-lg p-4">
+                  <div className="grid grid-cols-1 gap-4 mb-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Select Machine *
+                      </label>
+                      <FormMachineSelector
+                        value={machine.machineId || ''}
+                        onChange={(machineId) => handleMachineSelect(index, machineId)}
+                        placeholder="Search and select a machine..."
+                        className="w-full"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <Input
+                      type="number"
+                      placeholder="Quantity"
+                      value={machine.quantity}
+                      onChange={(e) => updateMachine(index, 'quantity', Number(e.target.value))}
+                      min="1"
+                    />
+                    <div className="flex items-center justify-between">
+                      <label className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={machine.optional}
+                          onChange={(e) => updateMachine(index, 'optional', e.target.checked)}
+                          className="mr-2"
+                        />
+                        Optional
+                      </label>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => removeMachine(index)}
                         className="text-red-600"
                       >
                         <TrashIcon className="h-4 w-4" />
@@ -826,12 +976,20 @@ const ServiceTemplateManager: React.FC = () => {
             <div className="space-y-3">
               {formData.requiredParts.map((part, index) => (
                 <div key={index} className="border border-gray-200 rounded-lg p-4">
-                  <div className="grid grid-cols-3 gap-4">
-                    <Input
-                      placeholder="Part name"
-                      value={part.name}
-                      onChange={(e) => updatePart(index, 'name', e.target.value)}
-                    />
+                  <div className="grid grid-cols-1 gap-4 mb-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Select Product *
+                      </label>
+                      <FormProductSelector
+                        value={part.productId || ''}
+                        onChange={(productId) => handleProductSelect(index, productId)}
+                        placeholder="Search and select a product..."
+                        className="w-full"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
                     <Input
                       type="number"
                       placeholder="Quantity"
@@ -876,12 +1034,20 @@ const ServiceTemplateManager: React.FC = () => {
             <div className="space-y-3">
               {formData.requiredTools.map((tool, index) => (
                 <div key={index} className="border border-gray-200 rounded-lg p-4">
-                  <div className="grid grid-cols-3 gap-4">
-                    <Input
-                      placeholder="Tool name"
-                      value={tool.name}
-                      onChange={(e) => updateTool(index, 'name', e.target.value)}
-                    />
+                  <div className="grid grid-cols-1 gap-4 mb-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Select Tool *
+                      </label>
+                      <FormToolSelector
+                        value={tool.toolId || ''}
+                        onChange={(toolId) => handleToolSelect(index, toolId)}
+                        placeholder="Search and select a tool..."
+                        className="w-full"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
                     <Input
                       type="number"
                       placeholder="Quantity"
@@ -903,6 +1069,64 @@ const ServiceTemplateManager: React.FC = () => {
                         variant="outline"
                         size="sm"
                         onClick={() => removeTool(index)}
+                        className="text-red-600"
+                      >
+                        <TrashIcon className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Required Machines Section */}
+          <div>
+            <div className="flex justify-between items-center mb-3">
+              <h3 className="text-lg font-medium text-gray-900">Required Machines</h3>
+              <Button variant="outline" size="sm" onClick={addMachine}>
+                <PlusIcon className="h-4 w-4 mr-1" />
+                Add Machine
+              </Button>
+            </div>
+            <div className="space-y-3">
+              {formData.requiredMachines.map((machine, index) => (
+                <div key={index} className="border border-gray-200 rounded-lg p-4">
+                  <div className="grid grid-cols-1 gap-4 mb-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Select Machine *
+                      </label>
+                      <FormMachineSelector
+                        value={machine.machineId || ''}
+                        onChange={(machineId) => handleMachineSelect(index, machineId)}
+                        placeholder="Search and select a machine..."
+                        className="w-full"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <Input
+                      type="number"
+                      placeholder="Quantity"
+                      value={machine.quantity}
+                      onChange={(e) => updateMachine(index, 'quantity', Number(e.target.value))}
+                      min="1"
+                    />
+                    <div className="flex items-center justify-between">
+                      <label className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={machine.optional}
+                          onChange={(e) => updateMachine(index, 'optional', e.target.checked)}
+                          className="mr-2"
+                        />
+                        Optional
+                      </label>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => removeMachine(index)}
                         className="text-red-600"
                       >
                         <TrashIcon className="h-4 w-4" />

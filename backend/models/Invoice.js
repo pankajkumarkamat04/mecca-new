@@ -228,6 +228,14 @@ const invoiceSchema = new mongoose.Schema({
   isWorkshopTransaction: {
     type: Boolean,
     default: false
+  },
+  workshopJob: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'WorkshopJob'
+  },
+  workshopJobNumber: {
+    type: String,
+    trim: true
   }
 }, {
   timestamps: true,
@@ -327,6 +335,83 @@ invoiceSchema.methods.addPayment = async function(paymentData) {
   
   // Save the invoice first to trigger pre-save hooks
   await this.save();
+  
+  // Create accounting transaction for the payment
+  try {
+    const Transaction = require('./Transaction');
+    const Account = require('./Account');
+    
+    // Find the appropriate accounts
+    const cashAccount = await Account.findOne({ 
+      $or: [
+        { name: /cash/i },
+        { code: 'CASH' },
+        { type: 'asset', category: 'current_assets' }
+      ]
+    });
+    
+    const salesAccount = await Account.findOne({ 
+      $or: [
+        { name: /sales/i },
+        { code: 'SALES' },
+        { type: 'revenue', category: 'sales_revenue' }
+      ]
+    });
+    
+    if (cashAccount && salesAccount) {
+      const transaction = new Transaction({
+        transactionNumber: undefined, // Will be auto-generated
+        date: paymentData.date || new Date(),
+        description: `Payment received for invoice ${this.invoiceNumber}`,
+        type: 'sale',
+        reference: this.invoiceNumber,
+        referenceId: this._id,
+        amount: paymentData.amount,
+        currency: this.currency?.baseCurrency || 'USD',
+        entries: [
+          { 
+            account: cashAccount._id, 
+            debit: paymentData.amount, 
+            credit: 0, 
+            description: `Payment received for invoice ${this.invoiceNumber}` 
+          },
+          { 
+            account: salesAccount._id, 
+            debit: 0, 
+            credit: paymentData.amount, 
+            description: `Sales revenue from invoice ${this.invoiceNumber}` 
+          }
+        ],
+        customer: this.customer,
+        invoice: this._id,
+        paymentMethod: paymentData.method,
+        status: 'posted',
+        createdBy: paymentData.processedBy,
+        metadata: {
+          salesPerson: this.salesPerson ? {
+            id: this.salesPerson,
+            name: this.salesPersonName || 'Unknown',
+            email: this.salesPersonEmail || ''
+          } : undefined,
+          salesOutlet: this.salesOutlet,
+          workshopJob: this.workshopJob ? {
+            id: this.workshopJob,
+            jobNumber: this.workshopJobNumber || 'Unknown'
+          } : undefined,
+          paymentReference: paymentData.reference,
+          paymentTransactionId: paymentData.transactionId
+        }
+      });
+      
+      await transaction.save();
+      console.log(`Accounting transaction created for invoice ${this.invoiceNumber} payment of ${paymentData.amount}`);
+    } else {
+      console.warn('Could not find cash or sales account for payment transaction');
+    }
+  } catch (error) {
+    console.error('Error creating payment transaction:', error);
+    // Don't fail the payment if transaction creation fails
+  }
   
   // Update corresponding order payment status if order exists
   if (this.order) {
