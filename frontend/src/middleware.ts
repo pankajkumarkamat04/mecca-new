@@ -20,7 +20,8 @@ const protectedRoutes = {
   '/workshop': ['admin', 'manager', 'workshop_employee'],
   '/service-templates': ['admin', 'manager', 'workshop_employee'],
   '/reports': ['admin', 'manager'],
-  '/reports-analytics': ['admin', 'manager', 'sales_person', 'warehouse_manager', 'warehouse_employee', 'workshop_employee'],
+  '/reports-analytics': ['admin', 'manager'],
+  '/sales-report': ['admin', 'manager'],
   '/settings': ['admin', 'manager'],
   '/warehouse-portal': ['admin', 'manager', 'warehouse_manager', 'warehouse_employee'],
 };

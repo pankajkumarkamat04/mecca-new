@@ -319,29 +319,29 @@ const TransactionsPage: React.FC = () => {
             ) : (
               <>
                 {/* Summary Cards */}
-                {performanceData?.data?.summary && (
+                {performanceData?.data?.data?.summary && (
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                     <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
                       <div className="text-sm font-medium text-gray-600">Total Sales People</div>
-                      <div className="text-2xl font-semibold text-gray-900">{performanceData.data.summary.totalSalesPeople}</div>
+                      <div className="text-2xl font-semibold text-gray-900">{performanceData.data.data.summary.totalSalesPeople}</div>
                     </div>
                     <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
                       <div className="text-sm font-medium text-gray-600">Total Transactions</div>
-                      <div className="text-2xl font-semibold text-gray-900">{performanceData.data.summary.totalTransactions}</div>
+                      <div className="text-2xl font-semibold text-gray-900">{performanceData.data.data.summary.totalTransactions}</div>
                     </div>
                     <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
                       <div className="text-sm font-medium text-gray-600">Total Revenue</div>
-                      <div className="text-2xl font-semibold text-gray-900">{formatCurrency(performanceData.data.summary.totalRevenue)}</div>
+                      <div className="text-2xl font-semibold text-gray-900">{formatCurrency(performanceData.data.data.summary.totalRevenue)}</div>
                     </div>
                     <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
                       <div className="text-sm font-medium text-gray-600">Avg Transaction</div>
-                      <div className="text-2xl font-semibold text-gray-900">{formatCurrency(performanceData.data.summary.averageTransactionValue)}</div>
+                      <div className="text-2xl font-semibold text-gray-900">{formatCurrency(performanceData.data.data.summary.averageTransactionValue)}</div>
                     </div>
                   </div>
                 )}
 
                 {/* Salesperson List */}
-                {performanceData?.data?.salesPerformance && performanceData.data.salesPerformance.length > 0 ? (
+                {performanceData?.data?.data?.salesPerformance && performanceData.data.data.salesPerformance.length > 0 ? (
                   <div className="bg-white rounded-lg shadow overflow-hidden">
                     <table className="min-w-full divide-y divide-gray-200">
                       <thead className="bg-gray-50">
@@ -353,7 +353,7 @@ const TransactionsPage: React.FC = () => {
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
-                        {performanceData.data.salesPerformance.map((person: any, index: number) => (
+                        {performanceData.data.data.salesPerformance.map((person: any, index: number) => (
                           <tr key={person.salesPersonId} className="hover:bg-gray-50">
                             <td className="px-6 py-4 whitespace-nowrap">
                               <div className="text-sm font-medium text-gray-900">{person.salesPersonName}</div>

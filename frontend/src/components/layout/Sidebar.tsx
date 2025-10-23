@@ -84,11 +84,6 @@ const getWarehouseSidebarItems = (userRole: string): SidebarItem[] => {
       href: '/workshop',
       icon: WrenchScrewdriverIcon,
     },
-    {
-      name: 'Reports & Analytics',
-      href: '/reports-analytics',
-      icon: ChartBarIcon,
-    },
   ];
 
   if (userRole === 'warehouse_manager') {
@@ -421,6 +416,13 @@ const getSidebarItems = (userRole: string): SidebarItem[] => {
           name: 'Reports & Analytics',
           href: '/reports-analytics',
           icon: ChartBarIcon,
+          permission: { module: 'reports', action: 'read' },
+        },
+        {
+          name: 'Sales Report',
+          href: '/sales-report',
+          icon: ChartBarIcon,
+          permission: { module: 'sales', action: 'read' },
         },
       ],
     });

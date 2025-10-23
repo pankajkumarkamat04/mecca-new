@@ -702,17 +702,9 @@ const ReportsAnalyticsPage: React.FC = () => {
     const summaryData = salesSummaryBySalesPerson?.data;
     const detailedData = salesBySalesPerson?.data;
     const data = salesPersonFilters.reportType === 'summary' 
-      ? (Array.isArray(summaryData) ? summaryData : [])
+      ? (Array.isArray(summaryData?.data) ? summaryData?.data : [])
       : (Array.isArray((detailedData as any)?.transactions) ? (detailedData as any)?.transactions : []);
     
-    // Debug logging to understand data structure
-    console.log('Sales Person Analytics Debug:', {
-      reportType: salesPersonFilters.reportType,
-      summaryData: summaryData,
-      detailedData: detailedData,
-      finalData: data,
-      isArray: Array.isArray(data)
-    });
     const pagination = (detailedData as any)?.pagination;
 
     if (isLoading) {
