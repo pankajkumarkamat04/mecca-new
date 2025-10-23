@@ -724,14 +724,24 @@ const POSPage: React.FC = () => {
                               type="number"
                               min={0}
                               max={100}
-                              value={typeof item.taxRate === 'number' ? item.taxRate : (productTaxRate || 0)}
+                              value={typeof item.taxRate === 'number' && item.taxRate > 0 ? item.taxRate : ''}
                               onChange={(e) => {
-                                const next = Math.max(0, Math.min(100, Number(e.target.value) || 0));
-                                setCart(cart.map(ci =>
-                                  ci.product._id === item.product._id
-                                    ? { ...ci, taxRate: next }
-                                    : ci
-                                ));
+                                const value = e.target.value;
+                                if (value === '' || value === '0') {
+                                  const next = 0;
+                                  setCart(cart.map(ci =>
+                                    ci.product._id === item.product._id
+                                      ? { ...ci, taxRate: next }
+                                      : ci
+                                  ));
+                                } else {
+                                  const next = Math.max(0, Math.min(100, Number(value) || 0));
+                                  setCart(cart.map(ci =>
+                                    ci.product._id === item.product._id
+                                      ? { ...ci, taxRate: next }
+                                      : ci
+                                  ));
+                                }
                               }}
                               className="w-24 rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 text-right"
                             />
@@ -942,8 +952,18 @@ const POSPage: React.FC = () => {
                 type="number"
                 step="0.01"
                 placeholder="0.00"
-                value={tenderedAmount}
-                onChange={(e) => setTenderedAmount(parseFloat(e.target.value) || 0)}
+                value={tenderedAmount === 0 ? '' : tenderedAmount}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (value === '' || value === '0') {
+                    setTenderedAmount(0);
+                  } else {
+                    const numValue = parseFloat(value);
+                    if (!isNaN(numValue)) {
+                      setTenderedAmount(numValue);
+                    }
+                  }
+                }}
                 fullWidth
               />
               <p className="text-xs text-gray-500 mt-1">
