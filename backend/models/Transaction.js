@@ -107,15 +107,6 @@ const transactionSchema = new mongoose.Schema({
     enum: ['draft', 'pending', 'approved', 'rejected', 'posted'],
     default: 'draft'
   },
-  isReconciled: {
-    type: Boolean,
-    default: false
-  },
-  reconciledAt: Date,
-  reconciledBy: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User'
-  },
   notes: {
     type: String,
     trim: true,
@@ -189,7 +180,6 @@ transactionSchema.index({ customer: 1 });
 transactionSchema.index({ supplier: 1 });
 transactionSchema.index({ invoice: 1 });
 transactionSchema.index({ 'entries.account': 1 });
-transactionSchema.index({ isReconciled: 1 });
 
 // Pre-save middleware to generate transaction number
 transactionSchema.pre('save', async function(next) {
@@ -251,13 +241,6 @@ transactionSchema.methods.post = async function() {
   return this.save();
 };
 
-// Method to reconcile transaction
-transactionSchema.methods.reconcile = function(userId) {
-  this.isReconciled = true;
-  this.reconciledAt = new Date();
-  this.reconciledBy = userId;
-  return this.save();
-};
 
 // Static method to get transactions by account
 transactionSchema.statics.getTransactionsByAccount = function(accountId, options = {}) {

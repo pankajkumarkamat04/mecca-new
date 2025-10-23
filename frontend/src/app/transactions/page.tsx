@@ -10,7 +10,7 @@ import Modal from '@/components/ui/Modal';
 import { transactionsAPI, accountsAPI } from '@/lib/api';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { formatCurrency, formatDate } from '@/lib/utils';
-import { UserGroupIcon, ChartBarIcon } from '@heroicons/react/24/outline';
+import { UserGroupIcon, ChartBarIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
 
 const TransactionsPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -33,6 +33,14 @@ const TransactionsPage: React.FC = () => {
     amount: 0,
     description: '',
     reference: '',
+    currency: 'USD',
+    paymentMethod: 'cash',
+    bankAccount: {
+      accountNumber: '',
+      bankName: '',
+      routingNumber: ''
+    },
+    notes: '',
     entries: [
       { account: '', debit: 0, credit: 0, description: '' },
     ],
@@ -98,9 +106,6 @@ const TransactionsPage: React.FC = () => {
           )}
           {row.status === 'approved' && (
             <Button size="sm" onClick={() => handlePost(row._id)}>Post</Button>
-          )}
-          {!row.isReconciled && row.status === 'posted' && (
-            <Button size="sm" variant="secondary" onClick={() => handleReconcile(row._id)}>Reconcile</Button>
           )}
           {row.status !== 'posted' && (
             <Button size="sm" variant="danger" onClick={() => handleDelete(row._id)}>Delete</Button>
@@ -203,10 +208,6 @@ const TransactionsPage: React.FC = () => {
     queryClient.invalidateQueries({ queryKey: ['transactions'] });
   };
 
-  const handleReconcile = async (id: string) => {
-    await transactionsAPI.reconcileTransaction(id);
-    queryClient.invalidateQueries({ queryKey: ['transactions'] });
-  };
 
   const handleDelete = async (id: string) => {
     await transactionsAPI.deleteTransaction(id);
@@ -256,7 +257,7 @@ const TransactionsPage: React.FC = () => {
           <div className="flex gap-2">
             {activeTab === 'transactions' && (
               <>
-                <Button size="sm" onClick={openCreate}>New Transaction</Button>
+                {/* <Button size="sm" onClick={openCreate}>New Transaction</Button> */}
                 <Button variant="outline" size="sm" onClick={exportCsv}>Export</Button>
               </>
             )}
@@ -719,30 +720,6 @@ const TransactionsPage: React.FC = () => {
                         )}
                       </div>
                     )}
-                    {selectedTx.reconciledBy && (
-                      <div>
-                        <div className="text-gray-500 mb-1">Reconciled By</div>
-                        <div className="font-medium">
-                          {typeof selectedTx.reconciledBy === 'object' 
-                            ? `${selectedTx.reconciledBy.firstName || ''} ${selectedTx.reconciledBy.lastName || ''}`.trim()
-                            : selectedTx.reconciledBy
-                          }
-                        </div>
-                        {selectedTx.reconciledAt && (
-                          <div className="text-xs text-gray-500">{new Date(selectedTx.reconciledAt).toLocaleString()}</div>
-                        )}
-                      </div>
-                    )}
-                    <div>
-                      <div className="text-gray-500 mb-1">Reconciled</div>
-                      <div className="font-medium">
-                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                          selectedTx.isReconciled ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                        }`}>
-                          {selectedTx.isReconciled ? 'Yes' : 'No'}
-                        </span>
-                      </div>
-                    </div>
                   </div>
                 </div>
               </div>
@@ -753,94 +730,234 @@ const TransactionsPage: React.FC = () => {
         </Modal>
 
         <Modal isOpen={editOpen} onClose={() => setEditOpen(false)} title={isEditing ? 'Edit Transaction' : 'New Transaction'} size="xl">
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <div className="text-sm text-gray-500">Date</div>
-                <Input type="date" value={formData.date} onChange={(e) => setFormData((p: any) => ({ ...p, date: e.target.value }))} fullWidth />
-              </div>
-              <div>
-                <div className="text-sm text-gray-500">Type</div>
-                <Select
-                  options={[
-                    { value: 'sale', label: 'Sale' },
-                    { value: 'purchase', label: 'Purchase' },
-                    { value: 'payment', label: 'Payment' },
-                    { value: 'receipt', label: 'Receipt' },
-                    { value: 'expense', label: 'Expense' },
-                    { value: 'income', label: 'Income' },
-                    { value: 'transfer', label: 'Transfer' },
-                    { value: 'adjustment', label: 'Adjustment' },
-                    { value: 'journal', label: 'Journal' },
-                  ]}
-                  value={formData.type}
-                  onChange={(e) => setFormData((p: any) => ({ ...p, type: e.target.value }))}
-                  fullWidth
-                />
-              </div>
-              <div className="sm:col-span-2">
-                <div className="text-sm text-gray-500">Description</div>
-                <Input value={formData.description} onChange={(e) => setFormData((p: any) => ({ ...p, description: e.target.value }))} fullWidth />
-              </div>
-              <div>
-                <div className="text-sm text-gray-500">Reference</div>
-                <Input value={formData.reference} onChange={(e) => setFormData((p: any) => ({ ...p, reference: e.target.value }))} fullWidth />
-              </div>
-              <div>
-                <div className="text-sm text-gray-500">Amount</div>
-                <Input type="number" value={formData.amount} onChange={(e) => setFormData((p: any) => ({ ...p, amount: Number(e.target.value || 0) }))} fullWidth />
+          <div className="space-y-6">
+            {/* Basic Information */}
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <h3 className="text-lg font-semibold mb-4 text-gray-900">Transaction Details</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Date *</label>
+                  <Input 
+                    type="date" 
+                    value={formData.date} 
+                    onChange={(e) => setFormData((p: any) => ({ ...p, date: e.target.value }))} 
+                    fullWidth 
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Type *</label>
+                  <Select
+                    options={[
+                      { value: 'sale', label: 'Sale' },
+                      { value: 'purchase', label: 'Purchase' },
+                      { value: 'payment', label: 'Payment' },
+                      { value: 'receipt', label: 'Receipt' },
+                      { value: 'expense', label: 'Expense' },
+                      { value: 'income', label: 'Income' },
+                      { value: 'transfer', label: 'Transfer' },
+                      { value: 'adjustment', label: 'Adjustment' },
+                      { value: 'journal', label: 'Journal' },
+                    ]}
+                    value={formData.type}
+                    onChange={(e) => setFormData((p: any) => ({ ...p, type: e.target.value }))}
+                    fullWidth
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Currency</label>
+                  <Select
+                    options={[
+                      { value: 'USD', label: 'USD' },
+                      { value: 'EUR', label: 'EUR' },
+                      { value: 'INR', label: 'INR' },
+                      { value: 'GBP', label: 'GBP' },
+                    ]}
+                    value={formData.currency || 'USD'}
+                    onChange={(e) => setFormData((p: any) => ({ ...p, currency: e.target.value }))}
+                    fullWidth
+                  />
+                </div>
+                <div className="sm:col-span-2 lg:col-span-3">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Description *</label>
+                  <Input 
+                    value={formData.description} 
+                    onChange={(e) => setFormData((p: any) => ({ ...p, description: e.target.value }))} 
+                    placeholder="Enter transaction description"
+                    fullWidth 
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Reference</label>
+                  <Input 
+                    value={formData.reference || ''} 
+                    onChange={(e) => setFormData((p: any) => ({ ...p, reference: e.target.value }))} 
+                    placeholder="Reference number or code"
+                    fullWidth 
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Total Amount</label>
+                  <Input 
+                    type="number" 
+                    step="0.01"
+                    value={formData.amount} 
+                    onChange={(e) => setFormData((p: any) => ({ ...p, amount: Number(e.target.value || 0) }))} 
+                    placeholder="0.00"
+                    fullWidth 
+                  />
+                </div>
               </div>
             </div>
 
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-medium text-gray-900">Entries</h3>
-                <Button size="sm" onClick={addEntryRow}>Add Entry</Button>
+            {/* Payment Information */}
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <h3 className="text-lg font-semibold mb-4 text-gray-900">Payment Information</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Payment Method</label>
+                  <Select
+                    options={[
+                      { value: 'cash', label: 'Cash' },
+                      { value: 'bank_transfer', label: 'Bank Transfer' },
+                      { value: 'check', label: 'Check' },
+                      { value: 'credit_card', label: 'Credit Card' },
+                      { value: 'debit_card', label: 'Debit Card' },
+                      { value: 'other', label: 'Other' },
+                    ]}
+                    value={formData.paymentMethod || 'cash'}
+                    onChange={(e) => setFormData((p: any) => ({ ...p, paymentMethod: e.target.value }))}
+                    fullWidth
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Bank Account</label>
+                  <Input 
+                    value={formData.bankAccount?.accountNumber || ''} 
+                    onChange={(e) => setFormData((p: any) => ({ 
+                      ...p, 
+                      bankAccount: { 
+                        ...p.bankAccount, 
+                        accountNumber: e.target.value 
+                      } 
+                    }))} 
+                    placeholder="Account number (if applicable)"
+                    fullWidth 
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Accounting Entries */}
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">Accounting Entries</h3>
+                <Button size="sm" onClick={addEntryRow} className="bg-blue-600 hover:bg-blue-700">
+                  <PlusIcon className="w-4 h-4 mr-1" />
+                  Add Entry
+                </Button>
               </div>
               <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead>
+                <table className="min-w-full divide-y divide-gray-200 bg-white rounded-lg shadow">
+                  <thead className="bg-gray-100">
                     <tr>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Account</th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Debit</th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Credit</th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
-                      <th className="px-3 py-2" />
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Account *</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Debit</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Credit</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                      <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100">
+                  <tbody className="bg-white divide-y divide-gray-200">
                     {formData.entries.map((entry: any, idx: number) => (
-                      <tr key={idx}>
-                        <td className="px-3 py-2 min-w-[220px]">
+                      <tr key={idx} className="hover:bg-gray-50">
+                        <td className="px-4 py-3 min-w-[220px]">
                           <Select
                             options={accountsOptions}
                             value={entry.account}
                             onChange={(e) => handleEntryChange(idx, 'account', e.target.value)}
                             fullWidth
+                            placeholder="Select account"
                           />
                         </td>
-                        <td className="px-3 py-2 w-36">
-                          <Input type="number" value={entry.debit} onChange={(e) => handleEntryChange(idx, 'debit', e.target.value)} fullWidth />
+                        <td className="px-4 py-3 w-36">
+                          <Input 
+                            type="number" 
+                            step="0.01"
+                            value={entry.debit} 
+                            onChange={(e) => handleEntryChange(idx, 'debit', e.target.value)} 
+                            placeholder="0.00"
+                            fullWidth 
+                          />
                         </td>
-                        <td className="px-3 py-2 w-36">
-                          <Input type="number" value={entry.credit} onChange={(e) => handleEntryChange(idx, 'credit', e.target.value)} fullWidth />
+                        <td className="px-4 py-3 w-36">
+                          <Input 
+                            type="number" 
+                            step="0.01"
+                            value={entry.credit} 
+                            onChange={(e) => handleEntryChange(idx, 'credit', e.target.value)} 
+                            placeholder="0.00"
+                            fullWidth 
+                          />
                         </td>
-                        <td className="px-3 py-2">
-                          <Input value={entry.description} onChange={(e) => handleEntryChange(idx, 'description', e.target.value)} fullWidth />
+                        <td className="px-4 py-3">
+                          <Input 
+                            value={entry.description || ''} 
+                            onChange={(e) => handleEntryChange(idx, 'description', e.target.value)} 
+                            placeholder="Entry description"
+                            fullWidth 
+                          />
                         </td>
-                        <td className="px-3 py-2 text-right">
-                          <Button size="sm" variant="danger" onClick={() => removeEntryRow(idx)}>Remove</Button>
+                        <td className="px-4 py-3 text-center">
+                          <Button 
+                            size="sm" 
+                            variant="danger" 
+                            onClick={() => removeEntryRow(idx)}
+                            disabled={formData.entries.length <= 1}
+                          >
+                            <TrashIcon className="w-4 h-4" />
+                          </Button>
                         </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
+              {formData.entries.length === 0 && (
+                <div className="text-center py-8 text-gray-500">
+                  <div className="text-sm">No entries added yet</div>
+                  <div className="text-xs mt-1">Click "Add Entry" to add accounting entries</div>
+                </div>
+              )}
             </div>
 
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setEditOpen(false)}>Cancel</Button>
-              <Button onClick={saveTransaction}>{isEditing ? 'Update' : 'Create'}</Button>
+            {/* Notes */}
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <h3 className="text-lg font-semibold mb-4 text-gray-900">Additional Notes</h3>
+              <textarea
+                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                rows={3}
+                value={formData.notes || ''}
+                onChange={(e) => setFormData((p: any) => ({ ...p, notes: e.target.value }))}
+                placeholder="Add any additional notes or comments about this transaction..."
+              />
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
+              <Button 
+                variant="outline" 
+                onClick={() => setEditOpen(false)}
+                className="px-6"
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={saveTransaction}
+                className="px-6 bg-blue-600 hover:bg-blue-700"
+                disabled={!formData.date || !formData.description || !formData.type}
+              >
+                {isEditing ? 'Update Transaction' : 'Create Transaction'}
+              </Button>
             </div>
           </div>
         </Modal>

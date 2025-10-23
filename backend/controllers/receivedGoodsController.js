@@ -278,37 +278,90 @@ const approveReceivedGoods = async (req, res) => {
     for (const item of receivedGoods.items) {
       const product = await Product.findById(item.product);
       if (product) {
-      // Create stock movement
-      const stockMovement = new StockMovement({
-        product: product._id,
-          warehouse: receivedGoods.warehouse,
-          warehouseName: receivedGoods.warehouseName,
-          movementType: 'receiving',
-        quantity: item.receivedQuantity,
-          unitCost: item.unitCost,
-          totalCost: item.totalCost,
-          previousStock: product.inventory.currentStock,
-          newStock: product.inventory.currentStock + item.receivedQuantity,
-          reference: receivedGoods.receiptNumber,
-          referenceType: 'received_goods',
-        referenceId: receivedGoods._id,
-          reason: 'Received goods approval',
-          notes: notes,
-        batchNumber: item.batchNumber,
-        expiryDate: item.expiryDate,
-          serialNumbers: item.serialNumbers,
-        createdBy: req.user._id
-      });
+        // Calculate usable quantity (received - damaged - defective)
+        const damagedQty = item.damagedQuantity || 0;
+        const defectiveQty = item.defectiveQuantity || 0;
+        const usableQuantity = item.receivedQuantity - damagedQty - defectiveQty;
+        
+        // Only add usable quantity to inventory
+        if (usableQuantity > 0) {
+          // Create stock movement for usable quantity
+          const stockMovement = new StockMovement({
+            product: product._id,
+            warehouse: receivedGoods.warehouse,
+            warehouseName: receivedGoods.warehouseName,
+            movementType: 'receiving',
+            quantity: usableQuantity,
+            unitCost: item.unitCost,
+            totalCost: usableQuantity * item.unitCost,
+            previousStock: product.inventory.currentStock,
+            newStock: product.inventory.currentStock + usableQuantity,
+            reference: receivedGoods.receiptNumber,
+            referenceType: 'received_goods',
+            referenceId: receivedGoods._id,
+            reason: 'Received goods approval',
+            notes: notes,
+            batchNumber: item.batchNumber,
+            expiryDate: item.expiryDate,
+            serialNumbers: item.serialNumbers,
+            createdBy: req.user._id
+          });
 
-      await stockMovement.save();
+          await stockMovement.save();
 
-        // Update product stock
-        product.inventory.currentStock += item.receivedQuantity;
-        product.inventory.lastMovement = new Date();
-        if (receivedGoods.warehouse) {
-          product.inventory.warehouse = receivedGoods.warehouse;
+          // Update product stock with usable quantity only
+          product.inventory.currentStock += usableQuantity;
+          product.inventory.lastMovement = new Date();
+          if (receivedGoods.warehouse) {
+            product.inventory.warehouse = receivedGoods.warehouse;
+          }
+          await product.save();
         }
-        await product.save();
+        
+        // Create separate stock movement records for damaged and defective items
+        if (damagedQty > 0) {
+          const damagedMovement = new StockMovement({
+            product: product._id,
+            warehouse: receivedGoods.warehouse,
+            warehouseName: receivedGoods.warehouseName,
+            movementType: 'damage',
+            quantity: damagedQty,
+            unitCost: item.unitCost,
+            totalCost: damagedQty * item.unitCost,
+            previousStock: product.inventory.currentStock,
+            newStock: product.inventory.currentStock, // No change to stock for damaged items
+            reference: receivedGoods.receiptNumber,
+            referenceType: 'received_goods',
+            referenceId: receivedGoods._id,
+            reason: 'Damaged goods from received goods',
+            notes: `Damaged quantity: ${damagedQty} from received goods inspection`,
+            batchNumber: item.batchNumber,
+            createdBy: req.user._id
+          });
+          await damagedMovement.save();
+        }
+        
+        if (defectiveQty > 0) {
+          const defectiveMovement = new StockMovement({
+            product: product._id,
+            warehouse: receivedGoods.warehouse,
+            warehouseName: receivedGoods.warehouseName,
+            movementType: 'damage', // Using 'damage' type for defective items
+            quantity: defectiveQty,
+            unitCost: item.unitCost,
+            totalCost: defectiveQty * item.unitCost,
+            previousStock: product.inventory.currentStock,
+            newStock: product.inventory.currentStock, // No change to stock for defective items
+            reference: receivedGoods.receiptNumber,
+            referenceType: 'received_goods',
+            referenceId: receivedGoods._id,
+            reason: 'Defective goods from received goods',
+            notes: `Defective quantity: ${defectiveQty} from received goods inspection`,
+            batchNumber: item.batchNumber,
+            createdBy: req.user._id
+          });
+          await defectiveMovement.save();
+        }
       }
     }
 

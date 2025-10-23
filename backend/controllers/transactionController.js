@@ -299,38 +299,6 @@ const postTransaction = async (req, res) => {
   }
 };
 
-// @desc    Reconcile transaction
-// @route   PUT /api/transactions/:id/reconcile
-// @access  Private
-const reconcileTransaction = async (req, res) => {
-  try {
-    const transaction = await Transaction.findById(req.params.id);
-    
-    if (!transaction) {
-      return res.status(404).json({
-        success: false,
-        message: 'Transaction not found'
-      });
-    }
-
-    await transaction.reconcile(req.user._id);
-
-    const updatedTransaction = await Transaction.findById(transaction._id)
-      .populate('reconciledBy', 'firstName lastName');
-
-    res.json({
-      success: true,
-      message: 'Transaction reconciled successfully',
-      data: updatedTransaction
-    });
-  } catch (error) {
-    console.error('Reconcile transaction error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error'
-    });
-  }
-};
 
 // @desc    Get transaction statistics
 // @route   GET /api/transactions/stats
@@ -540,7 +508,6 @@ module.exports = {
   deleteTransaction,
   approveTransaction,
   postTransaction,
-  reconcileTransaction,
   getTransactionStats,
   getSalespersonPerformance
 };

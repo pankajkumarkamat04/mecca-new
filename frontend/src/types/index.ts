@@ -843,7 +843,6 @@ export interface Account {
 export interface AccountSettings {
   allowNegativeBalance: boolean;
   requireApproval: boolean;
-  autoReconcile: boolean;
 }
 
 // Transaction Types
@@ -865,9 +864,6 @@ export interface Transaction {
   bankAccount?: BankAccount;
   attachments: TransactionAttachment[];
   status: 'draft' | 'pending' | 'approved' | 'rejected' | 'posted';
-  isReconciled: boolean;
-  reconciledAt?: string;
-  reconciledBy?: string | User;
   notes?: string;
   createdBy: string | User;
   approvedBy?: string | User;

@@ -15,7 +15,6 @@ const {
   deleteTransaction,
   approveTransaction,
   postTransaction,
-  reconcileTransaction,
   getTransactionStats,
   getSalespersonPerformance
 } = require('../controllers/transactionController');
@@ -67,9 +66,5 @@ router.put('/:id/approve', auth, validateObjectId(), approveTransaction);
 // @access  Private
 router.put('/:id/post', auth, validateObjectId(), postTransaction);
 
-// @route   PUT /api/transactions/:id/reconcile
-// @desc    Reconcile transaction
-// @access  Private
-router.put('/:id/reconcile', auth, validateObjectId(), reconcileTransaction);
 
 module.exports = router;

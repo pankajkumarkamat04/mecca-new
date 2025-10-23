@@ -1046,7 +1046,7 @@ const InvoicesPage: React.FC = () => {
                   options={[
                     { value: 'cash', label: 'Cash' },
                     { value: 'card', label: 'Card' },
-                    { value: 'bank', label: 'Bank' },
+                    { value: 'bank_transfer', label: 'Bank Transfer' },
                   ]}
                   value={paymentForm.method}
                   onChange={(e) => setPaymentForm(prev => ({ ...prev, method: e.target.value }))}

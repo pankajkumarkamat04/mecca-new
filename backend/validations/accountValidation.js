@@ -66,10 +66,6 @@ const createAccountValidation = [
     .isBoolean()
     .withMessage('Require approval must be a boolean'),
   
-  body('settings.autoReconcile')
-    .optional()
-    .isBoolean()
-    .withMessage('Auto reconcile must be a boolean')
 ];
 
 // Validation for updating an account
@@ -137,10 +133,6 @@ const updateAccountValidation = [
     .isBoolean()
     .withMessage('Require approval must be a boolean'),
   
-  body('settings.autoReconcile')
-    .optional()
-    .isBoolean()
-    .withMessage('Auto reconcile must be a boolean')
 ];
 
 // Validation for account balance query
@@ -210,10 +202,6 @@ const updateAccountSettingsValidation = [
     .isBoolean()
     .withMessage('Require approval must be a boolean'),
   
-  body('autoReconcile')
-    .optional()
-    .isBoolean()
-    .withMessage('Auto reconcile must be a boolean')
 ];
 
 module.exports = {

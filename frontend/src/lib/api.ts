@@ -230,7 +230,6 @@ export const transactionsAPI = {
   deleteTransaction: (id: string) => api.delete(`/transactions/${id}`),
   approveTransaction: (id: string) => api.put(`/transactions/${id}/approve`),
   postTransaction: (id: string) => api.put(`/transactions/${id}/post`),
-  reconcileTransaction: (id: string) => api.put(`/transactions/${id}/reconcile`),
   getTransactionStats: (params?: any) => api.get('/transactions/stats', { params }),
   getSalespersonPerformance: (params?: any) => api.get('/transactions/salesperson-performance', { params }),
 };
