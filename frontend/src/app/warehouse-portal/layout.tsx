@@ -15,6 +15,7 @@ import {
   CogIcon,
   ArrowLeftIcon,
   UserCircleIcon,
+  WrenchScrewdriverIcon,
 } from '@heroicons/react/24/outline';
 
 interface Warehouse {
@@ -98,16 +99,22 @@ const WarehousePortalLayoutInner: React.FC<{ children: React.ReactNode }> = ({ c
       current: pathname === '/warehouse-portal/dashboard',
     },
     {
+      name: 'Products',
+      href: '/products',
+      icon: BuildingOfficeIcon,
+      current: pathname === '/products',
+    },
+    {
+      name: 'Inventory',
+      href: '/inventory',
+      icon: BuildingOfficeIcon,
+      current: pathname === '/inventory',
+    },
+    {
       name: 'Orders',
       href: '/warehouse-portal/orders',
       icon: ClipboardDocumentListIcon,
       current: pathname === '/warehouse-portal/orders',
-    },
-    {
-      name: 'Inventory',
-      href: '/warehouse-portal/inventory',
-      icon: BuildingOfficeIcon,
-      current: pathname === '/warehouse-portal/inventory',
     },
     {
       name: 'Received Goods',
@@ -116,16 +123,22 @@ const WarehousePortalLayoutInner: React.FC<{ children: React.ReactNode }> = ({ c
       current: pathname === '/received-goods',
     },
     {
+      name: 'Workshop',
+      href: '/workshop',
+      icon: WrenchScrewdriverIcon,
+      current: pathname === '/workshop',
+    },
+    {
+      name: 'Reports & Analytics',
+      href: '/reports-analytics',
+      icon: ChartBarIcon,
+      current: pathname === '/reports-analytics',
+    },
+    {
       name: 'Employees',
       href: '/warehouse-portal/employees',
       icon: UserGroupIcon,
       current: pathname === '/warehouse-portal/employees',
-    },
-    {
-      name: 'Deliveries',
-      href: '/warehouse-portal/deliveries',
-      icon: TruckIcon,
-      current: pathname === '/warehouse-portal/deliveries',
     },
     {
       name: 'Settings',

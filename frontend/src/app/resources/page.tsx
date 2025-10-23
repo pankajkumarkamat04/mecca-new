@@ -364,7 +364,12 @@ const ToolManagement: React.FC = () => {
     },
     {
       key: 'location',
-      label: 'Location'
+      label: 'Location',
+      render: (tool: any) => (
+        <span className="text-sm text-gray-600">
+          {tool.location || 'Not specified'}
+        </span>
+      )
     },
     {
       key: 'actions',
@@ -2231,7 +2236,30 @@ const MachineManagement: React.FC = () => {
     },
     {
       key: 'location',
-      label: 'Location'
+      label: 'Location',
+      render: (machine: any) => {
+        // Handle both string and object location formats
+        if (typeof machine.location === 'string') {
+          return (
+            <span className="text-sm text-gray-600">
+              {machine.location || 'Not specified'}
+            </span>
+          );
+        } else if (machine.location && typeof machine.location === 'object') {
+          const { building, floor, room, bay } = machine.location;
+          const locationParts = [building, floor, room, bay].filter(Boolean);
+          return (
+            <span className="text-sm text-gray-600">
+              {locationParts.length > 0 ? locationParts.join(', ') : 'Not specified'}
+            </span>
+          );
+        }
+        return (
+          <span className="text-sm text-gray-600">
+            Not specified
+          </span>
+        );
+      }
     },
     {
       key: 'maintenance',

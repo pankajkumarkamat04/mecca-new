@@ -60,32 +60,34 @@ const getWarehouseSidebarItems = (userRole: string): SidebarItem[] => {
       icon: HomeIcon,
     },
     {
-      name: 'Warehouse',
-      href: '#',
-      icon: BuildingOfficeIcon,
-      children: [
-        {
-          name: 'Products',
-          href: '/products',
-          icon: CubeIcon,
-        },
-        {
-          name: 'Orders',
-          href: '/warehouse-portal/orders',
-          icon: ShoppingBagIcon,
-        },
-        {
-          name: 'Inventory',
-          href: '/warehouse-portal/inventory',
-          icon: ArchiveBoxIcon,
-        },
-        // Received Goods visible for manager and employees
-        {
-          name: 'Received Goods',
-          href: '/received-goods',
-          icon: TruckIcon,
-        },
-      ],
+      name: 'Products',
+      href: '/products',
+      icon: CubeIcon,
+    },
+    {
+      name: 'Inventory',
+      href: '/inventory',
+      icon: ArchiveBoxIcon,
+    },
+    {
+      name: 'Orders',
+      href: '/warehouse-portal/orders',
+      icon: ShoppingBagIcon,
+    },
+    {
+      name: 'Received Goods',
+      href: '/received-goods',
+      icon: TruckIcon,
+    },
+    {
+      name: 'Workshop',
+      href: '/workshop',
+      icon: WrenchScrewdriverIcon,
+    },
+    {
+      name: 'Reports & Analytics',
+      href: '/reports-analytics',
+      icon: ChartBarIcon,
     },
   ];
 

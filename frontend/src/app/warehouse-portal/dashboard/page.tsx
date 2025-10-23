@@ -23,6 +23,9 @@ import {
   UserGroupIcon,
   UserMinusIcon,
   ShieldCheckIcon,
+  CubeIcon,
+  ArchiveBoxIcon,
+  WrenchScrewdriverIcon,
 } from '@heroicons/react/24/outline';
 
 interface DashboardData {
@@ -99,11 +102,13 @@ const WarehouseDashboardInner: React.FC<{ warehouseId: string | null }> = ({ war
   const [showEmployeesModal, setShowEmployeesModal] = useState(false);
 
   // Fetch dashboard data
-  const { data: dashboardResponse, isLoading } = useQuery({
+  const { data: dashboardResponse, isLoading, error } = useQuery({
     queryKey: ['warehouse-dashboard', warehouseId],
     queryFn: () => warehouseAPI.getWarehouseDashboard(warehouseId!),
     enabled: !!warehouseId,
+    retry: 1,
   });
+
 
   // Fetch employees
   const { data: employeesResponse } = useQuery({
@@ -153,7 +158,7 @@ const WarehouseDashboardInner: React.FC<{ warehouseId: string | null }> = ({ war
   // Update employees state
   useEffect(() => {
     if (employeesResponse?.data?.data?.employees) {
-      setEmployees(employeesResponse.data.data.employees || []);
+      setEmployees((employeesResponse.data.data as any).employees || []);
     }
   }, [employeesResponse]);
 
@@ -173,14 +178,82 @@ const WarehouseDashboardInner: React.FC<{ warehouseId: string | null }> = ({ war
     );
   }
 
-  if (!dashboardData) {
+  if (!dashboardData && !isLoading) {
     return (
       <WarehousePortalLayout>
-        <div className="flex items-center justify-center h-64">
-          <div className="text-center">
-            <ChartBarIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No Data Available</h3>
-            <p className="text-gray-500">Unable to load dashboard data.</p>
+        <div className="space-y-6">
+          {/* Header */}
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">
+                Warehouse Dashboard
+              </h1>
+              <p className="text-gray-600">Manage your warehouse operations</p>
+            </div>
+          </div>
+
+          {/* Error Message */}
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <div className="flex">
+              <ExclamationTriangleIcon className="h-5 w-5 text-red-600 mr-2 mt-0.5" />
+              <div>
+                <h3 className="text-sm font-medium text-red-800">
+                  Unable to Load Dashboard Data
+                </h3>
+                <p className="text-sm text-red-700 mt-1">
+                  {(error as any)?.response?.data?.message || 'Please check your warehouse assignment and try again.'}
+                </p>
+                <div className="mt-2">
+                  <Button
+                    onClick={() => window.location.reload()}
+                    variant="outline"
+                    size="sm"
+                  >
+                    Retry
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Actions Fallback */}
+          <div className="bg-white rounded-lg shadow p-6">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Quick Actions</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Button
+                onClick={() => window.location.href = '/products'}
+                className="flex items-center justify-center p-4 h-auto"
+                variant="outline"
+              >
+                <div className="text-center">
+                  <CubeIcon className="h-8 w-8 mx-auto mb-2 text-blue-600" />
+                  <div className="font-medium">Manage Products</div>
+                  <div className="text-sm text-gray-500">Add, edit, or view products</div>
+                </div>
+              </Button>
+              <Button
+                onClick={() => window.location.href = '/inventory'}
+                className="flex items-center justify-center p-4 h-auto"
+                variant="outline"
+              >
+                <div className="text-center">
+                  <ArchiveBoxIcon className="h-8 w-8 mx-auto mb-2 text-green-600" />
+                  <div className="font-medium">Inventory Management</div>
+                  <div className="text-sm text-gray-500">Stock levels and movements</div>
+                </div>
+              </Button>
+              <Button
+                onClick={() => window.location.href = '/workshop'}
+                className="flex items-center justify-center p-4 h-auto"
+                variant="outline"
+              >
+                <div className="text-center">
+                  <WrenchScrewdriverIcon className="h-8 w-8 mx-auto mb-2 text-purple-600" />
+                  <div className="font-medium">Workshop</div>
+                  <div className="text-sm text-gray-500">Job management and tracking</div>
+                </div>
+              </Button>
+            </div>
           </div>
         </div>
       </WarehousePortalLayout>
@@ -194,7 +267,7 @@ const WarehouseDashboardInner: React.FC<{ warehouseId: string | null }> = ({ war
         <div className="flex justify-between items-center">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">
-              {dashboardData?.warehouse.name} Dashboard
+              {dashboardData?.warehouse?.name || 'Warehouse'} Dashboard
             </h1>
             <p className="text-gray-600">Manage your warehouse operations and employees</p>
           </div>
@@ -247,7 +320,7 @@ const WarehouseDashboardInner: React.FC<{ warehouseId: string | null }> = ({ war
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-500">Total Products</p>
                 <p className="text-2xl font-bold text-gray-900">
-                  {dashboardData.statistics.totalProducts}
+                  {dashboardData?.statistics?.totalProducts || 0}
                 </p>
               </div>
             </div>
@@ -260,7 +333,7 @@ const WarehouseDashboardInner: React.FC<{ warehouseId: string | null }> = ({ war
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-500">Low Stock</p>
                 <p className="text-2xl font-bold text-gray-900">
-                  {dashboardData.statistics.lowStockProducts}
+                  {dashboardData?.statistics?.lowStockProducts || 0}
                 </p>
               </div>
             </div>
@@ -273,7 +346,7 @@ const WarehouseDashboardInner: React.FC<{ warehouseId: string | null }> = ({ war
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-500">Employees</p>
                 <p className="text-2xl font-bold text-gray-900">
-                  {dashboardData.statistics.activeEmployees}
+                  {dashboardData?.statistics?.activeEmployees || 0}
                 </p>
               </div>
             </div>
@@ -286,10 +359,50 @@ const WarehouseDashboardInner: React.FC<{ warehouseId: string | null }> = ({ war
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-500">Capacity Used</p>
                 <p className="text-2xl font-bold text-gray-900">
-                  {dashboardData.warehouse.capacityUtilization}%
+                  {dashboardData?.warehouse?.capacityUtilization || 0}%
                 </p>
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* Quick Actions */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <h3 className="text-lg font-medium text-gray-900 mb-4">Quick Actions</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Button
+              onClick={() => window.location.href = '/products'}
+              className="flex items-center justify-center p-4 h-auto"
+              variant="outline"
+            >
+              <div className="text-center">
+                <CubeIcon className="h-8 w-8 mx-auto mb-2 text-blue-600" />
+                <div className="font-medium">Manage Products</div>
+                <div className="text-sm text-gray-500">Add, edit, or view products</div>
+              </div>
+            </Button>
+            <Button
+              onClick={() => window.location.href = '/inventory'}
+              className="flex items-center justify-center p-4 h-auto"
+              variant="outline"
+            >
+              <div className="text-center">
+                <ArchiveBoxIcon className="h-8 w-8 mx-auto mb-2 text-green-600" />
+                <div className="font-medium">Inventory Management</div>
+                <div className="text-sm text-gray-500">Stock levels and movements</div>
+              </div>
+            </Button>
+            <Button
+              onClick={() => window.location.href = '/workshop'}
+              className="flex items-center justify-center p-4 h-auto"
+              variant="outline"
+            >
+              <div className="text-center">
+                <WrenchScrewdriverIcon className="h-8 w-8 mx-auto mb-2 text-purple-600" />
+                <div className="font-medium">Workshop</div>
+                <div className="text-sm text-gray-500">Job management and tracking</div>
+              </div>
+            </Button>
           </div>
         </div>
 
@@ -300,7 +413,7 @@ const WarehouseDashboardInner: React.FC<{ warehouseId: string | null }> = ({ war
               <div>
                 <p className="text-sm font-medium text-gray-500">Total Stock Value</p>
                 <p className="text-2xl font-bold text-gray-900">
-                  ${dashboardData.statistics.totalStockValue?.toLocaleString()}
+                  ${dashboardData?.statistics?.totalStockValue?.toLocaleString() || '0'}
                 </p>
               </div>
               <div className="h-8 w-8 bg-green-100 rounded-full flex items-center justify-center">
@@ -313,7 +426,7 @@ const WarehouseDashboardInner: React.FC<{ warehouseId: string | null }> = ({ war
               <div>
                 <p className="text-sm font-medium text-gray-500">Total Locations</p>
                 <p className="text-2xl font-bold text-gray-900">
-                  {dashboardData.statistics.totalLocations}
+                  {dashboardData?.statistics?.totalLocations || 0}
                 </p>
               </div>
               <div className="h-8 w-8 bg-blue-100 rounded-full flex items-center justify-center">
@@ -329,7 +442,7 @@ const WarehouseDashboardInner: React.FC<{ warehouseId: string | null }> = ({ war
             <h3 className="text-lg font-medium text-gray-900">Recent Stock Movements</h3>
           </div>
           <div className="p-6">
-            {dashboardData.recentMovements && dashboardData.recentMovements.length > 0 ? (
+            {dashboardData?.recentMovements && dashboardData.recentMovements.length > 0 ? (
               <div className="space-y-4">
                 {dashboardData.recentMovements.map((movement) => (
                   <div key={movement._id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">

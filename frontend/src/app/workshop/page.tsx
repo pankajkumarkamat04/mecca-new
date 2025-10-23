@@ -94,7 +94,7 @@ const TaskManagementModal: React.FC<{
           title: newTask.title,
           description: newTask.description,
           priority: newTask.priority,
-          estimatedDuration: parseInt(newTask.estimatedDuration) || 0,
+          estimatedDuration: parseFloat(newTask.estimatedDuration) || 0,
           assignee: newTask.assignee || undefined,
           notes: newTask.notes || undefined
         }
@@ -147,11 +147,11 @@ const TaskManagementModal: React.FC<{
     }
   };
 
-  const formatDuration = (minutes: number) => {
-    if (minutes < 60) return `${minutes}m`;
-    const hours = Math.floor(minutes / 60);
-    const remainingMinutes = minutes % 60;
-    return remainingMinutes > 0 ? `${hours}h ${remainingMinutes}m` : `${hours}h`;
+  const formatDuration = (hours: number) => {
+    if (hours < 1) return `${Math.round(hours * 60)}m`;
+    const wholeHours = Math.floor(hours);
+    const remainingMinutes = Math.round((hours - wholeHours) * 60);
+    return remainingMinutes > 0 ? `${wholeHours}h ${remainingMinutes}m` : `${wholeHours}h`;
   };
 
   if (isJobLoading && !jobData) {
@@ -277,11 +277,12 @@ const TaskManagementModal: React.FC<{
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Input
-                label="Estimated Duration (minutes)"
+                label="Estimated Duration (hours)"
                 type="number"
+                step="0.5"
                 value={newTask.estimatedDuration}
                 onChange={(e) => setNewTask(prev => ({ ...prev, estimatedDuration: e.target.value }))}
-                placeholder="Enter duration in minutes"
+                placeholder="Enter duration in hours"
               />
               <Select
                 label="Assign to Technician"
@@ -597,10 +598,11 @@ const JobCompletionModal: React.FC<{
     
     const partsCost = Object.entries(finalDetails.partsUsed).reduce((total, [partId, quantity]) => {
       const part = populatedJob?.parts?.find((p: any) => p.product === partId || p.product._id === partId);
-      // Try multiple pricing sources: part.unitPrice, part.product.pricing.costPrice, part.product.pricing.salePrice
-      const unitPrice = part?.unitPrice || 
-                       part?.product?.pricing?.costPrice || 
+      // Use selling price first (same priority as backend invoice creation)
+      const unitPrice = part?.product?.pricing?.sellingPrice || 
+                       part?.unitPrice || 
                        part?.product?.pricing?.salePrice || 
+                       part?.product?.pricing?.costPrice || 
                        part?.product?.pricing?.cost || 0;
       const taxRate = Number(part?.product?.pricing?.taxRate ?? 0);
       const base = unitPrice * quantity;
@@ -656,11 +658,12 @@ const JobCompletionModal: React.FC<{
               <h3 className="text-lg font-medium text-gray-900 mb-4">Service Details</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Input
-                  label="Actual Duration (minutes)"
+                  label="Actual Duration (hours)"
                   type="number"
+                  step="0.5"
                   value={finalDetails.actualDuration}
                   onChange={(e) => setFinalDetails(prev => ({ ...prev, actualDuration: e.target.value }))}
-                  placeholder="Enter actual time taken"
+                  placeholder="Enter actual time taken in hours"
                 />
                         <div className="w-full">
                           <label className="block text-sm font-medium text-gray-700 mb-2">Charges</label>
@@ -754,9 +757,10 @@ const JobCompletionModal: React.FC<{
                       </div>
                       <div className="text-right">
                         <p className="text-sm text-gray-600">
-                          Unit Price: ${part?.unitPrice || 
-                                       part?.product?.pricing?.costPrice || 
+                          Unit Price: ${part?.product?.pricing?.sellingPrice || 
+                                       part?.unitPrice || 
                                        part?.product?.pricing?.salePrice || 
+                                       part?.product?.pricing?.costPrice || 
                                        part?.product?.pricing?.cost || 0}
                         </p>
                         <p className="text-sm text-gray-600">Assigned: {part.quantityRequired || 0}</p>
@@ -790,9 +794,10 @@ const JobCompletionModal: React.FC<{
                       {(() => {
                         const qty = (finalDetails.partsUsed[part.product] || finalDetails.partsUsed[part.product._id] || 0);
                         const unit = (
+                          part?.product?.pricing?.sellingPrice || 
                           part?.unitPrice || 
-                          part?.product?.pricing?.costPrice || 
                           part?.product?.pricing?.salePrice || 
+                          part?.product?.pricing?.costPrice || 
                           part?.product?.pricing?.cost || 0
                         );
                         const taxRate = Number(part?.product?.pricing?.taxRate ?? 0);
@@ -853,12 +858,12 @@ const JobCompletionModal: React.FC<{
 
                   const partsBase = Object.entries(finalDetails.partsUsed).reduce((sum, [partId, qty]) => {
                     const part: any = (populatedJob?.parts || []).find((p: any) => p.product === partId || p.product._id === partId);
-                    const unit = part?.unitPrice || part?.product?.pricing?.costPrice || part?.product?.pricing?.salePrice || part?.product?.pricing?.cost || 0;
+                    const unit = part?.product?.pricing?.sellingPrice || part?.unitPrice || part?.product?.pricing?.salePrice || part?.product?.pricing?.costPrice || part?.product?.pricing?.cost || 0;
                     return sum + (Number(qty) || 0) * unit;
                   }, 0);
                   const partsTax = Object.entries(finalDetails.partsUsed).reduce((sum, [partId, qty]) => {
                     const part: any = (populatedJob?.parts || []).find((p: any) => p.product === partId || p.product._id === partId);
-                    const unit = part?.unitPrice || part?.product?.pricing?.costPrice || part?.product?.pricing?.salePrice || part?.product?.pricing?.cost || 0;
+                    const unit = part?.product?.pricing?.sellingPrice || part?.unitPrice || part?.product?.pricing?.salePrice || part?.product?.pricing?.costPrice || part?.product?.pricing?.cost || 0;
                     const rate = Number(part?.product?.pricing?.taxRate ?? 0);
                     const base = (Number(qty) || 0) * unit;
                     return sum + (base * rate) / 100;
@@ -1147,6 +1152,7 @@ const WorkshopPage: React.FC = () => {
       // Complete the job with final details
       await api.post(`/workshop/${selectedJob._id}/complete`, {
         ...completionData,
+        actualDuration: parseFloat(completionData.actualDuration) || 0,
         status: 'completed',
         completedAt: new Date().toISOString()
       });
@@ -1913,6 +1919,7 @@ const CreateJobForm: React.FC<{
     customerPhone: '',
     priority: 'medium',
     deadline: '',
+    estimatedDuration: '',
     // Job Card specific fields matching MECCA template
     jobCard: {
       workOrderNumber: '',
@@ -1986,7 +1993,7 @@ const CreateJobForm: React.FC<{
       start: '',
       end: '',
       estimatedDuration: 0,
-      bufferTime: 30,
+      bufferTime: 0.5,
       isFlexible: false,
       schedulingNotes: ''
     },
@@ -2060,6 +2067,8 @@ const CreateJobForm: React.FC<{
         laborHours: Number(formData.jobCard.laborHours) || 0,
         warrantyPeriod: Number(formData.jobCard.warrantyPeriod) || 0
       },
+      // Estimated duration is already in hours
+      estimatedDuration: parseFloat(formData.estimatedDuration) || 0,
       // Clean sublets
       sublets: formData.sublets.map(sublet => ({
         description: sublet.description.trim(),
@@ -2658,7 +2667,7 @@ const CreateJobForm: React.FC<{
                         </span>
                         {task.estimatedDuration > 0 && (
                           <div className="text-xs text-gray-500 mt-1">
-                            Est. {task.estimatedDuration}m
+                            Est. {formatDuration(task.estimatedDuration)}
                           </div>
                         )}
                       </div>
@@ -3088,12 +3097,13 @@ const CreateJobForm: React.FC<{
                 <label className="text-sm text-gray-600">Est. Duration:</label>
                 <Input
                   type="number"
+                  step="0.5"
                   value={newTask.estimatedDuration}
-                  onChange={(e) => setNewTask(prev => ({ ...prev, estimatedDuration: parseInt(e.target.value) || 0 }))}
-                  placeholder="Minutes"
+                  onChange={(e) => setNewTask(prev => ({ ...prev, estimatedDuration: parseFloat(e.target.value) || 0 }))}
+                  placeholder="Hours"
                   className="w-20"
                 />
-                <span className="text-sm text-gray-500">min</span>
+                <span className="text-sm text-gray-500">hrs</span>
               </div>
               <Button
                 type="button"
@@ -3152,12 +3162,13 @@ const CreateJobForm: React.FC<{
                         <label className="text-sm text-gray-600">Est. Duration:</label>
                         <Input
                           type="number"
+                          step="0.5"
                           value={task.estimatedDuration}
-                          onChange={(e) => updateTask(index, 'estimatedDuration', parseInt(e.target.value) || 0)}
-                          placeholder="Minutes"
+                          onChange={(e) => updateTask(index, 'estimatedDuration', parseFloat(e.target.value) || 0)}
+                          placeholder="Hours"
                           className="w-20"
                         />
-                        <span className="text-sm text-gray-500">min</span>
+                        <span className="text-sm text-gray-500">hrs</span>
                       </div>
                     </div>
                   </div>
@@ -3309,7 +3320,7 @@ const EditJobForm: React.FC<{
     status: job?.status || 'scheduled',
     deadline: job?.deadline ? new Date(job.deadline).toISOString().split('T')[0] : '',
     // Progress is now calculated automatically from task completion
-    estimatedDuration: job?.estimatedDuration || ''
+    estimatedDuration: job?.estimatedDuration ? job.estimatedDuration.toString() : ''
   });
 
   // Basic safety check
@@ -3608,7 +3619,11 @@ const EditJobForm: React.FC<{
   const handleJobInfoUpdate = async () => {
     setIsUpdating(true);
     try {
-      await api.put(`/workshop/${job._id}/update-task`, jobInfo);
+      const updatedJobInfo = {
+        ...jobInfo,
+        estimatedDuration: parseFloat(jobInfo.estimatedDuration) || 0
+      };
+      await api.put(`/workshop/${job._id}/update-task`, updatedJobInfo);
       toast.success('Job information updated successfully');
       setIsEditingJobInfo(false);
       queryClient.invalidateQueries({ queryKey: ['workshop-jobs'] });
@@ -3692,8 +3707,9 @@ const EditJobForm: React.FC<{
           />
           {/* Progress is now calculated automatically from task completion - removed manual input */}
           <Input
-            label="Estimated Duration (minutes)"
+            label="Estimated Duration (hours)"
             type="number"
+            step="0.5"
                 value={jobInfo.estimatedDuration}
                 onChange={(e) => setJobInfo(prev => ({ ...prev, estimatedDuration: e.target.value }))}
           />
@@ -4547,8 +4563,9 @@ const AddTaskForm: React.FC<{
           ]}
         />
         <Input
-          label="Estimated Duration (minutes)"
+          label="Estimated Duration (hours)"
           type="number"
+          step="0.5"
           value={formData.estimatedDuration}
           onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, estimatedDuration: e.target.value }))}
         />
