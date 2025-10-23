@@ -131,9 +131,10 @@ const warehouseAccessAuth = async (req, res, next) => {
 
     const warehouseId = req.params.id;
     
-    // Check if user is manager of this warehouse
+    // Check if user is assigned to this warehouse (manager or employee)
     if (req.user.warehouse?.assignedWarehouse?.toString() === warehouseId && 
-        req.user.warehouse?.warehousePosition === 'warehouse_manager') {
+        (req.user.warehouse?.warehousePosition === 'warehouse_manager' || 
+         req.user.warehouse?.warehousePosition === 'warehouse_employee')) {
       return next();
     }
 

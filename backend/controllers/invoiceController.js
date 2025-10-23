@@ -25,6 +25,10 @@ const getInvoices = async (req, res) => {
     if (req.user.role === 'sales_person') {
       filter.salesPerson = req.user._id;
     }
+    
+    // Build $or conditions array
+    const orConditions = [];
+    
     if (search) {
       // Try multiple phone number formats for search
       const phoneVariations = [
@@ -34,7 +38,7 @@ const getInvoices = async (req, res) => {
         search.replace(/\D/g, '').replace(/^(\d{3})(\d{3})(\d{4})$/, '($1) $2-$3'), // Format as (123) 456-7890
       ];
       
-      filter.$or = [
+      orConditions.push(
         { invoiceNumber: { $regex: search, $options: 'i' } },
         { 'customer.firstName': { $regex: search, $options: 'i' } },
         { 'customer.lastName': { $regex: search, $options: 'i' } },
@@ -42,10 +46,9 @@ const getInvoices = async (req, res) => {
         { customerPhone: { $regex: search, $options: 'i' } },
         { 'customer.phone': { $in: phoneVariations } },
         { customerPhone: { $in: phoneVariations } }
-      ];
+      );
     }
-    if (status) filter.status = status;
-    if (type) filter.type = type;
+    
     if (customerPhone) {
       // Try multiple phone number formats
       const phoneVariations = [
@@ -55,15 +58,24 @@ const getInvoices = async (req, res) => {
         customerPhone.replace(/\D/g, '').replace(/^(\d{3})(\d{3})(\d{4})$/, '($1) $2-$3'), // Format as (123) 456-7890
       ];
       
-      filter.$or = [
+      orConditions.push(
         { 'customer.phone': { $in: phoneVariations } },
         { customerPhone: { $in: phoneVariations } }
-      ];
+      );
     }
+    
+    // Add $or filter if we have any conditions
+    if (orConditions.length > 0) {
+      filter.$or = orConditions;
+    }
+    
+    if (status) filter.status = status;
+    if (type) filter.type = type;
 
     const invoices = await Invoice.find(filter)
       .populate('customer', 'firstName lastName email phone')
       .populate('createdBy', 'firstName lastName')
+      .populate('salesPerson', 'firstName lastName email')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
@@ -99,13 +111,24 @@ const getInvoiceById = async (req, res) => {
       .populate('customer', 'firstName lastName email phone address')
       .populate('items.product', 'name sku description images')
       .populate('createdBy', 'firstName lastName')
-      .populate('payments.processedBy', 'firstName lastName');
+      .populate('payments.processedBy', 'firstName lastName')
+      .populate('salesPerson', 'firstName lastName email');
 
     if (!invoice) {
       return res.status(404).json({
         success: false,
         message: 'Invoice not found'
       });
+    }
+
+    // Check if salesperson can only access their own invoices
+    if (req.user.role === 'sales_person' && invoice.salesPerson) {
+      if (invoice.salesPerson.toString() !== req.user._id.toString()) {
+        return res.status(403).json({
+          success: false,
+          message: 'Access denied. You can only view your own invoices.'
+        });
+      }
     }
 
     res.json({
@@ -380,6 +403,25 @@ const updateInvoice = async (req, res) => {
     const updateData = req.body;
     updateData.updatedBy = req.user._id;
 
+    // First check if invoice exists and salesperson can access it
+    const existingInvoice = await Invoice.findById(id);
+    if (!existingInvoice) {
+      return res.status(404).json({
+        success: false,
+        message: 'Invoice not found'
+      });
+    }
+
+    // Check if salesperson can only access their own invoices
+    if (req.user.role === 'sales_person' && existingInvoice.salesPerson) {
+      if (existingInvoice.salesPerson.toString() !== req.user._id.toString()) {
+        return res.status(403).json({
+          success: false,
+          message: 'Access denied. You can only modify your own invoices.'
+        });
+      }
+    }
+
     const invoice = await Invoice.findByIdAndUpdate(
       id,
       updateData,
@@ -463,6 +505,16 @@ const addPayment = async (req, res) => {
       });
     }
 
+    // Check if salesperson can only access their own invoices
+    if (req.user.role === 'sales_person' && invoice.salesPerson) {
+      if (invoice.salesPerson.toString() !== req.user._id.toString()) {
+        return res.status(403).json({
+          success: false,
+          message: 'Access denied. You can only add payments to your own invoices.'
+        });
+      }
+    }
+
     // Check if payment exceeds remaining balance
     const remainingBalance = invoice.total - invoice.paid;
     if (paymentData.amount > remainingBalance) {
@@ -503,6 +555,16 @@ const generateQRCode = async (req, res) => {
         success: false,
         message: 'Invoice not found'
       });
+    }
+
+    // Check if salesperson can only access their own invoices
+    if (req.user.role === 'sales_person' && invoice.salesPerson) {
+      if (invoice.salesPerson.toString() !== req.user._id.toString()) {
+        return res.status(403).json({
+          success: false,
+          message: 'Access denied. You can only generate QR codes for your own invoices.'
+        });
+      }
     }
 
     const qrData = {
@@ -549,6 +611,11 @@ const getInvoiceStats = async (req, res) => {
         $lte: new Date(endDate)
       }
     };
+    
+    // Filter by salesperson if user is a sales person
+    if (req.user.role === 'sales_person') {
+      filter.salesPerson = req.user._id;
+    }
     
 
     const totalInvoices = await Invoice.countDocuments(filter);
@@ -601,6 +668,16 @@ const deleteInvoice = async (req, res) => {
     
     if (!invoice) {
       return res.status(404).json({ message: 'Invoice not found' });
+    }
+
+    // Check if salesperson can only access their own invoices
+    if (req.user.role === 'sales_person' && invoice.salesPerson) {
+      if (invoice.salesPerson.toString() !== req.user._id.toString()) {
+        return res.status(403).json({
+          success: false,
+          message: 'Access denied. You can only delete your own invoices.'
+        });
+      }
     }
 
     // Check if invoice can be deleted (e.g., not paid)

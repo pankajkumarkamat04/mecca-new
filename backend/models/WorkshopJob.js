@@ -7,8 +7,8 @@ const jobTaskSchema = new mongoose.Schema({
   assigneeName: { type: String, trim: true }, // Cached name for performance
   status: { type: String, enum: ['todo', 'in_progress', 'review', 'completed', 'cancelled'], default: 'todo' },
   priority: { type: String, enum: ['low', 'medium', 'high', 'urgent'], default: 'medium' },
-  estimatedDuration: { type: Number, min: 0 }, // in minutes
-  actualDuration: { type: Number, min: 0 }, // in minutes
+  estimatedDuration: { type: Number, min: 0 }, // in hours
+  actualDuration: { type: Number, min: 0 }, // in hours
   startedAt: Date,
   completedAt: Date,
   notes: { type: String, trim: true },
@@ -100,10 +100,10 @@ const workshopJobSchema = new mongoose.Schema({
   scheduled: {
     start: Date,
     end: Date,
-    estimatedDuration: { type: Number, min: 0 }, // in minutes
-    actualDuration: { type: Number, min: 0 }, // in minutes
+    estimatedDuration: { type: Number, min: 0 }, // in hours
+    actualDuration: { type: Number, min: 0 }, // in hours
     // Enhanced scheduling features
-    bufferTime: { type: Number, min: 0, default: 30 }, // Buffer time in minutes
+    bufferTime: { type: Number, min: 0, default: 0.5 }, // Buffer time in hours
     isFlexible: { type: Boolean, default: false }, // Can be rescheduled
     schedulingNotes: { type: String, trim: true },
     conflicts: [{
@@ -314,7 +314,7 @@ const workshopJobSchema = new mongoose.Schema({
   // Job completion details
   completionDetails: {
     completedAt: { type: Date },
-    actualDuration: { type: Number, min: 0 }, // in minutes
+    actualDuration: { type: Number, min: 0 }, // in hours
     charges: [{
       name: { type: String, required: true, trim: true },
       amount: { type: Number, required: true, min: 0 },
@@ -527,7 +527,7 @@ workshopJobSchema.methods.calculateJobCosts = function() {
     if (duration > 0) {
       // This would need to be enhanced with actual labor rates
       const hourlyRate = 50; // Default hourly rate - should come from technician profile
-      laborCost += (duration / 60) * hourlyRate;
+      laborCost += duration * hourlyRate; // duration is already in hours
     }
   }
   

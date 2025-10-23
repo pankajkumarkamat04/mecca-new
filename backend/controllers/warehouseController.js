@@ -776,11 +776,17 @@ const getWarehouseDashboard = async (req, res) => {
       });
     }
 
-    // Check if user is warehouse manager or admin
-    if (req.user.role !== 'admin' && !warehouse.isManager(req.user._id)) {
+    // Check if user has access to this warehouse (admin, manager, or assigned employee)
+    const hasAccess = req.user.role === 'admin' || 
+                     req.user.role === 'manager' ||
+                     warehouse.isManager(req.user._id) ||
+                     (req.user.warehouse?.assignedWarehouse?.toString() === warehouse._id.toString() && 
+                      req.user.warehouse?.warehousePosition === 'warehouse_employee');
+    
+    if (!hasAccess) {
       return res.status(403).json({
         success: false,
-        message: 'Access denied. Only warehouse managers can access dashboard'
+        message: 'Access denied. You can only access your assigned warehouse dashboard'
       });
     }
 

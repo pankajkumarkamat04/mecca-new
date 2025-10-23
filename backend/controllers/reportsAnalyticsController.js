@@ -353,9 +353,10 @@ const getWorkshopAnalytics = async (req, res) => {
     // Technician Performance
     const technicianStats = await WorkshopJob.aggregate([
       { $match: dateFilter },
+      { $unwind: '$resources.assignedTechnicians' },
       {
         $group: {
-          _id: '$assignedTo',
+          _id: '$resources.assignedTechnicians.user',
           jobCount: { $sum: 1 },
           completedCount: {
             $sum: { $cond: [{ $eq: ['$status', 'completed'] }, 1, 0] }
@@ -801,14 +802,17 @@ const getSalesTrendsChart = async (req, res) => {
     }
 
     // Daily sales trends - Orders
+    const orderDateFilter = {
+      orderDate: dateFilter.createdAt
+    };
     const dailyOrderTrends = await Order.aggregate([
-      { $match: dateFilter },
+      { $match: orderDateFilter },
       {
         $group: {
           _id: {
-            year: { $year: '$createdAt' },
-            month: { $month: '$createdAt' },
-            day: { $dayOfMonth: '$createdAt' }
+            year: { $year: '$orderDate' },
+            month: { $month: '$orderDate' },
+            day: { $dayOfMonth: '$orderDate' }
           },
           count: { $sum: 1 },
           revenue: { $sum: '$totalAmount' }
@@ -893,6 +897,7 @@ const getSalesTrendsChart = async (req, res) => {
     res.json({
       success: true,
       data: {
+        dailyTrends: dailyOrderTrends, // Frontend expects this field name
         dailyOrderTrends,
         dailyPOSTrends,
         dailyWorkshopTrends,
@@ -940,8 +945,11 @@ const getTopProductsChart = async (req, res) => {
     }
 
     // Top products by quantity sold
+    const orderDateFilter = {
+      orderDate: dateFilter.createdAt
+    };
     const topProductsByQuantity = await Order.aggregate([
-      { $match: dateFilter },
+      { $match: orderDateFilter },
       { $unwind: '$items' },
       {
         $group: {
@@ -958,7 +966,7 @@ const getTopProductsChart = async (req, res) => {
 
     // Top products by revenue
     const topProductsByRevenue = await Order.aggregate([
-      { $match: dateFilter },
+      { $match: orderDateFilter },
       { $unwind: '$items' },
       {
         $group: {
@@ -1021,13 +1029,16 @@ const getRevenueAnalyticsChart = async (req, res) => {
     }
 
     // Monthly revenue breakdown
+    const orderDateFilter = {
+      orderDate: dateFilter.createdAt
+    };
     const monthlyRevenue = await Order.aggregate([
-      { $match: dateFilter },
+      { $match: orderDateFilter },
       {
         $group: {
           _id: {
-            year: { $year: '$createdAt' },
-            month: { $month: '$createdAt' }
+            year: { $year: '$orderDate' },
+            month: { $month: '$orderDate' }
           },
           revenue: { $sum: '$totalAmount' },
           orderCount: { $sum: 1 },
@@ -1052,7 +1063,7 @@ const getRevenueAnalyticsChart = async (req, res) => {
 
     // Customer segment revenue
     const customerSegmentRevenue = await Order.aggregate([
-      { $match: dateFilter },
+      { $match: orderDateFilter },
       {
         $lookup: {
           from: 'customers',
@@ -1209,10 +1220,11 @@ const getWorkshopAnalyticsChart = async (req, res) => {
     // Top technicians by jobs
     const topTechnicians = await WorkshopJob.aggregate([
       { $match: dateFilter },
+      { $unwind: '$resources.assignedTechnicians' },
       {
         $lookup: {
-          from: 'technicians',
-          localField: 'assignedTechnician',
+          from: 'users',
+          localField: 'resources.assignedTechnicians.user',
           foreignField: '_id',
           as: 'technicianData'
         }
@@ -1220,7 +1232,7 @@ const getWorkshopAnalyticsChart = async (req, res) => {
       { $unwind: '$technicianData' },
       {
         $group: {
-          _id: '$assignedTechnician',
+          _id: '$resources.assignedTechnicians.user',
           technicianName: { $first: { $concat: ['$technicianData.firstName', ' ', '$technicianData.lastName'] } },
           jobCount: { $sum: 1 },
           totalRevenue: { $sum: '$estimatedCost' }

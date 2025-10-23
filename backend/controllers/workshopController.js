@@ -950,7 +950,7 @@ const assignTechnician = async (req, res) => {
     const technicianName = technician.user 
       ? `${technician.user.firstName} ${technician.user.lastName}`
       : technician.employeeId || 'Technician';
-    job.assignTechnician(technicianId, technicianName, role, req.user._id);
+    job.assignTechnician(technician.user._id, technicianName, role, req.user._id);
     job.lastUpdatedBy = req.user._id;
     await job.save();
 
@@ -1510,7 +1510,7 @@ const assignResources = async (req, res) => {
           ? `${technician.user.firstName} ${technician.user.lastName}`
           : technician.employeeId || 'Technician';
         
-        job.assignTechnician(technicianId, technicianName, role, req.user._id);
+        job.assignTechnician(technician.user._id, technicianName, role, req.user._id);
         technician.assignJob(job._id, role);
         await technician.save();
         
@@ -2202,7 +2202,7 @@ const getWorkshopDashboard = async (req, res) => {
       { $group: {
         _id: '$resources.assignedTechnicians.user',
         jobCount: { $sum: 1 },
-        totalHours: { $sum: { $divide: ['$scheduled.actualDuration', 60] } }
+        totalHours: { $sum: '$scheduled.actualDuration' }
       }},
       { $lookup: {
         from: 'users',
@@ -2337,11 +2337,11 @@ const updateJobTask = async (req, res) => {
         if (technician && technician.isCurrentlyAvailable) {
           // Check if technician is already assigned
           const alreadyAssigned = job.resources?.assignedTechnicians?.some(
-            at => at.user && at.user.toString() === techData.technicianId
+            at => at.user && at.user.toString() === technician.user._id.toString()
           );
           
           if (!alreadyAssigned) {
-            job.assignTechnician(techData.technicianId, `${technician.user?.firstName || 'Tech'} ${technician.user?.lastName || technician.employeeId || ''}`, techData.role || 'technician', req.user._id);
+            job.assignTechnician(technician.user._id, `${technician.user?.firstName || 'Tech'} ${technician.user?.lastName || technician.employeeId || ''}`, techData.role || 'technician', req.user._id);
             technician.assignJob(job._id, techData.role || 'technician');
             await technician.save();
           }
@@ -2507,7 +2507,7 @@ const updateJobResources = async (req, res) => {
           const technicianName = technician.user 
             ? `${technician.user.firstName} ${technician.user.lastName}`
             : technician.employeeId || 'Technician';
-          job.assignTechnician(techData.technicianId, technicianName, techData.role, req.user._id);
+          job.assignTechnician(technician.user._id, technicianName, techData.role, req.user._id);
           technician.assignJob(job._id, techData.role);
           await technician.save();
         }
