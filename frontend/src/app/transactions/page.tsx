@@ -9,6 +9,8 @@ import Button from '@/components/ui/Button';
 import Modal from '@/components/ui/Modal';
 import { transactionsAPI, accountsAPI } from '@/lib/api';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { formatCurrency, formatDate } from '@/lib/utils';
+import { UserGroupIcon, ChartBarIcon } from '@heroicons/react/24/outline';
 
 const TransactionsPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -23,6 +25,8 @@ const TransactionsPage: React.FC = () => {
   const [loadingTransaction, setLoadingTransaction] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [activeTab, setActiveTab] = useState<'transactions' | 'salesperson'>('transactions');
+  const [performancePeriod, setPerformancePeriod] = useState<'weekly' | 'monthly'>('monthly');
   const [formData, setFormData] = useState<any>({
     date: '',
     type: 'journal',
@@ -47,7 +51,20 @@ const TransactionsPage: React.FC = () => {
         status: statusFilter === 'all' ? undefined : statusFilter,
         startDate: startDate || undefined,
         endDate: endDate || undefined,
-      })
+      }),
+    enabled: activeTab === 'transactions'
+  });
+
+  // Salesperson performance query
+  const { data: performanceData, isLoading: performanceLoading } = useQuery({
+    queryKey: ['salesperson-performance', performancePeriod, startDate, endDate],
+    queryFn: () =>
+      transactionsAPI.getSalespersonPerformance({
+        period: performancePeriod,
+        startDate: startDate || undefined,
+        endDate: endDate || undefined,
+      }),
+    enabled: activeTab === 'salesperson'
   });
 
   // Load accounts for entry selection
@@ -237,12 +254,130 @@ const TransactionsPage: React.FC = () => {
             <p className="text-gray-600">View and manage financial transactions</p>
           </div>
           <div className="flex gap-2">
-            <Button size="sm" onClick={openCreate}>New Transaction</Button>
-            <Button variant="outline" size="sm" onClick={exportCsv}>Export</Button>
+            {activeTab === 'transactions' && (
+              <>
+                <Button size="sm" onClick={openCreate}>New Transaction</Button>
+                <Button variant="outline" size="sm" onClick={exportCsv}>Export</Button>
+              </>
+            )}
           </div>
         </div>
 
-        <div className="bg-white p-4 rounded-lg shadow">
+        {/* Tabs */}
+        <div className="border-b border-gray-200">
+          <nav className="-mb-px flex space-x-8">
+            <button
+              onClick={() => setActiveTab('transactions')}
+              className={`${
+                activeTab === 'transactions'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              } whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm flex items-center`}
+            >
+              <ChartBarIcon className="h-5 w-5 mr-2" />
+              Transactions
+            </button>
+            <button
+              onClick={() => setActiveTab('salesperson')}
+              className={`${
+                activeTab === 'salesperson'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              } whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm flex items-center`}
+            >
+              <UserGroupIcon className="h-5 w-5 mr-2" />
+              Salesperson Performance
+            </button>
+          </nav>
+        </div>
+
+        {/* Salesperson Performance View */}
+        {activeTab === 'salesperson' && (
+          <div className="space-y-6">
+            {/* Period selector */}
+            <div className="bg-white p-4 rounded-lg shadow">
+              <div className="flex gap-4 items-center">
+                <label className="text-sm font-medium text-gray-700">Period:</label>
+                <select
+                  value={performancePeriod}
+                  onChange={(e) => setPerformancePeriod(e.target.value as 'weekly' | 'monthly')}
+                  className="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                >
+                  <option value="weekly">Last 7 Days</option>
+                  <option value="monthly">Last 30 Days</option>
+                </select>
+                <div className="flex gap-2">
+                  <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} placeholder="Start Date" />
+                  <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} placeholder="End Date" />
+                </div>
+              </div>
+            </div>
+
+            {performanceLoading ? (
+              <div className="flex justify-center items-center h-64">Loading...</div>
+            ) : (
+              <>
+                {/* Summary Cards */}
+                {performanceData?.data?.summary && (
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                    <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                      <div className="text-sm font-medium text-gray-600">Total Sales People</div>
+                      <div className="text-2xl font-semibold text-gray-900">{performanceData.data.summary.totalSalesPeople}</div>
+                    </div>
+                    <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                      <div className="text-sm font-medium text-gray-600">Total Transactions</div>
+                      <div className="text-2xl font-semibold text-gray-900">{performanceData.data.summary.totalTransactions}</div>
+                    </div>
+                    <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                      <div className="text-sm font-medium text-gray-600">Total Revenue</div>
+                      <div className="text-2xl font-semibold text-gray-900">{formatCurrency(performanceData.data.summary.totalRevenue)}</div>
+                    </div>
+                    <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                      <div className="text-sm font-medium text-gray-600">Avg Transaction</div>
+                      <div className="text-2xl font-semibold text-gray-900">{formatCurrency(performanceData.data.summary.averageTransactionValue)}</div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Salesperson List */}
+                {performanceData?.data?.salesPerformance && performanceData.data.salesPerformance.length > 0 ? (
+                  <div className="bg-white rounded-lg shadow overflow-hidden">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sales Person</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Transactions</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Sales</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Average Sale</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {performanceData.data.salesPerformance.map((person: any, index: number) => (
+                          <tr key={person.salesPersonId} className="hover:bg-gray-50">
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-sm font-medium text-gray-900">{person.salesPersonName}</div>
+                              <div className="text-sm text-gray-500">{person.salesPersonEmail}</div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{person.transactionCount}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">{formatCurrency(person.totalSales)}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{formatCurrency(person.averageSale)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="text-center py-12 text-gray-500">No salesperson performance data available</div>
+                )}
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Transactions View */}
+        {activeTab === 'transactions' && (
+          <>
+            <div className="bg-white p-4 rounded-lg shadow">
           <div className="flex flex-col lg:flex-row gap-4">
             <div className="flex-1">
               <Input
@@ -277,14 +412,16 @@ const TransactionsPage: React.FC = () => {
           </div>
         </div>
 
-        <DataTable
-          columns={columns}
-          data={Array.isArray(data?.data?.data) ? data.data.data : []}
-          loading={isLoading}
-          pagination={data?.data?.pagination}
-          onPageChange={setCurrentPage}
-          emptyMessage="No transactions found"
-        />
+            <DataTable
+              columns={columns}
+              data={Array.isArray(data?.data?.data) ? data.data.data : []}
+              loading={isLoading}
+              pagination={data?.data?.pagination}
+              onPageChange={setCurrentPage}
+              emptyMessage="No transactions found"
+            />
+          </>
+        )}
 
         <Modal isOpen={viewOpen} onClose={() => setViewOpen(false)} title="Transaction Details" size="full">
           {selectedTx ? (
@@ -713,5 +850,3 @@ const TransactionsPage: React.FC = () => {
 };
 
 export default TransactionsPage;
-
-

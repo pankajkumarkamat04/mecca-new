@@ -408,6 +408,130 @@ const getTransactionStats = async (req, res) => {
   }
 };
 
+// @desc    Get salesperson performance analytics
+// @route   GET /api/transactions/salesperson-performance
+// @access  Private
+const getSalespersonPerformance = async (req, res) => {
+  try {
+    const { salesPersonId, period = 'monthly', startDate, endDate } = req.query;
+    
+    // Build date filter
+    let dateFilter = {};
+    if (startDate && endDate) {
+      dateFilter = {
+        date: {
+          $gte: new Date(startDate),
+          $lte: new Date(endDate)
+        }
+      };
+    } else {
+      // Default to last month or last week based on period
+      const now = new Date();
+      if (period === 'weekly') {
+        dateFilter = {
+          date: {
+            $gte: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+          }
+        };
+      } else {
+        dateFilter = {
+          date: {
+            $gte: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+          }
+        };
+      }
+    }
+
+    // Build filter
+    const filter = {
+      type: 'sale',
+      status: 'posted',
+      ...dateFilter
+    };
+
+    // Filter by salesperson if provided
+    if (salesPersonId) {
+      filter['metadata.salesPerson.id'] = salesPersonId;
+    }
+
+    // Get all transactions
+    const transactions = await Transaction.find(filter)
+      .populate('customer', 'firstName lastName')
+      .populate('invoice', 'invoiceNumber')
+      .populate('createdBy', 'firstName lastName email')
+      .sort({ date: -1 });
+
+    // Group by salesperson
+    const salesPersonMap = new Map();
+
+    transactions.forEach(tx => {
+      const salesPersonId = tx.metadata?.salesPerson?.id || tx.createdBy?._id;
+      const salesPersonName = tx.metadata?.salesPerson?.name || 
+                              (tx.createdBy ? `${tx.createdBy.firstName} ${tx.createdBy.lastName}` : 'Unknown');
+      const salesPersonEmail = tx.metadata?.salesPerson?.email || tx.createdBy?.email || '';
+
+      if (!salesPersonMap.has(salesPersonId.toString())) {
+        salesPersonMap.set(salesPersonId.toString(), {
+          salesPersonId,
+          salesPersonName,
+          salesPersonEmail,
+          totalSales: 0,
+          transactionCount: 0,
+          transactions: []
+        });
+      }
+
+      const person = salesPersonMap.get(salesPersonId.toString());
+      person.totalSales += tx.amount;
+      person.transactionCount += 1;
+      person.transactions.push({
+        transactionNumber: tx.transactionNumber,
+        date: tx.date,
+        amount: tx.amount,
+        customer: tx.customer ? `${tx.customer.firstName} ${tx.customer.lastName}` : 'Walk-in',
+        invoiceNumber: tx.invoice?.invoiceNumber || 'N/A'
+      });
+    });
+
+    // Convert to array and sort by total sales
+    const salesPerformance = Array.from(salesPersonMap.values())
+      .sort((a, b) => b.totalSales - a.totalSales)
+      .map(person => ({
+        ...person,
+        averageSale: person.transactionCount > 0 ? person.totalSales / person.transactionCount : 0
+      }));
+
+    // Calculate summary statistics
+    const summary = {
+      totalSalesPeople: salesPerformance.length,
+      totalTransactions: transactions.length,
+      totalRevenue: transactions.reduce((sum, tx) => sum + tx.amount, 0),
+      averageTransactionValue: transactions.length > 0 
+        ? transactions.reduce((sum, tx) => sum + tx.amount, 0) / transactions.length 
+        : 0
+    };
+
+    res.json({
+      success: true,
+      data: {
+        summary,
+        salesPerformance,
+        period,
+        dateRange: {
+          startDate: dateFilter.date?.$gte || startDate,
+          endDate: dateFilter.date?.$lte || endDate
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Get salesperson performance error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+};
+
 module.exports = {
   getTransactions,
   getTransactionById,
@@ -417,5 +541,6 @@ module.exports = {
   approveTransaction,
   postTransaction,
   reconcileTransaction,
-  getTransactionStats
+  getTransactionStats,
+  getSalespersonPerformance
 };

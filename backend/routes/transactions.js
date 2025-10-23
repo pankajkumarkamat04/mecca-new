@@ -16,7 +16,8 @@ const {
   approveTransaction,
   postTransaction,
   reconcileTransaction,
-  getTransactionStats
+  getTransactionStats,
+  getSalespersonPerformance
 } = require('../controllers/transactionController');
 
 const router = express.Router();
@@ -30,6 +31,11 @@ router.get('/', auth, validatePagination(), validate(getTransactionsValidation),
 // @desc    Get transaction statistics
 // @access  Private
 router.get('/stats', auth, validate(getTransactionStatsValidation), getTransactionStats);
+
+// @route   GET /api/transactions/salesperson-performance
+// @desc    Get salesperson performance analytics
+// @access  Private
+router.get('/salesperson-performance', auth, getSalespersonPerformance);
 
 // @route   POST /api/transactions
 // @desc    Create new transaction

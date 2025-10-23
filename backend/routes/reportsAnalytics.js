@@ -12,7 +12,8 @@ const {
   getWorkshopAnalyticsChart,
   getSalesByCurrency,
   getSalesBySalesPerson,
-  getSalesSummaryBySalesPerson
+  getSalesSummaryBySalesPerson,
+  getSalespersonDashboard
 } = require('../controllers/reportsAnalyticsController');
 
 const router = express.Router();
@@ -24,6 +25,11 @@ router.use(auth);
 // @desc    Get dashboard summary with key metrics
 // @access  Private (Admin, Manager, Sales Person, Warehouse Manager, Workshop Employee)
 router.get('/dashboard', getDashboardSummary);
+
+// @route   GET /api/reports-analytics/salesperson-dashboard
+// @desc    Get salesperson-specific dashboard data
+// @access  Private (Sales Person)
+router.get('/salesperson-dashboard', authorize('sales_person'), getSalespersonDashboard);
 
 // @route   GET /api/reports-analytics/orders
 // @desc    Get order analytics with trends and insights

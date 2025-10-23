@@ -8,6 +8,7 @@ const WorkshopJob = require('../models/WorkshopJob');
 const StockMovement = require('../models/StockMovement');
 const Warehouse = require('../models/Warehouse');
 const SalesTransactionService = require('../services/salesTransactionService');
+const User = require('../models/User');
 
 // @desc    Get Order Analytics
 // @route   GET /api/reports-analytics/orders
@@ -1294,6 +1295,124 @@ const getSalesSummaryBySalesPerson = async (req, res) => {
   }
 };
 
+// @desc    Get Salesperson Dashboard Summary
+// @route   GET /api/reports-analytics/salesperson-dashboard
+// @access  Private (Sales Person)
+const getSalespersonDashboard = async (req, res) => {
+  try {
+    const salesPersonId = req.user._id;
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+    // Get salesperson's transactions
+    const transactions = await Transaction.find({
+      type: 'sale',
+      status: 'posted',
+      $or: [
+        { 'metadata.salesPerson.id': salesPersonId },
+        { createdBy: salesPersonId }
+      ]
+    });
+
+    // Get salesperson's invoices
+    const invoices = await Invoice.find({
+      salesPerson: salesPersonId
+    });
+
+    // Calculate sales statistics
+    const totalSales = transactions.reduce((sum, tx) => sum + tx.amount, 0);
+    const salesThisMonth = transactions.filter(tx => tx.date >= thirtyDaysAgo).reduce((sum, tx) => sum + tx.amount, 0);
+    const salesThisWeek = transactions.filter(tx => tx.date >= sevenDaysAgo).reduce((sum, tx) => sum + tx.amount, 0);
+    const totalInvoices = invoices.length;
+    const paidInvoices = invoices.filter(inv => inv.status === 'paid').length;
+    const pendingInvoices = invoices.filter(inv => ['pending', 'partial'].includes(inv.status)).length;
+
+    // Get daily sales trend for charts
+    const dailySales = await Transaction.aggregate([
+      {
+        $match: {
+          type: 'sale',
+          status: 'posted',
+          date: { $gte: thirtyDaysAgo },
+          $or: [
+            { 'metadata.salesPerson.id': salesPersonId },
+            { createdBy: salesPersonId }
+          ]
+        }
+      },
+      {
+        $group: {
+          _id: {
+            year: { $year: '$date' },
+            month: { $month: '$date' },
+            day: { $dayOfMonth: '$date' }
+          },
+          count: { $sum: 1 },
+          revenue: { $sum: '$amount' }
+        }
+      },
+      { $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1 } }
+    ]);
+
+    // Get top customers
+    const topCustomers = await Transaction.aggregate([
+      {
+        $match: {
+          type: 'sale',
+          status: 'posted',
+          date: { $gte: thirtyDaysAgo },
+          $or: [
+            { 'metadata.salesPerson.id': salesPersonId },
+            { createdBy: salesPersonId }
+          ],
+          customer: { $exists: true }
+        }
+      },
+      {
+        $group: {
+          _id: '$customer',
+          transactionCount: { $sum: 1 },
+          totalSpent: { $sum: '$amount' }
+        }
+      },
+      { $sort: { totalSpent: -1 } },
+      { $limit: 5 },
+      {
+        $lookup: {
+          from: 'customers',
+          localField: '_id',
+          foreignField: '_id',
+          as: 'customer'
+        }
+      },
+      { $unwind: '$customer' }
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        summary: {
+          totalSales,
+          salesThisMonth,
+          salesThisWeek,
+          totalInvoices,
+          paidInvoices,
+          pendingInvoices,
+          averageSale: transactions.length > 0 ? totalSales / transactions.length : 0
+        },
+        trends: {
+          dailySales
+        },
+        topCustomers
+      }
+    });
+  } catch (error) {
+    console.error('Salesperson dashboard error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
 module.exports = {
   getOrderAnalytics,
   getPOSSalesAnalytics,
@@ -1306,5 +1425,6 @@ module.exports = {
   getWorkshopAnalyticsChart,
   getSalesByCurrency,
   getSalesBySalesPerson,
-  getSalesSummaryBySalesPerson
+  getSalesSummaryBySalesPerson,
+  getSalespersonDashboard
 };

@@ -35,6 +35,18 @@ const invoiceSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'SalesOutlet'
   },
+  salesPerson: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  salesPersonName: {
+    type: String,
+    trim: true
+  },
+  salesPersonEmail: {
+    type: String,
+    trim: true
+  },
   items: [{
     product: {
       type: mongoose.Schema.Types.ObjectId,

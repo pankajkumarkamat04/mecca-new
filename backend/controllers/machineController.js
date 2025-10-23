@@ -56,7 +56,7 @@ const getMachines = async (req, res) => {
     console.error('Get machines error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error'
+      message: error.message || 'Server error'
     });
   }
 };
@@ -88,7 +88,7 @@ const getMachineById = async (req, res) => {
     console.error('Get machine by ID error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error'
+      message: error.message || 'Server error'
     });
   }
 };
@@ -138,9 +138,17 @@ const createMachine = async (req, res) => {
         message: 'Machine with this serial number already exists'
       });
     }
+    if (error.name === 'ValidationError') {
+      const validationErrors = Object.values(error.errors).map(err => err.message);
+      return res.status(400).json({
+        success: false,
+        message: validationErrors[0] || 'Validation error',
+        errors: validationErrors
+      });
+    }
     res.status(500).json({
       success: false,
-      message: 'Server error'
+      message: error.message || 'Server error'
     });
   }
 };
@@ -180,9 +188,17 @@ const updateMachine = async (req, res) => {
         message: 'Machine with this serial number already exists'
       });
     }
+    if (error.name === 'ValidationError') {
+      const validationErrors = Object.values(error.errors).map(err => err.message);
+      return res.status(400).json({
+        success: false,
+        message: validationErrors[0] || 'Validation error',
+        errors: validationErrors
+      });
+    }
     res.status(500).json({
       success: false,
-      message: 'Server error'
+      message: error.message || 'Server error'
     });
   }
 };
@@ -213,7 +229,7 @@ const deleteMachine = async (req, res) => {
     console.error('Delete machine error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error'
+      message: error.message || 'Server error'
     });
   }
 };
@@ -257,7 +273,7 @@ const bookMachine = async (req, res) => {
     console.error('Book machine error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error'
+      message: error.message || 'Server error'
     });
   }
 };
@@ -291,7 +307,7 @@ const releaseMachine = async (req, res) => {
     console.error('Release machine error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error'
+      message: error.message || 'Server error'
     });
   }
 };
@@ -327,7 +343,7 @@ const addMaintenanceRecord = async (req, res) => {
     console.error('Add maintenance record error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error'
+      message: error.message || 'Server error'
     });
   }
 };
@@ -386,7 +402,7 @@ const getMachineStats = async (req, res) => {
     console.error('Get machine stats error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error'
+      message: error.message || 'Server error'
     });
   }
 };

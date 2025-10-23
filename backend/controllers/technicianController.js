@@ -59,7 +59,7 @@ const getTechnicians = async (req, res) => {
     console.error('Get technicians error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error'
+      message: error.message || 'Server error'
     });
   }
 };
@@ -92,7 +92,7 @@ const getTechnicianById = async (req, res) => {
     console.error('Get technician by ID error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error'
+      message: error.message || 'Server error'
     });
   }
 };
@@ -207,7 +207,7 @@ const createTechnician = async (req, res) => {
       const errors = Object.values(error.errors).map(err => err.message);
       return res.status(400).json({
         success: false,
-        message: 'Validation failed',
+        message: errors[0] || 'Validation failed',
         errors: errors
       });
     }
@@ -276,9 +276,17 @@ const updateTechnician = async (req, res) => {
         message: 'Technician with this employee ID already exists'
       });
     }
+    if (error.name === 'ValidationError') {
+      const validationErrors = Object.values(error.errors).map(err => err.message);
+      return res.status(400).json({
+        success: false,
+        message: validationErrors[0] || 'Validation error',
+        errors: validationErrors
+      });
+    }
     res.status(500).json({
       success: false,
-      message: 'Server error'
+      message: error.message || 'Server error'
     });
   }
 };
@@ -309,7 +317,7 @@ const deleteTechnician = async (req, res) => {
     console.error('Delete technician error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error'
+      message: error.message || 'Server error'
     });
   }
 };
@@ -345,7 +353,7 @@ const addSkill = async (req, res) => {
     console.error('Add skill error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error'
+      message: error.message || 'Server error'
     });
   }
 };
@@ -381,7 +389,7 @@ const addCertification = async (req, res) => {
     console.error('Add certification error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error'
+      message: error.message || 'Server error'
     });
   }
 };
@@ -417,7 +425,7 @@ const requestLeave = async (req, res) => {
     console.error('Request leave error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error'
+      message: error.message || 'Server error'
     });
   }
 };
@@ -464,7 +472,7 @@ const updateLeaveStatus = async (req, res) => {
     console.error('Update leave status error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error'
+      message: error.message || 'Server error'
     });
   }
 };
@@ -508,7 +516,7 @@ const assignJob = async (req, res) => {
     console.error('Assign job error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error'
+      message: error.message || 'Server error'
     });
   }
 };
@@ -544,7 +552,7 @@ const completeJob = async (req, res) => {
     console.error('Complete job error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error'
+      message: error.message || 'Server error'
     });
   }
 };
@@ -600,7 +608,7 @@ const updatePerformance = async (req, res) => {
     console.error('Update performance error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error'
+      message: error.message || 'Server error'
     });
   }
 };
@@ -685,7 +693,7 @@ const getTechnicianStats = async (req, res) => {
     console.error('Get technician stats error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error'
+      message: error.message || 'Server error'
     });
   }
 };
@@ -731,7 +739,7 @@ const getAvailableTechnicians = async (req, res) => {
     console.error('Get available technicians error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error'
+      message: error.message || 'Server error'
     });
   }
 };

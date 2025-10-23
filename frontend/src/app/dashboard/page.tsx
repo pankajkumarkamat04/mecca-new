@@ -41,10 +41,16 @@ const DashboardPage: React.FC = () => {
     }
   }, [user, router]);
 
+  // Use salesperson-specific dashboard for salesperson role
+  const isSalesPerson = user?.role === 'sales_person';
+  
   const { data: dashboardData, isLoading, error } = useQuery({
-    queryKey: ['dashboard-stats'],
-    queryFn: () => reportsAnalyticsAPI.getDashboardSummary(),
+    queryKey: ['dashboard-stats', isSalesPerson],
+    queryFn: () => isSalesPerson 
+      ? reportsAnalyticsAPI.getSalespersonDashboard()
+      : reportsAnalyticsAPI.getDashboardSummary(),
     refetchInterval: 30000, // Refetch every 30 seconds
+    enabled: !['warehouse_manager', 'warehouse_employee'].includes(user?.role || ''),
   });
 
   // Fetch warehouse-specific data for warehouse roles
@@ -78,31 +84,58 @@ const DashboardPage: React.FC = () => {
   useEffect(() => {
     if (dashboardData?.data?.data) {
       const apiData = dashboardData.data.data;
-      // Transform the new API response to match the expected structure
-      setStats({
-        sales: {
-          monthlyTotal: apiData?.sales?.totalRevenue || apiData?.orders?.revenue || 0,
-          monthlyInvoices: apiData?.invoices?.total || apiData?.orders?.total || 0,
-        },
-        customers: {
-          total: apiData?.customers?.total || 0,
-          newThisMonth: apiData?.customers?.newThisMonth || 0,
-        },
-        products: {
-          total: apiData?.inventory?.total || 0,
-          lowStock: apiData?.inventory?.lowStock || 0,
-        },
-        support: {
-          openTickets: apiData?.support?.openTickets || 0,
-          overdueTickets: apiData?.support?.overdueTickets || 0,
-        },
-        employees: {
-          total: 0, // Not available in new API
-          presentToday: 0, // Not available in new API
-        },
-      });
+      
+      // Handle salesperson-specific data structure
+      if (isSalesPerson && apiData.summary) {
+        setStats({
+          sales: {
+            monthlyTotal: apiData.summary.salesThisMonth || 0,
+            monthlyInvoices: apiData.summary.totalInvoices || 0,
+          },
+          customers: {
+            total: apiData.topCustomers?.length || 0,
+            newThisMonth: 0,
+          },
+          products: {
+            total: 0,
+            lowStock: 0,
+          },
+          support: {
+            openTickets: apiData.summary.pendingInvoices || 0,
+            overdueTickets: 0,
+          },
+          employees: {
+            total: 0,
+            presentToday: 0
+          }
+        });
+      } else {
+        // Transform the regular API response to match the expected structure
+        setStats({
+          sales: {
+            monthlyTotal: apiData?.sales?.totalRevenue || apiData?.orders?.revenue || 0,
+            monthlyInvoices: apiData?.invoices?.total || apiData?.orders?.total || 0,
+          },
+          customers: {
+            total: apiData?.customers?.total || 0,
+            newThisMonth: apiData?.customers?.newThisMonth || 0,
+          },
+          products: {
+            total: apiData?.inventory?.total || 0,
+            lowStock: apiData?.inventory?.lowStock || 0,
+          },
+          support: {
+            openTickets: apiData?.support?.openTickets || 0,
+            overdueTickets: apiData?.support?.overdueTickets || 0,
+          },
+          employees: {
+            total: 0, // Not available in new API
+            presentToday: 0, // Not available in new API
+          },
+        });
+      }
     }
-  }, [dashboardData]);
+  }, [dashboardData, isSalesPerson]);
 
   // Get role-specific dashboard title
   const dashboardTitle = user ? getDashboardTitle(user.role) : 'Dashboard';

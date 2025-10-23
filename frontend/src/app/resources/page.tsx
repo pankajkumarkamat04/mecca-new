@@ -88,7 +88,23 @@ const ToolManagement: React.FC = () => {
       toast.success('Tool created successfully');
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to create tool');
+      let errorMessage = 'Failed to create tool';
+      
+      if (error.response?.data) {
+        // Check if there are multiple validation errors
+        if (error.response.data.errors && Array.isArray(error.response.data.errors)) {
+          errorMessage = error.response.data.errors.join(', ');
+        } else if (error.response.data.message) {
+          errorMessage = error.response.data.message;
+        } else if (error.response.data.error) {
+          errorMessage = error.response.data.error;
+        }
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      toast.error(errorMessage);
+      console.error('Create tool error:', error);
     }
   });
 
@@ -103,7 +119,23 @@ const ToolManagement: React.FC = () => {
       toast.success('Tool updated successfully');
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to update tool');
+      let errorMessage = 'Failed to update tool';
+      
+      if (error.response?.data) {
+        // Check if there are multiple validation errors
+        if (error.response.data.errors && Array.isArray(error.response.data.errors)) {
+          errorMessage = error.response.data.errors.join(', ');
+        } else if (error.response.data.message) {
+          errorMessage = error.response.data.message;
+        } else if (error.response.data.error) {
+          errorMessage = error.response.data.error;
+        }
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      toast.error(errorMessage);
+      console.error('Update tool error:', error);
     }
   });
 
@@ -115,7 +147,9 @@ const ToolManagement: React.FC = () => {
       toast.success('Tool deleted successfully');
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to delete tool');
+      const errorMessage = error.response?.data?.message || error.response?.data?.error || error.message || 'Failed to delete tool';
+      toast.error(errorMessage);
+      console.error('Delete tool error:', error);
     }
   });
 
@@ -129,7 +163,9 @@ const ToolManagement: React.FC = () => {
       toast.success('Stock count completed successfully');
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to perform stock count');
+      const errorMessage = error.response?.data?.message || error.response?.data?.error || error.message || 'Failed to perform stock count';
+      toast.error(errorMessage);
+      console.error('Stock count error:', error);
     }
   });
 
@@ -143,7 +179,9 @@ const ToolManagement: React.FC = () => {
       toast.success('Inventory adjusted successfully');
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to adjust inventory');
+      const errorMessage = error.response?.data?.message || error.response?.data?.error || error.message || 'Failed to adjust inventory';
+      toast.error(errorMessage);
+      console.error('Adjust inventory error:', error);
     }
   });
 
@@ -1025,7 +1063,23 @@ const TechnicianManagement: React.FC = () => {
       toast.success('Technician created successfully');
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to create technician');
+      let errorMessage = 'Failed to create technician';
+      
+      if (error.response?.data) {
+        // Check if there are multiple validation errors
+        if (error.response.data.errors && Array.isArray(error.response.data.errors)) {
+          errorMessage = error.response.data.errors.join(', ');
+        } else if (error.response.data.message) {
+          errorMessage = error.response.data.message;
+        } else if (error.response.data.error) {
+          errorMessage = error.response.data.error;
+        }
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      toast.error(errorMessage);
+      console.error('Create technician error:', error);
     }
   });
 
@@ -1040,7 +1094,23 @@ const TechnicianManagement: React.FC = () => {
       toast.success('Technician updated successfully');
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to update technician');
+      let errorMessage = 'Failed to update technician';
+      
+      if (error.response?.data) {
+        // Check if there are multiple validation errors
+        if (error.response.data.errors && Array.isArray(error.response.data.errors)) {
+          errorMessage = error.response.data.errors.join(', ');
+        } else if (error.response.data.message) {
+          errorMessage = error.response.data.message;
+        } else if (error.response.data.error) {
+          errorMessage = error.response.data.error;
+        }
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      toast.error(errorMessage);
+      console.error('Update technician error:', error);
     }
   });
 
@@ -1052,7 +1122,9 @@ const TechnicianManagement: React.FC = () => {
       toast.success('Technician deleted successfully');
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to delete technician');
+      const errorMessage = error.response?.data?.message || error.response?.data?.error || error.message || 'Failed to delete technician';
+      toast.error(errorMessage);
+      console.error('Delete technician error:', error);
     }
   });
 
@@ -1066,7 +1138,9 @@ const TechnicianManagement: React.FC = () => {
       toast.success('Skill added successfully');
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to add skill');
+      const errorMessage = error.response?.data?.message || error.response?.data?.error || error.message || 'Failed to add skill';
+      toast.error(errorMessage);
+      console.error('Add skill error:', error);
     }
   });
 
@@ -1080,7 +1154,9 @@ const TechnicianManagement: React.FC = () => {
       toast.success('Certification added successfully');
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to add certification');
+      const errorMessage = error.response?.data?.message || error.response?.data?.error || error.message || 'Failed to add certification';
+      toast.error(errorMessage);
+      console.error('Add certification error:', error);
     }
   });
 
@@ -1854,7 +1930,23 @@ const MachineManagement: React.FC = () => {
       toast.success('Machine created successfully');
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to create machine');
+      let errorMessage = 'Failed to create machine';
+      
+      if (error.response?.data) {
+        // Check if there are multiple validation errors
+        if (error.response.data.errors && Array.isArray(error.response.data.errors)) {
+          errorMessage = error.response.data.errors.join(', ');
+        } else if (error.response.data.message) {
+          errorMessage = error.response.data.message;
+        } else if (error.response.data.error) {
+          errorMessage = error.response.data.error;
+        }
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      toast.error(errorMessage);
+      console.error('Create machine error:', error);
     }
   });
 
@@ -1869,7 +1961,23 @@ const MachineManagement: React.FC = () => {
       toast.success('Machine updated successfully');
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to update machine');
+      let errorMessage = 'Failed to update machine';
+      
+      if (error.response?.data) {
+        // Check if there are multiple validation errors
+        if (error.response.data.errors && Array.isArray(error.response.data.errors)) {
+          errorMessage = error.response.data.errors.join(', ');
+        } else if (error.response.data.message) {
+          errorMessage = error.response.data.message;
+        } else if (error.response.data.error) {
+          errorMessage = error.response.data.error;
+        }
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      toast.error(errorMessage);
+      console.error('Update machine error:', error);
     }
   });
 
@@ -1881,7 +1989,9 @@ const MachineManagement: React.FC = () => {
       toast.success('Machine deleted successfully');
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to delete machine');
+      const errorMessage = error.response?.data?.message || error.response?.data?.error || error.message || 'Failed to delete machine';
+      toast.error(errorMessage);
+      console.error('Delete machine error:', error);
     }
   });
 
@@ -1895,7 +2005,9 @@ const MachineManagement: React.FC = () => {
       toast.success('Machine booked successfully');
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to book machine');
+      const errorMessage = error.response?.data?.message || error.response?.data?.error || error.message || 'Failed to book machine';
+      toast.error(errorMessage);
+      console.error('Book machine error:', error);
     }
   });
 
@@ -1907,7 +2019,9 @@ const MachineManagement: React.FC = () => {
       toast.success('Machine released successfully');
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to release machine');
+      const errorMessage = error.response?.data?.message || error.response?.data?.error || error.message || 'Failed to release machine';
+      toast.error(errorMessage);
+      console.error('Release machine error:', error);
     }
   });
 
@@ -1921,7 +2035,9 @@ const MachineManagement: React.FC = () => {
       toast.success('Maintenance record added successfully');
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to add maintenance record');
+      const errorMessage = error.response?.data?.message || error.response?.data?.error || error.message || 'Failed to add maintenance record';
+      toast.error(errorMessage);
+      console.error('Add maintenance error:', error);
     }
   });
 
@@ -1967,6 +2083,10 @@ const MachineManagement: React.FC = () => {
   const handleCreate = () => {
     if (!formData.name.trim()) {
       toast.error('Please enter machine name');
+      return;
+    }
+    if (!formData.category || formData.category === '') {
+      toast.error('Please select a category');
       return;
     }
     createMachineMutation.mutate(formData);
@@ -2017,6 +2137,10 @@ const MachineManagement: React.FC = () => {
     if (selectedMachine) {
       if (!formData.name.trim()) {
         toast.error('Please enter machine name');
+        return;
+      }
+      if (!formData.category || formData.category === '') {
+        toast.error('Please select a category');
         return;
       }
       updateMachineMutation.mutate({ id: selectedMachine._id, data: formData });

@@ -57,7 +57,7 @@ const getTools = async (req, res) => {
     console.error('Get tools error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error'
+      message: error.message || 'Server error'
     });
   }
 };
@@ -89,7 +89,7 @@ const getToolById = async (req, res) => {
     console.error('Get tool by ID error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error'
+      message: error.message || 'Server error'
     });
   }
 };
@@ -128,9 +128,17 @@ const createTool = async (req, res) => {
         message: 'Tool with this tool number already exists'
       });
     }
+    if (error.name === 'ValidationError') {
+      const validationErrors = Object.values(error.errors).map(err => err.message);
+      return res.status(400).json({
+        success: false,
+        message: validationErrors[0] || 'Validation error',
+        errors: validationErrors
+      });
+    }
     res.status(500).json({
       success: false,
-      message: 'Server error'
+      message: error.message || 'Server error'
     });
   }
 };
@@ -175,9 +183,17 @@ const updateTool = async (req, res) => {
         message: 'Tool with this tool number already exists'
       });
     }
+    if (error.name === 'ValidationError') {
+      const validationErrors = Object.values(error.errors).map(err => err.message);
+      return res.status(400).json({
+        success: false,
+        message: validationErrors[0] || 'Validation error',
+        errors: validationErrors
+      });
+    }
     res.status(500).json({
       success: false,
-      message: 'Server error'
+      message: error.message || 'Server error'
     });
   }
 };
@@ -208,7 +224,7 @@ const deleteTool = async (req, res) => {
     console.error('Delete tool error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error'
+      message: error.message || 'Server error'
     });
   }
 };
@@ -252,7 +268,7 @@ const assignTool = async (req, res) => {
     console.error('Assign tool error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error'
+      message: error.message || 'Server error'
     });
   }
 };
@@ -287,7 +303,7 @@ const returnTool = async (req, res) => {
     console.error('Return tool error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error'
+      message: error.message || 'Server error'
     });
   }
 };
@@ -323,7 +339,7 @@ const addMaintenanceRecord = async (req, res) => {
     console.error('Add maintenance record error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error'
+      message: error.message || 'Server error'
     });
   }
 };
@@ -365,7 +381,7 @@ const calibrateTool = async (req, res) => {
     console.error('Calibrate tool error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error'
+      message: error.message || 'Server error'
     });
   }
 };
@@ -401,7 +417,7 @@ const performStockCount = async (req, res) => {
     console.error('Perform stock count error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error'
+      message: error.message || 'Server error'
     });
   }
 };
@@ -443,7 +459,7 @@ const adjustInventory = async (req, res) => {
     console.error('Adjust inventory error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error'
+      message: error.message || 'Server error'
     });
   }
 };
@@ -468,7 +484,7 @@ const getInventoryDiscrepancies = async (req, res) => {
     console.error('Get inventory discrepancies error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error'
+      message: error.message || 'Server error'
     });
   }
 };
@@ -556,7 +572,7 @@ const getToolStats = async (req, res) => {
     console.error('Get tool stats error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error'
+      message: error.message || 'Server error'
     });
   }
 };

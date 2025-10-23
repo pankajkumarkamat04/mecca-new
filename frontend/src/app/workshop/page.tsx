@@ -913,6 +913,7 @@ const WorkshopPage: React.FC = () => {
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
   const [priority, setPriority] = useState('');
+  const [overdue, setOverdue] = useState(false);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isResourceModalOpen, setIsResourceModalOpen] = useState(false);
@@ -933,13 +934,14 @@ const WorkshopPage: React.FC = () => {
 
   // Fetch jobs
   const { data: jobsData, isLoading } = useQuery({
-    queryKey: ['workshop-jobs', currentPage, pageSize, search, status, priority],
+    queryKey: ['workshop-jobs', currentPage, pageSize, search, status, priority, overdue],
     queryFn: () => enhancedWorkshopAPI.getJobs({
       page: currentPage,
       limit: pageSize,
       search,
       status,
-      priority
+      priority,
+      overdue: overdue ? 'true' : ''
     }),
   });
 
@@ -1488,7 +1490,16 @@ const WorkshopPage: React.FC = () => {
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div className="bg-white p-6 rounded-lg shadow">
+          <div 
+            className={`bg-white p-6 rounded-lg shadow cursor-pointer transition-all hover:shadow-lg ${
+              status === '' && !overdue ? 'ring-2 ring-blue-500' : ''
+            }`}
+            onClick={() => {
+              setStatus('');
+              setOverdue(false);
+              setCurrentPage(1);
+            }}
+          >
             <div className="flex items-center">
               <div className="p-2 bg-blue-100 rounded-lg">
                 <ClipboardDocumentListIcon className="h-6 w-6 text-blue-600" />
@@ -1499,7 +1510,16 @@ const WorkshopPage: React.FC = () => {
               </div>
             </div>
           </div>
-          <div className="bg-white p-6 rounded-lg shadow">
+          <div 
+            className={`bg-white p-6 rounded-lg shadow cursor-pointer transition-all hover:shadow-lg ${
+              status === 'in_progress' && !overdue ? 'ring-2 ring-orange-500' : ''
+            }`}
+            onClick={() => {
+              setStatus('in_progress');
+              setOverdue(false);
+              setCurrentPage(1);
+            }}
+          >
             <div className="flex items-center">
               <div className="p-2 bg-orange-100 rounded-lg">
                 <ClockIcon className="h-6 w-6 text-orange-600" />
@@ -1510,7 +1530,16 @@ const WorkshopPage: React.FC = () => {
               </div>
             </div>
           </div>
-          <div className="bg-white p-6 rounded-lg shadow">
+          <div 
+            className={`bg-white p-6 rounded-lg shadow cursor-pointer transition-all hover:shadow-lg ${
+              status === 'completed' && !overdue ? 'ring-2 ring-green-500' : ''
+            }`}
+            onClick={() => {
+              setStatus('completed');
+              setOverdue(false);
+              setCurrentPage(1);
+            }}
+          >
             <div className="flex items-center">
               <div className="p-2 bg-green-100 rounded-lg">
                 <CheckCircleIcon className="h-6 w-6 text-green-600" />
@@ -1521,7 +1550,16 @@ const WorkshopPage: React.FC = () => {
               </div>
             </div>
           </div>
-          <div className="bg-white p-6 rounded-lg shadow">
+          <div 
+            className={`bg-white p-6 rounded-lg shadow cursor-pointer transition-all hover:shadow-lg ${
+              overdue ? 'ring-2 ring-red-500' : ''
+            }`}
+            onClick={() => {
+              setOverdue(true);
+              setStatus('');
+              setCurrentPage(1);
+            }}
+          >
             <div className="flex items-center">
               <div className="p-2 bg-red-100 rounded-lg">
                 <ExclamationTriangleIcon className="h-6 w-6 text-red-600" />

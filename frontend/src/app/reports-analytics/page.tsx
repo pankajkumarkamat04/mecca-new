@@ -17,7 +17,11 @@ import {
   CurrencyDollarIcon,
   UserGroupIcon,
   ExclamationTriangleIcon,
+  ArrowDownTrayIcon,
+  DocumentArrowDownIcon,
 } from '@heroicons/react/24/outline';
+import { generateReportPDF, generateReportCSV, createReportData } from '@/lib/reportUtils';
+import toast from 'react-hot-toast';
 
 const ReportsAnalyticsPage: React.FC = () => {
   const { hasRole, hasPermission } = useAuth();
@@ -148,6 +152,38 @@ const ReportsAnalyticsPage: React.FC = () => {
     </div>
   );
 
+  // Helper function to handle report download
+  const handleDownloadReport = async (reportType: string, data: any, format: 'pdf' | 'csv') => {
+    try {
+      // Create report data with summary and any available table data
+      const reportData = createReportData(
+        data.summary || {},
+        data.topCustomers || data.topProducts || data.topTechnicians || data.categories || data.paymentMethods || data.jobTypes || data.technicians || []
+      );
+      
+      if (format === 'pdf') {
+        await generateReportPDF(
+          `${reportType} Report`,
+          reportData,
+          undefined,
+          `${reportType.toLowerCase().replace(/\s+/g, '_')}_report.pdf`
+        );
+        toast.success('PDF report downloaded successfully');
+      } else {
+        generateReportCSV(
+          `${reportType} Report`,
+          reportData,
+          undefined,
+          `${reportType.toLowerCase().replace(/\s+/g, '_')}_report.csv`
+        );
+        toast.success('CSV report downloaded successfully');
+      }
+    } catch (error) {
+      console.error('Error downloading report:', error);
+      toast.error('Failed to download report');
+    }
+  };
+
 
   const renderOrderAnalytics = () => {
     if (orderLoading) {
@@ -160,6 +196,23 @@ const ReportsAnalyticsPage: React.FC = () => {
 
     return (
       <div className="space-y-6">
+        {/* Download buttons */}
+        <div className="flex justify-end gap-2">
+          <button
+            onClick={() => handleDownloadReport('Order Analytics', data, 'pdf')}
+            className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+          >
+            <DocumentArrowDownIcon className="h-5 w-5" />
+            Download PDF
+          </button>
+          <button
+            onClick={() => handleDownloadReport('Order Analytics', data, 'csv')}
+            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+          >
+            <ArrowDownTrayIcon className="h-5 w-5" />
+            Download CSV
+          </button>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <StatCard
             title="Total Orders"
@@ -258,6 +311,23 @@ const ReportsAnalyticsPage: React.FC = () => {
 
     return (
       <div className="space-y-6">
+        {/* Download buttons */}
+        <div className="flex justify-end gap-2">
+          <button
+            onClick={() => handleDownloadReport('POS Sales', data, 'pdf')}
+            className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+          >
+            <DocumentArrowDownIcon className="h-5 w-5" />
+            Download PDF
+          </button>
+          <button
+            onClick={() => handleDownloadReport('POS Sales', data, 'csv')}
+            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+          >
+            <ArrowDownTrayIcon className="h-5 w-5" />
+            Download CSV
+          </button>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <StatCard
             title="Total Sales"
@@ -395,6 +465,23 @@ const ReportsAnalyticsPage: React.FC = () => {
 
     return (
       <div className="space-y-6">
+        {/* Download buttons */}
+        <div className="flex justify-end gap-2">
+          <button
+            onClick={() => handleDownloadReport('Workshop Analytics', data, 'pdf')}
+            className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+          >
+            <DocumentArrowDownIcon className="h-5 w-5" />
+            Download PDF
+          </button>
+          <button
+            onClick={() => handleDownloadReport('Workshop Analytics', data, 'csv')}
+            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+          >
+            <ArrowDownTrayIcon className="h-5 w-5" />
+            Download CSV
+          </button>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <StatCard
             title="Total Jobs"
@@ -511,6 +598,23 @@ const ReportsAnalyticsPage: React.FC = () => {
 
     return (
       <div className="space-y-6">
+        {/* Download buttons */}
+        <div className="flex justify-end gap-2">
+          <button
+            onClick={() => handleDownloadReport('Inventory Analytics', data, 'pdf')}
+            className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+          >
+            <DocumentArrowDownIcon className="h-5 w-5" />
+            Download PDF
+          </button>
+          <button
+            onClick={() => handleDownloadReport('Inventory Analytics', data, 'csv')}
+            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+          >
+            <ArrowDownTrayIcon className="h-5 w-5" />
+            Download CSV
+          </button>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <StatCard
             title="Total Products"
@@ -617,8 +721,57 @@ const ReportsAnalyticsPage: React.FC = () => {
 
     if (!data) return <div>No data available</div>;
 
+    // Helper to download sales person report
+    const handleDownloadSalesPersonReport = async (format: 'pdf' | 'csv') => {
+      try {
+        const reportTitle = salesPersonFilters.reportType === 'summary' 
+          ? 'Sales Summary by Person' 
+          : 'Sales Transactions by Person';
+        
+        const reportData = createReportData({}, data);
+        
+        if (format === 'pdf') {
+          await generateReportPDF(
+            reportTitle,
+            reportData,
+            undefined,
+            `${reportTitle.toLowerCase().replace(/\s+/g, '_')}.pdf`
+          );
+          toast.success('PDF report downloaded successfully');
+        } else {
+          generateReportCSV(
+            reportTitle,
+            reportData,
+            undefined,
+            `${reportTitle.toLowerCase().replace(/\s+/g, '_')}.csv`
+          );
+          toast.success('CSV report downloaded successfully');
+        }
+      } catch (error) {
+        console.error('Error downloading report:', error);
+        toast.error('Failed to download report');
+      }
+    };
+
     return (
       <div className="space-y-6">
+        {/* Download buttons */}
+        <div className="flex justify-end gap-2">
+          <button
+            onClick={() => handleDownloadSalesPersonReport('pdf')}
+            className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+          >
+            <DocumentArrowDownIcon className="h-5 w-5" />
+            Download PDF
+          </button>
+          <button
+            onClick={() => handleDownloadSalesPersonReport('csv')}
+            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+          >
+            <ArrowDownTrayIcon className="h-5 w-5" />
+            Download CSV
+          </button>
+        </div>
         {/* Filters */}
         <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Report Filters</h3>

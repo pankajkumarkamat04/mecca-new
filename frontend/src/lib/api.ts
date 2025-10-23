@@ -232,6 +232,7 @@ export const transactionsAPI = {
   postTransaction: (id: string) => api.put(`/transactions/${id}/post`),
   reconcileTransaction: (id: string) => api.put(`/transactions/${id}/reconcile`),
   getTransactionStats: (params?: any) => api.get('/transactions/stats', { params }),
+  getSalespersonPerformance: (params?: any) => api.get('/transactions/salesperson-performance', { params }),
 };
 
 
@@ -513,6 +514,9 @@ export const enhancedWorkshopAPI = {
 export const reportsAnalyticsAPI = {
   // Dashboard Summary
   getDashboardSummary: () => api.get('/reports-analytics/dashboard'),
+  
+  // Salesperson Dashboard Summary
+  getSalespersonDashboard: () => api.get('/reports-analytics/salesperson-dashboard'),
   
   // Order Analytics
   getOrderAnalytics: (params?: any) => api.get('/reports-analytics/orders', { params }),

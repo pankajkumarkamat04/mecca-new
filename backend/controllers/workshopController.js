@@ -7,6 +7,7 @@ const Machine = require('../models/Machine');
 const Tool = require('../models/Tool');
 const WorkStation = require('../models/WorkStation');
 const ServiceTemplate = require('../models/ServiceTemplate');
+const Technician = require('../models/Technician');
 
 // Internal helper to process completion: deduct inventory and create invoice
 async function processJobCompletion(jobId, userId) {
@@ -219,13 +220,20 @@ const getJobs = async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
-    const { search = '', status = '', priority = '', customer = '', customerPhone = '' } = req.query;
+    const { search = '', status = '', priority = '', customer = '', customerPhone = '', overdue = '' } = req.query;
 
     const filter = { isActive: true };
     if (status) filter.status = status;
     if (priority) filter.priority = priority;
     if (customer) filter.customer = customer;
     if (customerPhone) filter.customerPhone = { $regex: customerPhone, $options: 'i' };
+    
+    // Handle overdue filter
+    if (overdue === 'true') {
+      filter.deadline = { $lt: new Date() };
+      filter.status = { $nin: ['completed', 'cancelled'] };
+    }
+    
     if (search) {
       // Search by job title, job card number, or vehicle registration number
       filter.$or = [

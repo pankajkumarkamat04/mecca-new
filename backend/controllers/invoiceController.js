@@ -20,6 +20,11 @@ const getInvoices = async (req, res) => {
 
     // Build filter object
     const filter = {};
+    
+    // Filter by salesperson if user is a sales person
+    if (req.user.role === 'sales_person') {
+      filter.salesPerson = req.user._id;
+    }
     if (search) {
       // Try multiple phone number formats for search
       const phoneVariations = [
@@ -123,6 +128,13 @@ const createInvoice = async (req, res) => {
   try {
     const invoiceData = req.body;
     invoiceData.createdBy = req.user._id;
+    
+    // Set salesperson if user is a sales person
+    if (req.user.role === 'sales_person') {
+      invoiceData.salesPerson = req.user._id;
+      invoiceData.salesPersonName = `${req.user.firstName} ${req.user.lastName}`;
+      invoiceData.salesPersonEmail = req.user.email;
+    }
 
     // Normalize status defensively (validator also sanitizes)
     if (invoiceData.status) {
