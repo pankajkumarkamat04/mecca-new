@@ -139,21 +139,43 @@ toolSchema.virtual('daysUntilCalibration').get(function() {
 
 // Instance methods
 toolSchema.methods.assignTool = function(jobId, userId, expectedReturn) {
-  this.availability.isAvailable = false;
+  // Decrease available quantity instead of marking as unavailable
+  if (this.inventory.availableQuantity > 0) {
+    this.inventory.availableQuantity -= 1;
+    this.inventory.inUseQuantity += 1;
+  }
+  
+  // Only mark as unavailable if no quantity left
+  this.availability.isAvailable = this.inventory.availableQuantity > 0;
   this.availability.currentJob = jobId;
   this.availability.assignedTo = userId;
   this.availability.assignedAt = new Date();
   this.availability.expectedReturn = expectedReturn;
-  this.status = 'in_use';
+  
+  // Update status based on available quantity
+  if (this.inventory.availableQuantity === 0) {
+    this.status = 'in_use';
+  }
 };
 
 toolSchema.methods.returnTool = function(condition) {
-  this.availability.isAvailable = true;
+  // Increase available quantity instead of marking as available
+  if (this.inventory.inUseQuantity > 0) {
+    this.inventory.inUseQuantity -= 1;
+    this.inventory.availableQuantity += 1;
+  }
+  
+  // Mark as available if quantity is now available
+  this.availability.isAvailable = this.inventory.availableQuantity > 0;
   this.availability.currentJob = undefined;
   this.availability.assignedTo = undefined;
   this.availability.assignedAt = undefined;
   this.availability.expectedReturn = undefined;
-  this.status = 'available';
+  
+  // Update status based on available quantity
+  if (this.inventory.availableQuantity > 0) {
+    this.status = 'available';
+  }
   
   if (condition) {
     this.condition = condition;
@@ -273,18 +295,18 @@ toolSchema.methods.adjustInventory = function(adjustmentType, quantity, reason, 
 
 // Pre-save middleware
 toolSchema.pre('save', function(next) {
-  // Update status based on availability
-  if (!this.availability.isAvailable && this.status === 'available') {
-    this.status = 'in_use';
-  } else if (this.availability.isAvailable && this.status === 'in_use') {
-    this.status = 'available';
-  }
-  
   // Ensure inventory quantities are consistent
   if (this.inventory) {
-    this.inventory.availableQuantity = Math.max(0, 
-      this.inventory.quantity - this.inventory.inUseQuantity - this.inventory.misplacedQuantity
-    );
+    // Update status and availability based on available quantity
+    const hasAvailableQuantity = this.inventory.availableQuantity > 0;
+    this.availability.isAvailable = hasAvailableQuantity;
+    
+    // Update tool status based on availability
+    if (hasAvailableQuantity && this.status !== 'available') {
+      this.status = 'available';
+    } else if (!hasAvailableQuantity && this.status === 'available') {
+      this.status = 'in_use';
+    }
   }
   
   next();

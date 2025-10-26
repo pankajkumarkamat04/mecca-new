@@ -469,12 +469,41 @@ const DashboardPage: React.FC = () => {
             </div>
             <SalesChart
               type="area"
-              data={(salesTrendsChart?.data?.data?.dailyOrderTrends || salesTrendsChart?.data?.data?.dailyTrends || []).map((d: any) => ({
-                date: `${d?._id?.year || new Date().getFullYear()}-${(d?._id?.month || 1).toString().padStart(2, '0')}-${(d?._id?.day || 1).toString().padStart(2, '0')}`,
-                sales: d?.count || 0,
-                revenue: d?.revenue || 0,
-                orders: d?.count || 0,
-              }))}
+              data={(() => {
+                // Combine all sales sources (orders, POS, workshop, invoices)
+                const allSalesData: Record<string, { sales: number; revenue: number; orders: number }> = {};
+                
+                const trendsData = salesTrendsChart?.data?.data || {};
+                const sources = [
+                  trendsData.dailyOrderTrends || [],
+                  trendsData.dailyPOSTrends || [],
+                  trendsData.dailyWorkshopTrends || [],
+                  trendsData.invoiceTrends || []
+                ];
+
+                // Aggregate all sales data by date
+                sources.forEach((source: any[]) => {
+                  source.forEach((d: any) => {
+                    const dateKey = `${d?._id?.year || new Date().getFullYear()}-${(d?._id?.month || 1).toString().padStart(2, '0')}-${(d?._id?.day || 1).toString().padStart(2, '0')}`;
+                    
+                    if (!allSalesData[dateKey]) {
+                      allSalesData[dateKey] = { sales: 0, revenue: 0, orders: 0 };
+                    }
+                    
+                    allSalesData[dateKey].sales += d?.count || 0;
+                    allSalesData[dateKey].revenue += d?.revenue || 0;
+                    allSalesData[dateKey].orders += d?.count || 0;
+                  });
+                });
+
+                // Convert to array and sort by date
+                return Object.entries(allSalesData)
+                  .map(([date, data]) => ({
+                    date,
+                    ...data
+                  }))
+                  .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+              })()}
             />
           </div>
           
@@ -483,13 +512,32 @@ const DashboardPage: React.FC = () => {
               <h3 className="text-lg font-medium text-gray-900">Top Products</h3>
               <ChartBarIcon className="h-5 w-5 text-gray-400" />
             </div>
-            <BarChart
-              data={(topProductsChart?.data?.data?.topProductsByQuantity || []).map((p: any) => ({
-                name: p?.name || 'Unknown Product',
-                value: p?.totalQuantity || 0,
-              }))}
-            />
-              </div>
+            {(() => {
+              const productsData = topProductsChart?.data?.data?.topProductsByQuantity || [];
+              
+              if (productsData.length === 0) {
+                return (
+                  <div className="flex flex-col items-center justify-center h-64 text-center">
+                    <ChartBarIcon className="h-16 w-16 text-gray-400 mb-4" />
+                    <p className="text-gray-600 font-medium">No products sold yet</p>
+                    <p className="text-sm text-gray-500 mt-2">Products will appear here once sales are recorded</p>
+                  </div>
+                );
+              }
+              
+              return (
+                <BarChart
+                  data={productsData.map((p: any) => {
+                    const quantity = Number(p?.totalQuantity) || 0;
+                    return {
+                      name: p?.name || 'Unknown Product',
+                      value: quantity,
+                    };
+                  })}
+                />
+              );
+            })()}
+          </div>
             </div>
           </>
         )}

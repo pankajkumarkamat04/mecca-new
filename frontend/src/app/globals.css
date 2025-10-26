@@ -134,4 +134,66 @@
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
+
+  /* Custom blue scrollbar */
+  .scrollbar-blue::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .scrollbar-blue::-webkit-scrollbar-track {
+    background: #1e40af; /* blue-800 */
+    border-radius: 4px;
+  }
+
+  .scrollbar-blue::-webkit-scrollbar-thumb {
+    background: #3b82f6; /* blue-500 */
+    border-radius: 4px;
+    transition: background 0.2s ease;
+  }
+
+  .scrollbar-blue::-webkit-scrollbar-thumb:hover {
+    background: #60a5fa; /* blue-400 */
+  }
+
+  .scrollbar-blue::-webkit-scrollbar-corner {
+    background: #1e40af;
+  }
+
+  /* Firefox custom scrollbar */
+  .scrollbar-blue {
+    scrollbar-width: thin;
+    scrollbar-color: #3b82f6 #1e40af;
+  }
+
+  /* Light custom scrollbar for main content */
+  .scrollbar-light::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  .scrollbar-light::-webkit-scrollbar-track {
+    background: #e5e7eb; /* gray-200 */
+    border-radius: 5px;
+  }
+
+  .scrollbar-light::-webkit-scrollbar-thumb {
+    background: #9ca3af; /* gray-400 */
+    border-radius: 5px;
+    transition: background 0.2s ease;
+  }
+
+  .scrollbar-light::-webkit-scrollbar-thumb:hover {
+    background: #6b7280; /* gray-500 */
+  }
+
+  .scrollbar-light::-webkit-scrollbar-corner {
+    background: #e5e7eb;
+  }
+
+  /* Firefox custom light scrollbar */
+  .scrollbar-light {
+    scrollbar-width: thin;
+    scrollbar-color: #9ca3af #e5e7eb;
+  }
 }

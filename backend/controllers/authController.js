@@ -70,7 +70,7 @@ const register = async (req, res) => {
     const token = jwt.sign(
       { id: user._id, role: user.role },
       process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRE || '7d' }
+      { expiresIn: '1h' } // 1 hour for better security
     );
 
     // Remove password from response
@@ -132,7 +132,7 @@ const login = async (req, res) => {
     const token = jwt.sign(
       { id: user._id, role: user.role },
       process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRE || '7d' }
+      { expiresIn: '1h' } // 1 hour for better security
     );
 
     // Remove password from response
@@ -200,7 +200,7 @@ const refreshToken = async (req, res) => {
     const token = jwt.sign(
       { id: req.user._id, role: req.user.role },
       process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRE || '7d' }
+      { expiresIn: '1h' } // 1 hour for better security
     );
 
     res.json({ 

@@ -112,10 +112,6 @@ const DashboardStats: React.FC<DashboardStatsProps> = ({ stats }) => {
       <StatCard
         title="Monthly Sales"
         value={formatCurrency(stats.sales.monthlyTotal)}
-        change={{
-          value: 12.5,
-          type: 'increase',
-        }}
         icon={CurrencyDollarIcon}
         color="green"
       />
@@ -123,10 +119,6 @@ const DashboardStats: React.FC<DashboardStatsProps> = ({ stats }) => {
       <StatCard
         title="Total Customers"
         value={formatNumber(stats.customers.total)}
-        change={{
-          value: 8.2,
-          type: 'increase',
-        }}
         icon={UsersIcon}
         color="blue"
       />
@@ -134,10 +126,6 @@ const DashboardStats: React.FC<DashboardStatsProps> = ({ stats }) => {
       <StatCard
         title="Products"
         value={formatNumber(stats.products.total)}
-        change={{
-          value: 3.1,
-          type: 'increase',
-        }}
         icon={CubeIcon}
         color="indigo"
       />
@@ -147,10 +135,6 @@ const DashboardStats: React.FC<DashboardStatsProps> = ({ stats }) => {
       <StatCard
         title="Open Support Tickets"
         value={formatNumber(stats.support.openTickets)}
-        change={{
-          value: 2.3,
-          type: 'decrease',
-        }}
         icon={LifebuoyIcon}
         color="yellow"
       />

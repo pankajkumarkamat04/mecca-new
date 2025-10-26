@@ -60,7 +60,7 @@ const CustomerSidebar: React.FC<CustomerSidebarProps> = ({ isOpen, onClose }) =>
       )}
       <div
         className={cn(
-          'fixed inset-y-0 left-0 z-30 w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0',
+          'fixed inset-y-0 left-0 z-30 w-64 bg-blue-600 shadow-lg transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0',
           isOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
@@ -83,7 +83,7 @@ const CustomerSidebar: React.FC<CustomerSidebarProps> = ({ isOpen, onClose }) =>
           </div>
 
           {user && (
-            <div className="px-4 py-3 border-b border-gray-200">
+            <div className="px-4 py-3 border-b border-blue-500">
               <div className="flex items-center">
                 <div className="flex-shrink-0">
                   {user.avatar ? (
@@ -97,14 +97,14 @@ const CustomerSidebar: React.FC<CustomerSidebarProps> = ({ isOpen, onClose }) =>
                   )}
                 </div>
                 <div className="ml-3">
-                  <p className="text-sm font-medium text-gray-900">{user.firstName} {user.lastName}</p>
-                  <p className="text-xs text-gray-500 capitalize">{user.role}</p>
+                  <p className="text-sm font-medium text-white">{user.firstName} {user.lastName}</p>
+                  <p className="text-xs text-blue-200 capitalize">{user.role}</p>
                 </div>
               </div>
             </div>
           )}
 
-          <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto">
+          <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto scrollbar-blue">
             {items.map((item) => {
               const isActive = pathname === item.href || (item.href !== '/customer' && pathname.startsWith(item.href + '/'));
               return (
@@ -113,23 +113,23 @@ const CustomerSidebar: React.FC<CustomerSidebarProps> = ({ isOpen, onClose }) =>
                   href={item.href}
                   className={cn(
                     'group flex items-center px-2 py-2 text-base font-medium rounded-md transition-colors',
-                    isActive ? 'bg-red-50 text-red-900 border-r-2 border-red-500' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                    isActive ? 'bg-blue-700 text-white border-r-2 border-white' : 'text-white hover:bg-blue-700 hover:text-white'
                   )}
                   onClick={onClose}
                 >
-                  <item.icon className={cn('mr-3 h-5 w-5 flex-shrink-0', isActive ? 'text-red-500' : 'text-gray-400 group-hover:text-gray-500')} />
+                  <item.icon className={cn('mr-3 h-5 w-5 flex-shrink-0', isActive ? 'text-white' : 'text-blue-100 group-hover:text-white')} />
                   {item.name}
                 </Link>
               );
             })}
           </nav>
 
-                <div className="p-4 border-t border-gray-200">
+                <div className="p-4 border-t border-blue-500">
                   <button
                     onClick={handleLogout}
-                    className="group flex items-center w-full px-2 py-2 text-sm font-medium text-gray-600 rounded-md hover:bg-red-50 hover:text-red-600 transition-colors"
+                    className="group flex items-center w-full px-2 py-2 text-sm font-medium text-white rounded-md hover:bg-blue-700 hover:text-white transition-colors"
                   >
-                    <ArrowRightOnRectangleIcon className="mr-3 h-5 w-5 text-gray-400 group-hover:text-red-500" />
+                    <ArrowRightOnRectangleIcon className="mr-3 h-5 w-5 text-blue-100 group-hover:text-white" />
                     Logout
                   </button>
                 </div>

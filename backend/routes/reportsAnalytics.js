@@ -13,7 +13,8 @@ const {
   getSalesByCurrency,
   getSalesBySalesPerson,
   getSalesSummaryBySalesPerson,
-  getSalespersonDashboard
+  getSalespersonDashboard,
+  getSalesReport
 } = require('../controllers/reportsAnalyticsController');
 
 const router = express.Router();
@@ -86,5 +87,10 @@ router.get('/sales-by-salesperson', authorize('admin', 'manager', 'sales_person'
 // @desc    Get sales summary by sales person
 // @access  Private (Admin, Manager, Sales Person)
 router.get('/sales-summary-by-salesperson', authorize('admin', 'manager', 'sales_person'), getSalesSummaryBySalesPerson);
+
+// @route   GET /api/reports-analytics/sales-report
+// @desc    Get detailed sales report with transaction types
+// @access  Private (Admin, Manager, Sales Person)
+router.get('/sales-report', authorize('admin', 'manager', 'sales_person'), getSalesReport);
 
 module.exports = router;

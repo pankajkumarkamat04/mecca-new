@@ -44,6 +44,7 @@ const router = express.Router();
 
 // Statistics and customer portal (must come before /:id routes)
 router.get('/stats', auth, getJobStats);
+router.get('/dashboard', auth, getWorkshopDashboard);
 router.put('/:id/update-resources', auth, checkPermission('workshop', 'update'), updateJobResources);
 router.put('/:id/update-task', auth, checkPermission('workshop', 'update'), updateJobTask);
 router.get('/available-technicians', auth, getAvailableTechnicians);
@@ -95,7 +96,6 @@ router.get('/:id/check-conflicts', auth, checkResourceConflicts);
 
 // Analytics and insights
 router.get('/:id/analytics', auth, getJobAnalytics);
-router.get('/dashboard', auth, getWorkshopDashboard);
 
 // Workflow updates
 router.put('/:id/quality-check', auth, checkPermission('workshop', 'update'), require('../controllers/workshopController').markQualityCheck);

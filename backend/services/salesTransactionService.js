@@ -348,99 +348,159 @@ class SalesTransactionService {
    * @returns {Array} Sales summary
    */
   static async getSalesSummaryBySalesPerson(options = {}) {
-    const pipeline = [
-      {
-        $match: {
-          type: 'sale',
-          status: 'posted'
-          // Removed the salesPerson.id filter to include all transactions
-        }
-      }
-    ];
+    const Invoice = require('../models/Invoice');
+    const Order = require('../models/Order');
+    const WorkshopJob = require('../models/WorkshopJob');
     
+    // Build date filter
+    let dateFilter = {};
     if (options.startDate || options.endDate) {
-      const dateFilter = {};
       if (options.startDate) dateFilter.$gte = new Date(options.startDate);
       if (options.endDate) dateFilter.$lte = new Date(options.endDate);
-      pipeline[0].$match.date = dateFilter;
+    } else {
+      // Default to last 30 days
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      dateFilter = { $gte: thirtyDaysAgo };
     }
-    
-    pipeline.push(
-      {
-        $group: {
-          _id: {
-            $cond: [
-              { $and: [
-                { $ne: ['$metadata.salesPerson.id', null] },
-                { $ne: ['$metadata.salesPerson.id', undefined] }
-              ]},
-              '$metadata.salesPerson.id',
-              '$createdBy' // Use createdBy if no salesPerson metadata
-            ]
-          },
-          salesPersonName: {
-            $first: {
-              $cond: [
-                { $and: [
-                  { $ne: ['$metadata.salesPerson.name', null] },
-                  { $ne: ['$metadata.salesPerson.name', undefined] },
-                  { $ne: ['$metadata.salesPerson.name', ''] }
-                ]},
-                '$metadata.salesPerson.name',
-                { $concat: ['$createdBy.firstName', ' ', '$createdBy.lastName'] }
-              ]
-            }
-          },
-          salesPersonEmail: {
-            $first: {
-              $cond: [
-                { $and: [
-                  { $ne: ['$metadata.salesPerson.email', null] },
-                  { $ne: ['$metadata.salesPerson.email', undefined] }
-                ]},
-                '$metadata.salesPerson.email',
-                '$createdBy.email'
-              ]
-            }
-          },
-          totalTransactions: { $sum: 1 },
-          totalSales: { $sum: '$amount' },
-          averageSale: { $avg: '$amount' },
-          lastSale: { $max: '$date' }
+
+    // Get data from all sources
+    const [transactions, invoices, orders, workshopJobs] = await Promise.all([
+      // Transactions (POS and other financial transactions)
+      Transaction.find({
+        type: 'sale',
+        status: 'posted',
+        date: dateFilter
+      })
+        .populate('createdBy', 'firstName lastName email')
+        .sort({ date: -1 }),
+
+      // Invoices (regular sales invoices)
+      Invoice.find({
+        invoiceDate: dateFilter
+      })
+        .populate('salesPerson', 'firstName lastName email')
+        .sort({ invoiceDate: -1 }),
+
+      // Orders (regular orders)
+      Order.find({
+        orderDate: dateFilter
+      })
+        .populate('customer', 'firstName lastName')
+        .sort({ orderDate: -1 }),
+
+      // Workshop Jobs (workshop sales)
+      WorkshopJob.find({
+        createdAt: dateFilter,
+        status: { $in: ['completed', 'invoiced'] }
+      })
+        .populate('customer', 'firstName lastName')
+        .populate('resources.assignedTechnicians.user', 'firstName lastName email')
+        .sort({ createdAt: -1 })
+    ]);
+
+    // Create a map to aggregate sales by sales person
+    const salesPersonMap = new Map();
+
+    // Process transactions
+    transactions.forEach(transaction => {
+      const salesPersonId = transaction.metadata?.salesPerson?.id || transaction.createdBy?._id?.toString();
+      const salesPersonName = transaction.metadata?.salesPerson?.name || 
+        (transaction.createdBy ? `${transaction.createdBy.firstName || ''} ${transaction.createdBy.lastName || ''}`.trim() : 'Unknown');
+      const salesPersonEmail = transaction.metadata?.salesPerson?.email || transaction.createdBy?.email || '';
+
+      if (salesPersonId) {
+        if (!salesPersonMap.has(salesPersonId)) {
+          salesPersonMap.set(salesPersonId, {
+            _id: salesPersonId,
+            salesPersonName,
+            salesPersonEmail,
+            totalTransactions: 0,
+            totalSales: 0,
+            averageSale: 0,
+            lastSale: null
+          });
         }
-      },
-      {
-        $lookup: {
-          from: 'users',
-          localField: '_id',
-          foreignField: '_id',
-          as: 'user'
-        }
-      },
-      {
-        $addFields: {
-          salesPersonName: {
-            $cond: [
-              { $eq: ['$salesPersonName', null] },
-              { $concat: [{ $arrayElemAt: ['$user.firstName', 0] }, ' ', { $arrayElemAt: ['$user.lastName', 0] }] },
-              '$salesPersonName'
-            ]
-          },
-          salesPersonEmail: {
-            $cond: [
-              { $eq: ['$salesPersonEmail', null] },
-              { $arrayElemAt: ['$user.email', 0] },
-              '$salesPersonEmail'
-            ]
-          }
-        }
-      },
-      {
-        $sort: { totalSales: -1 }
+        
+        const person = salesPersonMap.get(salesPersonId);
+        person.totalTransactions += 1;
+        person.totalSales += transaction.amount;
+        person.lastSale = person.lastSale ? 
+          (transaction.date > person.lastSale ? transaction.date : person.lastSale) : 
+          transaction.date;
       }
-    );
-    
-    return await Transaction.aggregate(pipeline);
+    });
+
+    // Process invoices
+    invoices.forEach(invoice => {
+      if (invoice.salesPerson) {
+        const salesPersonId = invoice.salesPerson._id.toString();
+        const salesPersonName = `${invoice.salesPerson.firstName || ''} ${invoice.salesPerson.lastName || ''}`.trim();
+        const salesPersonEmail = invoice.salesPerson.email || '';
+
+        if (!salesPersonMap.has(salesPersonId)) {
+          salesPersonMap.set(salesPersonId, {
+            _id: salesPersonId,
+            salesPersonName,
+            salesPersonEmail,
+            totalTransactions: 0,
+            totalSales: 0,
+            averageSale: 0,
+            lastSale: null
+          });
+        }
+        
+        const person = salesPersonMap.get(salesPersonId);
+        person.totalTransactions += 1;
+        person.totalSales += invoice.total;
+        person.lastSale = person.lastSale ? 
+          (invoice.invoiceDate > person.lastSale ? invoice.invoiceDate : person.lastSale) : 
+          invoice.invoiceDate;
+      }
+    });
+
+    // Process orders (no salesPerson field, so we'll skip or use system)
+    // Orders don't have salesPerson field, so we'll skip them for now
+
+    // Process workshop jobs
+    workshopJobs.forEach(job => {
+      const assignedTechnician = job.resources?.assignedTechnicians?.[0];
+      if (assignedTechnician?.user) {
+        const salesPersonId = assignedTechnician.user._id.toString();
+        const salesPersonName = `${assignedTechnician.user.firstName || ''} ${assignedTechnician.user.lastName || ''}`.trim();
+        const salesPersonEmail = assignedTechnician.user.email || '';
+
+        if (!salesPersonMap.has(salesPersonId)) {
+          salesPersonMap.set(salesPersonId, {
+            _id: salesPersonId,
+            salesPersonName,
+            salesPersonEmail,
+            totalTransactions: 0,
+            totalSales: 0,
+            averageSale: 0,
+            lastSale: null
+          });
+        }
+        
+        const person = salesPersonMap.get(salesPersonId);
+        person.totalTransactions += 1;
+        person.totalSales += job.estimatedCost || 0;
+        person.lastSale = person.lastSale ? 
+          (job.createdAt > person.lastSale ? job.createdAt : person.lastSale) : 
+          job.createdAt;
+      }
+    });
+
+    // Convert map to array and calculate averages
+    const result = Array.from(salesPersonMap.values()).map(person => ({
+      ...person,
+      averageSale: person.totalTransactions > 0 ? person.totalSales / person.totalTransactions : 0
+    }));
+
+    // Sort by total sales descending
+    result.sort((a, b) => b.totalSales - a.totalSales);
+
+    return result;
   }
 }
 

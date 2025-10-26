@@ -5,6 +5,9 @@ import { Toaster } from 'react-hot-toast'
 import { useState } from 'react'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { SettingsProvider } from '@/contexts/SettingsContext'
+import { SessionTimeoutProvider } from '@/contexts/SessionTimeoutContext'
+import { SessionStatusIndicator } from '@/components/SessionStatusIndicator'
+import { SESSION_CONFIG } from '@/config/session'
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(() => new QueryClient({
@@ -25,39 +28,45 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <SettingsProvider>
-          {children}
-          <Toaster
-          position="top-right"
-          toastOptions={{
-            duration: 4000,
-            style: {
-              background: '#363636',
-              color: '#fff',
-            },
-            success: {
-              duration: 3000,
+          <SessionTimeoutProvider 
+            timeoutMinutes={SESSION_CONFIG.TIMEOUT_MINUTES} 
+            warningMinutes={SESSION_CONFIG.WARNING_MINUTES}
+          >
+            {children}
+            <SessionStatusIndicator />
+            <Toaster
+            position="top-right"
+            toastOptions={{
+              duration: 4000,
               style: {
-                background: '#10B981',
+                background: '#363636',
                 color: '#fff',
               },
-              iconTheme: {
-                primary: '#22c55e',
-                secondary: '#fff',
+              success: {
+                duration: 3000,
+                style: {
+                  background: '#10B981',
+                  color: '#fff',
+                },
+                iconTheme: {
+                  primary: '#22c55e',
+                  secondary: '#fff',
+                },
               },
-            },
-            error: {
-              duration: 5000,
-              style: {
-                background: '#EF4444',
-                color: '#fff',
+              error: {
+                duration: 5000,
+                style: {
+                  background: '#EF4444',
+                  color: '#fff',
+                },
+                iconTheme: {
+                  primary: '#ef4444',
+                  secondary: '#fff',
+                },
               },
-              iconTheme: {
-                primary: '#ef4444',
-                secondary: '#fff',
-              },
-            },
-          }}
-        />
+            }}
+          />
+          </SessionTimeoutProvider>
         </SettingsProvider>
       </AuthProvider>
     </QueryClientProvider>

@@ -131,6 +131,16 @@ const workshopJobSchema = new mongoose.Schema({
       assignedAt: { type: Date, default: Date.now },
       assignedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
     }],
+    // Technician history - preserved when technicians are released from completed jobs
+    technicianHistory: [{
+      user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+      name: { type: String, trim: true }, // Cached name
+      role: { type: String, trim: true },
+      assignedAt: { type: Date },
+      assignedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+      completedAt: { type: Date, default: Date.now }, // When job was completed
+      releasedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
+    }],
     requiredMachines: [{
       name: { type: String, required: true },
       machineId: { type: mongoose.Schema.Types.ObjectId, ref: 'Machine' },
@@ -378,22 +388,27 @@ workshopJobSchema.methods.generateJobCardNumber = async function() {
 
 workshopJobSchema.methods.assignTechnician = function(userId, userName, role = 'technician', assignedBy) {
   if (!this.resources) {
-    this.resources = { assignedTechnicians: [], requiredMachines: [], requiredTools: [] };
+    this.resources = { assignedTechnicians: [], technicianHistory: [], requiredMachines: [], requiredTools: [] };
   }
   if (!this.resources.assignedTechnicians) {
     this.resources.assignedTechnicians = [];
   }
-  
-  const existing = this.resources.assignedTechnicians.find(t => t.user.toString() === userId.toString());
-  if (!existing) {
-    this.resources.assignedTechnicians.push({
-      user: userId,
-      name: userName,
-      role: role,
-      assignedAt: new Date(),
-      assignedBy: assignedBy
-    });
+  if (!this.resources.technicianHistory) {
+    this.resources.technicianHistory = [];
   }
+  
+  const existing = this.resources.assignedTechnicians.find(t => t.user && t.user.toString() === userId.toString());
+  if (existing) {
+    return;
+  }
+  
+  this.resources.assignedTechnicians.push({
+    user: userId,
+    name: userName,
+    role: role,
+    assignedAt: new Date(),
+    assignedBy: assignedBy
+  });
 };
 
 workshopJobSchema.methods.removeTechnician = function(userId) {
@@ -619,6 +634,15 @@ workshopJobSchema.pre('save', async function(next) {
   // Initialize customerPortal if not exists
   if (!this.customerPortal) {
     this.customerPortal = { customerComments: [], statusUpdates: [] };
+  }
+  
+  // Initialize resources if not exists
+  if (!this.resources) {
+    this.resources = { assignedTechnicians: [], technicianHistory: [], requiredMachines: [], workStations: [] };
+  }
+  // Ensure technicianHistory exists even if resources exists
+  if (!this.resources.technicianHistory) {
+    this.resources.technicianHistory = [];
   }
   
   // Generate job card number if not exists (generate for all statuses except draft)

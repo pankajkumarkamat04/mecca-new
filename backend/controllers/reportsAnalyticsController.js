@@ -298,33 +298,21 @@ const getWorkshopAnalytics = async (req, res) => {
     const inProgressJobs = await WorkshopJob.countDocuments({ ...dateFilter, status: 'in_progress' });
     const pendingJobs = await WorkshopJob.countDocuments({ ...dateFilter, status: 'pending' });
 
-    // Revenue Analytics - Use actual paid transactions from workshop invoices
+    // Revenue Analytics - Get revenue from invoices linked to workshop jobs
     const revenueStartDate = startDate ? new Date(startDate) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
     const revenueEndDate = endDate ? new Date(endDate) : new Date();
     
-    const revenueData = await Transaction.aggregate([
+    // Get revenue from invoices linked to workshop jobs
+    const revenueData = await Invoice.aggregate([
       { 
         $match: { 
-          type: 'sale',
-          date: { $gte: revenueStartDate, $lte: revenueEndDate },
-          invoice: { $exists: true }
+          workshopJob: { $exists: true },
+          createdAt: { $gte: revenueStartDate, $lte: revenueEndDate }
         } 
       },
-      {
-        $lookup: {
-          from: 'invoices',
-          localField: 'invoice',
-          foreignField: '_id',
-          as: 'invoiceData'
-        }
-      },
-      {
-        $match: {
-          'invoiceData.isWorkshopTransaction': true
-        }
-      },
-      { $group: { _id: null, totalRevenue: { $sum: '$amount' } } }
+      { $group: { _id: null, totalRevenue: { $sum: '$total' } } }
     ]);
+    
 
 
     // Job Type Distribution
@@ -392,6 +380,21 @@ const getWorkshopAnalytics = async (req, res) => {
     const dailyJobTrends = await WorkshopJob.aggregate([
       { $match: dateFilter },
       {
+        $lookup: {
+          from: 'invoices',
+          localField: '_id',
+          foreignField: 'workshopJob',
+          as: 'invoices'
+        }
+      },
+      {
+        $addFields: {
+          actualRevenue: {
+            $sum: '$invoices.total'
+          }
+        }
+      },
+      {
         $group: {
           _id: {
             year: { $year: '$createdAt' },
@@ -399,7 +402,7 @@ const getWorkshopAnalytics = async (req, res) => {
             day: { $dayOfMonth: '$createdAt' }
           },
           jobCount: { $sum: 1 },
-          revenue: { $sum: '$estimatedCost' }
+          revenue: { $sum: '$actualRevenue' }
         }
       },
       { $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1 } }
@@ -948,6 +951,7 @@ const getTopProductsChart = async (req, res) => {
     const orderDateFilter = {
       orderDate: dateFilter.createdAt
     };
+    
     const topProductsByQuantity = await Order.aggregate([
       { $match: orderDateFilter },
       { $unwind: '$items' },
@@ -1051,11 +1055,24 @@ const getRevenueAnalyticsChart = async (req, res) => {
     // Payment method breakdown - handle both paymentMethod (seed data) and payments array (model)
     const paymentMethodBreakdown = await Invoice.aggregate([
       { $match: dateFilter },
+      { 
+        $project: {
+          total: 1,
+          paymentsArray: { 
+            $cond: {
+              if: { $and: [{ $isArray: "$payments" }, { $gt: [{ $size: "$payments" }, 0] }] },
+              then: "$payments",
+              else: [{ method: "unknown", amount: "$total" }]
+            }
+          }
+        }
+      },
+      { $unwind: '$paymentsArray' },
       {
         $group: {
-          _id: { $ifNull: ['$paymentMethod', 'unknown'] },
+          _id: '$paymentsArray.method',
           count: { $sum: 1 },
-          totalAmount: { $sum: '$total' }
+          totalAmount: { $sum: '$paymentsArray.amount' }
         }
       },
       { $sort: { totalAmount: -1 } }
@@ -1187,9 +1204,25 @@ const getWorkshopAnalyticsChart = async (req, res) => {
       };
     }
 
-    // Workshop job trends
+    // Workshop job trends - get revenue from linked invoices
     const jobTrends = await WorkshopJob.aggregate([
       { $match: dateFilter },
+      {
+        $lookup: {
+          from: 'invoices',
+          localField: '_id',
+          foreignField: 'workshopJob',
+          as: 'invoices'
+        }
+      },
+      {
+        $addFields: {
+          // Calculate revenue from invoices total
+          actualRevenue: {
+            $sum: '$invoices.total'
+          }
+        }
+      },
       {
         $group: {
           _id: {
@@ -1198,44 +1231,159 @@ const getWorkshopAnalyticsChart = async (req, res) => {
             day: { $dayOfMonth: '$createdAt' }
           },
           count: { $sum: 1 },
-          totalRevenue: { $sum: '$estimatedCost' }
+          totalRevenue: { $sum: '$actualRevenue' }
         }
       },
       { $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1 } }
     ]);
 
-    // Job status distribution
+    // Job status distribution - get revenue from linked invoices
     const jobStatusDistribution = await WorkshopJob.aggregate([
       { $match: dateFilter },
+      {
+        $lookup: {
+          from: 'invoices',
+          localField: '_id',
+          foreignField: 'workshopJob',
+          as: 'invoices'
+        }
+      },
+      {
+        $addFields: {
+          // Calculate revenue from invoices total
+          actualRevenue: {
+            $sum: '$invoices.total'
+          }
+        }
+      },
       {
         $group: {
           _id: '$status',
           count: { $sum: 1 },
-          totalRevenue: { $sum: '$estimatedCost' }
+          totalRevenue: { $sum: '$actualRevenue' }
         }
       },
       { $sort: { count: -1 } }
     ]);
 
-    // Top technicians by jobs
+    // Top technicians by jobs - handle both array and object history
+    // Normalize technicianHistory to always be an array
     const topTechnicians = await WorkshopJob.aggregate([
       { $match: dateFilter },
-      { $unwind: '$resources.assignedTechnicians' },
+      // Lookup invoices to get actual revenue
+      {
+        $lookup: {
+          from: 'invoices',
+          localField: '_id',
+          foreignField: 'workshopJob',
+          as: 'invoices'
+        }
+      },
+      {
+        $addFields: {
+          // Calculate revenue from invoices total
+          actualRevenue: {
+            $sum: '$invoices.total'
+          }
+        }
+      },
+      // Match jobs that have either technician history or current assignments
+      {
+        $match: {
+          $or: [
+            { 'resources.technicianHistory': { $exists: true } },
+            { 'resources.assignedTechnicians': { $exists: true, $ne: [] } }
+          ]
+        }
+      },
+      {
+        $addFields: {
+          // Normalize technicianHistory - ensure it's an array
+          normalizedHistory: {
+            $cond: {
+              if: { $isArray: '$resources.technicianHistory' },
+              then: '$resources.technicianHistory',
+              else: {
+                $cond: {
+                  if: { $ne: ['$resources.technicianHistory', null] },
+                  then: ['$resources.technicianHistory'],
+                  else: []
+                }
+              }
+            }
+          },
+          // Use assignedTechnicians if available
+          currentTechnicians: { $ifNull: ['$resources.assignedTechnicians', []] }
+        }
+      },
+      {
+        $addFields: {
+          // Combine both arrays - prefer history, but include current if no history
+          allTechnicians: {
+            $cond: {
+              if: { $gt: [{ $size: '$normalizedHistory' }, 0] },
+              then: '$normalizedHistory',
+              else: '$currentTechnicians'
+            }
+          }
+        }
+      },
+      // Filter out jobs with no technicians
+      { $match: { $expr: { $gt: [{ $size: '$allTechnicians' }, 0] } } },
+      { $unwind: '$allTechnicians' },
       {
         $lookup: {
           from: 'users',
-          localField: 'resources.assignedTechnicians.user',
+          localField: 'allTechnicians.user',
           foreignField: '_id',
           as: 'technicianData'
         }
       },
-      { $unwind: '$technicianData' },
+      // Don't unwind yet - check if lookup found anything
+      {
+        $addFields: {
+          isUserFound: { $gt: [{ $size: '$technicianData' }, 0] }
+        }
+      },
+      // Only proceed if user found, or use the name directly
+      {
+        $match: {
+          $or: [
+            { isUserFound: true },
+            { 'allTechnicians.name': { $exists: true, $ne: '' } }
+          ]
+        }
+      },
+      // Now unwind technicianData if it exists
+      {
+        $addFields: {
+          technicianName: {
+            $cond: {
+              if: { $gt: [{ $size: '$technicianData' }, 0] },
+              then: { $arrayElemAt: ['$technicianData', 0] },
+              else: null
+            }
+          }
+        }
+      },
       {
         $group: {
-          _id: '$resources.assignedTechnicians.user',
-          technicianName: { $first: { $concat: ['$technicianData.firstName', ' ', '$technicianData.lastName'] } },
+          _id: '$allTechnicians.user',
+          technicianName: { 
+            $first: { 
+              $ifNull: [
+                '$allTechnicians.name',
+                { 
+                  $ifNull: [
+                    { $concat: [{ $ifNull: ['$technicianName.firstName', ''] }, ' ', { $ifNull: ['$technicianName.lastName', ''] }] },
+                    'Unknown Technician'
+                  ]
+                }
+              ]
+            } 
+          },
           jobCount: { $sum: 1 },
-          totalRevenue: { $sum: '$estimatedCost' }
+          totalRevenue: { $sum: '$actualRevenue' }
         }
       },
       { $sort: { jobCount: -1 } },
@@ -1425,6 +1573,276 @@ const getSalespersonDashboard = async (req, res) => {
   }
 };
 
+// @desc    Get detailed sales report with transaction types
+// @route   GET /api/reports-analytics/sales-report
+// @access  Private
+const getSalesReport = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+    const search = req.query.search || '';
+    const type = req.query.type || '';
+    const startDate = req.query.startDate || '';
+    const endDate = req.query.endDate || '';
+    const status = req.query.status || '';
+    const source = req.query.source || '';
+
+    // Build date filter
+    let dateFilter = {};
+    if (startDate || endDate) {
+      dateFilter = {
+        $gte: new Date(startDate),
+        $lte: new Date(endDate)
+      };
+    } else {
+      // Default to last 30 days
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      dateFilter = { $gte: thirtyDaysAgo };
+    }
+
+    // Import required models
+    const Invoice = require('../models/Invoice');
+    const Order = require('../models/Order');
+    const WorkshopJob = require('../models/WorkshopJob');
+
+    // Build search filter
+    let searchFilter = {};
+    if (search) {
+      searchFilter = {
+        $or: [
+          { description: { $regex: search, $options: 'i' } },
+          { transactionNumber: { $regex: search, $options: 'i' } },
+          { reference: { $regex: search, $options: 'i' } },
+          { invoiceNumber: { $regex: search, $options: 'i' } },
+          { orderNumber: { $regex: search, $options: 'i' } },
+          { jobNumber: { $regex: search, $options: 'i' } }
+        ]
+      };
+    }
+
+    // Build type filter
+    let typeFilter = {};
+    if (type && type !== 'all') {
+      typeFilter = { type: type };
+    }
+
+    // Build status filter
+    let statusFilter = {};
+    if (status && status !== 'all') {
+      statusFilter = { status: status };
+    }
+
+    // Combine all filters
+    const baseFilter = {
+      ...searchFilter,
+      ...typeFilter,
+      ...statusFilter
+    };
+
+    // Get data from all sources
+    const [transactions, invoices, orders, workshopJobs] = await Promise.all([
+      // Transactions (POS and other financial transactions)
+      Transaction.find({
+        ...baseFilter,
+        date: dateFilter
+      })
+        .populate('customer', 'firstName lastName')
+        .populate('supplier', 'name')
+        .populate('invoice', 'invoiceNumber')
+        .populate('createdBy', 'firstName lastName')
+        .sort({ date: -1 }),
+
+      // Invoices (regular sales invoices)
+      Invoice.find({
+        ...baseFilter,
+        invoiceDate: dateFilter
+      })
+        .populate('customer', 'firstName lastName')
+        .populate('salesPerson', 'firstName lastName')
+        .populate('workshopJob', 'jobNumber')
+        .sort({ invoiceDate: -1 }),
+
+      // Orders (regular orders)
+      Order.find({
+        ...baseFilter,
+        orderDate: dateFilter
+      })
+        .populate('customer', 'firstName lastName')
+        .sort({ orderDate: -1 }),
+
+      // Workshop Jobs (workshop sales)
+      WorkshopJob.find({
+        ...baseFilter,
+        createdAt: dateFilter,
+        status: { $in: ['completed', 'invoiced'] }
+      })
+        .populate('customer', 'firstName lastName')
+        .populate('resources.assignedTechnicians.user', 'firstName lastName')
+        .sort({ createdAt: -1 })
+    ]);
+
+    // Format all data into a unified structure
+    const allSalesData = [];
+
+    // Add transactions
+    transactions.forEach(transaction => {
+      allSalesData.push({
+        _id: transaction._id,
+        source: 'transaction',
+        sourceType: 'POS/Financial',
+        date: transaction.date,
+        customer: transaction.customer ? 
+          `${transaction.customer.firstName || ''} ${transaction.customer.lastName || ''}`.trim() : 
+          (transaction.supplier ? transaction.supplier.name : 'N/A'),
+        type: transaction.type,
+        total: transaction.amount,
+        tax: 0, // Will be calculated from entries if needed
+        discount: 0, // Will be calculated from entries if needed
+        grandTotal: transaction.amount,
+        paid: transaction.paid || 0,
+        balance: transaction.amount - (transaction.paid || 0),
+        status: transaction.status,
+        reference: transaction.reference || transaction.transactionNumber,
+        invoiceNumber: transaction.invoice?.invoiceNumber,
+        createdBy: transaction.createdBy ? 
+          `${transaction.createdBy.firstName || ''} ${transaction.createdBy.lastName || ''}`.trim() : 
+          'Unknown'
+      });
+    });
+
+    // Add invoices
+    invoices.forEach(invoice => {
+      allSalesData.push({
+        _id: invoice._id,
+        source: 'invoice',
+        sourceType: 'Invoice',
+        date: invoice.invoiceDate,
+        customer: invoice.customer ? 
+          `${invoice.customer.firstName || ''} ${invoice.customer.lastName || ''}`.trim() : 
+          'N/A',
+        type: 'sale',
+        total: invoice.subtotal,
+        tax: invoice.totalTax,
+        discount: invoice.totalDiscount,
+        grandTotal: invoice.total,
+        paid: invoice.paid,
+        balance: invoice.balance,
+        status: invoice.status,
+        reference: invoice.invoiceNumber,
+        invoiceNumber: invoice.invoiceNumber,
+        createdBy: invoice.salesPerson ? 
+          `${invoice.salesPerson.firstName || ''} ${invoice.salesPerson.lastName || ''}`.trim() : 
+          'Unknown'
+      });
+    });
+
+    // Add orders
+    orders.forEach(order => {
+      allSalesData.push({
+        _id: order._id,
+        source: 'order',
+        sourceType: 'Order',
+        date: order.orderDate,
+        customer: order.customer ? 
+          `${order.customer.firstName || ''} ${order.customer.lastName || ''}`.trim() : 
+          'N/A',
+        type: 'sale',
+        total: order.subtotal,
+        tax: order.totalTax,
+        discount: order.totalDiscount,
+        grandTotal: order.total,
+        paid: order.paid || 0,
+        balance: order.total - (order.paid || 0),
+        status: order.status,
+        reference: order.orderNumber,
+        invoiceNumber: order.invoiceNumber,
+        createdBy: 'System' // Orders don't have salesPerson field
+      });
+    });
+
+    // Add workshop jobs
+    workshopJobs.forEach(job => {
+      // Get the first assigned technician's name
+      const assignedTechnician = job.resources?.assignedTechnicians?.[0];
+      const technicianName = assignedTechnician?.user ? 
+        `${assignedTechnician.user.firstName || ''} ${assignedTechnician.user.lastName || ''}`.trim() : 
+        (assignedTechnician?.name || 'Unknown');
+
+      allSalesData.push({
+        _id: job._id,
+        source: 'workshop',
+        sourceType: 'Workshop',
+        date: job.createdAt,
+        customer: job.customer ? 
+          `${job.customer.firstName || ''} ${job.customer.lastName || ''}`.trim() : 
+          'N/A',
+        type: 'sale',
+        total: job.estimatedCost || 0,
+        tax: 0, // Workshop jobs don't have separate tax
+        discount: 0,
+        grandTotal: job.estimatedCost || 0,
+        paid: job.paid || 0,
+        balance: (job.estimatedCost || 0) - (job.paid || 0),
+        status: job.status,
+        reference: job.jobNumber,
+        invoiceNumber: job.invoiceNumber,
+        createdBy: technicianName
+      });
+    });
+
+    // Sort all data by date (newest first)
+    allSalesData.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    // Apply source filter if specified
+    let filteredData = allSalesData;
+    if (source && source !== 'all') {
+      filteredData = allSalesData.filter(item => item.sourceType === source);
+    }
+
+    // Apply pagination
+    const total = filteredData.length;
+    const paginatedData = filteredData.slice(skip, skip + limit);
+
+    // Calculate summary statistics
+    const summary = {
+      totalAmount: filteredData.reduce((sum, item) => sum + (item.total || 0), 0),
+      totalTax: filteredData.reduce((sum, item) => sum + (item.tax || 0), 0),
+      totalDiscount: filteredData.reduce((sum, item) => sum + (item.discount || 0), 0),
+      grandTotal: filteredData.reduce((sum, item) => sum + (item.grandTotal || 0), 0),
+      totalPaid: filteredData.reduce((sum, item) => sum + (item.paid || 0), 0),
+      totalBalance: filteredData.reduce((sum, item) => sum + (item.balance || 0), 0),
+      count: total,
+      // Source breakdown
+      sourceBreakdown: {
+        transactions: transactions.length,
+        invoices: invoices.length,
+        orders: orders.length,
+        workshopJobs: workshopJobs.length
+      }
+    };
+
+    res.json({
+      success: true,
+      data: paginatedData,
+      summary: summary,
+      pagination: {
+        page,
+        limit,
+        total,
+        pages: Math.ceil(total / limit)
+      }
+    });
+  } catch (error) {
+    console.error('Get sales report error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+};
+
 module.exports = {
   getOrderAnalytics,
   getPOSSalesAnalytics,
@@ -1438,5 +1856,6 @@ module.exports = {
   getSalesByCurrency,
   getSalesBySalesPerson,
   getSalesSummaryBySalesPerson,
-  getSalespersonDashboard
+  getSalespersonDashboard,
+  getSalesReport
 };

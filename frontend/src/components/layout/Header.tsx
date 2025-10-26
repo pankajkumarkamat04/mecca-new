@@ -27,7 +27,7 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, title, hideMenuButton = fa
   };
 
   return (
-    <header className="bg-white shadow-sm border-b border-gray-200">
+    <header className="bg-blue-50 shadow-sm border-b border-blue-200">
       <div className="flex items-center justify-between h-16 px-4">
         {/* Left side */}
         <div className="flex items-center">
@@ -68,7 +68,7 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, title, hideMenuButton = fa
           <div className="relative">
             <button
               onClick={() => setShowUserMenu(!showUserMenu)}
-              className="flex items-center space-x-3 p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md"
+              className="flex items-center space-x-3 p-2 text-gray-700 hover:text-gray-900 hover:bg-blue-100 rounded-md transition-colors"
             >
               {user?.avatar ? (
                 <img

@@ -544,15 +544,45 @@ async function processJobCompletionWithReturns(jobId, userId, partsUsed, partsRe
 
 // Helper function to release all assigned resources
 async function releaseAllResources(job, userId) {
-  // Release technicians
+  // Store technician history before releasing
+  if (job.resources?.assignedTechnicians && job.resources.assignedTechnicians.length > 0) {
+    // Save technician history to preserve who worked on this job
+    if (!job.resources.technicianHistory) {
+      job.resources.technicianHistory = [];
+    }
+    
+    // Add current technicians to history
+    for (const techAssignment of job.resources.assignedTechnicians) {
+      job.resources.technicianHistory.push({
+        user: techAssignment.user,
+        name: techAssignment.name,
+        role: techAssignment.role,
+        assignedAt: techAssignment.assignedAt,
+        assignedBy: techAssignment.assignedBy,
+        completedAt: new Date(),
+        releasedBy: userId
+      });
+    }
+    
+    await job.save(); // Save the history to database
+  }
+  
+  // Release technicians from resource pool
   if (job.resources?.assignedTechnicians) {
     for (const techAssignment of job.resources.assignedTechnicians) {
-      const technician = await Technician.findById(techAssignment.technicianId);
+      // Find technician by user ID
+      const Technician = require('../models/Technician');
+      const technician = await Technician.findOne({ user: techAssignment.user });
+      
       if (technician) {
         technician.removeJob(job._id);
         await technician.save();
       }
     }
+    
+    // Clear the assignedTechnicians array after releasing
+    job.resources.assignedTechnicians = [];
+    await job.save();
   }
 
   // Release tools
@@ -775,7 +805,7 @@ const completeJob = async (req, res) => {
     // Process inventory updates (deduct used parts, add back returned parts)
     await processJobCompletionWithReturns(req.params.id, req.user._id, partsUsed, partsReturned);
 
-    // Release all assigned resources
+    // Release all assigned resources (technician history is automatically stored)
     await releaseAllResources(job, req.user._id);
 
     // Create invoice
@@ -946,11 +976,26 @@ const assignTechnician = async (req, res) => {
       });
     }
 
-    // Assign technician to job
-    const technicianName = technician.user 
-      ? `${technician.user.firstName} ${technician.user.lastName}`
-      : technician.employeeId || 'Technician';
-    job.assignTechnician(technician.user._id, technicianName, role, req.user._id);
+    // Handle both technicians with and without user field
+    let userId;
+    let technicianName;
+    
+    if (technician.user && technician.user._id) {
+      // Technician has a user reference
+      userId = technician.user._id;
+      technicianName = `${technician.user.firstName} ${technician.user.lastName}`;
+    } else if (technician.employeeId || technician.name) {
+      // Technician doesn't have user reference, use employeeId or name
+      userId = technician._id; // Use technician ID as fallback
+      technicianName = technician.employeeId || technician.name || 'Technician';
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: 'Technician has no associated user or employee ID'
+      });
+    }
+    
+    job.assignTechnician(userId, technicianName, role, req.user._id);
     job.lastUpdatedBy = req.user._id;
     await job.save();
 
@@ -1403,10 +1448,10 @@ const assignTool = async (req, res) => {
       });
     }
 
-    if (!tool.availability.isAvailable) {
+    if (tool.inventory.availableQuantity <= 0) {
       return res.status(400).json({
         success: false,
-        message: 'Tool is not available'
+        message: 'Tool is not available - no quantity available'
       });
     }
 
@@ -1496,21 +1541,35 @@ const assignResources = async (req, res) => {
     for (const { technicianId, role = 'technician' } of technicians) {
       try {
         const technician = await Technician.findById(technicianId).populate('user', 'firstName lastName');
+        
         if (!technician) {
           errors.push(`Technician with ID ${technicianId} not found`);
           continue;
         }
 
-        if (!technician.isCurrentlyAvailable) {
-          errors.push(`Technician ${technician.user ? `${technician.user.firstName} ${technician.user.lastName}` : technician.employeeId} is not currently available`);
+        // Handle both technicians with and without user field
+        let userId;
+        let technicianName;
+        
+        if (technician.user && technician.user._id) {
+          // Technician has a user reference
+          userId = technician.user._id;
+          technicianName = `${technician.user.firstName} ${technician.user.lastName}`;
+        } else if (technician.employeeId || technician.name) {
+          // Technician doesn't have user reference, use employeeId or name
+          userId = technician._id; // Use technician ID as fallback
+          technicianName = technician.employeeId || technician.name || 'Technician';
+        } else {
+          errors.push(`Technician ${technicianId} has no associated user or employee ID`);
           continue;
         }
 
-        const technicianName = technician.user 
-          ? `${technician.user.firstName} ${technician.user.lastName}`
-          : technician.employeeId || 'Technician';
+        if (!technician.isCurrentlyAvailable) {
+          errors.push(`Technician ${technicianName} is not currently available`);
+          continue;
+        }
         
-        job.assignTechnician(technician.user._id, technicianName, role, req.user._id);
+        job.assignTechnician(userId, technicianName, role, req.user._id);
         technician.assignJob(job._id, role);
         await technician.save();
         
@@ -1529,8 +1588,8 @@ const assignResources = async (req, res) => {
           continue;
         }
 
-        if (!tool.availability.isAvailable) {
-          errors.push(`Tool ${tool.name} is not available`);
+        if (tool.inventory.availableQuantity <= 0) {
+          errors.push(`Tool ${tool.name} is not available - no quantity available`);
           continue;
         }
 
@@ -1804,11 +1863,10 @@ const getAvailableResources = async (req, res) => {
     
     if (!type || type === 'tools') {
       const tools = await Tool.find({ 
-        'availability.isAvailable': true, 
-        status: 'available',
+        'inventory.availableQuantity': { $gt: 0 }, 
         isActive: true 
-      }).select('name category condition location');
-      resources.tools = tools;
+      }).select('name category condition location inventory');
+      resources.tools = tools.filter(t => t.inventory.availableQuantity > 0);
     }
     
     if (!type || type === 'workstations') {
@@ -2335,13 +2393,25 @@ const updateJobTask = async (req, res) => {
       for (const techData of added) {
         const technician = await Technician.findById(techData.technicianId);
         if (technician && technician.isCurrentlyAvailable) {
+          // Handle technician with or without user reference
+          let userId;
+          let technicianName;
+          
+          if (technician.user && technician.user._id) {
+            userId = technician.user._id;
+            technicianName = `${technician.user?.firstName || 'Tech'} ${technician.user?.lastName || technician.employeeId || ''}`;
+          } else {
+            userId = technician._id;
+            technicianName = technician.employeeId || technician.name || 'Technician';
+          }
+          
           // Check if technician is already assigned
           const alreadyAssigned = job.resources?.assignedTechnicians?.some(
-            at => at.user && at.user.toString() === technician.user._id.toString()
+            at => at.user && at.user.toString() === userId.toString()
           );
           
           if (!alreadyAssigned) {
-            job.assignTechnician(technician.user._id, `${technician.user?.firstName || 'Tech'} ${technician.user?.lastName || technician.employeeId || ''}`, techData.role || 'technician', req.user._id);
+            job.assignTechnician(userId, technicianName, techData.role || 'technician', req.user._id);
             technician.assignJob(job._id, techData.role || 'technician');
             await technician.save();
           }
@@ -2366,7 +2436,7 @@ const updateJobTask = async (req, res) => {
       // Add new tools
       for (const toolData of added) {
         const tool = await Tool.findById(toolData.toolId);
-        if (tool && tool.availability.isAvailable) {
+        if (tool && tool.inventory.availableQuantity > 0) {
           // Check if tool is already assigned
           const alreadyAssigned = job.tools?.some(
             t => t.toolId && t.toolId.toString() === toolData.toolId
@@ -2504,10 +2574,19 @@ const updateJobResources = async (req, res) => {
       for (const techData of added) {
         const technician = await Technician.findById(techData.technicianId);
         if (technician && technician.isCurrentlyAvailable) {
-          const technicianName = technician.user 
-            ? `${technician.user.firstName} ${technician.user.lastName}`
-            : technician.employeeId || 'Technician';
-          job.assignTechnician(technician.user._id, technicianName, techData.role, req.user._id);
+          // Handle technician with or without user reference
+          let userId;
+          let technicianName;
+          
+          if (technician.user && technician.user._id) {
+            userId = technician.user._id;
+            technicianName = `${technician.user.firstName} ${technician.user.lastName}`;
+          } else {
+            userId = technician._id;
+            technicianName = technician.employeeId || technician.name || 'Technician';
+          }
+          
+          job.assignTechnician(userId, technicianName, techData.role, req.user._id);
           technician.assignJob(job._id, techData.role);
           await technician.save();
         }
@@ -2531,7 +2610,7 @@ const updateJobResources = async (req, res) => {
       // Add new tools
       for (const toolData of added) {
         const tool = await Tool.findById(toolData.toolId);
-        if (tool && tool.availability.isAvailable) {
+        if (tool && tool.inventory.availableQuantity > 0) {
           tool.assignTool(job._id, req.user._id, new Date(toolData.expectedReturn));
           await tool.save();
           
@@ -2826,15 +2905,14 @@ const getAvailableMachines = async (req, res) => {
 const getAvailableTools = async (req, res) => {
   try {
     const tools = await Tool.find({
-      status: 'available',
-      'availability.isAvailable': true,
+      'inventory.availableQuantity': { $gt: 0 },
       isActive: true
     })
-    .select('name toolNumber category condition location specifications availability usage');
+    .select('name toolNumber category condition location specifications inventory availability usage');
 
     res.json({
       success: true,
-      data: tools.map(tool => ({
+      data: tools.filter(tool => tool.inventory.availableQuantity > 0).map(tool => ({
         _id: tool._id,
         name: tool.name,
         toolNumber: tool.toolNumber,
@@ -2842,7 +2920,10 @@ const getAvailableTools = async (req, res) => {
         condition: tool.condition,
         location: tool.location,
         specifications: tool.specifications,
-        isAvailable: tool.availability.isAvailable,
+        isAvailable: tool.inventory.availableQuantity > 0,
+        availableQuantity: tool.inventory.availableQuantity,
+        inUseQuantity: tool.inventory.inUseQuantity,
+        totalQuantity: tool.inventory.quantity,
         usageCount: tool.usage.usageCount,
         lastUsed: tool.usage.lastUsed
       }))
