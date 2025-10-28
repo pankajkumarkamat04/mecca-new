@@ -339,7 +339,7 @@ const ReportsAnalyticsPage: React.FC = () => {
     return (
       <div className="space-y-6">
         {/* POS Sales Section */}
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+        <div className="bg-white p-6 rounded-lg shadow-sm bordCCer border-gray-200">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">POS Sales Analytics</h3>
           {renderPOSSalesContent()}
         </div>

@@ -36,17 +36,17 @@ const CustomerInvoicesPage: React.FC = () => {
   const [showReceiptModal, setShowReceiptModal] = useState(false);
   const [receiptType, setReceiptType] = useState<'short' | 'full'>('short');
 
-  // Fetch customer's invoices
+  // Fetch customer's invoices (filtered by customer ID on backend)
   const { data: invoicesData, isLoading, refetch } = useQuery({
     queryKey: ['customer-invoices', currentPage, pageSize, searchTerm, statusFilter],
     queryFn: () => invoicesAPI.getInvoices({
       page: currentPage,
       limit: pageSize,
-      customerPhone: user?.phone,
       search: searchTerm || undefined,
       status: statusFilter !== 'all' ? statusFilter : undefined,
+      // No customerPhone needed - backend handles customer filtering automatically
     }),
-    enabled: !!user?.phone
+    enabled: !!user // Only need user to be logged in
   });
 
 

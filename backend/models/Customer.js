@@ -140,6 +140,12 @@ const customerSchema = new mongoose.Schema({
       default: 0
     }
   },
+  user: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null,
+    index: true
+  },
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',

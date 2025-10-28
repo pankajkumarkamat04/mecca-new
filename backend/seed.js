@@ -95,9 +95,50 @@ async function clearCollections() {
   }
 }
 
+// Function to clean up orphaned data and ensure data integrity
+async function cleanupOrphanedData() {
+  console.log('🔧 Cleaning up orphaned data...');
+  
+  try {
+    // Remove quotations without valid customers
+    const orphanedQuotationsResult = await Quotation.deleteMany({
+      $or: [
+        { customer: { $exists: false } },
+        { customer: null }
+      ]
+    });
+    
+    // Remove orders without valid customers
+    const orphanedOrdersResult = await Order.deleteMany({
+      $or: [
+        { customer: { $exists: false } },
+        { customer: null }
+      ]
+    });
+    
+    // Remove invoices without valid customers
+    const orphanedInvoicesResult = await Invoice.deleteMany({
+      $or: [
+        { customer: { $exists: false } },
+        { customer: null }
+      ]
+    });
+    
+    console.log(`   🗑️  Removed ${orphanedQuotationsResult.deletedCount} orphaned quotations`);
+    console.log(`   🗑️  Removed ${orphanedOrdersResult.deletedCount} orphaned orders`);
+    console.log(`   🗑️  Removed ${orphanedInvoicesResult.deletedCount} orphaned invoices`);
+    
+  } catch (error) {
+    console.error('❌ Error during orphaned data cleanup:', error);
+  }
+}
+
 async function seed() {
   await connectDB();
   await clearCollections();
+  
+  // Also clean up any orphaned data that might exist
+  await cleanupOrphanedData();
 
   console.log('🌱 Starting seed process...');
 

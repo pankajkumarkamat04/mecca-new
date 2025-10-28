@@ -8,6 +8,7 @@ const Tool = require('../models/Tool');
 const WorkStation = require('../models/WorkStation');
 const ServiceTemplate = require('../models/ServiceTemplate');
 const Technician = require('../models/Technician');
+const Customer = require('../models/Customer');
 
 // Internal helper to process completion: deduct inventory and create invoice
 async function processJobCompletion(jobId, userId) {
@@ -227,6 +228,22 @@ const getJobs = async (req, res) => {
     if (priority) filter.priority = priority;
     if (customer) filter.customer = customer;
     if (customerPhone) filter.customerPhone = { $regex: customerPhone, $options: 'i' };
+    
+    // If user is a customer, only show their own workshop jobs
+    if (req.user && req.user.role === 'customer') {
+      // Find customer record by user ID
+      const customerRecord = await Customer.findOne({ user: req.user._id });
+      if (customerRecord) {
+        filter.customer = customerRecord._id;
+      } else {
+        // If no customer record found, return empty result
+        return res.json({
+          success: true,
+          data: [],
+          pagination: { page, limit, total: 0, pages: 0 }
+        });
+      }
+    }
     
     // Handle overdue filter
     if (overdue === 'true') {

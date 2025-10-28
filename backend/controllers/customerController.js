@@ -26,6 +26,22 @@ const getCustomers = async (req, res) => {
     }
     if (phone) filter.phone = { $regex: phone, $options: 'i' };
 
+    // If user is a customer, only return their own record
+    if (req.user && req.user.role === 'customer') {
+      // Find customer record by user ID
+      const customerRecord = await Customer.findOne({ user: req.user._id });
+      if (customerRecord) {
+        filter._id = customerRecord._id;
+      } else {
+        // If no customer record found, return empty result
+        return res.json({
+          success: true,
+          data: [],
+          pagination: { page, limit, total: 0, pages: 0 }
+        });
+      }
+    }
+
     const customers = await Customer.find(filter)
       .sort({ createdAt: -1 })
       .skip(skip)

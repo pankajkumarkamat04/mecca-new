@@ -43,6 +43,22 @@ const getOrders = async (req, res) => {
     if (assignedTo) filter.assignedTo = assignedTo;
     if (warehouse) filter.warehouse = warehouse;
 
+    // If user is a customer, only show their own orders
+    if (req.user && req.user.role === 'customer') {
+      // Find customer record by user ID
+      const customerRecord = await Customer.findOne({ user: req.user._id });
+      if (customerRecord) {
+        filter.customer = customerRecord._id;
+      } else {
+        // If no customer record found, return empty result
+        return res.json({
+          success: true,
+          data: [],
+          pagination: { page, limit, total: 0, pages: 0 }
+        });
+      }
+    }
+
     const orders = await Order.find(filter)
       .populate('customer', 'firstName lastName email phone')
       .populate('createdBy', 'firstName lastName')

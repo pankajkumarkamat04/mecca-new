@@ -34,6 +34,22 @@ const getSupportTickets = async (req, res) => {
     if (type) filter.type = type;
     if (customerId) filter.customer = customerId;
 
+    // If user is a customer, only show their own support tickets
+    if (req.user && req.user.role === 'customer') {
+      // Find customer record by user ID
+      const customerRecord = await Customer.findOne({ user: req.user._id });
+      if (customerRecord) {
+        filter.customer = customerRecord._id;
+      } else {
+        // If no customer record found, return empty result
+        return res.json({
+          success: true,
+          data: [],
+          pagination: { page, limit, total: 0, pages: 0 }
+        });
+      }
+    }
+
     const tickets = await Support.find(filter)
       .populate('customer', 'firstName lastName email')
       .populate('assignedTo', 'firstName lastName email')

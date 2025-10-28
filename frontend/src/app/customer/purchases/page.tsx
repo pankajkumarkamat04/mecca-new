@@ -20,15 +20,15 @@ const CustomerPurchasesPage: React.FC = () => {
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
 
-  // Fetch customer's invoices/purchases
+  // Fetch customer's invoices/purchases (filtered by customer ID on backend)
   const { data: purchasesData, isLoading: purchasesLoading } = useQuery({
     queryKey: ['customer-purchases', currentPage, pageSize],
     queryFn: () => invoicesAPI.getInvoices({
       page: currentPage,
-      limit: pageSize,
-      customerPhone: user?.phone, // Filter by customer's phone
+      limit: pageSize
+      // No additional filters needed - backend handles customer filtering automatically
     }),
-    enabled: !!user?.phone
+    enabled: !!user // Only need user to be logged in
   });
 
 
@@ -100,7 +100,7 @@ const CustomerPurchasesPage: React.FC = () => {
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-xl font-bold text-gray-900">Purchase History</h2>
-              <p className="text-gray-600">All your purchases linked to phone number: {user?.phone || 'Not available'}</p>
+              <p className="text-gray-600">View all your purchases and order history</p>
             </div>
             <div className="flex items-center text-sm text-gray-500">
               <DocumentTextIcon className="h-5 w-5 mr-2" />
@@ -129,27 +129,27 @@ const CustomerPurchasesPage: React.FC = () => {
               loading={purchasesLoading}
               pagination={purchasesData?.data?.pagination}
               onPageChange={setCurrentPage}
-              emptyMessage="No purchases found. Your purchases will appear here when linked to your phone number."
+              emptyMessage="No purchases found. Your purchase history will appear here once you make an order."
             />
           </div>
         </div>
 
 
-        {!user?.phone && (
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+        {/* Show helpful message if no purchases yet */}
+        {purchasesData && purchasesData.data && purchasesData.data.data && purchasesData.data.data.length === 0 && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
             <div className="flex">
               <div className="flex-shrink-0">
-                <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                <svg className="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
                 </svg>
               </div>
               <div className="ml-3">
-                <h3 className="text-sm font-medium text-yellow-800">
-                  Phone Number Required
+                <h3 className="text-sm font-medium text-blue-800">
+                  No Purchases Yet
                 </h3>
-                <div className="mt-2 text-sm text-yellow-700">
-                  <p>To view your purchase history, please add a phone number to your profile. 
-                  Your purchases will be automatically linked when you provide your phone number at checkout.</p>
+                <div className="mt-2 text-sm text-blue-700">
+                  <p>You haven't made any purchases yet. Once you place an order, it will appear in your purchase history.</p>
                 </div>
               </div>
             </div>

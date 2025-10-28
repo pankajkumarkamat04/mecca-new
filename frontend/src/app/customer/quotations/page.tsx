@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
   ClipboardDocumentListIcon,
   EyeIcon,
@@ -19,13 +19,16 @@ import { Quotation, QuotationItem, Tax } from '@/types';
 import { formatDate, formatCurrency } from '@/lib/utils';
 import { calculatePrice } from '@/lib/priceCalculator';
 import { quotationsAPI } from '@/lib/api';
+import { toast } from 'react-hot-toast';
 import PriceSummary from '@/components/ui/PriceSummary';
 import { useAuth } from '@/contexts/AuthContext';
 
 const CustomerQuotationsPage: React.FC = () => {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [selectedQuotation, setSelectedQuotation] = useState<Quotation | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [acceptingQuotationId, setAcceptingQuotationId] = useState<string | null>(null);
 
   // Fetch customer quotations
   const { data: quotationsData, isLoading, error } = useQuery({
@@ -38,9 +41,35 @@ const CustomerQuotationsPage: React.FC = () => {
 
   const quotations = quotationsData?.data?.data || [];
 
+  // Accept quotation mutation
+  const acceptQuotationMutation = useMutation({
+    mutationFn: (quotationId: string) => quotationsAPI.acceptQuotation(quotationId),
+    onMutate: (quotationId: string) => {
+      setAcceptingQuotationId(quotationId);
+    },
+    onSuccess: (data, quotationId) => {
+      // Refresh the quotations data
+      queryClient.invalidateQueries({ queryKey: ['customerQuotations'] });
+      setAcceptingQuotationId(null);
+      // Show success message
+      toast.success('Quotation accepted successfully!');
+    },
+    onError: (error: any, quotationId) => {
+      setAcceptingQuotationId(null);
+      const errorMessage = error?.response?.data?.message || 'Failed to accept quotation';
+      toast.error(errorMessage);
+    },
+  });
+
   const handleViewDetails = (quotation: Quotation) => {
     setSelectedQuotation(quotation);
     setShowDetailsModal(true);
+  };
+
+  const handleAcceptQuotation = (quotationId: string) => {
+    if (window.confirm('Are you sure you want to accept this quotation?')) {
+      acceptQuotationMutation.mutate(quotationId);
+    }
   };
 
   const getStatusBadge = (status: string) => {
@@ -141,8 +170,13 @@ const CustomerQuotationsPage: React.FC = () => {
                         View Details
                       </Button>
                       {quotation.status === 'sent' && !isQuotationExpired(quotation.validUntil) && (
-                        <Button size="sm">
-                          Accept Quotation
+                        <Button 
+                          size="sm"
+                          onClick={() => handleAcceptQuotation(quotation._id)}
+                          loading={acceptingQuotationId === quotation._id}
+                          disabled={acceptingQuotationId === quotation._id}
+                        >
+                          {acceptingQuotationId === quotation._id ? 'Accepting...' : 'Accept Quotation'}
                         </Button>
                       )}
                     </div>
@@ -264,8 +298,15 @@ const CustomerQuotationsPage: React.FC = () => {
                   Close
                 </Button>
                 {selectedQuotation.status === 'sent' && !isQuotationExpired(selectedQuotation.validUntil) && (
-                  <Button>
-                    Accept Quotation
+                  <Button
+                    onClick={() => {
+                      handleAcceptQuotation(selectedQuotation._id);
+                      setShowDetailsModal(false);
+                    }}
+                    loading={acceptingQuotationId === selectedQuotation._id}
+                    disabled={acceptingQuotationId === selectedQuotation._id}
+                  >
+                    {acceptingQuotationId === selectedQuotation._id ? 'Accepting...' : 'Accept Quotation'}
                   </Button>
                 )}
               </div>

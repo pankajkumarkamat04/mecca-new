@@ -31,15 +31,15 @@ const CustomerDashboardPage: React.FC = () => {
     enabled: !!user?._id,
   });
 
-  // Fetch recent invoices
+  // Fetch recent invoices (filtered by customer ID on backend)
   const { data: recentInvoices, isLoading: invoicesLoading } = useQuery({
-    queryKey: ['customer-recent-invoices', user?.phone],
+    queryKey: ['customer-recent-invoices', user?._id],
     queryFn: () => invoicesAPI.getInvoices({
       page: 1,
       limit: 5,
-      customerPhone: user?.phone,
+      // No customerPhone needed - backend handles customer filtering automatically
     }),
-    enabled: !!user?.phone,
+    enabled: !!user,
   });
 
   // Fetch recent support tickets
@@ -363,28 +363,6 @@ const CustomerDashboardPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Phone Number Warning */}
-        {!user?.phone && (
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-            <div className="flex">
-              <div className="flex-shrink-0">
-                <ExclamationTriangleIcon className="h-5 w-5 text-yellow-400" />
-              </div>
-              <div className="ml-3">
-                <h3 className="text-sm font-medium text-yellow-800">
-                  Phone Number Required
-                </h3>
-                <div className="mt-2 text-sm text-yellow-700">
-                  <p>To view your purchase history and invoices, please add a phone number to your profile. 
-                  Your purchases will be automatically linked when you provide your phone number at checkout.</p>
-                  <Link href="/profile" className="font-medium underline hover:text-yellow-800">
-                    Update your profile now →
-                  </Link>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </Layout>
   );

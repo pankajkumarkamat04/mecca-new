@@ -26,6 +26,26 @@ const getInvoices = async (req, res) => {
       filter.salesPerson = req.user._id;
     }
     
+    // If user is a customer, only show their own invoices
+    // This takes priority over any phone number filtering
+    let useCustomerPhone = customerPhone;
+    if (req.user.role === 'customer') {
+      // Find customer record by user ID
+      const customerRecord = await Customer.findOne({ user: req.user._id });
+      if (customerRecord) {
+        filter.customer = customerRecord._id;
+        // Don't use phone number filtering for authenticated customers
+        useCustomerPhone = null;
+      } else {
+        // If no customer record found, return empty result
+        return res.json({
+          success: true,
+          data: [],
+          pagination: { page, limit, total: 0, pages: 0 }
+        });
+      }
+    }
+    
     // Build $or conditions array
     const orConditions = [];
     
@@ -49,13 +69,13 @@ const getInvoices = async (req, res) => {
       );
     }
     
-    if (customerPhone) {
+    if (useCustomerPhone) {
       // Try multiple phone number formats
       const phoneVariations = [
-        customerPhone,
-        customerPhone.replace(/\D/g, ''), // Remove all non-digits
-        `+${customerPhone.replace(/\D/g, '')}`, // Add + prefix
-        customerPhone.replace(/\D/g, '').replace(/^(\d{3})(\d{3})(\d{4})$/, '($1) $2-$3'), // Format as (123) 456-7890
+        useCustomerPhone,
+        useCustomerPhone.replace(/\D/g, ''), // Remove all non-digits
+        `+${useCustomerPhone.replace(/\D/g, '')}`, // Add + prefix
+        useCustomerPhone.replace(/\D/g, '').replace(/^(\d{3})(\d{3})(\d{4})$/, '($1) $2-$3'), // Format as (123) 456-7890
       ];
       
       orConditions.push(

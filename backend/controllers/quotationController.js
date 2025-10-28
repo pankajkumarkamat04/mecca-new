@@ -29,6 +29,22 @@ const getQuotations = async (req, res) => {
     if (status) filter.status = status;
     if (customerId) filter.customer = customerId;
 
+    // If user is a customer, only show their own quotations
+    if (req.user && req.user.role === 'customer') {
+      // Find customer record by user ID
+      const customerRecord = await Customer.findOne({ user: req.user._id });
+      if (customerRecord) {
+        filter.customer = customerRecord._id;
+      } else {
+        // If no customer record found, return empty result
+        return res.json({
+          success: true,
+          data: [],
+          pagination: { page, limit, total: 0, pages: 0 }
+        });
+      }
+    }
+
     const quotations = await Quotation.find(filter)
       .populate('customer', 'firstName lastName email phone')
       .populate('createdBy', 'firstName lastName')
@@ -330,6 +346,14 @@ const sendQuotation = async (req, res) => {
 // @access  Public (for customer viewing)
 const markQuotationAsViewed = async (req, res) => {
   try {
+    // Validate quotation ID format first
+    if (!req.params.id || !req.params.id.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid quotation ID format'
+      });
+    }
+
     const quotation = await Quotation.findById(req.params.id);
     if (!quotation) {
       return res.status(404).json({
@@ -338,17 +362,40 @@ const markQuotationAsViewed = async (req, res) => {
       });
     }
 
-    await quotation.markAsViewed();
+    // Check if quotation is active
+    if (!quotation.isActive) {
+      return res.status(400).json({
+        success: false,
+        message: 'This quotation is no longer active'
+      });
+    }
+
+    // Only mark as viewed if it's currently in 'sent' status
+    if (quotation.status === 'sent') {
+      await quotation.markAsViewed();
+    }
 
     res.json({
       success: true,
-      message: 'Quotation marked as viewed'
+      message: 'Quotation marked as viewed',
+      data: {
+        status: quotation.status,
+        viewedAt: quotation.viewedAt
+      }
     });
   } catch (error) {
     console.error('Mark quotation as viewed error:', error);
+    
+    if (error.name === 'CastError') {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid quotation ID format'
+      });
+    }
+    
     res.status(500).json({
       success: false,
-      message: 'Server error'
+      message: 'An error occurred while marking quotation as viewed'
     });
   }
 };
@@ -358,7 +405,18 @@ const markQuotationAsViewed = async (req, res) => {
 // @access  Public (for customer acceptance)
 const acceptQuotation = async (req, res) => {
   try {
-    const quotation = await Quotation.findById(req.params.id);
+    // Validate quotation ID format first
+    if (!req.params.id || !req.params.id.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid quotation ID format'
+      });
+    }
+
+    const quotation = await Quotation.findById(req.params.id)
+      .populate('customer', 'firstName lastName email')
+      .populate('items.product', 'name sku inventory');
+      
     if (!quotation) {
       return res.status(404).json({
         success: false,
@@ -366,32 +424,118 @@ const acceptQuotation = async (req, res) => {
       });
     }
 
+    // Check if quotation is active
+    if (!quotation.isActive) {
+      return res.status(400).json({
+        success: false,
+        message: 'This quotation is no longer active'
+      });
+    }
+
+    // Check quotation status
     if (quotation.status === 'converted') {
       return res.status(400).json({
         success: false,
-        message: 'Quotation already converted to invoice'
+        message: 'This quotation has already been converted to an invoice'
       });
     }
 
-    if (quotation.isExpired()) {
+    if (quotation.status === 'accepted') {
       return res.status(400).json({
         success: false,
-        message: 'Quotation has expired'
+        message: 'This quotation has already been accepted'
       });
     }
 
+    if (quotation.status === 'rejected') {
+      return res.status(400).json({
+        success: false,
+        message: 'This quotation has been rejected and cannot be accepted'
+      });
+    }
+
+    // Check if quotation is expired
+    if (quotation.isExpired()) {
+      // Auto-update status to expired
+      quotation.status = 'expired';
+      await quotation.save();
+      
+      return res.status(400).json({
+        success: false,
+        message: 'This quotation has expired and can no longer be accepted'
+      });
+    }
+
+    // Check if quotation can be accepted (must be sent or viewed)
+    if (!['sent', 'viewed'].includes(quotation.status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'This quotation cannot be accepted in its current status'
+      });
+    }
+
+    // Check inventory availability before accepting
+    const inventoryIssues = [];
+    for (const item of quotation.items) {
+      if (item.product && item.product.inventory) {
+        const currentStock = item.product.inventory.currentStock || 0;
+        const minStock = item.product.inventory.minStock || 0;
+        const availableStock = Math.max(0, currentStock - minStock);
+        
+        if (availableStock < item.quantity) {
+          inventoryIssues.push({
+            productName: item.product.name || item.name,
+            requested: item.quantity,
+            available: availableStock
+          });
+        }
+      }
+    }
+
+    // If there are inventory issues, provide a detailed warning but still allow acceptance
+    let inventoryWarning = null;
+    if (inventoryIssues.length > 0) {
+      inventoryWarning = {
+        message: 'Some items may have limited stock availability',
+        items: inventoryIssues
+      };
+    }
+
+    // Mark quotation as accepted
     await quotation.markAsAccepted();
+
+    // Reload quotation with updated data
+    const updatedQuotation = await Quotation.findById(quotation._id)
+      .populate('customer', 'firstName lastName email')
+      .populate('items.product', 'name sku');
 
     res.json({
       success: true,
       message: 'Quotation accepted successfully',
-      data: quotation
+      data: updatedQuotation,
+      inventoryWarning
     });
   } catch (error) {
     console.error('Accept quotation error:', error);
+    
+    // Provide more specific error messages
+    if (error.name === 'CastError') {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid quotation ID format'
+      });
+    }
+    
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation error: ' + error.message
+      });
+    }
+    
     res.status(500).json({
       success: false,
-      message: 'Server error'
+      message: 'An error occurred while accepting the quotation. Please try again.'
     });
   }
 };
@@ -401,7 +545,17 @@ const acceptQuotation = async (req, res) => {
 // @access  Public (for customer rejection)
 const rejectQuotation = async (req, res) => {
   try {
-    const quotation = await Quotation.findById(req.params.id);
+    // Validate quotation ID format first
+    if (!req.params.id || !req.params.id.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid quotation ID format'
+      });
+    }
+
+    const quotation = await Quotation.findById(req.params.id)
+      .populate('customer', 'firstName lastName email');
+      
     if (!quotation) {
       return res.status(404).json({
         success: false,
@@ -409,25 +563,87 @@ const rejectQuotation = async (req, res) => {
       });
     }
 
-    if (quotation.status === 'converted') {
+    // Check if quotation is active
+    if (!quotation.isActive) {
       return res.status(400).json({
         success: false,
-        message: 'Quotation already converted to invoice'
+        message: 'This quotation is no longer active'
       });
     }
 
+    // Check quotation status
+    if (quotation.status === 'converted') {
+      return res.status(400).json({
+        success: false,
+        message: 'This quotation has already been converted to an invoice and cannot be rejected'
+      });
+    }
+
+    if (quotation.status === 'accepted') {
+      return res.status(400).json({
+        success: false,
+        message: 'This quotation has already been accepted and cannot be rejected'
+      });
+    }
+
+    if (quotation.status === 'rejected') {
+      return res.status(400).json({
+        success: false,
+        message: 'This quotation has already been rejected'
+      });
+    }
+
+    // Check if quotation can be rejected (must be sent or viewed)
+    if (!['sent', 'viewed'].includes(quotation.status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'This quotation cannot be rejected in its current status'
+      });
+    }
+
+    // Optional: Get rejection reason from request body
+    const rejectionReason = req.body.reason || '';
+    
+    // Mark quotation as rejected
     await quotation.markAsRejected();
+    
+    // If reason provided, add it to notes
+    if (rejectionReason) {
+      quotation.notes = quotation.notes ? 
+        `${quotation.notes}\n\nRejection Reason: ${rejectionReason}` : 
+        `Rejection Reason: ${rejectionReason}`;
+      await quotation.save();
+    }
+
+    // Reload quotation with updated data
+    const updatedQuotation = await Quotation.findById(quotation._id)
+      .populate('customer', 'firstName lastName email');
 
     res.json({
       success: true,
       message: 'Quotation rejected successfully',
-      data: quotation
+      data: updatedQuotation
     });
   } catch (error) {
     console.error('Reject quotation error:', error);
+    
+    if (error.name === 'CastError') {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid quotation ID format'
+      });
+    }
+    
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation error: ' + error.message
+      });
+    }
+    
     res.status(500).json({
       success: false,
-      message: 'Server error'
+      message: 'An error occurred while rejecting the quotation. Please try again.'
     });
   }
 };
