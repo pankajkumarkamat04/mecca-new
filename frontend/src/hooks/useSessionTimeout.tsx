@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'react';
+import React, { useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
@@ -73,8 +73,53 @@ export const useSessionTimeout = (options: UseSessionTimeoutOptions = {}) => {
     warningTimeoutRef.current = setTimeout(() => {
       if (!isWarningShownRef.current) {
         isWarningShownRef.current = true;
-        toast(
-          `You will be logged out in ${warningMinutes} minute${warningMinutes > 1 ? 's' : ''} due to inactivity. Click anywhere to stay logged in.`,
+        
+        const toastId = toast(
+          (t) => {
+            // Create dismiss button dynamically
+            const message = `You will be logged out in ${warningMinutes} minute${warningMinutes > 1 ? 's' : ''} due to inactivity. Click anywhere to stay logged in.`;
+            
+            return (
+              <div 
+                className="flex items-center justify-between gap-4"
+                onClick={(e) => {
+                  // If clicking the dismiss button, don't reset timeout
+                  const target = e.target as HTMLElement;
+                  if (target.tagName === 'BUTTON' || target.closest('button')) {
+                    return;
+                  }
+                  // Reset timeout and dismiss on click
+                  resetTimeout();
+                  toast.dismiss(t.id);
+                }}
+              >
+                <span className="flex-1">{message}</span>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toast.dismiss(t.id);
+                    isWarningShownRef.current = false;
+                    resetTimeout();
+                  }}
+                  className="flex-shrink-0 ml-2 text-white hover:text-gray-200 transition-colors focus:outline-none focus:ring-2 focus:ring-white/50 rounded p-1"
+                  aria-label="Close notification"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-5 w-5"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </button>
+              </div>
+            );
+          },
           {
             duration: warningMs,
             position: 'top-center',
@@ -82,8 +127,11 @@ export const useSessionTimeout = (options: UseSessionTimeoutOptions = {}) => {
               background: '#f59e0b',
               color: '#fff',
               fontSize: '14px',
-              fontWeight: '500'
-            }
+              fontWeight: '500',
+              padding: '0',
+              minWidth: '400px'
+            },
+            icon: '⚠️'
           }
         );
         

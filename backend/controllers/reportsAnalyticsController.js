@@ -1667,20 +1667,27 @@ const getSalesReport = async (req, res) => {
     const endDate = req.query.endDate || '';
     const status = req.query.status || '';
     const source = req.query.source || '';
+    const salesOutletId = req.query.salesOutletId || '';
 
     // Build date filter
+    // Note: If no date range is provided, don't apply date filter to allow viewing all transactions
+    // This is especially important for outlet-specific queries
     let dateFilter = {};
-    if (startDate || endDate) {
+    if (startDate && endDate) {
       dateFilter = {
         $gte: new Date(startDate),
-        $lte: new Date(endDate)
+        $lte: new Date(endDate + 'T23:59:59.999Z') // Include full day
       };
-    } else {
-      // Default to last 30 days
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      dateFilter = { $gte: thirtyDaysAgo };
+    } else if (startDate) {
+      dateFilter = {
+        $gte: new Date(startDate)
+      };
+    } else if (endDate) {
+      dateFilter = {
+        $lte: new Date(endDate + 'T23:59:59.999Z') // Include full day
+      };
     }
+    // If no dates provided, don't filter by date (show all transactions)
 
     // Import required models
     const Invoice = require('../models/Invoice');
@@ -1714,6 +1721,12 @@ const getSalesReport = async (req, res) => {
       statusFilter = { status: status };
     }
 
+    // Build sales outlet filter for invoices
+    let salesOutletFilter = {};
+    if (salesOutletId && salesOutletId !== 'all') {
+      salesOutletFilter = { salesOutlet: salesOutletId };
+    }
+
     // Combine all filters
     const baseFilter = {
       ...searchFilter,
@@ -1721,46 +1734,90 @@ const getSalesReport = async (req, res) => {
       ...statusFilter
     };
 
+    // If filtering by sales outlet, get invoice IDs first for more efficient transaction querying
+    let transactionInvoiceFilter = {};
+    if (salesOutletId && salesOutletId !== 'all') {
+      const outletInvoiceIds = await Invoice.find({
+        salesOutlet: salesOutletId
+      }).select('_id').lean();
+      const invoiceIds = outletInvoiceIds.map(inv => inv._id);
+      // Only get transactions linked to invoices for this outlet
+      transactionInvoiceFilter = { invoice: { $in: invoiceIds } };
+    } else {
+      // Get all transactions with invoices if no outlet filter
+      transactionInvoiceFilter = { invoice: { $exists: true } };
+    }
+
+    // Build transaction query - only include date filter if it has values
+    const transactionQuery = {
+      ...baseFilter,
+      ...transactionInvoiceFilter,
+      type: 'sale',
+      status: 'posted'
+    };
+    if (Object.keys(dateFilter).length > 0) {
+      transactionQuery.date = dateFilter;
+    }
+
+    // Build invoice query - only include date filter if it has values
+    const invoiceQuery = {
+      ...baseFilter,
+      ...salesOutletFilter
+    };
+    if (Object.keys(dateFilter).length > 0) {
+      invoiceQuery.invoiceDate = dateFilter;
+    }
+
+    // Build order query - only include date filter if it has values
+    const orderQuery = {
+      ...baseFilter
+    };
+    if (Object.keys(dateFilter).length > 0) {
+      orderQuery.orderDate = dateFilter;
+    }
+
+    // Build workshop job query - only include date filter if it has values
+    const workshopJobQuery = {
+      ...baseFilter,
+      status: { $in: ['completed', 'invoiced'] }
+    };
+    if (Object.keys(dateFilter).length > 0) {
+      workshopJobQuery.createdAt = dateFilter;
+    }
+
     // Get data from all sources
     const [transactions, invoices, orders, workshopJobs] = await Promise.all([
       // Transactions (POS and other financial transactions)
       // Only get transactions that are sales and posted
-      Transaction.find({
-        ...baseFilter,
-        date: dateFilter,
-        type: 'sale',
-        status: 'posted'
-      })
+      Transaction.find(transactionQuery)
       .populate('customer', 'firstName lastName')
       .populate('supplier', 'name')
-      .populate('invoice', 'invoiceNumber')
+      .populate({
+        path: 'invoice',
+        select: 'invoiceNumber salesOutlet status total paid balance isPosTransaction',
+        populate: {
+          path: 'salesOutlet',
+          select: 'name outletCode'
+        }
+      })
       .populate('createdBy', 'firstName lastName')
       .sort({ date: -1 }),
 
       // Invoices (regular sales invoices)
-      Invoice.find({
-        ...baseFilter,
-        invoiceDate: dateFilter
-      })
+      Invoice.find(invoiceQuery)
       .populate('customer', 'firstName lastName')
       .populate('salesPerson', 'firstName lastName')
+      .populate('salesOutlet', 'name outletCode')
       .populate('workshopJob', 'jobNumber')
       .sort({ invoiceDate: -1 }),
 
       // Orders (regular orders)
-      Order.find({
-        ...baseFilter,
-        orderDate: dateFilter
-      })
+      Order.find(orderQuery)
         .populate('customer', 'firstName lastName')
         .sort({ orderDate: -1 }),
 
       // Workshop Jobs (workshop sales)
-      WorkshopJob.find({
-        ...baseFilter,
-        createdAt: dateFilter,
-        status: { $in: ['completed', 'invoiced'] }
-      })
+      WorkshopJob.find(workshopJobQuery)
         .populate('customer', 'firstName lastName')
         .populate('resources.assignedTechnicians.user', 'firstName lastName')
         .sort({ createdAt: -1 })
@@ -1781,10 +1838,36 @@ const getSalesReport = async (req, res) => {
 
     // Add transactions
     transactions.forEach(transaction => {
-      // For POS transactions that are fully paid, balance should be 0
-      const transactionPaid = transaction.paid || 0;
-      const transactionAmount = transaction.amount || 0;
-      const isFullyPaid = transactionPaid >= transactionAmount;
+      // For transactions linked to invoices, check invoice payment status
+      let transactionPaid = transaction.paid || 0;
+      let transactionAmount = transaction.amount || 0;
+      let isFullyPaid = false;
+      
+      // If transaction is linked to an invoice, check invoice status for payment info
+      if (transaction.invoice && typeof transaction.invoice === 'object') {
+        const linkedInvoice = transaction.invoice;
+        
+        // For transactions linked to invoices, use invoice payment data
+        if (linkedInvoice.status === 'paid' || (linkedInvoice.total && linkedInvoice.paid >= (linkedInvoice.total - 0.01))) {
+          transactionAmount = Number(linkedInvoice.total || transactionAmount);
+          transactionPaid = Number(linkedInvoice.paid || transactionPaid);
+          // If invoice is paid but transaction paid field might be 0, use invoice total
+          if (linkedInvoice.status === 'paid' && (transactionPaid === 0 || !transaction.paid)) {
+            transactionPaid = transactionAmount;
+          }
+          isFullyPaid = true;
+        } else {
+          // Use transaction amounts but check invoice paid field
+          transactionAmount = Number(linkedInvoice.total || transactionAmount);
+          transactionPaid = Number(linkedInvoice.paid || transaction.paid || 0);
+          isFullyPaid = transactionPaid >= (transactionAmount - 0.01);
+        }
+      } else {
+        // For standalone transactions, use transaction fields
+        transactionPaid = transaction.paid || 0;
+        transactionAmount = transaction.amount || 0;
+        isFullyPaid = transactionPaid >= transactionAmount;
+      }
       
       // Determine source type based on transaction metadata
       // If transaction is linked to an invoice, it represents either POS or regular invoice sale
@@ -1793,6 +1876,17 @@ const getSalesReport = async (req, res) => {
       
       // Use invoice number as reference if available
       const invoiceNumber = transaction.invoice?.invoiceNumber || transaction.reference || transaction.transactionNumber;
+      
+      // Get sales outlet from linked invoice if available
+      const salesOutlet = transaction.invoice?.salesOutlet;
+      const salesOutletName = salesOutlet?.name || salesOutlet?.outletCode || null;
+      const transactionSalesOutletId = salesOutlet?._id ? salesOutlet._id.toString() : (typeof salesOutlet === 'string' ? salesOutlet : null);
+      
+      // Note: We already filtered at the database level, but double-check for consistency
+      // (in case there are transactions without populated invoices)
+      if (salesOutletFilter.salesOutlet && transactionSalesOutletId !== salesOutletFilter.salesOutlet.toString()) {
+        return; // Skip this transaction if outlet doesn't match (shouldn't happen with proper filtering)
+      }
       
       allSalesData.push({
         _id: transaction._id,
@@ -1810,9 +1904,11 @@ const getSalesReport = async (req, res) => {
         grandTotal: transactionAmount,
         paid: transactionPaid,
         balance: isFullyPaid ? 0 : Math.max(0, transactionAmount - transactionPaid),
-        status: transaction.status,
+        status: isFullyPaid ? 'paid' : transaction.status,
         reference: invoiceNumber,
         invoiceNumber: isInvoiceTransaction ? invoiceNumber : null,
+        salesOutlet: salesOutletName,
+        salesOutletId: transactionSalesOutletId,
         createdBy: transaction.createdBy ? 
           `${transaction.createdBy.firstName || ''} ${transaction.createdBy.lastName || ''}`.trim() : 
           'Unknown'
@@ -1830,6 +1926,48 @@ const getSalesReport = async (req, res) => {
       if (transactionInvoiceIds.has(invoice._id.toString())) {
         return;
       }
+      // Get sales outlet info
+      const invoiceSalesOutlet = invoice.salesOutlet;
+      const invoiceSalesOutletName = invoiceSalesOutlet?.name || invoiceSalesOutlet?.outletCode || null;
+      const invoiceSalesOutletId = invoiceSalesOutlet?._id ? invoiceSalesOutlet._id.toString() : (typeof invoiceSalesOutlet === 'string' ? invoiceSalesOutlet : null);
+      
+      // Robust paid/balance calculation to match invoice page
+      const invTotal = Number(invoice.total || 0);
+      
+      // For POS transactions, payments array may contain tendered amount (not actual payment)
+      // Always prioritize the invoice's 'paid' field which is calculated correctly by the model
+      let invPaidRaw = 0;
+      
+      // If invoice has a paid field and it looks reliable (is a number and reasonable), use it
+      // Allow slight overpayment due to rounding (paid can be up to total + 0.01)
+      if (typeof invoice.paid === 'number' && invoice.paid >= 0 && invoice.paid <= (invTotal + 0.01)) {
+        invPaidRaw = invoice.paid;
+      } 
+      // Otherwise, calculate from payments array (capped at total for POS transactions)
+      else if (invoice.payments && Array.isArray(invoice.payments) && invoice.payments.length > 0) {
+        const paymentsSum = invoice.payments.reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0);
+        
+        // For POS transactions, payment amount might be tendered amount, so cap at total
+        if (invoice.isPosTransaction) {
+          invPaidRaw = Math.min(paymentsSum, invTotal);
+        } else {
+          invPaidRaw = paymentsSum;
+        }
+      } else {
+        invPaidRaw = 0;
+      }
+      
+      // Check if invoice is fully paid (either status is 'paid' OR paid amount >= total)
+      // Use a small tolerance (0.01) for floating point comparison
+      const isFullyPaid = invoice.status === 'paid' || (invTotal > 0 && invPaidRaw >= (invTotal - 0.01));
+      
+      // If invoice is fully paid, ensure paid equals total and balance is 0
+      const invPaid = isFullyPaid ? invTotal : Math.min(invPaidRaw, invTotal);
+      const invBalance = isFullyPaid ? 0 : Math.max(0, invTotal - invPaid);
+      
+      // Update status for report display - show as 'paid' if fully paid
+      const reportStatus = isFullyPaid ? 'paid' : invoice.status;
+
       allSalesData.push({
         _id: invoice._id,
         source: 'invoice',
@@ -1842,12 +1980,14 @@ const getSalesReport = async (req, res) => {
         total: invoice.subtotal,
         tax: invoice.totalTax,
         discount: invoice.totalDiscount,
-        grandTotal: invoice.total,
-        paid: invoice.paid,
-        balance: invoice.balance,
-        status: invoice.status,
+        grandTotal: invTotal,
+        paid: invPaid,
+        balance: invBalance,
+        status: reportStatus,
         reference: invoice.invoiceNumber,
         invoiceNumber: invoice.invoiceNumber,
+        salesOutlet: invoiceSalesOutletName,
+        salesOutletId: invoiceSalesOutletId,
         createdBy: invoice.salesPerson ? 
           `${invoice.salesPerson.firstName || ''} ${invoice.salesPerson.lastName || ''}`.trim() : 
           'Unknown'
@@ -1927,7 +2067,8 @@ const getSalesReport = async (req, res) => {
           (item.invoiceNumber && item.invoiceNumber.toLowerCase().includes(searchLower)) ||
           (item.createdBy && item.createdBy.toLowerCase().includes(searchLower)) ||
           (item.status && item.status.toLowerCase().includes(searchLower)) ||
-          (item.type && item.type.toLowerCase().includes(searchLower))
+          (item.type && item.type.toLowerCase().includes(searchLower)) ||
+          (item.salesOutlet && item.salesOutlet.toLowerCase().includes(searchLower))
         );
       });
     }

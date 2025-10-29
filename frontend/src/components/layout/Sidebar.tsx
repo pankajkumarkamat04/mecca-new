@@ -171,6 +171,12 @@ const getSalesSidebarItems = (userRole: string): SidebarItem[] => {
       icon: LifebuoyIcon,
     },
     {
+      name: 'Outlet Sales Report',
+      href: '/outlet-sales-report',
+      icon: BuildingStorefrontIcon,
+      permission: { module: 'sales', action: 'read' },
+    },
+    {
       name: 'Profile',
       href: '/profile',
       icon: UserIcon,
@@ -406,7 +412,7 @@ const getSidebarItems = (userRole: string): SidebarItem[] => {
   }
 
   // Reports and Analytics
-  if (['admin', 'manager'].includes(userRole)) {
+  if (['admin', 'manager', 'sales_person'].includes(userRole)) {
     baseItems.push({
       name: 'Reports & Analytics',
       href: '#',
@@ -422,6 +428,12 @@ const getSidebarItems = (userRole: string): SidebarItem[] => {
           name: 'Sales Report',
           href: '/sales-report',
           icon: ChartBarIcon,
+          permission: { module: 'sales', action: 'read' },
+        },
+        {
+          name: 'Outlet Sales Report',
+          href: '/outlet-sales-report',
+          icon: BuildingStorefrontIcon,
           permission: { module: 'sales', action: 'read' },
         },
       ],
@@ -580,13 +592,13 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
       {/* Sidebar */}
       <div
         className={cn(
-          'fixed inset-y-0 left-0 z-30 w-64 bg-red-600 shadow-lg transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0',
+          'fixed inset-y-0 left-0 z-30 w-64 bg-gray-900 shadow-lg transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0',
           isOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
         <div className="flex flex-col h-full">
           {/* Logo */}
-          <div className="flex items-center justify-center h-16 px-4 bg-gradient-to-r from-red-500 to-red-600 shadow-lg">
+          <div className="flex items-center justify-center h-16 px-4 bg-gray-950 shadow-lg">
             {company?.logo?.url ? (
               <div className="flex items-center space-x-3">
                 <Image
@@ -663,7 +675,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                       onClick={toggleOpen}
                       className={cn(
                         'w-full flex items-center px-2 py-2 text-base font-medium rounded-md transition-colors',
-                        (groupActive || isOpen) ? 'bg-red-700 text-white border-r-2 border-white' : 'text-white hover:bg-red-700 hover:text-white'
+                        (groupActive || isOpen) ? 'bg-gray-800 text-white border-r-2 border-white' : 'text-white hover:bg-gray-800 hover:text-white'
                       )}
                     >
                       <item.icon
@@ -691,7 +703,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                               href={child.href}
                               className={cn(
                                 'group flex items-center px-2 py-1.5 text-sm font-medium rounded-md transition-colors',
-                                childActive ? 'bg-red-700 text-white border-r-2 border-white' : 'text-gray-300 hover:bg-red-700 hover:text-white'
+                                childActive ? 'bg-gray-800 text-white border-r-2 border-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'
                               )}
                               onClick={onClose}
                             >
@@ -723,8 +735,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                   className={cn(
                     'group flex items-center px-2 py-2 text-base font-medium rounded-md transition-colors',
                     isActive
-                      ? 'bg-red-700 text-white border-r-2 border-white'
-                      : 'text-white hover:bg-red-700 hover:text-white'
+                      ? 'bg-gray-800 text-white border-r-2 border-white'
+                      : 'text-white hover:bg-gray-800 hover:text-white'
                   )}
                   onClick={onClose}
                 >
@@ -749,7 +761,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
           <div className="p-4 border-t border-black/20">
             <button
               onClick={handleLogout}
-              className="group flex items-center w-full px-2 py-2 text-sm font-medium text-white rounded-md hover:bg-red-700 hover:text-white transition-colors"
+              className="group flex items-center w-full px-2 py-2 text-sm font-medium text-white rounded-md hover:bg-gray-800 hover:text-white transition-colors"
             >
               <ArrowRightOnRectangleIcon className="mr-3 h-5 w-5 text-gray-300 group-hover:text-white" />
               Logout

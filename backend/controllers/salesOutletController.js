@@ -170,10 +170,21 @@ const deleteSalesOutlet = async (req, res) => {
       });
     }
 
-    // Soft delete - set isActive to false
-    outlet.isActive = false;
-    outlet.updatedBy = req.user._id;
-    await outlet.save();
+    // Check if outlet has associated invoices or transactions
+    const Invoice = require('../models/Invoice');
+    const Transaction = require('../models/Transaction');
+    
+    const invoiceCount = await Invoice.countDocuments({ salesOutlet: outlet._id });
+    
+    if (invoiceCount > 0) {
+      return res.status(400).json({
+        success: false,
+        message: `Cannot delete outlet. It has ${invoiceCount} associated invoice(s). Please reassign or remove these invoices first.`
+      });
+    }
+
+    // Hard delete - permanently remove from database
+    await SalesOutlet.findByIdAndDelete(req.params.id);
 
     res.json({
       success: true,
@@ -224,9 +235,103 @@ const getOutletStats = async (req, res) => {
       });
     }
 
+    // Import required models
+    const Invoice = require('../models/Invoice');
+    const Transaction = require('../models/Transaction');
+
+    // Calculate stats from actual transactions and invoices
+    const outletId = outlet._id;
+
+    // First, get all invoice IDs for this outlet
+    // MongoDB will handle ObjectId comparison correctly
+    const outletInvoiceIds = await Invoice.find({
+      salesOutlet: outletId
+    }).select('_id salesOutlet').lean();
+    
+    console.log('Outlet Stats Query:', {
+      outletId: outletId.toString(),
+      outletName: outlet.name,
+      invoicesFound: outletInvoiceIds.length,
+      invoiceIds: outletInvoiceIds.map(inv => inv._id.toString())
+    });
+    
+    const invoiceIds = outletInvoiceIds.map(inv => inv._id);
+
+    // Get transactions linked to invoices with this outlet
+    const transactions = await Transaction.find({
+      type: 'sale',
+      status: 'posted',
+      invoice: { $in: invoiceIds }
+    })
+    .populate('invoice', 'invoiceNumber salesOutlet status total paid balance isPosTransaction')
+    .lean();
+
+    // All transactions are valid since we filtered by invoice IDs
+    const validTransactions = transactions.filter(t => t.invoice);
+
+    // Get invoices directly linked to this outlet (non-POS invoices)
+    const invoices = await Invoice.find({
+      salesOutlet: outletId,
+      isPosTransaction: { $ne: true }
+    }).lean();
+
+    // Get transaction invoice IDs to avoid double counting
+    const transactionInvoiceIds = new Set(
+      validTransactions.map(t => t.invoice?._id?.toString()).filter(Boolean)
+    );
+
+    // Calculate total sales from transactions
+    // Use invoice total when available (same logic as sales report)
+    const transactionTotal = validTransactions.reduce((sum, t) => {
+      let transactionAmount = t.amount || 0;
+      
+      // If transaction is linked to an invoice, use invoice total
+      if (t.invoice && typeof t.invoice === 'object' && t.invoice.total) {
+        transactionAmount = Number(t.invoice.total || transactionAmount);
+      }
+      
+      return sum + transactionAmount;
+    }, 0);
+
+    // Calculate total from invoices (excluding those already counted in transactions)
+    const invoiceTotal = invoices
+      .filter(inv => !transactionInvoiceIds.has(inv._id.toString()))
+      .reduce((sum, inv) => sum + (inv.total || 0), 0);
+
+    const totalSales = transactionTotal + invoiceTotal;
+    const totalTransactions = validTransactions.length + invoices.filter(inv => !transactionInvoiceIds.has(inv._id.toString())).length;
+    
+    console.log('Outlet Stats Final Calculation:', {
+      outletId: outletId.toString(),
+      outletName: outlet.name,
+      invoiceIdsForTransactions: invoiceIds.length,
+      validTransactionsCount: validTransactions.length,
+      nonPosInvoicesCount: invoices.length,
+      excludedInvoiceIds: transactionInvoiceIds.size,
+      transactionTotal,
+      invoiceTotal,
+      totalSales,
+      totalTransactions,
+      averageTransactionValue
+    });
+
+    // Get last sale date
+    const allDates = [
+      ...validTransactions.map(t => t.date ? new Date(t.date) : null),
+      ...invoices.map(inv => inv.invoiceDate ? new Date(inv.invoiceDate) : null)
+    ].filter(Boolean).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+
+    const lastSaleDate = allDates.length > 0 ? allDates[0] : null;
+    const averageTransactionValue = totalTransactions > 0 ? totalSales / totalTransactions : 0;
+
     res.json({
       success: true,
-      data: outlet.stats
+      data: {
+        totalSales,
+        totalTransactions,
+        lastSaleDate,
+        averageTransactionValue
+      }
     });
   } catch (error) {
     console.error('Get outlet stats error:', error);

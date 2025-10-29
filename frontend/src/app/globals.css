@@ -166,35 +166,35 @@
     scrollbar-color: #3b82f6 #1e40af;
   }
 
-  /* Red sidebar scrollbar */
+  /* Faint black sidebar scrollbar */
   nav::-webkit-scrollbar {
     width: 8px;
     height: 8px;
   }
 
   nav::-webkit-scrollbar-track {
-    background: #991b1b; /* red-800 */
+    background: #111827; /* gray-900 */
     border-radius: 4px;
   }
 
   nav::-webkit-scrollbar-thumb {
-    background: #dc2626; /* red-600 */
+    background: #374151; /* gray-700 */
     border-radius: 4px;
     transition: background 0.2s ease;
   }
 
   nav::-webkit-scrollbar-thumb:hover {
-    background: #ef4444; /* red-500 */
+    background: #4b5563; /* gray-600 */
   }
 
   nav::-webkit-scrollbar-corner {
-    background: #991b1b;
+    background: #111827;
   }
 
   /* Firefox custom scrollbar for nav */
   nav {
     scrollbar-width: thin;
-    scrollbar-color: #dc2626 #991b1b;
+    scrollbar-color: #374151 #111827;
   }
 
   /* Light custom scrollbar for main content */

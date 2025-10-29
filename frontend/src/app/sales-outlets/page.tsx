@@ -84,11 +84,12 @@ const SalesOutletsPage: React.FC = () => {
     }
   });
 
-  // Delete mutation
+  // Delete mutation (hard delete)
   const deleteMutation = useMutation({
     mutationFn: (id: string) => salesOutletsAPI.deleteSalesOutlet(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sales-outlets'] });
+      queryClient.invalidateQueries({ queryKey: ['sales-outlets-active'] });
       toast.success('Sales outlet deleted successfully');
     },
     onError: (error: any) => {

@@ -15,17 +15,17 @@ export const ROLE_ROUTES: Record<UserRole, RoleRoute> = {
   admin: {
     role: 'admin',
     defaultPath: '/dashboard',
-    allowedPaths: ['/dashboard', '/users', '/products', '/customers', '/suppliers', '/invoices', '/inventory', '/pos', '/sales-outlets', '/support', '/accounts', '/transactions', '/workshop', '/service-templates', '/reports', '/reports-analytics', '/sales-report', '/settings', '/analytics', '/customer-inquiries', '/quotations', '/orders', '/deliveries', '/warehouses', '/warehouse-portal', '/stock-alerts', '/purchase-orders', '/resources', '/received-goods', '/profile']
+    allowedPaths: ['/dashboard', '/users', '/products', '/customers', '/suppliers', '/invoices', '/inventory', '/pos', '/sales-outlets', '/support', '/accounts', '/transactions', '/workshop', '/service-templates', '/reports', '/reports-analytics', '/sales-report', '/outlet-sales-report', '/settings', '/analytics', '/customer-inquiries', '/quotations', '/orders', '/deliveries', '/warehouses', '/warehouse-portal', '/stock-alerts', '/purchase-orders', '/resources', '/received-goods', '/profile']
   },
   manager: {
     role: 'manager',
     defaultPath: '/dashboard',
-    allowedPaths: ['/dashboard', '/users', '/products', '/customers', '/suppliers', '/invoices', '/inventory', '/pos', '/sales-outlets', '/support', '/accounts', '/transactions', '/workshop', '/service-templates', '/reports', '/reports-analytics', '/sales-report', '/settings', '/customer-inquiries', '/quotations', '/orders', '/deliveries', '/warehouses', '/warehouse-portal', '/stock-alerts', '/purchase-orders', '/resources', '/received-goods', '/profile']
+    allowedPaths: ['/dashboard', '/users', '/products', '/customers', '/suppliers', '/invoices', '/inventory', '/pos', '/sales-outlets', '/support', '/accounts', '/transactions', '/workshop', '/service-templates', '/reports', '/reports-analytics', '/sales-report', '/outlet-sales-report', '/settings', '/customer-inquiries', '/quotations', '/orders', '/deliveries', '/warehouses', '/warehouse-portal', '/stock-alerts', '/purchase-orders', '/resources', '/received-goods', '/profile']
   },
   sales_person: {
     role: 'sales_person',
     defaultPath: '/pos',
-    allowedPaths: ['/dashboard', '/pos', '/customers', '/invoices', '/customer-inquiries', '/quotations', '/orders', '/support', '/profile']
+    allowedPaths: ['/dashboard', '/pos', '/customers', '/invoices', '/customer-inquiries', '/quotations', '/orders', '/support', '/outlet-sales-report', '/profile']
   },
   workshop_employee: {
     role: 'workshop_employee',

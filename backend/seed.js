@@ -42,6 +42,7 @@ const Transaction = require('./models/Transaction');
 const Warehouse = require('./models/Warehouse');
 const WorkshopJob = require('./models/WorkshopJob');
 const WorkStation = require('./models/WorkStation');
+const SalesOutlet = require('./models/SalesOutlet');
 
 async function connectDB() {
   const uri = process.env.MONGODB_URI || 'mongodb://localhost:27017/pos-system';
@@ -78,6 +79,7 @@ async function clearCollections() {
       Warehouse.deleteMany({}),
       WorkshopJob.deleteMany({}),
       WorkStation.deleteMany({}),
+      SalesOutlet.deleteMany({}),
     ];
     
     await Promise.all(clearPromises);
@@ -87,7 +89,7 @@ async function clearCollections() {
     console.log('   📦 Invoice, Machine, Order, Product, PurchaseOrder, Quotation');
     console.log('   🛠️  ReceivedGoods, Setting, StockMovement, Supplier, Support');
     console.log('   👥 Technician, Tool, Transaction, User, Warehouse');
-    console.log('   🔧 WorkshopJob, WorkStation');
+    console.log('   🔧 WorkshopJob, WorkStation, SalesOutlet');
     console.log('');
   } catch (error) {
     console.error('❌ Error during database cleanup:', error);
@@ -312,11 +314,11 @@ async function seed() {
   console.log('Role: admin');
   console.log('');
   console.log('═'.repeat(50));
-  console.log('🧹 COMPREHENSIVE DATABASE CLEANUP COMPLETED:');
-  console.log('─'.repeat(30));
-  console.log('• Cleared ALL 22 collections from database');
-  console.log('• Fresh start with clean data structure');
-  console.log('• No conflicting or duplicate records');
+    console.log('🧹 COMPREHENSIVE DATABASE CLEANUP COMPLETED:');
+    console.log('─'.repeat(30));
+    console.log('• Cleared ALL 23 collections from database');
+    console.log('• Fresh start with clean data structure');
+    console.log('• No conflicting or duplicate records');
   console.log('');
   console.log('💡 All products have 0% tax rate as requested');
   console.log('🌐 Access the application at: http://localhost:3000');
