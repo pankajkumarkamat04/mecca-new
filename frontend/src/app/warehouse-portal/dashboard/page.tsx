@@ -654,9 +654,111 @@ const CreateUserForm: React.FC<{
 const WarehouseDashboardWithParams: React.FC = () => {
   const searchParams = useSearchParams();
   const { user } = useAuth();
+  const [selectedWarehouseId, setSelectedWarehouseId] = useState<string | null>(null);
+  
   const warehouseIdFromQuery = searchParams.get('warehouse');
   const fallbackWarehouseId = user?.warehouse?.assignedWarehouse || null;
-  const resolvedWarehouseId = warehouseIdFromQuery || fallbackWarehouseId;
+  const isAdmin = user?.role === 'admin';
+  const resolvedWarehouseId = warehouseIdFromQuery || fallbackWarehouseId || selectedWarehouseId;
+
+  // Fetch warehouses if user is admin and doesn't have a warehouse ID
+  const { data: warehousesData, isLoading: warehousesLoading } = useQuery({
+    queryKey: ['warehouses'],
+    queryFn: () => warehouseAPI.getWarehouses(),
+    enabled: isAdmin && !warehouseIdFromQuery && !fallbackWarehouseId,
+  });
+
+  useEffect(() => {
+    if (warehousesData?.data?.data && isAdmin && !warehouseIdFromQuery && !fallbackWarehouseId && !selectedWarehouseId) {
+      const warehouses = Array.isArray(warehousesData.data.data) 
+        ? warehousesData.data.data 
+        : (warehousesData.data.data?.data || warehousesData.data.data || []);
+      
+      // Auto-select first warehouse if none is selected and warehouses are available
+      if (warehouses.length > 0) {
+        const firstWarehouseId = warehouses[0]._id || warehouses[0].id;
+        if (firstWarehouseId) {
+          setSelectedWarehouseId(firstWarehouseId);
+          // Update URL to reflect the selection
+          window.history.replaceState({}, '', `/warehouse-portal/dashboard?warehouse=${firstWarehouseId}`);
+        }
+      }
+    }
+  }, [warehousesData?.data?.data, isAdmin, warehouseIdFromQuery, fallbackWarehouseId]); // Removed selectedWarehouseId from deps to prevent loops
+
+  // If admin and warehouses are loading, show loading state
+  if (isAdmin && !resolvedWarehouseId && warehousesLoading) {
+    return (
+      <WarehousePortalLayout>
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        </div>
+      </WarehousePortalLayout>
+    );
+  }
+
+  // If admin and no warehouse selected yet, show selector
+  if (isAdmin && !resolvedWarehouseId) {
+    const warehouses = warehousesData?.data?.data
+      ? (Array.isArray(warehousesData.data.data) 
+          ? warehousesData.data.data 
+          : (warehousesData.data.data?.data || []))
+      : [];
+
+    if (warehouses.length === 0) {
+      return (
+        <WarehousePortalLayout>
+          <div className="space-y-6">
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <div className="flex">
+                <ExclamationTriangleIcon className="h-5 w-5 text-red-600 mr-2 mt-0.5" />
+                <div>
+                  <h3 className="text-sm font-medium text-red-800">No Warehouses Available</h3>
+                  <p className="text-sm text-red-700 mt-1">
+                    No warehouses found. Please create a warehouse first.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </WarehousePortalLayout>
+      );
+    }
+
+    return (
+      <WarehousePortalLayout>
+        <div className="space-y-6">
+          <div className="bg-white rounded-lg shadow p-6">
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">Select Warehouse</h2>
+            <p className="text-gray-600 mb-4">Please select a warehouse to view its dashboard:</p>
+            <div className="space-y-2">
+              {warehouses.map((warehouse: any) => {
+                const warehouseId = warehouse._id || warehouse.id;
+                const warehouseName = warehouse.name || 'Unknown Warehouse';
+                const warehouseCode = warehouse.code || '';
+                
+                return (
+                  <button
+                    key={warehouseId}
+                    onClick={() => {
+                      setSelectedWarehouseId(warehouseId);
+                      window.history.pushState({}, '', `/warehouse-portal/dashboard?warehouse=${warehouseId}`);
+                    }}
+                    className="w-full text-left p-4 border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-blue-500 transition-colors"
+                  >
+                    <div className="font-medium text-gray-900">{warehouseName}</div>
+                    {warehouseCode && (
+                      <div className="text-sm text-gray-500">Code: {warehouseCode}</div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </WarehousePortalLayout>
+    );
+  }
 
   return <WarehouseDashboardInner warehouseId={resolvedWarehouseId} />;
 };

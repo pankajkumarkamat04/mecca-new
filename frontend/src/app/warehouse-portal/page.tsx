@@ -14,11 +14,13 @@ const WarehousePortalPageInner: React.FC = () => {
     // Redirect to dashboard with warehouse parameter
     const assignedWarehouse = user?.warehouse?.assignedWarehouse;
     const targetWarehouse = warehouseId || assignedWarehouse || '';
+    
+    // For admin users without assigned warehouse, dashboard will handle warehouse selection
     const dashboardUrl = targetWarehouse
       ? `/warehouse-portal/dashboard?warehouse=${targetWarehouse}`
       : '/warehouse-portal/dashboard';
     router.replace(dashboardUrl);
-  }, [router, warehouseId, user?.warehouse?.assignedWarehouse]);
+  }, [router, warehouseId, user?.warehouse?.assignedWarehouse, user?.role]);
 
   return (
     <div className="flex items-center justify-center h-64">

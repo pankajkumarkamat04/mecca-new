@@ -27,7 +27,7 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, title, hideMenuButton = fa
   };
 
   return (
-    <header className="bg-blue-50 shadow-sm border-b border-blue-200">
+    <header className="bg-gray-100 shadow-sm border-b border-gray-300">
       <div className="flex items-center justify-between h-16 px-4">
         {/* Left side */}
         <div className="flex items-center">
@@ -58,7 +58,7 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, title, hideMenuButton = fa
               <input
                 type="text"
                 placeholder="Search..."
-                className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-gray-500 focus:border-gray-500 sm:text-sm"
               />
             </div>
           </div>
@@ -68,7 +68,7 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, title, hideMenuButton = fa
           <div className="relative">
             <button
               onClick={() => setShowUserMenu(!showUserMenu)}
-              className="flex items-center space-x-3 p-2 text-gray-700 hover:text-gray-900 hover:bg-blue-100 rounded-md transition-colors"
+              className="flex items-center space-x-3 p-2 text-gray-700 hover:text-gray-900 hover:bg-gray-200 rounded-md transition-colors"
             >
               {user?.avatar ? (
                 <img
