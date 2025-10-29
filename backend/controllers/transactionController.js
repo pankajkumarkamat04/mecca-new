@@ -14,9 +14,12 @@ const getTransactions = async (req, res) => {
     const status = req.query.status || '';
     const startDate = req.query.startDate || '';
     const endDate = req.query.endDate || '';
+    const salesPersonId = req.query.salesPersonId || '';
 
     // Build filter object
     const filter = {};
+    const andConditions = [];
+    
     if (search) {
       filter.$or = [
         { description: { $regex: search, $options: 'i' } },
@@ -26,6 +29,30 @@ const getTransactions = async (req, res) => {
     }
     if (type) filter.type = type;
     if (status) filter.status = status;
+    
+    // Filter by salesperson (using createdBy since transactions are linked via creator)
+    if (salesPersonId) {
+      const salesPersonFilter = {
+        $or: [
+          { createdBy: salesPersonId },
+          { 'metadata.salesPerson.id': salesPersonId }
+        ]
+      };
+      
+      // If we have a search filter, combine with $and
+      if (search) {
+        andConditions.push({ $or: filter.$or });
+        andConditions.push(salesPersonFilter);
+        delete filter.$or;
+      } else {
+        Object.assign(filter, salesPersonFilter);
+      }
+    }
+    
+    // Apply $and if we have multiple conditions
+    if (andConditions.length > 0) {
+      filter.$and = andConditions;
+    }
     
     if (startDate || endDate) {
       filter.date = {};
@@ -76,8 +103,7 @@ const getTransactionById = async (req, res) => {
       .populate('supplier', 'name email')
       .populate('invoice', 'invoiceNumber totalAmount')
       .populate('createdBy', 'firstName lastName email')
-      .populate('approvedBy', 'firstName lastName')
-      .populate('reconciledBy', 'firstName lastName');
+      .populate('approvedBy', 'firstName lastName');
 
     if (!transaction) {
       return res.status(404).json({

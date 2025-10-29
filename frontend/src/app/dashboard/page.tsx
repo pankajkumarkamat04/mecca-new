@@ -11,6 +11,7 @@ import BarChart from '@/components/charts/BarChart';
 import { DashboardStats as DashboardStatsType } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { getDashboardTitle } from '@/lib/roleRouting';
+import { formatCurrency } from '@/lib/utils';
 import toast from 'react-hot-toast';
 import {
   ChartBarIcon,
@@ -21,6 +22,7 @@ import {
   ArchiveBoxIcon,
   UserGroupIcon,
   ClipboardDocumentListIcon,
+  CubeIcon,
 } from '@heroicons/react/24/outline';
 
 const DashboardPage: React.FC = () => {
@@ -509,7 +511,7 @@ const DashboardPage: React.FC = () => {
           
           <div className="bg-white shadow rounded-lg p-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-medium text-gray-900">Top Products</h3>
+              <h3 className="text-lg font-semibold text-gray-900">Top Products by Quantity</h3>
               <ChartBarIcon className="h-5 w-5 text-gray-400" />
             </div>
             {(() => {
@@ -518,7 +520,7 @@ const DashboardPage: React.FC = () => {
               if (productsData.length === 0) {
                 return (
                   <div className="flex flex-col items-center justify-center h-64 text-center">
-                    <ChartBarIcon className="h-16 w-16 text-gray-400 mb-4" />
+                    <CubeIcon className="h-16 w-16 text-gray-400 mb-4" />
                     <p className="text-gray-600 font-medium">No products sold yet</p>
                     <p className="text-sm text-gray-500 mt-2">Products will appear here once sales are recorded</p>
                   </div>
@@ -526,15 +528,29 @@ const DashboardPage: React.FC = () => {
               }
               
               return (
-                <BarChart
-                  data={productsData.map((p: any) => {
+                <div className="space-y-3">
+                  {productsData.map((p: any, index: number) => {
                     const quantity = Number(p?.totalQuantity) || 0;
-                    return {
-                      name: p?.name || 'Unknown Product',
-                      value: quantity,
-                    };
+                    const revenue = p?.totalRevenue || 0;
+                    return (
+                      <div key={p?._id || index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                        <div className="flex items-center gap-3">
+                          <div className="flex items-center justify-center w-8 h-8 bg-red-600 text-white rounded-full font-semibold">
+                            {index + 1}
+                          </div>
+                          <div>
+                            <p className="font-medium text-gray-900">{p?.name || 'Unknown Product'}</p>
+                            <p className="text-sm text-gray-500">SKU: {p?.sku || 'N/A'}</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-semibold text-gray-900">{quantity.toLocaleString()} units</p>
+                          <p className="text-sm text-gray-500">{formatCurrency(revenue)}</p>
+                        </div>
+                      </div>
+                    );
                   })}
-                />
+                </div>
               );
             })()}
           </div>

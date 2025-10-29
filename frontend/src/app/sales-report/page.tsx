@@ -357,19 +357,53 @@ const SalesReportPage: React.FC = () => {
 
         {/* Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-white p-4 rounded-lg shadow-sm border">
+          <div 
+            className="bg-white p-4 rounded-lg shadow-sm border cursor-pointer hover:bg-blue-50 hover:border-blue-300 transition-colors"
+            onClick={() => {
+              // Clicking total transactions - could filter to show all
+              setFilterStatus('all');
+              setFilterType('all');
+              setFilterSource('all');
+              setCurrentPage(1);
+            }}
+            title="Click to clear all filters"
+          >
             <div className="text-sm font-medium text-gray-500">Total Transactions</div>
             <div className="text-2xl font-bold text-gray-900">{summary.count || 0}</div>
           </div>
-          <div className="bg-white p-4 rounded-lg shadow-sm border">
+          <div 
+            className="bg-white p-4 rounded-lg shadow-sm border cursor-pointer hover:bg-blue-50 hover:border-blue-300 transition-colors"
+            onClick={() => {
+              // Clicking total amount - filter by paid status
+              setFilterStatus('paid');
+              setCurrentPage(1);
+            }}
+            title="Click to filter paid transactions"
+          >
             <div className="text-sm font-medium text-gray-500">Total Amount</div>
             <div className="text-2xl font-bold text-gray-900">{formatCurrency(summary.totalAmount || 0)}</div>
           </div>
-          <div className="bg-white p-4 rounded-lg shadow-sm border">
+          <div 
+            className="bg-white p-4 rounded-lg shadow-sm border cursor-pointer hover:bg-green-50 hover:border-green-300 transition-colors"
+            onClick={() => {
+              // Clicking total paid - filter by paid status
+              setFilterStatus('paid');
+              setCurrentPage(1);
+            }}
+            title="Click to filter paid transactions"
+          >
             <div className="text-sm font-medium text-gray-500">Total Paid</div>
             <div className="text-2xl font-bold text-green-600">{formatCurrency(summary.totalPaid || 0)}</div>
           </div>
-          <div className="bg-white p-4 rounded-lg shadow-sm border">
+          <div 
+            className="bg-white p-4 rounded-lg shadow-sm border cursor-pointer hover:bg-red-50 hover:border-red-300 transition-colors"
+            onClick={() => {
+              // Clicking outstanding balance - filter by unpaid/partial status
+              setFilterStatus('partial');
+              setCurrentPage(1);
+            }}
+            title="Click to filter unpaid transactions"
+          >
             <div className="text-sm font-medium text-gray-500">Outstanding Balance</div>
             <div className="text-2xl font-bold text-red-600">{formatCurrency(summary.totalBalance || 0)}</div>
           </div>
@@ -378,19 +412,47 @@ const SalesReportPage: React.FC = () => {
         {/* Source Breakdown Cards */}
         {summary.sourceBreakdown && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-white p-4 rounded-lg shadow-sm border">
+            <div 
+              className="bg-white p-4 rounded-lg shadow-sm border cursor-pointer hover:bg-blue-50 hover:border-blue-300 transition-colors"
+              onClick={() => {
+                setFilterSource('POS/Financial');
+                setCurrentPage(1);
+              }}
+              title="Click to filter by POS/Financial transactions"
+            >
               <div className="text-sm font-medium text-gray-500">POS/Financial</div>
               <div className="text-xl font-bold text-blue-600">{summary.sourceBreakdown.transactions || 0}</div>
             </div>
-            <div className="bg-white p-4 rounded-lg shadow-sm border">
+            <div 
+              className="bg-white p-4 rounded-lg shadow-sm border cursor-pointer hover:bg-green-50 hover:border-green-300 transition-colors"
+              onClick={() => {
+                setFilterSource('Invoice');
+                setCurrentPage(1);
+              }}
+              title="Click to filter by Invoice transactions"
+            >
               <div className="text-sm font-medium text-gray-500">Invoices</div>
               <div className="text-xl font-bold text-green-600">{summary.sourceBreakdown.invoices || 0}</div>
             </div>
-            <div className="bg-white p-4 rounded-lg shadow-sm border">
+            <div 
+              className="bg-white p-4 rounded-lg shadow-sm border cursor-pointer hover:bg-purple-50 hover:border-purple-300 transition-colors"
+              onClick={() => {
+                setFilterSource('Order');
+                setCurrentPage(1);
+              }}
+              title="Click to filter by Order transactions"
+            >
               <div className="text-sm font-medium text-gray-500">Orders</div>
               <div className="text-xl font-bold text-purple-600">{summary.sourceBreakdown.orders || 0}</div>
             </div>
-            <div className="bg-white p-4 rounded-lg shadow-sm border">
+            <div 
+              className="bg-white p-4 rounded-lg shadow-sm border cursor-pointer hover:bg-orange-50 hover:border-orange-300 transition-colors"
+              onClick={() => {
+                setFilterSource('Workshop');
+                setCurrentPage(1);
+              }}
+              title="Click to filter by Workshop transactions"
+            >
               <div className="text-sm font-medium text-gray-500">Workshop Jobs</div>
               <div className="text-xl font-bold text-orange-600">{summary.sourceBreakdown.workshopJobs || 0}</div>
             </div>

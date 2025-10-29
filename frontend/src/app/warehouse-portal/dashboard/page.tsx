@@ -653,7 +653,10 @@ const CreateUserForm: React.FC<{
 
 const WarehouseDashboardWithParams: React.FC = () => {
   const searchParams = useSearchParams();
-  const warehouseId = searchParams.get('warehouse');
-  
-  return <WarehouseDashboardInner warehouseId={warehouseId} />;
+  const { user } = useAuth();
+  const warehouseIdFromQuery = searchParams.get('warehouse');
+  const fallbackWarehouseId = user?.warehouse?.assignedWarehouse || null;
+  const resolvedWarehouseId = warehouseIdFromQuery || fallbackWarehouseId;
+
+  return <WarehouseDashboardInner warehouseId={resolvedWarehouseId} />;
 };

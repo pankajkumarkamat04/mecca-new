@@ -27,6 +27,11 @@ const TransactionsPage: React.FC = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [activeTab, setActiveTab] = useState<'transactions' | 'salesperson'>('transactions');
   const [performancePeriod, setPerformancePeriod] = useState<'weekly' | 'monthly'>('monthly');
+  const [selectedSalesPersonId, setSelectedSalesPersonId] = useState<string | null>(null);
+  const [selectedSalesPersonName, setSelectedSalesPersonName] = useState<string | null>(null);
+  const [salesTxModalOpen, setSalesTxModalOpen] = useState(false);
+  const [salesTxPage, setSalesTxPage] = useState(1);
+  const salesTxPageSize = 10;
   const [formData, setFormData] = useState<any>({
     date: '',
     type: 'journal',
@@ -49,7 +54,7 @@ const TransactionsPage: React.FC = () => {
   const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery({
-    queryKey: ['transactions', currentPage, pageSize, searchTerm, filterType, statusFilter, startDate, endDate],
+    queryKey: ['transactions', currentPage, pageSize, searchTerm, filterType, statusFilter, startDate, endDate, selectedSalesPersonId],
     queryFn: () =>
       transactionsAPI.getTransactions({
         page: currentPage,
@@ -59,6 +64,7 @@ const TransactionsPage: React.FC = () => {
         status: statusFilter === 'all' ? undefined : statusFilter,
         startDate: startDate || undefined,
         endDate: endDate || undefined,
+        salesPersonId: selectedSalesPersonId || undefined,
       }),
     enabled: activeTab === 'transactions'
   });
@@ -73,6 +79,23 @@ const TransactionsPage: React.FC = () => {
         endDate: endDate || undefined,
       }),
     enabled: activeTab === 'salesperson'
+  });
+
+  // Salesperson transactions for modal
+  const { data: salesPersonTxData, isLoading: salesPersonTxLoading } = useQuery({
+    queryKey: ['salesperson-transactions', selectedSalesPersonId, salesTxPage, startDate, endDate],
+    queryFn: () =>
+      transactionsAPI.getTransactions({
+        page: salesTxPage,
+        limit: salesTxPageSize,
+        salesPersonId: selectedSalesPersonId!,
+        startDate: startDate || undefined,
+        endDate: endDate || undefined,
+        status: undefined,
+        type: undefined,
+        search: undefined,
+      }),
+    enabled: !!selectedSalesPersonId && salesTxModalOpen,
   });
 
   // Load accounts for entry selection
@@ -350,6 +373,7 @@ const TransactionsPage: React.FC = () => {
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Transactions</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Sales</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Average Sale</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
@@ -362,6 +386,20 @@ const TransactionsPage: React.FC = () => {
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{person.transactionCount}</td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">{formatCurrency(person.totalSales)}</td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{formatCurrency(person.averageSale)}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setSelectedSalesPersonId(person.salesPersonId);
+                                  setSelectedSalesPersonName(person.salesPersonName);
+                                  setSalesTxPage(1);
+                                  setSalesTxModalOpen(true);
+                                }}
+                              >
+                                View All Transactions
+                              </Button>
+                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -378,6 +416,28 @@ const TransactionsPage: React.FC = () => {
         {/* Transactions View */}
         {activeTab === 'transactions' && (
           <>
+            {/* Salesperson Filter Indicator */}
+            {selectedSalesPersonId && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-center justify-between">
+                <div className="flex items-center">
+                  <UserGroupIcon className="h-5 w-5 text-blue-600 mr-2" />
+                  <span className="text-sm font-medium text-blue-900">
+                    Showing transactions for: {selectedSalesPersonName || performanceData?.data?.data?.salesPerformance?.find((p: any) => p.salesPersonId === selectedSalesPersonId)?.salesPersonName || 'Selected Salesperson'}
+                  </span>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setSelectedSalesPersonId(null);
+                    setSelectedSalesPersonName(null);
+                    setCurrentPage(1);
+                  }}
+                >
+                  Clear Filter
+                </Button>
+              </div>
+            )}
             <div className="bg-white p-4 rounded-lg shadow">
           <div className="flex flex-col lg:flex-row gap-4">
             <div className="flex-1">
@@ -423,6 +483,32 @@ const TransactionsPage: React.FC = () => {
             />
           </>
         )}
+
+        {/* Salesperson Transactions Modal */}
+        <Modal
+          isOpen={salesTxModalOpen}
+          onClose={() => setSalesTxModalOpen(false)}
+          title={`Transactions - ${selectedSalesPersonName || 'Salesperson'}`}
+          size="xl"
+        >
+          <div className="space-y-4">
+            <div className="text-sm text-gray-600">
+              Period: {startDate || 'Start'} — {endDate || 'Today'}
+            </div>
+            {salesPersonTxLoading ? (
+              <div className="flex items-center justify-center h-48">Loading...</div>
+            ) : (
+              <DataTable
+                columns={columns}
+                data={Array.isArray(salesPersonTxData?.data?.data) ? salesPersonTxData.data.data : []}
+                loading={salesPersonTxLoading}
+                pagination={salesPersonTxData?.data?.pagination}
+                onPageChange={setSalesTxPage}
+                emptyMessage="No transactions found for this salesperson"
+              />
+            )}
+          </div>
+        </Modal>
 
         <Modal isOpen={viewOpen} onClose={() => setViewOpen(false)} title="Transaction Details" size="full">
           {selectedTx ? (

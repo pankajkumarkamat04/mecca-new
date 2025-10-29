@@ -68,7 +68,7 @@ const SalesChart: React.FC<SalesChartProps> = ({
             fontSize={12}
             tickLine={false}
             axisLine={false}
-            tickFormatter={(value) => `$${value.toLocaleString()}`}
+            tickFormatter={(value) => value.toLocaleString()}
           />
           <Tooltip content={<CustomTooltip />} />
           <Line 

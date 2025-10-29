@@ -637,6 +637,13 @@ const getDashboardSummary = async (req, res) => {
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
     const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
+    // Get invoice IDs that are referenced by transactions (to avoid double-counting)
+    const transactionInvoiceIds = await Transaction.distinct('invoice', {
+      type: 'sale',
+      createdAt: { $gte: thirtyDaysAgo },
+      invoice: { $exists: true, $ne: null }
+    });
+
     // Quick Stats
     const [
       totalOrders,
@@ -710,13 +717,23 @@ const getDashboardSummary = async (req, res) => {
       // Support tickets - using a placeholder since we don't have a Support model
       Promise.resolve(0),
       Invoice.countDocuments({ createdAt: { $gte: thirtyDaysAgo } }),
+      // Exclude POS transactions and invoices already represented by transactions
       Invoice.aggregate([
-        { $match: { createdAt: { $gte: thirtyDaysAgo } } },
+        { 
+          $match: { 
+            createdAt: { $gte: thirtyDaysAgo },
+            // Exclude POS transactions and invoices already represented by transactions
+            $and: [
+              { isPosTransaction: { $ne: true } },
+              { _id: { $nin: transactionInvoiceIds } }
+            ]
+          } 
+        },
         { $group: { _id: null, total: { $sum: '$total' } } }
       ])
     ]);
 
-    // Calculate comprehensive total sales
+    // Calculate comprehensive total sales (exclude invoiceRevenue if it's already counted in transactions)
     const totalSalesRevenue = 
       (orderRevenue[0]?.total || 0) + 
       (workshopRevenue[0]?.total || 0) + 
@@ -880,9 +897,25 @@ const getSalesTrendsChart = async (req, res) => {
       { $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1 } }
     ]);
 
-    // Invoice trends
+    // Get invoice IDs that are referenced by transactions (to avoid double-counting)
+    const trendsTransactionInvoiceIds = await Transaction.distinct('invoice', {
+      type: 'sale',
+      ...dateFilter,
+      invoice: { $exists: true, $ne: null }
+    });
+
+    // Invoice trends - exclude POS transactions and invoices already represented by transactions
     const invoiceTrends = await Invoice.aggregate([
-      { $match: dateFilter },
+      { 
+        $match: {
+          ...dateFilter,
+          // Exclude POS transactions and invoices already represented by transactions
+          $and: [
+            { isPosTransaction: { $ne: true } },
+            { _id: { $nin: trendsTransactionInvoiceIds } }
+          ]
+        } 
+      },
       {
         $group: {
           _id: {
@@ -947,12 +980,12 @@ const getTopProductsChart = async (req, res) => {
       };
     }
 
-    // Top products by quantity sold
+    // Top products from Orders
     const orderDateFilter = {
       orderDate: dateFilter.createdAt
     };
     
-    const topProductsByQuantity = await Order.aggregate([
+    const orderProducts = await Order.aggregate([
       { $match: orderDateFilter },
       { $unwind: '$items' },
       {
@@ -963,14 +996,17 @@ const getTopProductsChart = async (req, res) => {
           totalQuantity: { $sum: '$items.quantity' },
           totalRevenue: { $sum: { $multiply: ['$items.quantity', '$items.unitPrice'] } }
         }
-      },
-      { $sort: { totalQuantity: -1 } },
-      { $limit: parseInt(limit) }
+      }
     ]);
 
-    // Top products by revenue
-    const topProductsByRevenue = await Order.aggregate([
-      { $match: orderDateFilter },
+    // Top products from Invoices (excluding cancelled/refunded)
+    const invoiceProducts = await Invoice.aggregate([
+      { 
+        $match: {
+          ...dateFilter,
+          status: { $nin: ['cancelled', 'refunded'] }
+        } 
+      },
       { $unwind: '$items' },
       {
         $group: {
@@ -980,10 +1016,54 @@ const getTopProductsChart = async (req, res) => {
           totalQuantity: { $sum: '$items.quantity' },
           totalRevenue: { $sum: { $multiply: ['$items.quantity', '$items.unitPrice'] } }
         }
-      },
-      { $sort: { totalRevenue: -1 } },
-      { $limit: parseInt(limit) }
+      }
     ]);
+
+    // Combine and aggregate products from both Orders and Invoices
+    const combinedProducts = {};
+
+    // Add order products
+    orderProducts.forEach(product => {
+      const productId = product._id?.toString() || String(product._id);
+      if (combinedProducts[productId]) {
+        combinedProducts[productId].totalQuantity += product.totalQuantity || 0;
+        combinedProducts[productId].totalRevenue += product.totalRevenue || 0;
+      } else {
+        combinedProducts[productId] = {
+          _id: product._id,
+          name: product.name,
+          sku: product.sku,
+          totalQuantity: product.totalQuantity || 0,
+          totalRevenue: product.totalRevenue || 0
+        };
+      }
+    });
+
+    // Add invoice products
+    invoiceProducts.forEach(product => {
+      const productId = product._id?.toString() || String(product._id);
+      if (combinedProducts[productId]) {
+        combinedProducts[productId].totalQuantity += product.totalQuantity || 0;
+        combinedProducts[productId].totalRevenue += product.totalRevenue || 0;
+      } else {
+        combinedProducts[productId] = {
+          _id: product._id,
+          name: product.name,
+          sku: product.sku,
+          totalQuantity: product.totalQuantity || 0,
+          totalRevenue: product.totalRevenue || 0
+        };
+      }
+    });
+
+    // Convert to array and sort
+    const topProductsByQuantity = Object.values(combinedProducts)
+      .sort((a, b) => (b.totalQuantity || 0) - (a.totalQuantity || 0))
+      .slice(0, parseInt(limit));
+
+    const topProductsByRevenue = Object.values(combinedProducts)
+      .sort((a, b) => (b.totalRevenue || 0) - (a.totalRevenue || 0))
+      .slice(0, parseInt(limit));
 
     res.json({
       success: true,
@@ -1644,25 +1724,28 @@ const getSalesReport = async (req, res) => {
     // Get data from all sources
     const [transactions, invoices, orders, workshopJobs] = await Promise.all([
       // Transactions (POS and other financial transactions)
+      // Only get transactions that are sales and posted
       Transaction.find({
         ...baseFilter,
-        date: dateFilter
+        date: dateFilter,
+        type: 'sale',
+        status: 'posted'
       })
-        .populate('customer', 'firstName lastName')
-        .populate('supplier', 'name')
-        .populate('invoice', 'invoiceNumber')
-        .populate('createdBy', 'firstName lastName')
-        .sort({ date: -1 }),
+      .populate('customer', 'firstName lastName')
+      .populate('supplier', 'name')
+      .populate('invoice', 'invoiceNumber')
+      .populate('createdBy', 'firstName lastName')
+      .sort({ date: -1 }),
 
       // Invoices (regular sales invoices)
       Invoice.find({
         ...baseFilter,
         invoiceDate: dateFilter
       })
-        .populate('customer', 'firstName lastName')
-        .populate('salesPerson', 'firstName lastName')
-        .populate('workshopJob', 'jobNumber')
-        .sort({ invoiceDate: -1 }),
+      .populate('customer', 'firstName lastName')
+      .populate('salesPerson', 'firstName lastName')
+      .populate('workshopJob', 'jobNumber')
+      .sort({ invoiceDate: -1 }),
 
       // Orders (regular orders)
       Order.find({
@@ -1686,34 +1769,67 @@ const getSalesReport = async (req, res) => {
     // Format all data into a unified structure
     const allSalesData = [];
 
+    // Collect invoice IDs that are referenced by transactions (to avoid double-counting)
+    const transactionInvoiceIds = new Set();
+    transactions.forEach(transaction => {
+      if (transaction.invoice) {
+        // Handle both ObjectId and populated invoice
+        const invoiceId = transaction.invoice._id ? transaction.invoice._id.toString() : transaction.invoice.toString();
+        transactionInvoiceIds.add(invoiceId);
+      }
+    });
+
     // Add transactions
     transactions.forEach(transaction => {
+      // For POS transactions that are fully paid, balance should be 0
+      const transactionPaid = transaction.paid || 0;
+      const transactionAmount = transaction.amount || 0;
+      const isFullyPaid = transactionPaid >= transactionAmount;
+      
+      // Determine source type based on transaction metadata
+      // If transaction is linked to an invoice, it represents either POS or regular invoice sale
+      const isInvoiceTransaction = !!transaction.invoice;
+      const isPosTransaction = transaction.metadata?.posTransaction || false;
+      
+      // Use invoice number as reference if available
+      const invoiceNumber = transaction.invoice?.invoiceNumber || transaction.reference || transaction.transactionNumber;
+      
       allSalesData.push({
         _id: transaction._id,
         source: 'transaction',
-        sourceType: 'POS/Financial',
+        // If transaction is linked to an invoice, check if it's POS or regular invoice
+        sourceType: isPosTransaction ? 'POS/Financial' : (isInvoiceTransaction ? 'Invoice' : 'POS/Financial'),
         date: transaction.date,
         customer: transaction.customer ? 
           `${transaction.customer.firstName || ''} ${transaction.customer.lastName || ''}`.trim() : 
           (transaction.supplier ? transaction.supplier.name : 'N/A'),
         type: transaction.type,
-        total: transaction.amount,
+        total: transactionAmount,
         tax: 0, // Will be calculated from entries if needed
         discount: 0, // Will be calculated from entries if needed
-        grandTotal: transaction.amount,
-        paid: transaction.paid || 0,
-        balance: transaction.amount - (transaction.paid || 0),
+        grandTotal: transactionAmount,
+        paid: transactionPaid,
+        balance: isFullyPaid ? 0 : Math.max(0, transactionAmount - transactionPaid),
         status: transaction.status,
-        reference: transaction.reference || transaction.transactionNumber,
-        invoiceNumber: transaction.invoice?.invoiceNumber,
+        reference: invoiceNumber,
+        invoiceNumber: isInvoiceTransaction ? invoiceNumber : null,
         createdBy: transaction.createdBy ? 
           `${transaction.createdBy.firstName || ''} ${transaction.createdBy.lastName || ''}`.trim() : 
           'Unknown'
       });
     });
 
-    // Add invoices
+    // Add invoices (exclude POS transactions and those linked to transactions to avoid double-counting)
     invoices.forEach(invoice => {
+      // Skip invoices that are POS transactions (already represented by transactions)
+      if (invoice.isPosTransaction) {
+        return;
+      }
+      
+      // Skip invoices that are already represented by transactions
+      if (transactionInvoiceIds.has(invoice._id.toString())) {
+        return;
+      }
       allSalesData.push({
         _id: invoice._id,
         source: 'invoice',
@@ -1801,6 +1917,21 @@ const getSalesReport = async (req, res) => {
       filteredData = allSalesData.filter(item => item.sourceType === source);
     }
 
+    // Apply client-side search filter on formatted fields (customer name, reference, etc.)
+    if (search) {
+      const searchLower = search.toLowerCase();
+      filteredData = filteredData.filter(item => {
+        return (
+          (item.customer && item.customer.toLowerCase().includes(searchLower)) ||
+          (item.reference && item.reference.toLowerCase().includes(searchLower)) ||
+          (item.invoiceNumber && item.invoiceNumber.toLowerCase().includes(searchLower)) ||
+          (item.createdBy && item.createdBy.toLowerCase().includes(searchLower)) ||
+          (item.status && item.status.toLowerCase().includes(searchLower)) ||
+          (item.type && item.type.toLowerCase().includes(searchLower))
+        );
+      });
+    }
+
     // Apply pagination
     const total = filteredData.length;
     const paginatedData = filteredData.slice(skip, skip + limit);
@@ -1814,10 +1945,10 @@ const getSalesReport = async (req, res) => {
       totalPaid: filteredData.reduce((sum, item) => sum + (item.paid || 0), 0),
       totalBalance: filteredData.reduce((sum, item) => sum + (item.balance || 0), 0),
       count: total,
-      // Source breakdown
+      // Source breakdown (exclude POS invoices and invoices linked to transactions to avoid double-counting)
       sourceBreakdown: {
         transactions: transactions.length,
-        invoices: invoices.length,
+        invoices: invoices.filter(inv => !inv.isPosTransaction && !transactionInvoiceIds.has(inv._id.toString())).length,
         orders: orders.length,
         workshopJobs: workshopJobs.length
       }
