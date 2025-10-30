@@ -598,7 +598,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
       >
         <div className="flex flex-col h-full">
           {/* Logo */}
-          <div className="flex items-center justify-center h-16 px-4 bg-gray-950 shadow-lg">
+          <div className="flex items-center justify-center h-16 px-4 bg-red-700 shadow-lg">
             {company?.logo?.url ? (
               <div className="flex items-center space-x-3">
                 <Image

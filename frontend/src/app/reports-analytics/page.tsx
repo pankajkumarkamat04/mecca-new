@@ -1276,12 +1276,12 @@ const ReportsAnalyticsPage: React.FC = () => {
                           <div className="text-sm font-medium text-gray-900">{c.totalInvoices}</div>
                         </div>
                         <div className="flex items-center justify-between mt-2">
-                          <div className="text-sm text-gray-600">Revenue (base)</div>
-                          <div className="text-sm font-medium text-gray-900">{formatCurrency(c.totalRevenueBase)}</div>
+                          <div className="text-sm text-gray-600">Revenue (local)</div>
+                          <div className="text-sm font-medium text-gray-900">{formatCurrency(c.totalRevenueLocal, c._id || 'USD')}</div>
                         </div>
                         <div className="flex items-center justify-between mt-2">
-                          <div className="text-sm text-gray-600">Paid (base)</div>
-                          <div className="text-sm font-medium text-gray-900">{formatCurrency(c.totalPaidBase)}</div>
+                          <div className="text-sm text-gray-600">Paid (local)</div>
+                          <div className="text-sm font-medium text-gray-900">{formatCurrency(c.totalPaidLocal, c._id || 'USD')}</div>
                         </div>
                       </div>
                     ))}

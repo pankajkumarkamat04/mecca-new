@@ -109,6 +109,12 @@ const createTool = async (req, res) => {
       delete toolData.specifications.powerSource;
     }
 
+    // Normalize location: allow string and map to structured object
+    if (typeof toolData.location === 'string') {
+      const val = toolData.location.trim();
+      toolData.location = val ? { storageArea: val } : undefined;
+    }
+
     const tool = new Tool(toolData);
     await tool.save();
 
@@ -160,6 +166,12 @@ const updateTool = async (req, res) => {
     // Sanitize specifications - remove empty powerSource
     if (req.body.specifications && req.body.specifications.powerSource === '') {
       delete req.body.specifications.powerSource;
+    }
+
+    // Normalize location on update as well
+    if (typeof req.body.location === 'string') {
+      const val = req.body.location.trim();
+      req.body.location = val ? { storageArea: val } : undefined;
     }
 
     Object.assign(tool, req.body);

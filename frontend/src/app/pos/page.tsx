@@ -13,6 +13,7 @@ import { posAPI, productsAPI, customersAPI, salesOutletsAPI } from '@/lib/api';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { formatCurrency } from '@/lib/utils';
 import { useSettings } from '@/contexts/SettingsContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { calculatePrice } from '@/lib/priceCalculator';
 import InvoiceReceipt from '@/components/ui/InvoiceReceipt';
 import { downloadReceipt, printReceipt } from '@/lib/receiptUtils';
@@ -44,6 +45,7 @@ interface CartItem {
 
 const POSPage: React.FC = () => {
   const { company } = useSettings();
+  const { user } = useAuth();
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -67,19 +69,39 @@ const POSPage: React.FC = () => {
 
   const queryClient = useQueryClient();
 
-  // Check for saved outlet in localStorage
+  // Determine default outlet from user profile (do not persist between sessions)
   useEffect(() => {
-    const savedOutletId = localStorage.getItem('selectedOutletId');
-    const savedOutlet = localStorage.getItem('selectedOutlet');
-    
-    if (savedOutletId && savedOutlet) {
-      setSelectedOutletId(savedOutletId);
-      setSelectedOutlet(JSON.parse(savedOutlet));
+    // Always ask unless user has an assigned outlet
+    let assigned: any = undefined;
+    if (user) {
+      assigned = (user as any)?.salesOutlet || (user as any)?.assignedSalesOutlet || (user as any)?.preferences?.defaultSalesOutlet;
+    }
+    if (assigned) {
+      // Accept id string or object with _id/outletCode/name
+      if (typeof assigned === 'string') {
+        setSelectedOutletId(assigned);
+        setShowOutletModal(false);
+      } else if (typeof assigned === 'object') {
+        const maybeId = assigned._id || assigned.id;
+        if (maybeId) {
+          setSelectedOutletId(String(maybeId));
+        }
+        setSelectedOutlet(assigned);
+        setShowOutletModal(false);
+      } else {
+        setShowOutletModal(true);
+      }
     } else {
-      // Show outlet selection modal if not set
       setShowOutletModal(true);
     }
-  }, []);
+  }, [user]);
+
+  // Fetch active outlets for selector (no auto-select; we show modal unless user assigned)
+  useQuery({
+    queryKey: ['active-outlets'],
+    queryFn: () => salesOutletsAPI.getActiveOutlets(),
+    staleTime: 5 * 60 * 1000,
+  });
 
   // Update time every second
   useEffect(() => {
@@ -463,11 +485,6 @@ const POSPage: React.FC = () => {
   const handleOutletSelect = (outletId: string, outlet?: any) => {
     setSelectedOutletId(outletId);
     setSelectedOutlet(outlet);
-    // Save to localStorage
-    localStorage.setItem('selectedOutletId', outletId);
-    if (outlet) {
-      localStorage.setItem('selectedOutlet', JSON.stringify(outlet));
-    }
     setShowOutletModal(false);
     toast.success(`Outlet selected: ${outlet?.name || outletId}`);
   };

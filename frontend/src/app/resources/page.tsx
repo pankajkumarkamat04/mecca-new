@@ -367,7 +367,13 @@ const ToolManagement: React.FC = () => {
       label: 'Location',
       render: (tool: any) => (
         <span className="text-sm text-gray-600">
-          {tool.location || 'Not specified'}
+          {(() => {
+            const loc = tool.location;
+            if (!loc) return 'Not specified';
+            if (typeof loc === 'string') return loc;
+            const parts = [loc.storageArea, loc.shelf, loc.bin].filter(Boolean);
+            return parts.length ? parts.join(' / ') : 'Not specified';
+          })()}
         </span>
       )
     },

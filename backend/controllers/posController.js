@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Invoice = require('../models/Invoice');
 const Product = require('../models/Product');
 const Customer = require('../models/Customer');
@@ -224,15 +225,37 @@ const createTransaction = async (req, res) => {
       });
     }
 
-    // Validate sales outlet if provided
+    // Validate/resolve sales outlet if provided (accepts ObjectId, outletCode, or name)
     if (transactionData.salesOutlet) {
-      const outlet = await SalesOutlet.findById(transactionData.salesOutlet);
-      if (!outlet) {
-        return res.status(400).json({
-          success: false,
-          message: 'Invalid sales outlet'
-        });
+      let outlet = null;
+      const param = transactionData.salesOutlet;
+      // Accept: ObjectId string, full object with _id, or code/name
+      if (typeof param === 'object' && param !== null) {
+        if (param._id && mongoose.Types.ObjectId.isValid(String(param._id))) {
+          outlet = await SalesOutlet.findById(String(param._id));
+        }
+        if (!outlet && param.outletCode) {
+          outlet = await SalesOutlet.findOne({ outletCode: String(param.outletCode).toUpperCase() });
+        }
+        if (!outlet && param.name) {
+          outlet = await SalesOutlet.findOne({ name: String(param.name) });
+        }
+      } else if (typeof param === 'string') {
+        const trimmed = param.trim();
+        if (mongoose.Types.ObjectId.isValid(trimmed)) {
+          outlet = await SalesOutlet.findById(trimmed);
+        }
+        if (!outlet) {
+          outlet = await SalesOutlet.findOne({ $or: [
+            { outletCode: trimmed.toUpperCase() },
+            { name: trimmed }
+          ]});
+        }
       }
+      if (!outlet) {
+        return res.status(400).json({ success: false, message: 'Invalid sales outlet' });
+      }
+      transactionData.salesOutlet = outlet._id;
     }
 
     // Create invoice with computed totals (no due date for POS transactions)

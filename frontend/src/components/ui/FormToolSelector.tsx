@@ -81,6 +81,12 @@ const FormToolSelector: React.FC<FormToolSelectorProps> = ({
     }
   };
 
+  const formatLocation = (loc: any) => {
+    if (!loc) return '';
+    const parts = [loc.storageArea, loc.shelf, loc.bin].filter(Boolean);
+    return parts.join(' / ');
+  };
+
   return (
     <div className={`relative ${className}`}>
       {/* Selected Tool Display */}
@@ -105,7 +111,7 @@ const FormToolSelector: React.FC<FormToolSelectorProps> = ({
                 Condition: <span className={getConditionColor(selectedTool.condition)}>
                   {selectedTool.condition}
                 </span>
-                {selectedTool.location && ` • Location: ${selectedTool.location}`}
+                {selectedTool.location && ` • Location: ${formatLocation(selectedTool.location)}`}
               </div>
               <div className="text-sm text-gray-600">
                 Status: <span className={selectedTool.availability?.isAvailable ? 'text-green-600' : 'text-red-600'}>
@@ -181,7 +187,7 @@ const FormToolSelector: React.FC<FormToolSelectorProps> = ({
                       Condition: <span className={getConditionColor(tool.condition)}>
                         {tool.condition}
                       </span>
-                      {tool.location && ` • Location: ${tool.location}`}
+                      {tool.location && ` • Location: ${formatLocation(tool.location)}`}
                     </div>
                     <div className="text-sm text-gray-600">
                       Status: <span className={tool.availability?.isAvailable ? 'text-green-600' : 'text-red-600'}>

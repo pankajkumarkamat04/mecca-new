@@ -1206,14 +1206,19 @@ const getSalesByCurrency = async (req, res) => {
     } : {};
 
     // Aggregate from invoices because invoices store currency info
+    // Include sums in local/display currency (using each invoice's exchange rate)
     const currencyBreakdown = await Invoice.aggregate([
       { $match: { ...dateFilter, type: 'sale' } },
       {
         $group: {
           _id: '$currency.displayCurrency',
           totalInvoices: { $sum: 1 },
+          // Base amounts are stored in USD
           totalRevenueBase: { $sum: '$total' },
-          totalPaidBase: { $sum: '$paid' }
+          totalPaidBase: { $sum: '$paid' },
+          // Local/display currency amounts (e.g., ZWL)
+          totalRevenueLocal: { $sum: { $multiply: ['$total', { $ifNull: ['$currency.exchangeRate', 1] }] } },
+          totalPaidLocal: { $sum: { $multiply: ['$paid', { $ifNull: ['$currency.exchangeRate', 1] }] } }
         }
       },
       { $sort: { totalRevenueBase: -1 } }

@@ -114,6 +114,19 @@ const createMachine = async (req, res) => {
       }
     }
 
+    // Normalize location: allow a simple string and map to structured object
+    if (typeof cleanedData.location === 'string') {
+      const val = cleanedData.location.trim();
+      cleanedData.location = val ? { building: val } : undefined;
+    }
+
+    // Normalize serialNumber: treat empty string as undefined so sparse unique index doesn't conflict
+    if (typeof cleanedData.serialNumber === 'string' && cleanedData.serialNumber.trim() === '') {
+      delete cleanedData.serialNumber;
+    } else if (typeof cleanedData.serialNumber === 'string') {
+      cleanedData.serialNumber = cleanedData.serialNumber.trim();
+    }
+
     const machineData = {
       ...cleanedData,
       createdBy: req.user._id
@@ -165,6 +178,18 @@ const updateMachine = async (req, res) => {
         success: false,
         message: 'Machine not found'
       });
+    }
+
+    // Normalize location on update as well
+    if (typeof req.body.location === 'string') {
+      const val = req.body.location.trim();
+      req.body.location = val ? { building: val } : undefined;
+    }
+
+    // Normalize serialNumber on update: empty string -> undefined, otherwise trim
+    if (typeof req.body.serialNumber === 'string') {
+      const sn = req.body.serialNumber.trim();
+      req.body.serialNumber = sn === '' ? undefined : sn;
     }
 
     Object.assign(machine, req.body);
