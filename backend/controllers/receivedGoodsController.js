@@ -141,11 +141,33 @@ const createReceivedGoods = async (req, res) => {
       const product = await Product.findById(orderItem.product);
       if (!product) continue;
 
-      // Validate received quantity
-      const totalReceived = orderItem.receivedQuantity + receivedItem.quantity;
-      if (totalReceived > orderItem.quantity) {
-          return res.status(400).json({
-            success: false,
+      // Validate received quantity - ensure we're working with numbers
+      const alreadyReceived = Number(orderItem.receivedQuantity) || 0;
+      const orderedQty = Number(orderItem.quantity);
+      const newReceivedQty = Number(receivedItem.quantity);
+      
+      if (isNaN(orderedQty) || isNaN(newReceivedQty) || newReceivedQty <= 0) {
+        return res.status(400).json({
+          success: false,
+          message: `Invalid quantity for ${product.name}`
+        });
+      }
+      
+      const remainingQuantity = orderedQty - alreadyReceived;
+      
+      // Check if trying to receive more than remaining
+      if (newReceivedQty > remainingQuantity) {
+        return res.status(400).json({
+          success: false,
+          message: `Received quantity exceeds ordered quantity for ${product.name}. Remaining: ${remainingQuantity}, Ordered: ${orderedQty}, Already Received: ${alreadyReceived}`
+        });
+      }
+      
+      // Double check total doesn't exceed ordered (safety check with proper number comparison)
+      const totalReceived = alreadyReceived + newReceivedQty;
+      if (totalReceived > orderedQty) {
+        return res.status(400).json({
+          success: false,
           message: `Received quantity exceeds ordered quantity for ${product.name}`
         });
       }

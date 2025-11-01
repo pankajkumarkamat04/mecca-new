@@ -1024,16 +1024,21 @@ const ReceiveItemsForm: React.FC<{
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Received Quantity
                 </label>
+                {item.receivedQuantity > 0 && (
+                  <p className="text-xs text-gray-600 mb-1">
+                    Already Received: {item.receivedQuantity}
+                  </p>
+                )}
                 <Input
                   type="number"
                   min="0"
-                  max={item.quantity}
+                  max={item.quantity - (item.receivedQuantity || 0)}
                   value={receivedItems[item._id] || 0}
                   onChange={(e) => handleQuantityChange(item._id, parseInt(e.target.value) || 0)}
                   className="w-24"
                 />
                 <p className="text-xs text-gray-500 mt-1">
-                  Max: {item.quantity}
+                  Max: {item.quantity - (item.receivedQuantity || 0)} (Remaining: {item.quantity - (item.receivedQuantity || 0)} of {item.quantity})
                 </p>
               </div>
             </div>

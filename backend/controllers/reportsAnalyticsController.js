@@ -1672,6 +1672,7 @@ const getSalesReport = async (req, res) => {
     const endDate = req.query.endDate || '';
     const status = req.query.status || '';
     const source = req.query.source || '';
+    const paymentMethod = req.query.paymentMethod || '';
     const salesOutletId = req.query.salesOutletId || '';
 
     // Build date filter
@@ -1877,7 +1878,8 @@ const getSalesReport = async (req, res) => {
       // Determine source type based on transaction metadata
       // If transaction is linked to an invoice, it represents either POS or regular invoice sale
       const isInvoiceTransaction = !!transaction.invoice;
-      const isPosTransaction = transaction.metadata?.posTransaction || false;
+      // Check both transaction metadata and linked invoice's isPosTransaction flag
+      const isPosTransaction = transaction.metadata?.posTransaction || transaction.invoice?.isPosTransaction || false;
       
       // Use invoice number as reference if available
       const invoiceNumber = transaction.invoice?.invoiceNumber || transaction.reference || transaction.transactionNumber;
@@ -1886,6 +1888,16 @@ const getSalesReport = async (req, res) => {
       const salesOutlet = transaction.invoice?.salesOutlet;
       const salesOutletName = salesOutlet?.name || salesOutlet?.outletCode || null;
       const transactionSalesOutletId = salesOutlet?._id ? salesOutlet._id.toString() : (typeof salesOutlet === 'string' ? salesOutlet : null);
+      
+      // Get payment method - from transaction, invoice payments, or metadata
+      let paymentMethod = transaction.paymentMethod || null;
+      if (!paymentMethod && transaction.invoice?.payments && Array.isArray(transaction.invoice.payments) && transaction.invoice.payments.length > 0) {
+        // Get the first payment method from invoice
+        paymentMethod = transaction.invoice.payments[0].method;
+      }
+      if (!paymentMethod && transaction.metadata?.paymentMethod) {
+        paymentMethod = transaction.metadata.paymentMethod;
+      }
       
       // Note: We already filtered at the database level, but double-check for consistency
       // (in case there are transactions without populated invoices)
@@ -1897,6 +1909,7 @@ const getSalesReport = async (req, res) => {
         _id: transaction._id,
         source: 'transaction',
         // If transaction is linked to an invoice, check if it's POS or regular invoice
+        // Priority: POS transaction flag > Invoice transaction > Default to POS/Financial
         sourceType: isPosTransaction ? 'POS/Financial' : (isInvoiceTransaction ? 'Invoice' : 'POS/Financial'),
         date: transaction.date,
         customer: transaction.customer ? 
@@ -1912,6 +1925,8 @@ const getSalesReport = async (req, res) => {
         status: isFullyPaid ? 'paid' : transaction.status,
         reference: invoiceNumber,
         invoiceNumber: isInvoiceTransaction ? invoiceNumber : null,
+        invoiceId: isInvoiceTransaction && transaction.invoice?._id ? transaction.invoice._id.toString() : null,
+        paymentMethod: paymentMethod, // Add payment method
         salesOutlet: salesOutletName,
         salesOutletId: transactionSalesOutletId,
         createdBy: transaction.createdBy ? 
@@ -1973,6 +1988,13 @@ const getSalesReport = async (req, res) => {
       // Update status for report display - show as 'paid' if fully paid
       const reportStatus = isFullyPaid ? 'paid' : invoice.status;
 
+      // Get payment method from invoice payments array
+      let invoicePaymentMethod = null;
+      if (invoice.payments && Array.isArray(invoice.payments) && invoice.payments.length > 0) {
+        // Get the first payment method (most recent)
+        invoicePaymentMethod = invoice.payments[0].method;
+      }
+
       allSalesData.push({
         _id: invoice._id,
         source: 'invoice',
@@ -1991,6 +2013,8 @@ const getSalesReport = async (req, res) => {
         status: reportStatus,
         reference: invoice.invoiceNumber,
         invoiceNumber: invoice.invoiceNumber,
+        invoiceId: invoice._id.toString(), // Always include invoiceId for standalone invoices
+        paymentMethod: invoicePaymentMethod, // Add payment method
         salesOutlet: invoiceSalesOutletName,
         salesOutletId: invoiceSalesOutletId,
         createdBy: invoice.salesPerson ? 
@@ -2059,7 +2083,32 @@ const getSalesReport = async (req, res) => {
     // Apply source filter if specified
     let filteredData = allSalesData;
     if (source && source !== 'all') {
-      filteredData = allSalesData.filter(item => item.sourceType === source);
+      filteredData = filteredData.filter(item => item.sourceType === source);
+    }
+
+    // Apply payment method filter if specified
+    if (paymentMethod && paymentMethod !== 'all') {
+      // Normalize payment method values for comparison
+      const normalizePaymentMethod = (method) => {
+        if (!method) return null;
+        // Map common variations
+        const methodMap = {
+          'cash': 'cash',
+          'card': 'card',
+          'credit_card': 'card',
+          'debit_card': 'card',
+          'bank_transfer': 'bank_transfer',
+          'stripe': 'card',
+          'paypal': 'card',
+        };
+        return methodMap[method.toLowerCase()] || method.toLowerCase();
+      };
+
+      const normalizedFilterMethod = normalizePaymentMethod(paymentMethod);
+      filteredData = filteredData.filter(item => {
+        const itemMethod = normalizePaymentMethod(item.paymentMethod);
+        return itemMethod === normalizedFilterMethod;
+      });
     }
 
     // Apply client-side search filter on formatted fields (customer name, reference, etc.)

@@ -32,6 +32,7 @@ import {
   ArrowLeftIcon,
   MagnifyingGlassIcon,
   BuildingStorefrontIcon,
+  BuildingOfficeIcon,
 } from '@heroicons/react/24/outline';
 
 interface CartItem {
@@ -935,7 +936,7 @@ const POSPage: React.FC = () => {
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Payment Method
             </label>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-3 gap-2">
               <button
                 onClick={() => setPaymentMethod('cash')}
                 className={`p-3 rounded-lg border text-center ${
@@ -957,6 +958,17 @@ const POSPage: React.FC = () => {
               >
                 <CreditCardIcon className="h-6 w-6 mx-auto mb-1" />
                 <span className="text-sm">Card</span>
+              </button>
+              <button
+                onClick={() => setPaymentMethod('bank_transfer')}
+                className={`p-3 rounded-lg border text-center ${
+                  paymentMethod === 'bank_transfer'
+                    ? 'border-blue-500 bg-blue-50 text-blue-700'
+                    : 'border-gray-300 text-gray-700'
+                }`}
+              >
+                <BuildingOfficeIcon className="h-6 w-6 mx-auto mb-1" />
+                <span className="text-sm">Bank Transfer</span>
               </button>
             </div>
           </div>
