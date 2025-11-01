@@ -2,10 +2,11 @@
 
 import React, { useState } from 'react';
 import toast from 'react-hot-toast';
-import Layout from '@/components/layout/Layout';
+import ConditionalLayout from '@/components/layout/ConditionalLayout';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { purchaseOrderAPI, warehouseAPI } from '@/lib/api';
 import { calculatePrice } from '@/lib/priceCalculator';
+import { useAuth } from '@/contexts/AuthContext';
 import PriceSummary from '@/components/ui/PriceSummary';
 import Button from '@/components/ui/Button';
 import DataTable from '@/components/ui/DataTable';
@@ -50,6 +51,7 @@ interface PurchaseOrder {
 }
 
 const PurchaseOrdersPage: React.FC = () => {
+  const { hasPermission } = useAuth();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -61,6 +63,11 @@ const PurchaseOrdersPage: React.FC = () => {
   const [pageSize, setPageSize] = useState(10);
 
   const queryClient = useQueryClient();
+  
+  // Permission checks
+  const canCreate = hasPermission('purchaseOrders', 'create');
+  const canUpdate = hasPermission('purchaseOrders', 'update');
+  const canDelete = hasPermission('purchaseOrders', 'delete');
 
   // Fetch purchase orders
   const { data: ordersData, isLoading } = useQuery({
@@ -221,7 +228,7 @@ const PurchaseOrdersPage: React.FC = () => {
           >
             <EyeIcon className="h-4 w-4" />
           </button>
-          {row.status === 'draft' && (
+          {row.status === 'draft' && canUpdate && (
             <button
               onClick={() => {
                 setSelectedOrder(row);
@@ -271,7 +278,7 @@ const PurchaseOrdersPage: React.FC = () => {
               <ArrowPathIcon className="h-4 w-4" />
             </button>
           )}
-          {!['completed', 'cancelled'].includes(row.status) && (
+          {!['completed', 'cancelled'].includes(row.status) && canDelete && (
             <button
               onClick={() => {
                 if (confirm('Are you sure you want to delete this purchase order?')) {
@@ -300,7 +307,7 @@ const PurchaseOrdersPage: React.FC = () => {
   };
 
   return (
-    <Layout title="Purchase Orders">
+    <ConditionalLayout title="Purchase Orders">
       <div className="space-y-6">
       {/* Header */}
       <div className="flex justify-between items-center">
@@ -308,13 +315,15 @@ const PurchaseOrdersPage: React.FC = () => {
           <h1 className="text-2xl font-bold text-gray-900">Purchase Orders</h1>
           <p className="text-gray-600">Manage your supplier purchase orders</p>
         </div>
-        <Button
-          onClick={() => setShowCreateModal(true)}
-          className="flex items-center"
-        >
-          <PlusIcon className="h-5 w-5 mr-2" />
-          Create Purchase Order
-        </Button>
+        {canCreate && (
+          <Button
+            onClick={() => setShowCreateModal(true)}
+            className="flex items-center"
+          >
+            <PlusIcon className="h-5 w-5 mr-2" />
+            Create Purchase Order
+          </Button>
+        )}
       </div>
 
       {/* Stats Cards */}
@@ -477,7 +486,7 @@ const PurchaseOrdersPage: React.FC = () => {
         )}
       </Modal>
       </div>
-    </Layout>
+    </ConditionalLayout>
   );
 };
 

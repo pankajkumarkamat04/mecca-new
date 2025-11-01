@@ -2,7 +2,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import Layout from '@/components/layout/Layout';
+import ConditionalLayout from '@/components/layout/ConditionalLayout';
 import Button from '@/components/ui/Button';
 import DataTable from '@/components/ui/DataTable';
 import Modal from '@/components/ui/Modal';
@@ -40,6 +40,7 @@ import {
   XMarkIcon,
   ArrowRightIcon,
   ArrowLeftIcon,
+  PaperAirplaneIcon,
 } from '@heroicons/react/24/outline';
 
 // Stock Taking Modal Component
@@ -177,15 +178,34 @@ const StockTakingModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
         )}
       </div>
 
-      <div className="flex justify-end gap-2">
-        <Button variant="outline" onClick={onClose}>Cancel</Button>
-        <Button 
-          onClick={handleSubmit} 
-          loading={stockTakingMutation.isPending}
-          disabled={!warehouseId || stockItems.length === 0}
-        >
-          Complete Stock Taking
-        </Button>
+      <div className="flex justify-between gap-2">
+        <div>
+          {stockItems.length > 0 && (
+            <Button 
+              variant="outline"
+              onClick={() => {
+                // Forward to management functionality
+                if (confirm('Forward stock take results to management?')) {
+                  // TODO: Implement forward to management API call
+                  toast.success('Stock take results will be forwarded to management upon completion');
+                }
+              }}
+              leftIcon={<PaperAirplaneIcon className="h-4 w-4" />}
+            >
+              Forward to Management
+            </Button>
+          )}
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button 
+            onClick={handleSubmit} 
+            loading={stockTakingMutation.isPending}
+            disabled={!warehouseId || stockItems.length === 0}
+          >
+            Complete Stock Taking
+          </Button>
+        </div>
       </div>
     </div>
   );
@@ -1314,10 +1334,11 @@ const InventoryPage: React.FC = () => {
     { id: 'levels', name: 'Stock Levels', icon: CubeIcon },
     { id: 'movements', name: 'Stock Movements', icon: ArrowPathIcon },
     { id: 'alerts', name: 'Alerts & Monitoring', icon: ExclamationTriangleIcon },
+    { id: 'stock-taking', name: 'Stock Take', icon: ClipboardDocumentListIcon },
   ];
 
   return (
-    <Layout title="Inventory Management">
+    <ConditionalLayout title="Inventory Management">
       <div className="space-y-6">
         {/* Header */}
         <div className="flex justify-between items-center">
@@ -1885,7 +1906,7 @@ const InventoryPage: React.FC = () => {
         </Modal>
 
       </div>
-    </Layout>
+    </ConditionalLayout>
   );
 };
 

@@ -26,6 +26,7 @@ import {
   CubeIcon,
   ArchiveBoxIcon,
   WrenchScrewdriverIcon,
+  TruckIcon,
 } from '@heroicons/react/24/outline';
 
 interface DashboardData {
@@ -243,14 +244,14 @@ const WarehouseDashboardInner: React.FC<{ warehouseId: string | null }> = ({ war
                 </div>
               </Button>
               <Button
-                onClick={() => window.location.href = '/workshop'}
+                onClick={() => window.location.href = '/received-goods'}
                 className="flex items-center justify-center p-4 h-auto"
                 variant="outline"
               >
                 <div className="text-center">
-                  <WrenchScrewdriverIcon className="h-8 w-8 mx-auto mb-2 text-purple-600" />
-                  <div className="font-medium">Workshop</div>
-                  <div className="text-sm text-gray-500">Job management and tracking</div>
+                  <TruckIcon className="h-8 w-8 mx-auto mb-2 text-orange-600" />
+                  <div className="font-medium">Received Goods</div>
+                  <div className="text-sm text-gray-500">Inspect and manage deliveries</div>
                 </div>
               </Button>
             </div>
@@ -393,14 +394,14 @@ const WarehouseDashboardInner: React.FC<{ warehouseId: string | null }> = ({ war
               </div>
             </Button>
             <Button
-              onClick={() => window.location.href = '/workshop'}
+              onClick={() => window.location.href = '/received-goods'}
               className="flex items-center justify-center p-4 h-auto"
               variant="outline"
             >
               <div className="text-center">
-                <WrenchScrewdriverIcon className="h-8 w-8 mx-auto mb-2 text-purple-600" />
-                <div className="font-medium">Workshop</div>
-                <div className="text-sm text-gray-500">Job management and tracking</div>
+                <TruckIcon className="h-8 w-8 mx-auto mb-2 text-orange-600" />
+                <div className="font-medium">Received Goods</div>
+                <div className="text-sm text-gray-500">Inspect and manage deliveries</div>
               </div>
             </Button>
           </div>

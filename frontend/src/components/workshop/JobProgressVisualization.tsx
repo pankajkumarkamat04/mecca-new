@@ -245,8 +245,21 @@ const OverviewView: React.FC<{ job: any; analytics: any }> = ({ job, analytics }
           </div>
           <div className="flex justify-between">
             <span className="text-sm text-gray-600">Deadline:</span>
-            <span className="text-sm text-gray-900">
-              {job.deadline ? formatDate(job.deadline) : 'Not set'}
+            <span className={`text-sm ${job.isOverdue ? 'text-red-600 font-medium' : 'text-gray-900'}`}>
+              {(() => {
+                // Calculate or get deadline display
+                let deadlineDisplay = job.deadline;
+                if (!deadlineDisplay && job.scheduled?.start && job.totalEstimatedDuration) {
+                  const startTime = new Date(job.scheduled.start);
+                  deadlineDisplay = new Date(startTime.getTime() + (job.totalEstimatedDuration * 60 * 60 * 1000));
+                } else if (!deadlineDisplay && job.scheduled?.end) {
+                  deadlineDisplay = job.scheduled.end;
+                }
+                return deadlineDisplay ? formatDate(deadlineDisplay) : 'Not set';
+              })()}
+              {job.isOverdue && (
+                <ExclamationTriangleIcon className="inline w-4 h-4 ml-1 text-red-600" />
+              )}
             </span>
           </div>
         </div>

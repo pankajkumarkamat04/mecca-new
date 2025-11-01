@@ -70,6 +70,16 @@ const getWarehouseSidebarItems = (userRole: string): SidebarItem[] => {
       icon: ArchiveBoxIcon,
     },
     {
+      name: 'Suppliers',
+      href: '/suppliers',
+      icon: TruckIcon,
+    },
+    {
+      name: 'Purchase Orders',
+      href: '/purchase-orders',
+      icon: ClipboardDocumentListIcon,
+    },
+    {
       name: 'Orders',
       href: '/warehouse-portal/orders',
       icon: ShoppingBagIcon,
@@ -80,9 +90,9 @@ const getWarehouseSidebarItems = (userRole: string): SidebarItem[] => {
       icon: TruckIcon,
     },
     {
-      name: 'Workshop',
-      href: '/workshop',
-      icon: WrenchScrewdriverIcon,
+      name: 'Reports & Analytics',
+      href: '/warehouse-portal/reports-analytics',
+      icon: ChartBarIcon,
     },
   ];
 
@@ -96,11 +106,6 @@ const getWarehouseSidebarItems = (userRole: string): SidebarItem[] => {
           name: 'Staff',
           href: '/warehouse-portal/employees',
           icon: UserGroupIcon,
-        },
-        {
-          name: 'Settings',
-          href: '/warehouse-portal/settings',
-          icon: CogIcon,
         },
       ],
     });
@@ -186,22 +191,73 @@ const getSalesSidebarItems = (userRole: string): SidebarItem[] => {
 
 // Workshop-specific sidebar configuration
 const getWorkshopSidebarItems = (userRole: string): SidebarItem[] => {
-  return [
+  const items: SidebarItem[] = [
     {
       name: 'Workshop',
       href: '/workshop',
       icon: WrenchScrewdriverIcon,
     },
-    // {
-    //   name: 'Service Templates',
-    //   href: '/service-templates',
-    //   icon: ClipboardDocumentCheckIcon,
-    // },
     {
       name: 'Customers',
       href: '/customers',
       icon: UserGroupIcon,
     },
+  ];
+
+  // Add warehouse management features for warehouse managers
+  if (userRole === 'warehouse_manager') {
+    items.push({
+      name: 'Warehouse Management',
+      href: '#',
+      icon: ArchiveBoxIcon,
+      children: [
+        {
+          name: 'Products',
+          href: '/products',
+          icon: CubeIcon,
+          permission: { module: 'products', action: 'read' },
+        },
+        {
+          name: 'Inventory',
+          href: '/inventory',
+          icon: ArchiveBoxIcon,
+          permission: { module: 'inventory', action: 'read' },
+        },
+        {
+          name: 'Suppliers',
+          href: '/suppliers',
+          icon: TruckIcon,
+          permission: { module: 'suppliers', action: 'read' },
+        },
+        {
+          name: 'Purchase Orders',
+          href: '/purchase-orders',
+          icon: ClipboardDocumentListIcon,
+          permission: { module: 'purchaseOrders', action: 'read' },
+        },
+        {
+          name: 'Received Goods',
+          href: '/received-goods',
+          icon: TruckIcon,
+          permission: { module: 'receivedGoods', action: 'read' },
+        },
+        {
+          name: 'Stock Take',
+          href: '/inventory',
+          icon: ClipboardDocumentCheckIcon,
+          permission: { module: 'stockTaking', action: 'read' },
+        },
+        {
+          name: 'Reports & Analytics',
+          href: '/reports-analytics',
+          icon: ChartBarIcon,
+          permission: { module: 'reportsAnalytics', action: 'read' },
+        },
+      ],
+    });
+  }
+
+  items.push(
     {
       name: 'Support',
       href: '/support',
@@ -211,8 +267,10 @@ const getWorkshopSidebarItems = (userRole: string): SidebarItem[] => {
       name: 'Profile',
       href: '/profile',
       icon: UserIcon,
-    },
-  ];
+    }
+  );
+
+  return items;
 };
 
 // Role-based sidebar configuration

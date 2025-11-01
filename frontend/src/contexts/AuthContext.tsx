@@ -278,19 +278,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         purchaseOrders: ['read'],
       },
       warehouse_manager: {
-        // Only warehouse-related permissions
+        // Full warehouse management permissions
         inventory: ['read', 'create', 'update', 'delete'],
-        orders: ['read', 'update'],
+        products: ['read', 'create', 'update', 'delete'], // Can add and manage products
+        orders: ['read', 'create', 'update', 'delete'], // Can create and manage orders
         deliveries: ['read', 'create', 'update', 'delete'],
-        warehouses: ['read'],
+        warehouses: ['read', 'create', 'update', 'delete'],
         stockAlerts: ['read', 'create', 'update', 'delete'],
-        purchaseOrders: ['read', 'create', 'update'],
+        purchaseOrders: ['read', 'create', 'update', 'delete'], // Can create purchase orders
         receivedGoods: ['read', 'create', 'update', 'delete'],
+        // Reports with download capability
+        reports: ['read', 'create'],
+        reportsAnalytics: ['read', 'create'],
+        // Stock take functionality
+        stockTaking: ['read', 'create', 'update', 'delete'],
         // Basic user permissions
         users: ['read'],
         // Customer creation allowed for all roles
         customers: ['read', 'create', 'update'],
-        reportsAnalytics: ['read'],
+        suppliers: ['read', 'create', 'update'], // Need suppliers for purchase orders
       },
       warehouse_employee: {
         // Only warehouse-related permissions

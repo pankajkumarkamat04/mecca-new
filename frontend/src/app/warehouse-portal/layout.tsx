@@ -111,6 +111,18 @@ const WarehousePortalLayoutInner: React.FC<{ children: React.ReactNode }> = ({ c
       current: pathname === '/inventory',
     },
     {
+      name: 'Suppliers',
+      href: '/suppliers',
+      icon: TruckIcon,
+      current: pathname === '/suppliers',
+    },
+    {
+      name: 'Purchase Orders',
+      href: '/purchase-orders',
+      icon: ClipboardDocumentListIcon,
+      current: pathname === '/purchase-orders',
+    },
+    {
       name: 'Orders',
       href: '/warehouse-portal/orders',
       icon: ClipboardDocumentListIcon,
@@ -123,28 +135,16 @@ const WarehousePortalLayoutInner: React.FC<{ children: React.ReactNode }> = ({ c
       current: pathname === '/received-goods',
     },
     {
-      name: 'Workshop',
-      href: '/workshop',
-      icon: WrenchScrewdriverIcon,
-      current: pathname === '/workshop',
-    },
-    {
       name: 'Reports & Analytics',
-      href: '/reports-analytics',
+      href: '/warehouse-portal/reports-analytics',
       icon: ChartBarIcon,
-      current: pathname === '/reports-analytics',
+      current: pathname === '/warehouse-portal/reports-analytics',
     },
     {
       name: 'Employees',
       href: '/warehouse-portal/employees',
       icon: UserGroupIcon,
       current: pathname === '/warehouse-portal/employees',
-    },
-    {
-      name: 'Settings',
-      href: '/warehouse-portal/settings',
-      icon: CogIcon,
-      current: pathname === '/warehouse-portal/settings',
     },
   ];
 

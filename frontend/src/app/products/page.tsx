@@ -2,7 +2,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import Layout from '@/components/layout/Layout';
+import ConditionalLayout from '@/components/layout/ConditionalLayout';
 import Button from '@/components/ui/Button';
 import DataTable from '@/components/ui/DataTable';
 import Modal from '@/components/ui/Modal';
@@ -10,6 +10,7 @@ import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
 import { productsAPI, categoriesAPI, warehouseAPI } from '@/lib/api';
 import { formatCurrency, formatNumber, getStatusColor } from '@/lib/utils';
+import { useAuth } from '@/contexts/AuthContext';
 import { Product } from '@/types';
 import toast from 'react-hot-toast';
 import { z } from 'zod';
@@ -24,6 +25,7 @@ import {
 } from '@heroicons/react/24/outline';
 
 const ProductsPage: React.FC = () => {
+  const { hasPermission } = useAuth();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
@@ -35,6 +37,11 @@ const ProductsPage: React.FC = () => {
   const [isManageCategoriesOpen, setIsManageCategoriesOpen] = useState(false);
 
   const queryClient = useQueryClient();
+  
+  // Permission checks
+  const canCreate = hasPermission('products', 'create');
+  const canUpdate = hasPermission('products', 'update');
+  const canDelete = hasPermission('products', 'delete');
 
   // Fetch products
   const { data: productsData, isPending } = useQuery({
@@ -243,20 +250,24 @@ const ProductsPage: React.FC = () => {
           >
             <EyeIcon className="h-4 w-4" />
           </button>
-          <button
-            onClick={() => handleEditProduct(row)}
-            className="text-gray-600 hover:text-gray-900"
-            title="Edit Product"
-          >
-            <PencilIcon className="h-4 w-4" />
-          </button>
-          <button
-            onClick={() => handleDeleteProduct(row)}
-            className="text-red-600 hover:text-red-900"
-            title="Delete Product"
-          >
-            <TrashIcon className="h-4 w-4" />
-          </button>
+          {canUpdate && (
+            <button
+              onClick={() => handleEditProduct(row)}
+              className="text-gray-600 hover:text-gray-900"
+              title="Edit Product"
+            >
+              <PencilIcon className="h-4 w-4" />
+            </button>
+          )}
+          {canDelete && (
+            <button
+              onClick={() => handleDeleteProduct(row)}
+              className="text-red-600 hover:text-red-900"
+              title="Delete Product"
+            >
+              <TrashIcon className="h-4 w-4" />
+            </button>
+          )}
         </div>
       ),
     },
@@ -314,7 +325,7 @@ const ProductsPage: React.FC = () => {
   ];
 
   return (
-    <Layout title="Products">
+    <ConditionalLayout title="Products">
       <div className="space-y-6">
         {/* Header */}
         <div className="flex justify-between items-center">
@@ -329,12 +340,14 @@ const ProductsPage: React.FC = () => {
             >
               Manage Categories
             </Button>
-            <Button
-              onClick={() => setIsCreateModalOpen(true)}
-              leftIcon={<PlusIcon className="h-4 w-4" />}
-            >
-              Add Product
-            </Button>
+            {canCreate && (
+              <Button
+                onClick={() => setIsCreateModalOpen(true)}
+                leftIcon={<PlusIcon className="h-4 w-4" />}
+              >
+                Add Product
+              </Button>
+            )}
           </div>
         </div>
 
@@ -973,7 +986,7 @@ const ProductsPage: React.FC = () => {
           )}
         </Modal>
       </div>
-    </Layout>
+    </ConditionalLayout>
   );
 };
 

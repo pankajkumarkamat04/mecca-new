@@ -2,7 +2,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import Layout from '@/components/layout/Layout';
+import ConditionalLayout from '@/components/layout/ConditionalLayout';
 import Button from '@/components/ui/Button';
 import DataTable from '@/components/ui/DataTable';
 import Modal from '@/components/ui/Modal';
@@ -10,6 +10,7 @@ import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
 import { suppliersAPI } from '@/lib/api';
 import { formatCurrency, formatDate } from '@/lib/utils';
+import { useAuth } from '@/contexts/AuthContext';
 import { Supplier } from '@/types';
 import toast from 'react-hot-toast';
 import { z } from 'zod';
@@ -26,6 +27,7 @@ import {
 } from '@heroicons/react/24/outline';
 
 const SuppliersPage: React.FC = () => {
+  const { hasPermission } = useAuth();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
@@ -36,6 +38,11 @@ const SuppliersPage: React.FC = () => {
   const [filterStatus, setFilterStatus] = useState('all');
 
   const queryClient = useQueryClient();
+  
+  // Permission checks
+  const canCreate = hasPermission('suppliers', 'create');
+  const canUpdate = hasPermission('suppliers', 'update');
+  const canDelete = hasPermission('suppliers', 'delete');
 
   // Fetch suppliers
   const { data: suppliersData, isPending } = useQuery({
@@ -205,20 +212,24 @@ const SuppliersPage: React.FC = () => {
           >
             <EyeIcon className="h-4 w-4" />
           </button>
-          <button
-            onClick={() => handleEditSupplier(row)}
-            className="text-gray-600 hover:text-gray-900"
-            title="Edit Supplier"
-          >
-            <PencilIcon className="h-4 w-4" />
-          </button>
-          <button
-            onClick={() => handleDeleteSupplier(row)}
-            className="text-red-600 hover:text-red-900"
-            title="Delete Supplier"
-          >
-            <TrashIcon className="h-4 w-4" />
-          </button>
+          {canUpdate && (
+            <button
+              onClick={() => handleEditSupplier(row)}
+              className="text-gray-600 hover:text-gray-900"
+              title="Edit Supplier"
+            >
+              <PencilIcon className="h-4 w-4" />
+            </button>
+          )}
+          {canDelete && (
+            <button
+              onClick={() => handleDeleteSupplier(row)}
+              className="text-red-600 hover:text-red-900"
+              title="Delete Supplier"
+            >
+              <TrashIcon className="h-4 w-4" />
+            </button>
+          )}
         </div>
       ),
     },
@@ -273,7 +284,7 @@ const SuppliersPage: React.FC = () => {
   }), []);
 
   return (
-    <Layout title="Suppliers">
+    <ConditionalLayout title="Suppliers">
       <div className="space-y-6">
         {/* Header */}
         <div className="flex justify-between items-center">
@@ -281,12 +292,14 @@ const SuppliersPage: React.FC = () => {
             <h1 className="text-2xl font-bold text-gray-900">Suppliers</h1>
             <p className="text-gray-600">Manage supplier relationships and purchase orders</p>
           </div>
-          <Button
-            onClick={() => setIsCreateModalOpen(true)}
-            leftIcon={<TruckIcon className="h-4 w-4" />}
-          >
-            Add Supplier
-          </Button>
+          {canCreate && (
+            <Button
+              onClick={() => setIsCreateModalOpen(true)}
+              leftIcon={<TruckIcon className="h-4 w-4" />}
+            >
+              Add Supplier
+            </Button>
+          )}
         </div>
 
         {/* Search and Filters */}
@@ -725,7 +738,7 @@ const SuppliersPage: React.FC = () => {
           )}
         </Modal>
       </div>
-    </Layout>
+    </ConditionalLayout>
   );
 };
 

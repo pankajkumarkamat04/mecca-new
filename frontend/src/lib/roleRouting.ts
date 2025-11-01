@@ -40,12 +40,44 @@ export const ROLE_ROUTES: Record<UserRole, RoleRoute> = {
   warehouse_manager: {
     role: 'warehouse_manager',
     defaultPath: '/warehouse-portal',
-    allowedPaths: ['/warehouse-portal', '/warehouse-portal/dashboard', '/warehouse-portal/orders', '/warehouse-portal/inventory', '/warehouse-portal/employees', '/warehouse-portal/deliveries', '/warehouse-portal/settings', '/inventory', '/deliveries', '/received-goods', '/profile']
+    allowedPaths: [
+      '/warehouse-portal', 
+      '/warehouse-portal/dashboard', 
+      '/warehouse-portal/orders', 
+      '/warehouse-portal/inventory', 
+      '/warehouse-portal/reports-analytics',
+      '/warehouse-portal/employees', 
+      '/warehouse-portal/deliveries', 
+      '/products',
+      '/suppliers',
+      '/inventory', 
+      '/purchase-orders',
+      '/received-goods',
+      '/reports-analytics',
+      '/workshop',
+      '/deliveries', 
+      '/profile'
+    ]
   },
   warehouse_employee: {
     role: 'warehouse_employee',
     defaultPath: '/warehouse-portal',
-    allowedPaths: ['/warehouse-portal', '/warehouse-portal/dashboard', '/warehouse-portal/orders', '/warehouse-portal/inventory', '/inventory', '/deliveries', '/received-goods', '/profile']
+    allowedPaths: [
+      '/warehouse-portal', 
+      '/warehouse-portal/dashboard', 
+      '/warehouse-portal/orders', 
+      '/warehouse-portal/inventory', 
+      '/warehouse-portal/reports-analytics',
+      '/products',
+      '/suppliers',
+      '/inventory', 
+      '/purchase-orders',
+      '/received-goods',
+      '/reports-analytics',
+      '/workshop',
+      '/deliveries', 
+      '/profile'
+    ]
   }
 };
 

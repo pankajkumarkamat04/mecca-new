@@ -347,7 +347,45 @@ workshopJobSchema.index({ createdBy: 1, createdAt: -1 });
 
 // Virtual fields
 workshopJobSchema.virtual('isOverdue').get(function() {
-  return this.deadline && new Date() > this.deadline && this.status !== 'completed';
+  if (this.status === 'completed' || this.status === 'cancelled') {
+    return false;
+  }
+  
+  // Calculate the actual deadline based on start time + estimated duration
+  let actualDeadline = this.deadline;
+  
+  // If no explicit deadline is set, calculate from scheduled start + estimated duration
+  if (!actualDeadline) {
+    // Calculate total estimated duration from tasks
+    const totalEstimatedDuration = this.totalEstimatedDuration || 0;
+    
+    // Determine start time - use scheduled.start if available, otherwise use createdAt
+    let startTime = null;
+    if (this.scheduled && this.scheduled.start) {
+      startTime = new Date(this.scheduled.start);
+    } else if (this.createdAt) {
+      // If no scheduled start, use creation time as start
+      startTime = new Date(this.createdAt);
+    }
+    
+    // If we have estimated duration and start time, calculate deadline
+    if (totalEstimatedDuration > 0 && startTime) {
+      // Add estimated duration in hours (convert to milliseconds)
+      actualDeadline = new Date(startTime.getTime() + (totalEstimatedDuration * 60 * 60 * 1000));
+    } else if (this.scheduled && this.scheduled.end) {
+      // Fall back to scheduled end if available
+      actualDeadline = this.scheduled.end;
+    }
+  }
+  
+  // Only check overdue if we have a valid deadline and current time has passed it
+  if (!actualDeadline) {
+    return false;
+  }
+  
+  // Compare full date/time, not just dates
+  const now = new Date();
+  return now > actualDeadline;
 });
 
 workshopJobSchema.virtual('totalEstimatedDuration').get(function() {

@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import Layout from '@/components/layout/Layout';
+import ConditionalLayout from '@/components/layout/ConditionalLayout';
 import Button from '@/components/ui/Button';
 import DataTable from '@/components/ui/DataTable';
 import Modal from '@/components/ui/Modal';
@@ -10,6 +10,7 @@ import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
 import { receivedGoodsAPI, purchaseOrderAPI } from '@/lib/api';
 import { formatCurrency, formatDate, getStatusColor } from '@/lib/utils';
+import { useAuth } from '@/contexts/AuthContext';
 import toast from 'react-hot-toast';
 import {
   PlusIcon,
@@ -21,6 +22,7 @@ import {
 } from '@heroicons/react/24/outline';
 
 const ReceivedGoodsPage: React.FC = () => {
+  const { hasPermission } = useAuth();
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [isInspectModalOpen, setIsInspectModalOpen] = useState(false);
   const [isDiscrepancyModalOpen, setIsDiscrepancyModalOpen] = useState(false);
@@ -35,6 +37,11 @@ const ReceivedGoodsPage: React.FC = () => {
   const [qualityInspectionData, setQualityInspectionData] = useState<any[]>([]);
 
   const queryClient = useQueryClient();
+  
+  // Permission checks
+  const canCreate = hasPermission('receivedGoods', 'create');
+  const canUpdate = hasPermission('receivedGoods', 'update');
+  const canDelete = hasPermission('receivedGoods', 'delete');
 
   // Initialize quality inspection data
   const initializeQualityInspectionData = (receivedGoods: any) => {
@@ -200,7 +207,7 @@ const ReceivedGoodsPage: React.FC = () => {
           >
             <EyeIcon className="h-4 w-4" />
           </Button>
-          {row.status === 'pending' && (
+          {row.status === 'pending' && canUpdate && (
             <>
               <Button
                 variant="outline"
@@ -228,7 +235,7 @@ const ReceivedGoodsPage: React.FC = () => {
             </>
           )}
           {/* Show Quality Inspection button for inspected/conditional status to allow re-inspection */}
-          {['inspected', 'conditional'].includes(row.status) && (
+          {['inspected', 'conditional'].includes(row.status) && canUpdate && (
             <Button
               variant="outline"
               size="sm"
@@ -242,7 +249,7 @@ const ReceivedGoodsPage: React.FC = () => {
               <MagnifyingGlassIcon className="h-4 w-4" />
             </Button>
           )}
-          {row.status === 'conditional' && (
+          {row.status === 'conditional' && canUpdate && (
             <Button
               variant="outline"
               size="sm"
@@ -255,7 +262,7 @@ const ReceivedGoodsPage: React.FC = () => {
               <XCircleIcon className="h-4 w-4" />
             </Button>
           )}
-          {['inspected', 'conditional'].includes(row.status) && (
+          {['inspected', 'conditional'].includes(row.status) && canUpdate && (
             <Button
               variant="outline"
               size="sm"
@@ -276,7 +283,7 @@ const ReceivedGoodsPage: React.FC = () => {
   ];
 
     return (
-    <Layout title="Received Goods">
+    <ConditionalLayout title="Received Goods">
       <div className="space-y-6">
         {/* Header */}
         <div className="flex justify-between items-center">
@@ -409,7 +416,7 @@ const ReceivedGoodsPage: React.FC = () => {
               >
                 Close
                 </Button>
-                {['pending', 'inspected'].includes(selectedReceivedGoods.status) && (
+                {['pending', 'inspected'].includes(selectedReceivedGoods.status) && canUpdate && (
                   <Button
                     onClick={() => {
                       if (window.confirm('Are you sure you want to approve these received goods?')) {
@@ -753,7 +760,7 @@ const ReceivedGoodsPage: React.FC = () => {
       )}
         </Modal>
       </div>
-    </Layout>
+    </ConditionalLayout>
   );
 };
 

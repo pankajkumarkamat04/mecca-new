@@ -45,6 +45,7 @@ const ReportsAnalyticsPage: React.FC = () => {
   const canViewOrders = hasRole('admin') || hasRole('manager') || hasRole('sales_person');
   const canViewWorkshop = hasRole('admin') || hasRole('manager') || hasRole('workshop_employee');
   const canViewInventory = hasRole('admin') || hasRole('manager') || hasRole('warehouse_manager') || hasRole('warehouse_employee');
+  const canDownloadReports = hasPermission('reportsAnalytics', 'create') || hasPermission('reportsAnalytics', 'read');
 
 
   // Order Analytics Query
@@ -199,22 +200,24 @@ const ReportsAnalyticsPage: React.FC = () => {
     return (
       <div className="space-y-6">
         {/* Download buttons */}
-        <div className="flex justify-end gap-2">
-          <button
-            onClick={() => handleDownloadReport('Order Analytics', data, 'pdf')}
-            className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-          >
-            <DocumentArrowDownIcon className="h-5 w-5" />
-            Download PDF
-          </button>
-          <button
-            onClick={() => handleDownloadReport('Order Analytics', data, 'csv')}
-            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-          >
-            <ArrowDownTrayIcon className="h-5 w-5" />
-            Download CSV
-          </button>
-        </div>
+        {canDownloadReports && (
+          <div className="flex justify-end gap-2">
+            <button
+              onClick={() => handleDownloadReport('Order Analytics', data, 'pdf')}
+              className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+            >
+              <DocumentArrowDownIcon className="h-5 w-5" />
+              Download PDF
+            </button>
+            <button
+              onClick={() => handleDownloadReport('Order Analytics', data, 'csv')}
+              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+            >
+              <ArrowDownTrayIcon className="h-5 w-5" />
+              Download CSV
+            </button>
+          </div>
+        )}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <StatCard
             title="Total Orders"
@@ -560,22 +563,24 @@ const ReportsAnalyticsPage: React.FC = () => {
     return (
       <div className="space-y-6">
         {/* Download buttons */}
-        <div className="flex justify-end gap-2">
-          <button
-            onClick={() => handleDownloadReport('POS Sales', data, 'pdf')}
-            className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-          >
-            <DocumentArrowDownIcon className="h-5 w-5" />
-            Download PDF
-          </button>
-          <button
-            onClick={() => handleDownloadReport('POS Sales', data, 'csv')}
-            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-          >
-            <ArrowDownTrayIcon className="h-5 w-5" />
-            Download CSV
-          </button>
-        </div>
+        {canDownloadReports && (
+          <div className="flex justify-end gap-2">
+            <button
+              onClick={() => handleDownloadReport('POS Sales', data, 'pdf')}
+              className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+            >
+              <DocumentArrowDownIcon className="h-5 w-5" />
+              Download PDF
+            </button>
+            <button
+              onClick={() => handleDownloadReport('POS Sales', data, 'csv')}
+              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+            >
+              <ArrowDownTrayIcon className="h-5 w-5" />
+              Download CSV
+            </button>
+          </div>
+        )}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <StatCard
             title="Total Sales"
@@ -668,22 +673,24 @@ const ReportsAnalyticsPage: React.FC = () => {
     return (
       <div className="space-y-6">
         {/* Download buttons */}
-        <div className="flex justify-end gap-2">
-          <button
-            onClick={() => handleDownloadReport('Workshop Analytics', data, 'pdf')}
-            className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-          >
-            <DocumentArrowDownIcon className="h-5 w-5" />
-            Download PDF
-          </button>
-          <button
-            onClick={() => handleDownloadReport('Workshop Analytics', data, 'csv')}
-            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-          >
-            <ArrowDownTrayIcon className="h-5 w-5" />
-            Download CSV
-          </button>
-        </div>
+        {canDownloadReports && (
+          <div className="flex justify-end gap-2">
+            <button
+              onClick={() => handleDownloadReport('Workshop Analytics', data, 'pdf')}
+              className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+            >
+              <DocumentArrowDownIcon className="h-5 w-5" />
+              Download PDF
+            </button>
+            <button
+              onClick={() => handleDownloadReport('Workshop Analytics', data, 'csv')}
+              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+            >
+              <ArrowDownTrayIcon className="h-5 w-5" />
+              Download CSV
+            </button>
+          </div>
+        )}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <StatCard
             title="Total Jobs"
@@ -835,22 +842,24 @@ const ReportsAnalyticsPage: React.FC = () => {
     return (
       <div className="space-y-6">
         {/* Download buttons */}
-        <div className="flex justify-end gap-2">
-          <button
-            onClick={() => handleDownloadReport('Inventory Analytics', data, 'pdf')}
-            className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-          >
-            <DocumentArrowDownIcon className="h-5 w-5" />
-            Download PDF
-          </button>
-          <button
-            onClick={() => handleDownloadReport('Inventory Analytics', data, 'csv')}
-            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-          >
-            <ArrowDownTrayIcon className="h-5 w-5" />
-            Download CSV
-          </button>
-        </div>
+        {canDownloadReports && (
+          <div className="flex justify-end gap-2">
+            <button
+              onClick={() => handleDownloadReport('Inventory Analytics', data, 'pdf')}
+              className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+            >
+              <DocumentArrowDownIcon className="h-5 w-5" />
+              Download PDF
+            </button>
+            <button
+              onClick={() => handleDownloadReport('Inventory Analytics', data, 'csv')}
+              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+            >
+              <ArrowDownTrayIcon className="h-5 w-5" />
+              Download CSV
+            </button>
+          </div>
+        )}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <StatCard
             title="Total Products"
@@ -984,22 +993,24 @@ const ReportsAnalyticsPage: React.FC = () => {
     return (
       <div className="space-y-6">
         {/* Download buttons */}
-        <div className="flex justify-end gap-2">
-          <button
-            onClick={() => handleDownloadSalesPersonReport('pdf')}
-            className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-          >
-            <DocumentArrowDownIcon className="h-5 w-5" />
-            Download PDF
-          </button>
-          <button
-            onClick={() => handleDownloadSalesPersonReport('csv')}
-            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-          >
-            <ArrowDownTrayIcon className="h-5 w-5" />
-            Download CSV
-          </button>
-        </div>
+        {canDownloadReports && (
+          <div className="flex justify-end gap-2">
+            <button
+              onClick={() => handleDownloadSalesPersonReport('pdf')}
+              className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+            >
+              <DocumentArrowDownIcon className="h-5 w-5" />
+              Download PDF
+            </button>
+            <button
+              onClick={() => handleDownloadSalesPersonReport('csv')}
+              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+            >
+              <ArrowDownTrayIcon className="h-5 w-5" />
+              Download CSV
+            </button>
+          </div>
+        )}
         {/* Filters */}
         <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Report Filters</h3>
@@ -1175,22 +1186,24 @@ const ReportsAnalyticsPage: React.FC = () => {
     return (
       <div className="space-y-6">
         {/* Download buttons */}
-        <div className="flex justify-end gap-2">
-          <button
-            onClick={() => handleDownloadReport('Transactions', {}, 'pdf')}
-            className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-          >
-            <DocumentArrowDownIcon className="h-5 w-5" />
-            Download PDF
-          </button>
-          <button
-            onClick={() => handleDownloadReport('Transactions', {}, 'csv')}
-            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-          >
-            <ArrowDownTrayIcon className="h-5 w-5" />
-            Download CSV
-          </button>
-        </div>
+        {canDownloadReports && (
+          <div className="flex justify-end gap-2">
+            <button
+              onClick={() => handleDownloadReport('Transactions', {}, 'pdf')}
+              className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+            >
+              <DocumentArrowDownIcon className="h-5 w-5" />
+              Download PDF
+            </button>
+            <button
+              onClick={() => handleDownloadReport('Transactions', {}, 'csv')}
+              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+            >
+              <ArrowDownTrayIcon className="h-5 w-5" />
+              Download CSV
+            </button>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Payment Methods Distribution */}

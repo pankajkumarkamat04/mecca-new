@@ -22,7 +22,7 @@ const AccessControl: React.FC<AccessControlProps> = ({
   skipAuthPages = true,
   showToast = true
 }) => {
-  const { user, isLoading, isAuthenticated } = useAuth();
+  const { user, isLoading, isAuthenticated, hasPermission } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -75,13 +75,10 @@ const AccessControl: React.FC<AccessControlProps> = ({
       
       // Check permission-based access
       if (permission?.permission) {
-        // Check if user has the required permission
-        const hasPermission = user.permissions?.some(p => 
-          p.module === permission.permission?.module && 
-          p.actions.includes(permission.permission.action)
-        );
+        // Use the hasPermission function from AuthContext which checks both role-based and user permissions
+        const userHasPermission = hasPermission(permission.permission.module, permission.permission.action);
         
-        if (!hasPermission) {
+        if (!userHasPermission) {
           const defaultPath = getDefaultRoute(user.role);
           if (showToast) {
             toast.error('You do not have the necessary permissions to view this content.');
@@ -139,12 +136,10 @@ const AccessControl: React.FC<AccessControlProps> = ({
     }
     
     if (permission?.permission) {
-      const hasPermission = user.permissions?.some(p => 
-        p.module === permission.permission?.module && 
-        p.actions.includes(permission.permission.action)
-      );
+      // Use the hasPermission function from AuthContext which checks both role-based and user permissions
+      const userHasPermission = hasPermission(permission.permission.module, permission.permission.action);
       
-      if (!hasPermission) {
+      if (!userHasPermission) {
         return null;
       }
     } else {

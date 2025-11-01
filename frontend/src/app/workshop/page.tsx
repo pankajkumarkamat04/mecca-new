@@ -1272,11 +1272,19 @@ const WorkshopPage: React.FC = () => {
     {
       key: 'status',
       label: 'Status',
-      render: (job: any) => (
-        <Badge color={getStatusColor(job.status)}>
-          {job.status?.replace('_', ' ') || 'Unknown'}
-        </Badge>
-      )
+      render: (job: any) => {
+        const isOverdue = job.isOverdue || false;
+        return (
+          <div className="flex items-center gap-2">
+            <Badge color={getStatusColor(job.status)}>
+              {job.status?.replace('_', ' ') || 'Unknown'}
+            </Badge>
+            {isOverdue && (
+              <ExclamationTriangleIcon className="h-4 w-4 text-red-600" title="Overdue" />
+            )}
+          </div>
+        );
+      }
     },
     {
       key: 'progress',
@@ -1315,11 +1323,25 @@ const WorkshopPage: React.FC = () => {
       key: 'deadline',
       label: 'Deadline',
       render: (job: any) => {
-        if (!job.deadline) return <span className="text-gray-500">Not set</span>;
-        const isOverdue = new Date(job.deadline) < new Date() && job.status !== 'completed';
+        // Use backend's isOverdue calculation (which considers start time + estimated duration)
+        const isOverdue = job.isOverdue || false;
+        
+        // Display deadline or calculated deadline
+        let deadlineDisplay = job.deadline;
+        if (!deadlineDisplay && job.scheduled?.start && job.totalEstimatedDuration) {
+          // Calculate deadline from start time + estimated duration
+          const startTime = new Date(job.scheduled.start);
+          const deadlineTime = new Date(startTime.getTime() + (job.totalEstimatedDuration * 60 * 60 * 1000));
+          deadlineDisplay = deadlineTime.toISOString();
+        } else if (!deadlineDisplay && job.scheduled?.end) {
+          deadlineDisplay = job.scheduled.end;
+        }
+        
+        if (!deadlineDisplay) return <span className="text-gray-500">Not set</span>;
+        
         return (
           <span className={`text-sm ${isOverdue ? 'text-red-600 font-medium' : 'text-gray-900'}`}>
-            {formatDate(job.deadline)}
+            {formatDate(deadlineDisplay)}
             {isOverdue && <ExclamationTriangleIcon className="inline w-4 h-4 ml-1" />}
           </span>
         );
@@ -4649,12 +4671,28 @@ const JobDetailsView: React.FC<{
               <span className="text-sm text-gray-600">Created:</span>
               <span className="text-sm text-gray-900">{formatDate(currentJob.createdAt)}</span>
             </div>
-            {currentJob.deadline && (
-              <div className="flex justify-between">
-                <span className="text-sm text-gray-600">Deadline:</span>
-                <span className="text-sm text-gray-900">{formatDate(currentJob.deadline)}</span>
-              </div>
-            )}
+            {(() => {
+              // Calculate or get deadline display
+              let deadlineDisplay = currentJob.deadline;
+              if (!deadlineDisplay && currentJob.scheduled?.start && currentJob.totalEstimatedDuration) {
+                const startTime = new Date(currentJob.scheduled.start);
+                deadlineDisplay = new Date(startTime.getTime() + (currentJob.totalEstimatedDuration * 60 * 60 * 1000));
+              } else if (!deadlineDisplay && currentJob.scheduled?.end) {
+                deadlineDisplay = currentJob.scheduled.end;
+              }
+              
+              const isOverdue = currentJob.isOverdue || false;
+              
+              return deadlineDisplay ? (
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-600">Deadline:</span>
+                  <span className={`text-sm ${isOverdue ? 'text-red-600 font-medium' : 'text-gray-900'}`}>
+                    {formatDate(deadlineDisplay)}
+                    {isOverdue && <ExclamationTriangleIcon className="inline w-4 h-4 ml-1" />}
+                  </span>
+                </div>
+              ) : null;
+            })()}
               <div className="flex justify-between">
                 <span className="text-sm text-gray-600">Job Card:</span>
               <span className="text-sm text-gray-900">{currentJob.jobCard?.cardNumber || 'N/A'}</span>
