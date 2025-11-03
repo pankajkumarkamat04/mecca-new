@@ -94,7 +94,6 @@ const workstationSchema = new mongoose.Schema({
 // Indexes
 workstationSchema.index({ name: 1, type: 1 });
 workstationSchema.index({ status: 1, 'availability.isAvailable': 1 });
-workstationSchema.index({ stationNumber: 1 });
 
 // Virtual fields
 workstationSchema.virtual('isOverdueForMaintenance').get(function() {

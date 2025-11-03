@@ -1800,7 +1800,7 @@ const getSalesReport = async (req, res) => {
       .populate('supplier', 'name')
       .populate({
         path: 'invoice',
-        select: 'invoiceNumber salesOutlet status total paid balance isPosTransaction',
+        select: 'invoiceNumber salesOutlet status total paid balance isPosTransaction currency',
         populate: {
           path: 'salesOutlet',
           select: 'name outletCode'
@@ -1905,6 +1905,10 @@ const getSalesReport = async (req, res) => {
         return; // Skip this transaction if outlet doesn't match (shouldn't happen with proper filtering)
       }
       
+      // Get currency - prefer from invoice if linked, otherwise use transaction currency
+      const transactionCurrency = transaction.invoice?.currency || 
+        (transaction.currency ? { baseCurrency: transaction.currency, displayCurrency: transaction.currency, exchangeRate: 1 } : null);
+
       allSalesData.push({
         _id: transaction._id,
         source: 'transaction',
@@ -1927,6 +1931,7 @@ const getSalesReport = async (req, res) => {
         invoiceNumber: isInvoiceTransaction ? invoiceNumber : null,
         invoiceId: isInvoiceTransaction && transaction.invoice?._id ? transaction.invoice._id.toString() : null,
         paymentMethod: paymentMethod, // Add payment method
+        currency: transactionCurrency, // Add currency information
         salesOutlet: salesOutletName,
         salesOutletId: transactionSalesOutletId,
         createdBy: transaction.createdBy ? 
@@ -2015,6 +2020,7 @@ const getSalesReport = async (req, res) => {
         invoiceNumber: invoice.invoiceNumber,
         invoiceId: invoice._id.toString(), // Always include invoiceId for standalone invoices
         paymentMethod: invoicePaymentMethod, // Add payment method
+        currency: invoice.currency || null, // Add currency information
         salesOutlet: invoiceSalesOutletName,
         salesOutletId: invoiceSalesOutletId,
         createdBy: invoice.salesPerson ? 

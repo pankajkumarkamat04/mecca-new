@@ -81,7 +81,6 @@ salesOutletSchema.virtual('fullAddress').get(function() {
 });
 
 // Indexes
-salesOutletSchema.index({ outletCode: 1 });
 salesOutletSchema.index({ isActive: 1 });
 salesOutletSchema.index({ type: 1 });
 

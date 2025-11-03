@@ -255,7 +255,6 @@ receivedGoodsSchema.virtual('needsInspection').get(function() {
 });
 
 // Indexes
-receivedGoodsSchema.index({ receiptNumber: 1 });
 receivedGoodsSchema.index({ purchaseOrder: 1 });
 receivedGoodsSchema.index({ supplier: 1 });
 receivedGoodsSchema.index({ receivedDate: -1 });

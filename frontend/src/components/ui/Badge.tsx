@@ -34,8 +34,8 @@ const Badge: React.FC<BadgeProps> = ({
       outline: 'border-yellow-200 text-yellow-800',
     },
     red: {
-      solid: 'bg-red-100 text-red-800',
-      outline: 'border-red-200 text-red-800',
+      solid: 'bg-red-600 text-white',
+      outline: 'border-red-800 text-red-800',
     },
     purple: {
       solid: 'bg-purple-100 text-purple-800',

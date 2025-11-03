@@ -371,6 +371,12 @@ invoiceSchema.methods.addPayment = async function(paymentData) {
     });
     
     if (cashAccount && salesAccount) {
+      // Convert payment amount if invoice currency is not USD
+      const { convertToDisplayCurrency } = require('../utils/currencyUtils');
+      const exchangeRate = this.currency?.exchangeRate || 1;
+      const transactionCurrency = this.currency?.displayCurrency || 'USD';
+      const transactionAmount = transactionCurrency === 'USD' ? paymentData.amount : convertToDisplayCurrency(paymentData.amount, exchangeRate);
+      
       const transaction = new Transaction({
         transactionNumber: undefined, // Will be auto-generated
         date: paymentData.date || new Date(),
@@ -378,19 +384,19 @@ invoiceSchema.methods.addPayment = async function(paymentData) {
         type: 'sale',
         reference: this.invoiceNumber,
         referenceId: this._id,
-        amount: paymentData.amount,
-        currency: this.currency?.baseCurrency || 'USD',
+        amount: transactionAmount,
+        currency: transactionCurrency,
         entries: [
           { 
             account: cashAccount._id, 
-            debit: paymentData.amount, 
+            debit: transactionAmount, 
             credit: 0, 
             description: `Payment received for invoice ${this.invoiceNumber}` 
           },
           { 
             account: salesAccount._id, 
             debit: 0, 
-            credit: paymentData.amount, 
+            credit: transactionAmount, 
             description: `Sales revenue from invoice ${this.invoiceNumber}` 
           }
         ],

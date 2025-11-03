@@ -1,11 +1,13 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import { customerInquiriesAPI, customersAPI } from '@/lib/api';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import TextArea from '@/components/ui/TextArea';
 import Select from '@/components/ui/Select';
+import CustomerProductSelector from '@/components/ui/CustomerProductSelector';
 
 interface CustomerCreateInquiryFormProps {
   onClose: () => void;
@@ -75,18 +77,19 @@ const CustomerCreateInquiryForm: React.FC<CustomerCreateInquiryFormProps> = ({ o
         message: message.trim(),
         priority,
         productsOfInterest: productsOfInterest
-          .filter((it) => it.product.trim())
+          .filter((it) => it.product && it.product.toString().trim())
           .map((it) => ({ 
-            product: it.product.trim(), 
+            product: it.product.toString().trim(), 
             quantity: it.quantity || 1,
             notes: it.notes?.trim() || undefined
           })),
       };
       await customerInquiriesAPI.createCustomerInquiry(payload);
+      toast.success('Inquiry submitted successfully');
       onSuccess();
-    } catch (err) {
-      // Basic error feedback; page has toast on error via caller usually
+    } catch (err: any) {
       console.error('Failed to create inquiry', err);
+      toast.error(err.response?.data?.message || 'Failed to submit inquiry. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -139,14 +142,24 @@ const CustomerCreateInquiryForm: React.FC<CustomerCreateInquiryFormProps> = ({ o
         </div>
         <div className="space-y-2 mt-2">
           {productsOfInterest.map((item, index) => (
-            <div key={index} className="grid grid-cols-6 gap-2 items-center">
-              <div className="col-span-4">
-                <Input placeholder="Product name" value={item.product} onChange={(e) => handleItemChange(index, 'product', e.target.value)} />
-              </div>
-              <div className="col-span-1">
-                <Input type="number" min={1} value={item.quantity} onChange={(e) => handleItemChange(index, 'quantity', e.target.value)} />
-              </div>
-              <div className="col-span-1 flex justify-end">
+            <div key={index} className="space-y-2">
+              <CustomerProductSelector
+                value={item.product}
+                onChange={(value) => handleItemChange(index, 'product', value)}
+                placeholder="Search and select product..."
+              />
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <label className="text-sm text-gray-600">Quantity:</label>
+                  <Input 
+                    type="number" 
+                    min={1} 
+                    value={item.quantity} 
+                    onChange={(e) => handleItemChange(index, 'quantity', e.target.value)} 
+                    placeholder="1" 
+                    className="w-20"
+                  />
+                </div>
                 <Button type="button" variant="outline" size="sm" onClick={() => handleRemoveItem(index)}>Remove</Button>
               </div>
             </div>

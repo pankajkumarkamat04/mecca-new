@@ -154,7 +154,6 @@ const technicianSchema = new mongoose.Schema({
 
 // Indexes
 technicianSchema.index({ user: 1 }, { unique: true, partialFilterExpression: { user: { $exists: true, $type: "objectId" } } });
-technicianSchema.index({ employeeId: 1 }, { unique: true, sparse: true });
 technicianSchema.index({ department: 1, position: 1 });
 technicianSchema.index({ employmentStatus: 1, isActive: 1 });
 technicianSchema.index({ 'skills.name': 1, 'skills.level': 1 });

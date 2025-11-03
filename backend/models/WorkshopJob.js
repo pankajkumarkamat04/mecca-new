@@ -94,7 +94,7 @@ const workshopJobSchema = new mongoose.Schema({
   customerName: { type: String, trim: true },
   customerPhone: { type: String, trim: true },
   priority: { type: String, enum: ['low', 'medium', 'high', 'urgent'], default: 'medium' },
-  status: { type: String, enum: ['scheduled', 'in_progress', 'on_hold', 'completed', 'cancelled'], default: 'scheduled', index: true },
+  status: { type: String, enum: ['scheduled', 'in_progress', 'on_hold', 'completed', 'cancelled', 'overdue'], default: 'scheduled', index: true },
   qualityChecked: { type: Boolean, default: false },
   deadline: Date,
   scheduled: {
@@ -351,41 +351,21 @@ workshopJobSchema.virtual('isOverdue').get(function() {
     return false;
   }
   
-  // Calculate the actual deadline based on start time + estimated duration
-  let actualDeadline = this.deadline;
+  // Calculate total estimated duration from all tasks
+  const totalEstimatedDuration = this.totalEstimatedDuration || 0;
   
-  // If no explicit deadline is set, calculate from scheduled start + estimated duration
-  if (!actualDeadline) {
-    // Calculate total estimated duration from tasks
-    const totalEstimatedDuration = this.totalEstimatedDuration || 0;
+  // Job is overdue if elapsed time since creation exceeds total estimated duration
+  if (totalEstimatedDuration > 0) {
+    const now = new Date();
+    const createdAt = new Date(this.createdAt);
+    const hoursElapsed = (now - createdAt) / (1000 * 60 * 60); // Convert ms to hours
     
-    // Determine start time - use scheduled.start if available, otherwise use createdAt
-    let startTime = null;
-    if (this.scheduled && this.scheduled.start) {
-      startTime = new Date(this.scheduled.start);
-    } else if (this.createdAt) {
-      // If no scheduled start, use creation time as start
-      startTime = new Date(this.createdAt);
-    }
-    
-    // If we have estimated duration and start time, calculate deadline
-    if (totalEstimatedDuration > 0 && startTime) {
-      // Add estimated duration in hours (convert to milliseconds)
-      actualDeadline = new Date(startTime.getTime() + (totalEstimatedDuration * 60 * 60 * 1000));
-    } else if (this.scheduled && this.scheduled.end) {
-      // Fall back to scheduled end if available
-      actualDeadline = this.scheduled.end;
+    if (hoursElapsed > totalEstimatedDuration) {
+      return true;
     }
   }
   
-  // Only check overdue if we have a valid deadline and current time has passed it
-  if (!actualDeadline) {
-    return false;
-  }
-  
-  // Compare full date/time, not just dates
-  const now = new Date();
-  return now > actualDeadline;
+  return false;
 });
 
 workshopJobSchema.virtual('totalEstimatedDuration').get(function() {
@@ -715,6 +695,20 @@ workshopJobSchema.pre('save', async function(next) {
   // Set actual completion date when job is completed
   if (this.status === 'completed' && !this.customerPortal.actualCompletion) {
     this.customerPortal.actualCompletion = new Date();
+  }
+  
+  // Auto-set status to overdue if elapsed time exceeds estimated duration
+  if (this.status !== 'completed' && this.status !== 'cancelled' && this.status !== 'overdue') {
+    const totalEstimatedDuration = (this.tasks || []).reduce((total, task) => total + (task.estimatedDuration || 0), 0);
+    if (totalEstimatedDuration > 0) {
+      const now = new Date();
+      const createdAt = new Date(this.createdAt);
+      const hoursElapsed = (now - createdAt) / (1000 * 60 * 60); // Convert ms to hours
+      
+      if (hoursElapsed > totalEstimatedDuration) {
+        this.status = 'overdue';
+      }
+    }
   }
   
   next();

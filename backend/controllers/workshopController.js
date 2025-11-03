@@ -245,12 +245,7 @@ const getJobs = async (req, res) => {
       }
     }
     
-    // Handle overdue filter
-    if (overdue === 'true') {
-      filter.deadline = { $lt: new Date() };
-      filter.status = { $nin: ['completed', 'cancelled'] };
-    }
-    
+    // Handle search filter first
     if (search) {
       // Search by job title, job card number, or vehicle registration number
       filter.$or = [
@@ -260,15 +255,144 @@ const getJobs = async (req, res) => {
       ];
     }
 
-    const jobs = await WorkshopJob.find(filter)
-      .populate('customer', 'firstName lastName email')
-      .populate('createdBy', 'firstName lastName')
-      .populate('tasks.assignee', 'firstName lastName')
-      .populate('parts.product', 'name sku pricing inventory')
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit);
-    const total = await WorkshopJob.countDocuments(filter);
+    // Handle overdue filter using task hours aggregation
+    let jobs;
+    let total;
+    
+    if (overdue === 'true') {
+      // For overdue filter, we need to calculate actual vs estimated hours
+      // Use aggregation pipeline to filter jobs where totalActualDuration > totalEstimatedDuration
+      const aggregationPipeline = [
+        {
+          $match: {
+            isActive: true,
+            status: { $nin: ['completed', 'cancelled'] }
+          }
+        },
+        {
+          $addFields: {
+            totalEstimatedDuration: {
+              $reduce: {
+                input: { $ifNull: ['$tasks', []] },
+                initialValue: 0,
+                in: { $add: ['$$value', { $ifNull: ['$$this.estimatedDuration', 0] }] }
+              }
+            },
+            hoursElapsed: {
+              $divide: [
+                { $subtract: [new Date(), '$createdAt'] },
+                3600000 // milliseconds to hours
+              ]
+            }
+          }
+        },
+        {
+          $match: {
+            $expr: {
+              $and: [
+                { $gt: ['$totalEstimatedDuration', 0] },
+                { $gt: ['$hoursElapsed', '$totalEstimatedDuration'] }
+              ]
+            }
+          }
+        },
+        {
+          $addFields: {
+            isOverdue: {
+              $cond: {
+                if: {
+                $and: [
+                  { $ne: ['$status', 'completed'] },
+                  { $ne: ['$status', 'cancelled'] },
+                  { $gt: ['$totalEstimatedDuration', 0] },
+                  { $gt: ['$hoursElapsed', '$totalEstimatedDuration'] }
+                ]
+                },
+                then: true,
+                else: false
+              }
+            }
+          }
+        }
+      ];
+      
+      // Apply additional filters
+      if (status) {
+        aggregationPipeline[0].$match.status = status;
+      }
+      if (priority) {
+        aggregationPipeline[0].$match.priority = priority;
+      }
+      if (customer) {
+        aggregationPipeline[0].$match.customer = customer;
+      }
+      if (customerPhone) {
+        aggregationPipeline[0].$match.customerPhone = { $regex: customerPhone, $options: 'i' };
+      }
+      if (search) {
+        aggregationPipeline[0].$match.$or = [
+          { title: { $regex: search, $options: 'i' } },
+          { 'jobCard.cardNumber': { $regex: search, $options: 'i' } },
+          { 'vehicle.regNumber': { $regex: search, $options: 'i' } }
+        ];
+      }
+      
+      // Get total count before pagination
+      const countPipeline = [...aggregationPipeline, { $count: 'total' }];
+      const countResult = await WorkshopJob.aggregate(countPipeline);
+      total = countResult[0]?.total || 0;
+      
+      // Apply pagination
+      aggregationPipeline.push({ $skip: skip }, { $limit: limit }, { $sort: { createdAt: -1 } });
+      
+      // Execute aggregation
+      jobs = await WorkshopJob.aggregate(aggregationPipeline).exec();
+      
+      // Populate references manually for aggregated results
+      jobs = await WorkshopJob.populate(jobs, [
+        { path: 'customer', select: 'firstName lastName email' },
+        { path: 'createdBy', select: 'firstName lastName' },
+        { path: 'tasks.assignee', select: 'firstName lastName' },
+        { path: 'parts.product', select: 'name sku pricing inventory' }
+      ]);
+    } else {
+      // Normal query without overdue filter
+      jobs = await WorkshopJob.find(filter)
+        .populate('customer', 'firstName lastName email')
+        .populate('createdBy', 'firstName lastName')
+        .populate('tasks.assignee', 'firstName lastName')
+        .populate('parts.product', 'name sku pricing inventory')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit);
+      total = await WorkshopJob.countDocuments(filter);
+    }
+
+    // Check and update overdue status for jobs that are fetched
+    // This ensures status is updated even without a save operation
+    const overdueUpdates = [];
+    for (const job of jobs) {
+      if (job.status !== 'completed' && job.status !== 'cancelled' && job.status !== 'overdue') {
+        const totalEstimatedDuration = (job.tasks || []).reduce((total, task) => total + (task.estimatedDuration || 0), 0);
+        if (totalEstimatedDuration > 0) {
+          const now = new Date();
+          const createdAt = new Date(job.createdAt);
+          const hoursElapsed = (now - createdAt) / (1000 * 60 * 60);
+          
+          if (hoursElapsed > totalEstimatedDuration) {
+            overdueUpdates.push(
+              WorkshopJob.updateOne({ _id: job._id }, { status: 'overdue' })
+            );
+            job.status = 'overdue'; // Update in response as well
+          }
+        }
+      }
+    }
+    
+    // Execute all overdue updates in parallel if any
+    if (overdueUpdates.length > 0) {
+      await Promise.all(overdueUpdates);
+    }
 
     res.json({
       success: true,
@@ -295,6 +419,22 @@ const getJobById = async (req, res) => {
       .populate('parts.product', 'name sku pricing inventory')
       .populate('createdBy', 'firstName lastName');
     if (!job) return res.status(404).json({ success: false, message: 'Job not found' });
+    
+    // Check and update overdue status if needed
+    if (job.status !== 'completed' && job.status !== 'cancelled' && job.status !== 'overdue') {
+      const totalEstimatedDuration = (job.tasks || []).reduce((total, task) => total + (task.estimatedDuration || 0), 0);
+      if (totalEstimatedDuration > 0) {
+        const now = new Date();
+        const createdAt = new Date(job.createdAt);
+        const hoursElapsed = (now - createdAt) / (1000 * 60 * 60);
+        
+        if (hoursElapsed > totalEstimatedDuration) {
+          await WorkshopJob.updateOne({ _id: job._id }, { status: 'overdue' });
+          job.status = 'overdue';
+        }
+      }
+    }
+    
     res.json({ success: true, data: job });
   } catch (error) {
     console.error('Get job error:', error);
@@ -1928,11 +2068,45 @@ const getJobStats = async (req, res) => {
     const scheduledJobs = await WorkshopJob.countDocuments({ status: 'scheduled', isActive: true });
     const inProgressJobs = await WorkshopJob.countDocuments({ status: 'in_progress', isActive: true });
     const completedJobs = await WorkshopJob.countDocuments({ status: 'completed', isActive: true });
-    const overdueJobs = await WorkshopJob.countDocuments({ 
-      deadline: { $lt: new Date() }, 
-      status: { $nin: ['completed', 'cancelled'] },
-      isActive: true 
-    });
+    
+    // Calculate overdue jobs using task hours aggregation
+    const overdueJobsResult = await WorkshopJob.aggregate([
+      {
+        $match: {
+          isActive: true,
+          status: { $nin: ['completed', 'cancelled'] }
+        }
+      },
+      {
+        $addFields: {
+          totalEstimatedDuration: {
+            $reduce: {
+              input: { $ifNull: ['$tasks', []] },
+              initialValue: 0,
+              in: { $add: ['$$value', { $ifNull: ['$$this.estimatedDuration', 0] }] }
+            }
+          },
+          hoursElapsed: {
+            $divide: [
+              { $subtract: [new Date(), '$createdAt'] },
+              3600000 // milliseconds to hours
+            ]
+          }
+        }
+      },
+      {
+        $match: {
+          $expr: {
+            $and: [
+              { $gt: ['$totalEstimatedDuration', 0] },
+              { $gt: ['$hoursElapsed', '$totalEstimatedDuration'] }
+            ]
+          }
+        }
+      },
+      { $count: 'total' }
+    ]);
+    const overdueJobs = overdueJobsResult[0]?.total || 0;
 
     // Get jobs by priority
     const urgentJobs = await WorkshopJob.countDocuments({ priority: 'urgent', isActive: true });

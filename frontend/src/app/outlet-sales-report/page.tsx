@@ -169,7 +169,7 @@ const OutletSalesReportPage: React.FC = () => {
       sortable: true,
       render: (row: any) => (
         <span className="text-sm font-medium text-gray-900">
-          {formatCurrency(row.total)}
+          {formatCurrency(row.total, row.currency?.displayCurrency || 'USD')}
         </span>
       ),
     },
@@ -179,7 +179,7 @@ const OutletSalesReportPage: React.FC = () => {
       sortable: true,
       render: (row: any) => (
         <span className="text-sm text-gray-600">
-          {formatCurrency(row.tax)}
+          {formatCurrency(row.tax, row.currency?.displayCurrency || 'USD')}
         </span>
       ),
     },
@@ -189,7 +189,7 @@ const OutletSalesReportPage: React.FC = () => {
       sortable: true,
       render: (row: any) => (
         <span className="text-sm text-gray-600">
-          {formatCurrency(row.discount)}
+          {formatCurrency(row.discount, row.currency?.displayCurrency || 'USD')}
         </span>
       ),
     },
@@ -199,7 +199,7 @@ const OutletSalesReportPage: React.FC = () => {
       sortable: true,
       render: (row: any) => (
         <span className="text-sm font-medium text-gray-900">
-          {formatCurrency(row.grandTotal)}
+          {formatCurrency(row.grandTotal, row.currency?.displayCurrency || 'USD')}
         </span>
       ),
     },
@@ -209,7 +209,7 @@ const OutletSalesReportPage: React.FC = () => {
       sortable: true,
       render: (row: any) => (
         <span className="text-sm text-gray-600">
-          {formatCurrency(row.paid)}
+          {formatCurrency(row.paid, row.currency?.displayCurrency || 'USD')}
         </span>
       ),
     },
@@ -219,7 +219,7 @@ const OutletSalesReportPage: React.FC = () => {
       sortable: true,
       render: (row: any) => (
         <span className={`text-sm font-medium ${row.balance > 0 ? 'text-red-600' : 'text-green-600'}`}>
-          {formatCurrency(row.balance)}
+          {formatCurrency(row.balance, row.currency?.displayCurrency || 'USD')}
         </span>
       ),
     },

@@ -113,7 +113,12 @@ const TransactionsPage: React.FC = () => {
     { key: 'transactionNumber', label: 'Transaction', sortable: true },
     { key: 'date', label: 'Date', sortable: true },
     { key: 'type', label: 'Type', sortable: true },
-    { key: 'amount', label: 'Amount', sortable: true },
+    { 
+      key: 'amount', 
+      label: 'Amount', 
+      sortable: true,
+      render: (row: any) => formatCurrency(row.amount, row.currency || 'USD')
+    },
     { key: 'description', label: 'Description' },
     {
       key: 'actions',
@@ -166,6 +171,7 @@ const TransactionsPage: React.FC = () => {
       amount: 0,
       description: '',
       reference: '',
+      currency: 'USD',
       entries: [{ account: '', debit: 0, credit: 0, description: '' }],
     });
     setEditOpen(true);
@@ -180,6 +186,7 @@ const TransactionsPage: React.FC = () => {
       amount: tx.amount || 0,
       description: tx.description || '',
       reference: tx.reference || '',
+      currency: tx.currency || 'USD',
       entries: (tx.entries || []).map((e: any) => ({
         account: e.account?._id || e.account || '',
         debit: e.debit || 0,
@@ -564,7 +571,7 @@ const TransactionsPage: React.FC = () => {
               <div>
                     <div className="text-sm text-gray-500 mb-1">Amount</div>
                     <div className="font-semibold text-lg">
-                      {selectedTx.currency || 'USD'} {selectedTx.amount?.toLocaleString()}
+                      {formatCurrency(selectedTx.amount, selectedTx.currency || 'USD')}
                     </div>
                   </div>
                 </div>
@@ -664,14 +671,14 @@ const TransactionsPage: React.FC = () => {
                             <td className="px-4 py-3 whitespace-nowrap text-right">
                               {entry.debit > 0 && (
                                 <span className="font-medium text-red-600">
-                                  {selectedTx.currency || 'USD'} {entry.debit.toLocaleString()}
+                                  {formatCurrency(entry.debit, selectedTx.currency || 'USD')}
                                 </span>
                               )}
                             </td>
                             <td className="px-4 py-3 whitespace-nowrap text-right">
                               {entry.credit > 0 && (
                                 <span className="font-medium text-green-600">
-                                  {selectedTx.currency || 'USD'} {entry.credit.toLocaleString()}
+                                  {formatCurrency(entry.credit, selectedTx.currency || 'USD')}
                                 </span>
                               )}
                             </td>
@@ -685,10 +692,10 @@ const TransactionsPage: React.FC = () => {
                         <tr className="font-semibold">
                           <td className="px-4 py-3">Total</td>
                           <td className="px-4 py-3 text-right text-red-600">
-                            {selectedTx.currency || 'USD'} {selectedTx.entries.reduce((sum: number, entry: any) => sum + (entry.debit || 0), 0).toLocaleString()}
+                            {formatCurrency(selectedTx.entries.reduce((sum: number, entry: any) => sum + (entry.debit || 0), 0), selectedTx.currency || 'USD')}
                           </td>
                           <td className="px-4 py-3 text-right text-green-600">
-                            {selectedTx.currency || 'USD'} {selectedTx.entries.reduce((sum: number, entry: any) => sum + (entry.credit || 0), 0).toLocaleString()}
+                            {formatCurrency(selectedTx.entries.reduce((sum: number, entry: any) => sum + (entry.credit || 0), 0), selectedTx.currency || 'USD')}
                           </td>
                           <td className="px-4 py-3">
                             {selectedTx.entries.reduce((sum: number, entry: any) => sum + (entry.debit || 0), 0) === 
@@ -854,6 +861,7 @@ const TransactionsPage: React.FC = () => {
                   <Select
                     options={[
                       { value: 'USD', label: 'USD' },
+                      { value: 'ZWL', label: 'ZWL' },
                       { value: 'EUR', label: 'EUR' },
                       { value: 'INR', label: 'INR' },
                       { value: 'GBP', label: 'GBP' },

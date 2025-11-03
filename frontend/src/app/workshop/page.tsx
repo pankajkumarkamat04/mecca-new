@@ -52,6 +52,10 @@ const TaskManagementModal: React.FC<{
 }> = ({ job, onClose, addTaskMutation, updateTaskStatusMutation }) => {
   const [isAddingTask, setIsAddingTask] = useState(false);
   const [editingTask, setEditingTask] = useState<any>(null);
+  const [editTaskData, setEditTaskData] = useState({
+    actualDuration: '',
+    notes: ''
+  });
   const [newTask, setNewTask] = useState({
     title: '',
     description: '',
@@ -133,6 +137,7 @@ const TaskManagementModal: React.FC<{
       case 'in_progress': return 'orange';
       case 'completed': return 'green';
       case 'on_hold': return 'yellow';
+      case 'overdue': return 'red';
       default: return 'gray';
     }
   };
@@ -336,6 +341,71 @@ const TaskManagementModal: React.FC<{
         </div>
       )}
 
+      {/* Edit Task Modal */}
+      {editingTask && (
+        <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm mb-4">
+          <h3 className="text-lg font-medium text-gray-900 mb-4">
+            Edit Task: {editingTask.title}
+          </h3>
+          <form onSubmit={async (e) => {
+            e.preventDefault();
+            try {
+              await updateTaskStatusMutation.mutateAsync({
+                jobId: currentJob._id,
+                taskId: editingTask._id,
+                data: {
+                  status: editingTask.status,
+                  actualDuration: parseFloat(editTaskData.actualDuration) || 0,
+                  notes: editTaskData.notes
+                }
+              });
+              setEditingTask(null);
+              setEditTaskData({ actualDuration: '', notes: '' });
+              toast.success('Task updated successfully');
+            } catch (error) {
+              console.error('Error updating task:', error);
+              toast.error('Failed to update task');
+            }
+          }}>
+            <Input
+              label="Actual Duration (hours)"
+              type="number"
+              step="0.5"
+              value={editTaskData.actualDuration}
+              onChange={(e) => setEditTaskData(prev => ({ ...prev, actualDuration: e.target.value }))}
+              placeholder="Enter actual time taken"
+            />
+            <TextArea
+              label="Notes"
+              value={editTaskData.notes}
+              onChange={(e) => setEditTaskData(prev => ({ ...prev, notes: e.target.value }))}
+              placeholder="Additional notes"
+              rows={2}
+              className="mt-4"
+            />
+            <div className="flex justify-end space-x-3 mt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setEditingTask(null);
+                  setEditTaskData({ actualDuration: '', notes: '' });
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                loading={updateTaskStatusMutation.isPending}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                Update Task
+              </Button>
+            </div>
+          </form>
+        </div>
+      )}
+
       {/* Tasks List */}
       <div className="space-y-4">
         {currentJob.tasks?.length === 0 ? (
@@ -363,11 +433,18 @@ const TaskManagementModal: React.FC<{
                     <p className="text-gray-600 mb-3">{task.description}</p>
                   )}
                   
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
                     {task.estimatedDuration > 0 && (
                       <div className="flex items-center text-gray-600">
                         <ClockIcon className="h-4 w-4 mr-2" />
                         <span>Est. {formatDuration(task.estimatedDuration)}</span>
+                      </div>
+                    )}
+                    
+                    {task.actualDuration > 0 && (
+                      <div className="flex items-center text-gray-600">
+                        <ClockIcon className="h-4 w-4 mr-2" />
+                        <span>Actual: {formatDuration(task.actualDuration)}</span>
                       </div>
                     )}
                     
@@ -456,6 +533,24 @@ const TaskManagementModal: React.FC<{
                       Resume
                     </Button>
                   )}
+                  
+                  {/* Edit Task Button */}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setEditingTask(task);
+                      setEditTaskData({
+                        actualDuration: task.actualDuration || '',
+                        notes: task.notes || ''
+                      });
+                    }}
+                    disabled={currentJob.status === 'completed'}
+                    className="text-blue-600 border-blue-600 hover:bg-blue-50"
+                  >
+                    <PencilSquareIcon className="h-4 w-4 mr-1 inline" />
+                    Edit
+                  </Button>
                 </div>
               </div>
               
@@ -1320,30 +1415,31 @@ const WorkshopPage: React.FC = () => {
       )
     },
     {
-      key: 'deadline',
-      label: 'Deadline',
+      key: 'taskHours',
+      label: 'Task Hours',
       render: (job: any) => {
-        // Use backend's isOverdue calculation (which considers start time + estimated duration)
+        // Use backend's isOverdue calculation (which considers task hours: actual > estimated)
         const isOverdue = job.isOverdue || false;
+        const totalEstimated = job.totalEstimatedDuration || 0;
+        const totalActual = job.totalActualDuration || 0;
         
-        // Display deadline or calculated deadline
-        let deadlineDisplay = job.deadline;
-        if (!deadlineDisplay && job.scheduled?.start && job.totalEstimatedDuration) {
-          // Calculate deadline from start time + estimated duration
-          const startTime = new Date(job.scheduled.start);
-          const deadlineTime = new Date(startTime.getTime() + (job.totalEstimatedDuration * 60 * 60 * 1000));
-          deadlineDisplay = deadlineTime.toISOString();
-        } else if (!deadlineDisplay && job.scheduled?.end) {
-          deadlineDisplay = job.scheduled.end;
+        // If no hours data, show not set
+        if (totalEstimated === 0 && totalActual === 0) {
+          return <span className="text-gray-500">Not set</span>;
         }
         
-        if (!deadlineDisplay) return <span className="text-gray-500">Not set</span>;
-        
         return (
-          <span className={`text-sm ${isOverdue ? 'text-red-600 font-medium' : 'text-gray-900'}`}>
-            {formatDate(deadlineDisplay)}
-            {isOverdue && <ExclamationTriangleIcon className="inline w-4 h-4 ml-1" />}
-          </span>
+          <div className="flex flex-col">
+            <span className="text-sm text-gray-900">
+              Est: <strong>{totalEstimated.toFixed(1)}h</strong>
+            </span>
+            {totalActual > 0 && (
+              <span className={`text-xs mt-1 ${isOverdue ? 'text-red-600 font-medium' : 'text-gray-600'}`}>
+                Actual: <strong>{totalActual.toFixed(1)}h</strong>
+                {isOverdue && <ExclamationTriangleIcon className="inline w-3 h-3 ml-1" />}
+              </span>
+            )}
+          </div>
         );
       }
     },
@@ -2072,7 +2168,7 @@ const CreateJobForm: React.FC<{
     }
 
     // Clean and validate data before submission
-    const cleanedData = {
+    const cleanedData: any = {
       ...formData,
       title: formData.title.trim(),
       // Ensure odometer is a valid number or empty string
@@ -2080,7 +2176,10 @@ const CreateJobForm: React.FC<{
         ...formData.vehicle,
         odometer: formData.vehicle.odometer ? 
           (isNaN(Number(formData.vehicle.odometer)) ? '' : Number(formData.vehicle.odometer)) : 
-          ''
+          '',
+        // Map timeInfo fields to vehicle fields
+        timeIn: formData.timeInfo.timeIn || undefined,
+        timeForCollection: formData.timeInfo.timeForCollection || undefined
       },
       // Ensure numeric fields are properly formatted
       jobCard: {
@@ -2097,6 +2196,9 @@ const CreateJobForm: React.FC<{
         amount: Number(sublet.amount) || 0
       })).filter(sublet => sublet.description !== '')
     };
+    
+    // Remove timeInfo from cleaned data (it's been mapped to vehicle)
+    delete cleanedData.timeInfo;
 
     onSubmit(cleanedData);
   };
@@ -3208,6 +3310,28 @@ const CreateJobForm: React.FC<{
             ))
           )}
         </div>
+        
+        {/* Task Hours Summary */}
+        {formData.tasks.length > 0 && (
+          <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-sm font-medium text-blue-900">Total Estimated Hours</div>
+                <div className="text-2xl font-bold text-blue-600 mt-1">
+                  {formData.tasks.reduce((sum, task) => sum + (task.estimatedDuration || 0), 0).toFixed(1)} hrs
+                </div>
+              </div>
+              <div className="text-sm text-blue-700">
+                <ClockIcon className="h-6 w-6 inline mr-1" />
+                {formData.tasks.length} task{formData.tasks.length !== 1 ? 's' : ''}
+              </div>
+            </div>
+            <div className="mt-3 text-xs text-blue-800">
+              <ExclamationTriangleIcon className="h-4 w-4 inline mr-1" />
+              <strong>Note:</strong> Job will be marked as overdue when actual task hours exceed this total estimate.
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Terms and Conditions */}
@@ -4671,32 +4795,10 @@ const JobDetailsView: React.FC<{
               <span className="text-sm text-gray-600">Created:</span>
               <span className="text-sm text-gray-900">{formatDate(currentJob.createdAt)}</span>
             </div>
-            {(() => {
-              // Calculate or get deadline display
-              let deadlineDisplay = currentJob.deadline;
-              if (!deadlineDisplay && currentJob.scheduled?.start && currentJob.totalEstimatedDuration) {
-                const startTime = new Date(currentJob.scheduled.start);
-                deadlineDisplay = new Date(startTime.getTime() + (currentJob.totalEstimatedDuration * 60 * 60 * 1000));
-              } else if (!deadlineDisplay && currentJob.scheduled?.end) {
-                deadlineDisplay = currentJob.scheduled.end;
-              }
-              
-              const isOverdue = currentJob.isOverdue || false;
-              
-              return deadlineDisplay ? (
-                <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">Deadline:</span>
-                  <span className={`text-sm ${isOverdue ? 'text-red-600 font-medium' : 'text-gray-900'}`}>
-                    {formatDate(deadlineDisplay)}
-                    {isOverdue && <ExclamationTriangleIcon className="inline w-4 h-4 ml-1" />}
-                  </span>
-                </div>
-              ) : null;
-            })()}
-              <div className="flex justify-between">
-                <span className="text-sm text-gray-600">Job Card:</span>
+            <div className="flex justify-between">
+              <span className="text-sm text-gray-600">Job Card:</span>
               <span className="text-sm text-gray-900">{currentJob.jobCard?.cardNumber || 'N/A'}</span>
-              </div>
+            </div>
           </div>
         </div>
 
@@ -4715,6 +4817,40 @@ const JobDetailsView: React.FC<{
                 ></div>
               </div>
             </div>
+            {(() => {
+              const totalEstimated = currentJob.totalEstimatedDuration || 0;
+              const totalActual = currentJob.totalActualDuration || 0;
+              const formatDuration = (hours: number) => {
+                if (hours < 1) return `${Math.round(hours * 60)}m`;
+                const wholeHours = Math.floor(hours);
+                const remainingMinutes = Math.round((hours - wholeHours) * 60);
+                return remainingMinutes > 0 ? `${wholeHours}h ${remainingMinutes}m` : `${wholeHours}h`;
+              };
+              return (totalEstimated > 0 || totalActual > 0) ? (
+                <div className="mt-4 space-y-2">
+                  {totalEstimated > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Total Estimated Hours:</span>
+                      <span className="text-gray-900">{formatDuration(totalEstimated)}</span>
+                    </div>
+                  )}
+                  {totalActual > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Total Actual Hours:</span>
+                      <span className={`font-medium ${totalActual > totalEstimated ? 'text-red-600' : 'text-gray-900'}`}>
+                        {formatDuration(totalActual)}
+                        {totalActual > totalEstimated && <ExclamationTriangleIcon className="inline w-4 h-4 ml-1" />}
+                      </span>
+                    </div>
+                  )}
+                  {totalActual > totalEstimated && (
+                    <div className="mt-2 p-2 bg-red-50 rounded text-xs text-red-800">
+                      ⚠️ This job is overdue based on actual hours exceeding estimated hours
+                    </div>
+                  )}
+                </div>
+              ) : null;
+            })()}
           </div>
         </div>
       </div>
@@ -4856,12 +4992,41 @@ const JobDetailsView: React.FC<{
                 {task.description && (
                   <p className="text-sm text-gray-600">{task.description}</p>
                 )}
-                {task.assignee && (
-                  <div className="mt-2 flex items-center text-xs text-gray-500">
-                    <UserIcon className="h-3 w-3 mr-1" />
-                    <span>Assigned to: {task.assignee.firstName} {task.assignee.lastName}</span>
-                  </div>
-                )}
+                <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-gray-500">
+                  {task.estimatedDuration > 0 && (
+                    <div className="flex items-center">
+                      <ClockIcon className="h-3 w-3 mr-1" />
+                      <span>Est. {(() => {
+                        const hours = task.estimatedDuration;
+                        if (hours < 1) return `${Math.round(hours * 60)}m`;
+                        const wholeHours = Math.floor(hours);
+                        const remainingMinutes = Math.round((hours - wholeHours) * 60);
+                        return remainingMinutes > 0 ? `${wholeHours}h ${remainingMinutes}m` : `${wholeHours}h`;
+                      })()}</span>
+                    </div>
+                  )}
+                  {task.actualDuration > 0 && (
+                    <div className="flex items-center">
+                      <ClockIcon className="h-3 w-3 mr-1" />
+                      <span className={task.actualDuration > task.estimatedDuration ? 'text-red-600 font-medium' : ''}>
+                        Actual: {(() => {
+                          const hours = task.actualDuration;
+                          if (hours < 1) return `${Math.round(hours * 60)}m`;
+                          const wholeHours = Math.floor(hours);
+                          const remainingMinutes = Math.round((hours - wholeHours) * 60);
+                          return remainingMinutes > 0 ? `${wholeHours}h ${remainingMinutes}m` : `${wholeHours}h`;
+                        })()}
+                        {task.actualDuration > task.estimatedDuration && <ExclamationTriangleIcon className="inline w-3 h-3 ml-1" />}
+                      </span>
+                    </div>
+                  )}
+                  {task.assignee && (
+                    <div className="flex items-center">
+                      <UserIcon className="h-3 w-3 mr-1" />
+                      <span>Assigned to: {task.assignee.firstName} {task.assignee.lastName}</span>
+                    </div>
+                  )}
+                </div>
               </div>
             ))}
           </div>

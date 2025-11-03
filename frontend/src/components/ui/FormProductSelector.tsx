@@ -50,6 +50,16 @@ const FormProductSelector: React.FC<FormProductSelectorProps> = ({
     return formatAmountWithCurrency(amount, company?.currencySettings, displayCurrency);
   };
 
+  const getStockStatus = (product: Product) => {
+    const stock = product.inventory?.currentStock || 0;
+    const minStock = product.inventory?.minStock || 0;
+    return {
+      isInStock: stock > minStock,
+      stock: stock,
+      unit: product.inventory?.unit || ''
+    };
+  };
+
   // Filter products based on search term
   const filteredProducts = products.filter((product: Product) =>
     product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -83,7 +93,19 @@ const FormProductSelector: React.FC<FormProductSelectorProps> = ({
         {selectedProduct ? (
           <div className="flex items-center justify-between">
             <div>
-              <div className="font-medium text-gray-900">{selectedProduct.name}</div>
+              <div className="flex items-center gap-2">
+                <div className="font-medium text-gray-900">{selectedProduct.name}</div>
+                {(() => {
+                  const stockStatus = getStockStatus(selectedProduct);
+                  return (
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                      stockStatus.isInStock ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                    }`}>
+                      {stockStatus.isInStock ? 'In Stock' : 'Out of Stock'}
+                    </span>
+                  );
+                })()}
+              </div>
               <div className="text-sm text-gray-500">
                 SKU: {selectedProduct.sku} • Stock: {selectedProduct.inventory?.currentStock || 0} {selectedProduct.inventory?.unit || ''}
               </div>
@@ -150,7 +172,19 @@ const FormProductSelector: React.FC<FormProductSelectorProps> = ({
                   onClick={() => handleSelect(product)}
                 >
                   <div className="flex-1">
-                    <div className="font-medium text-gray-900">{product.name}</div>
+                    <div className="flex items-center gap-2">
+                      <div className="font-medium text-gray-900">{product.name}</div>
+                      {(() => {
+                        const stockStatus = getStockStatus(product);
+                        return (
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                            stockStatus.isInStock ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                          }`}>
+                            {stockStatus.isInStock ? 'In Stock' : 'Out of Stock'}
+                          </span>
+                        );
+                      })()}
+                    </div>
                     <div className="text-sm text-gray-500">
                       SKU: {product.sku} • Stock: {product.inventory?.currentStock || 0} {product.inventory?.unit || ''}
                     </div>

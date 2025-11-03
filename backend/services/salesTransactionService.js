@@ -20,18 +20,30 @@ class SalesTransactionService {
       // Get or create required accounts
       const accounts = await this.getOrCreateSalesAccounts();
       
-      // Calculate amounts
+      // Calculate base amounts (in USD)
       const totalAmount = invoice.total;
       const taxAmount = invoice.totalTax || 0;
       const netSales = totalAmount - taxAmount;
       
-      // Create transaction entries for double-entry bookkeeping
+      // Get currency from invoice if available, otherwise from saleData.displayCurrency, otherwise default to USD
+      const transactionCurrency = invoice.currency?.displayCurrency || 
+                                   saleData.displayCurrency || 
+                                   'USD';
+      
+      // Convert amounts if currency is not USD
+      const { convertToDisplayCurrency } = require('../utils/currencyUtils');
+      const exchangeRate = invoice.currency?.exchangeRate || 1;
+      const transactionAmount = transactionCurrency === 'USD' ? totalAmount : convertToDisplayCurrency(totalAmount, exchangeRate);
+      const transactionTaxAmount = transactionCurrency === 'USD' ? taxAmount : convertToDisplayCurrency(taxAmount, exchangeRate);
+      const transactionNetSales = transactionCurrency === 'USD' ? netSales : convertToDisplayCurrency(netSales, exchangeRate);
+      
+      // Create transaction entries for double-entry bookkeeping (using converted amounts)
       const entries = [];
       
       // 1. Debit: Cash/Bank Account (Asset) - Money received
       entries.push({
         account: accounts.cashAccount._id,
-        debit: totalAmount,
+        debit: transactionAmount,
         credit: 0,
         description: `POS Sale - ${invoice.invoiceNumber}`
       });
@@ -39,16 +51,16 @@ class SalesTransactionService {
       // 2. Credit: Sales Revenue Account (Revenue) - Net sales amount
       entries.push({
         account: accounts.salesAccount._id,
-        credit: netSales,
+        credit: transactionNetSales,
         debit: 0,
         description: `Sales Revenue - ${invoice.invoiceNumber}`
       });
       
       // 3. Credit: Tax Payable Account (Liability) - Tax collected
-      if (taxAmount > 0) {
+      if (transactionTaxAmount > 0) {
         entries.push({
           account: accounts.taxAccount._id,
-          credit: taxAmount,
+          credit: transactionTaxAmount,
           debit: 0,
           description: `Tax Collected - ${invoice.invoiceNumber}`
         });
@@ -62,8 +74,8 @@ class SalesTransactionService {
         type: 'sale',
         reference: invoice.invoiceNumber,
         referenceId: invoice._id,
-        amount: totalAmount,
-        currency: 'USD', // Always store finance transactions in USD (base currency)
+        amount: transactionAmount,
+        currency: transactionCurrency,
         entries: entries,
         customer: saleData.customer || null,
         invoice: invoice._id,
@@ -114,19 +126,31 @@ class SalesTransactionService {
       // Get or create required accounts
       const accounts = await this.getOrCreateSalesAccounts();
       
-      // Calculate amounts
+      // Calculate base amounts (in USD)
       const totalAmount = invoice.total;
       const taxAmount = invoice.totalTax || 0;
       const netSales = totalAmount - taxAmount;
       
-      // Create transaction entries
+      // Get currency from invoice if available, otherwise from invoiceData.displayCurrency, otherwise default to USD
+      const transactionCurrency = invoice.currency?.displayCurrency || 
+                                   invoiceData.displayCurrency || 
+                                   'USD';
+      
+      // Convert amounts if currency is not USD
+      const { convertToDisplayCurrency } = require('../utils/currencyUtils');
+      const exchangeRate = invoice.currency?.exchangeRate || 1;
+      const transactionAmount = transactionCurrency === 'USD' ? totalAmount : convertToDisplayCurrency(totalAmount, exchangeRate);
+      const transactionTaxAmount = transactionCurrency === 'USD' ? taxAmount : convertToDisplayCurrency(taxAmount, exchangeRate);
+      const transactionNetSales = transactionCurrency === 'USD' ? netSales : convertToDisplayCurrency(netSales, exchangeRate);
+      
+      // Create transaction entries (using converted amounts)
       const entries = [];
       
       if (invoice.status === 'paid') {
         // If paid immediately - debit cash/bank
         entries.push({
           account: accounts.cashAccount._id,
-          debit: totalAmount,
+          debit: transactionAmount,
           credit: 0,
           description: `Invoice Payment - ${invoice.invoiceNumber}`
         });
@@ -134,7 +158,7 @@ class SalesTransactionService {
         // If not paid - debit accounts receivable
         entries.push({
           account: accounts.receivablesAccount._id,
-          debit: totalAmount,
+          debit: transactionAmount,
           credit: 0,
           description: `Accounts Receivable - ${invoice.invoiceNumber}`
         });
@@ -143,16 +167,16 @@ class SalesTransactionService {
       // Credit sales revenue
       entries.push({
         account: accounts.salesAccount._id,
-        credit: netSales,
+        credit: transactionNetSales,
         debit: 0,
         description: `Sales Revenue - ${invoice.invoiceNumber}`
       });
       
       // Credit tax payable if applicable
-      if (taxAmount > 0) {
+      if (transactionTaxAmount > 0) {
         entries.push({
           account: accounts.taxAccount._id,
-          credit: taxAmount,
+          credit: transactionTaxAmount,
           debit: 0,
           description: `Tax Collected - ${invoice.invoiceNumber}`
         });
@@ -166,8 +190,8 @@ class SalesTransactionService {
         type: 'sale',
         reference: invoice.invoiceNumber,
         referenceId: invoice._id,
-        amount: totalAmount,
-        currency: 'USD', // Always store finance transactions in USD (base currency)
+        amount: transactionAmount,
+        currency: transactionCurrency,
         entries: entries,
         customer: invoiceData.customer || null,
         invoice: invoice._id,

@@ -243,25 +243,30 @@ const OverviewView: React.FC<{ job: any; analytics: any }> = ({ job, analytics }
             <span className="text-sm text-gray-600">Created:</span>
             <span className="text-sm text-gray-900">{formatDate(job.createdAt)}</span>
           </div>
-          <div className="flex justify-between">
-            <span className="text-sm text-gray-600">Deadline:</span>
-            <span className={`text-sm ${job.isOverdue ? 'text-red-600 font-medium' : 'text-gray-900'}`}>
-              {(() => {
-                // Calculate or get deadline display
-                let deadlineDisplay = job.deadline;
-                if (!deadlineDisplay && job.scheduled?.start && job.totalEstimatedDuration) {
-                  const startTime = new Date(job.scheduled.start);
-                  deadlineDisplay = new Date(startTime.getTime() + (job.totalEstimatedDuration * 60 * 60 * 1000));
-                } else if (!deadlineDisplay && job.scheduled?.end) {
-                  deadlineDisplay = job.scheduled.end;
-                }
-                return deadlineDisplay ? formatDate(deadlineDisplay) : 'Not set';
-              })()}
-              {job.isOverdue && (
-                <ExclamationTriangleIcon className="inline w-4 h-4 ml-1 text-red-600" />
-              )}
-            </span>
+          <div className="flex flex-col">
+            <div className="flex justify-between">
+              <span className="text-sm text-gray-600">Estimated Hours:</span>
+              <span className={`text-sm font-medium ${job.isOverdue ? 'text-red-600' : 'text-gray-900'}`}>
+                {job.totalEstimatedDuration?.toFixed(1) || 0}h
+              </span>
+            </div>
+            {job.totalActualDuration > 0 && (
+              <div className="flex justify-between mt-1">
+                <span className="text-sm text-gray-600">Actual Hours:</span>
+                <span className={`text-sm font-medium ${job.isOverdue ? 'text-red-600' : 'text-gray-900'}`}>
+                  {job.totalActualDuration?.toFixed(1) || 0}h
+                  {job.isOverdue && (
+                    <ExclamationTriangleIcon className="inline w-4 h-4 ml-1 text-red-600" />
+                  )}
+                </span>
+              </div>
+            )}
           </div>
+          {job.isOverdue && job.totalActualDuration > job.totalEstimatedDuration && (
+            <div className="mt-2 p-2 bg-red-50 rounded text-xs text-red-800">
+              ⚠️ This job is overdue because actual hours ({job.totalActualDuration?.toFixed(1) || 0}h) exceed estimated hours ({job.totalEstimatedDuration?.toFixed(1) || 0}h)
+            </div>
+          )}
         </div>
       </div>
 

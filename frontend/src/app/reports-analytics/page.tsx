@@ -514,24 +514,85 @@ const ReportsAnalyticsPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Data Display */}
-        {data.length > 0 ? (
+        {/* Summary Report */}
+        {salesPersonFilters.reportType === 'summary' && (
           <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-100">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase">Details</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase">Revenue</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase">Status</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase">Sales Person</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase">Total Transactions</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase">Total Sales</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase">Average Sale</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase">Last Sale</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {data.slice(0, 10).map((item: any, index: number) => (
-                    <tr key={index}>
-                      <td className="px-4 py-3 text-sm text-gray-900">{JSON.stringify(item).substring(0, 100)}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900">{formatCurrency(item?.totalRevenue || item?.amount || 0)}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900">{item?.status || 'N/A'}</td>
+                  {data.map((person: any, index: number) => (
+                    <tr key={person._id || index} className="hover:bg-gray-50">
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">{person.salesPersonName}</div>
+                          <div className="text-sm text-gray-500">{person.salesPersonEmail}</div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                        {person.totalTransactions}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                        {formatCurrency(person.totalSales)}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                        {formatCurrency(person.averageSale)}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                        {person.lastSale ? formatDate(person.lastSale) : 'N/A'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* Detailed Report */}
+        {salesPersonFilters.reportType === 'detailed' && (
+          <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-100">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase">Transaction #</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase">Date</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase">Customer</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase">Amount</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase">Payment Method</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase">Invoice #</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {data.map((transaction: any, index: number) => (
+                    <tr key={transaction._id || index} className="hover:bg-gray-50">
+                      <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {transaction.transactionNumber}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                        {formatDate(transaction.date)}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                        {transaction.customer ? `${transaction.customer.firstName} ${transaction.customer.lastName}` : 'Walk-in'}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                        {formatCurrency(transaction.amount)}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                        {transaction.paymentMethod}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                        {transaction.invoice?.invoiceNumber || 'N/A'}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -540,12 +601,33 @@ const ReportsAnalyticsPage: React.FC = () => {
             {pagination && (
               <div className="mt-4 flex items-center justify-between">
                 <p className="text-sm text-gray-700">
-                  Showing {((pagination.page - 1) * pagination.limit) + 1} to {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} results
+                  Showing {((pagination.page - 1) * pagination.limit) + 1} to {Math.min(pagination.page * pagination.limit, pagination.totalCount)} of {pagination.totalCount} results
                 </p>
+                <div className="flex space-x-2">
+                  <button
+                    onClick={() => setSalesPersonFilters(prev => ({ ...prev, page: Math.max(1, prev.page - 1) }))}
+                    disabled={!pagination.hasPrev}
+                    className="px-3 py-1 text-sm bg-gray-200 text-gray-700 rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-300"
+                  >
+                    Previous
+                  </button>
+                  <span className="px-3 py-1 text-sm text-gray-700">
+                    Page {pagination.page} of {pagination.totalPages}
+                  </span>
+                  <button
+                    onClick={() => setSalesPersonFilters(prev => ({ ...prev, page: prev.page + 1 }))}
+                    disabled={!pagination.hasNext}
+                    className="px-3 py-1 text-sm bg-gray-200 text-gray-700 rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-300"
+                  >
+                    Next
+                  </button>
+                </div>
               </div>
             )}
           </div>
-        ) : (
+        )}
+
+        {data.length === 0 && (
           <div className="text-center py-8 text-gray-500">No data available for the selected filters</div>
         )}
       </div>
