@@ -165,6 +165,25 @@ const createJob = async (req, res) => {
       }
     }
     
+    // Validate vehicle registration number - check for duplicates in ongoing jobs
+    if (data.vehicle && data.vehicle.regNumber) {
+      const regNumber = data.vehicle.regNumber.trim().toUpperCase();
+      if (regNumber) {
+        const existingOngoingJob = await WorkshopJob.findOne({
+          'vehicle.regNumber': { $regex: new RegExp(`^${regNumber.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') },
+          status: 'in_progress',
+          isActive: true
+        });
+        
+        if (existingOngoingJob) {
+          return res.status(400).json({
+            success: false,
+            message: `Vehicle with registration number "${regNumber}" already has an ongoing job (Job Card: ${existingOngoingJob.jobCard?.cardNumber || existingOngoingJob._id}). Please complete or cancel the existing job before creating a new one.`
+          });
+        }
+      }
+    }
+    
     // Validate parts availability
     if (Array.isArray(data.parts) && data.parts.length > 0) {
       const shortages = [];
@@ -445,10 +464,32 @@ const getJobById = async (req, res) => {
 // Update job card (including tasks, parts, tools, schedule, part quantities, and progress)
 const updateJob = async (req, res) => {
   try {
-    const previous = await WorkshopJob.findById(req.params.id).select('status');
+    const previous = await WorkshopJob.findById(req.params.id).select('status vehicle');
     if (!previous) return res.status(404).json({ success: false, message: 'Job not found' });
 
     const { partQuantities, ...updateData } = req.body;
+    
+    // Validate vehicle registration number - check for duplicates in ongoing jobs
+    // Determine if the job will be in_progress after this update
+    const willBeOngoing = updateData.status === 'in_progress' || (!updateData.status && previous.status === 'in_progress');
+    const regNumberToCheck = (updateData.vehicle?.regNumber || previous.vehicle?.regNumber)?.trim().toUpperCase();
+    
+    // Only validate if job is or will be in_progress and has a regNumber
+    if (willBeOngoing && regNumberToCheck) {
+      const existingOngoingJob = await WorkshopJob.findOne({
+        _id: { $ne: req.params.id }, // Exclude current job
+        'vehicle.regNumber': { $regex: new RegExp(`^${regNumberToCheck.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') },
+        status: 'in_progress',
+        isActive: true
+      });
+      
+      if (existingOngoingJob) {
+        return res.status(400).json({
+          success: false,
+          message: `Vehicle with registration number "${regNumberToCheck}" already has an ongoing job (Job Card: ${existingOngoingJob.jobCard?.cardNumber || existingOngoingJob._id}). Please complete or cancel the existing job before updating this one.`
+        });
+      }
+    }
     
     // Handle part quantity updates if provided
     if (partQuantities && Array.isArray(partQuantities) && partQuantities.length > 0) {
@@ -590,8 +631,28 @@ const scheduleJob = async (req, res) => {
 const updateJobProgress = async (req, res) => {
   try {
     const { progress, status, step, message } = req.body;
-    const job = await WorkshopJob.findById(req.params.id);
+    const job = await WorkshopJob.findById(req.params.id).select('status vehicle');
     if (!job) return res.status(404).json({ success: false, message: 'Job not found' });
+
+    // Validate vehicle registration number if status is being changed to in_progress
+    if (status === 'in_progress' && job.vehicle?.regNumber) {
+      const regNumber = job.vehicle.regNumber.trim().toUpperCase();
+      if (regNumber) {
+        const existingOngoingJob = await WorkshopJob.findOne({
+          _id: { $ne: req.params.id },
+          'vehicle.regNumber': { $regex: new RegExp(`^${regNumber.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') },
+          status: 'in_progress',
+          isActive: true
+        });
+        
+        if (existingOngoingJob) {
+          return res.status(400).json({
+            success: false,
+            message: `Vehicle with registration number "${regNumber}" already has an ongoing job (Job Card: ${existingOngoingJob.jobCard?.cardNumber || existingOngoingJob._id}). Please complete or cancel the existing job before changing this job's status to in_progress.`
+          });
+        }
+      }
+    }
 
     if (typeof progress === 'number') {
       job.progress = Math.max(0, Math.min(100, progress));
@@ -773,6 +834,32 @@ async function createJobInvoice(job, partsUsed, partsReturned) {
   
   const invoiceItems = [];
 
+  // Add labour as a dedicated invoice line if present in completionDetails
+  if (job.completionDetails?.labor) {
+    const lb = job.completionDetails.labor;
+    const base = Number(lb.base) || ((Number(lb.hours) || 0) * (Number(lb.rate) || 0));
+    const taxRate = Number(lb.tax) || 0;
+    const taxAmount = (base * taxRate) / 100;
+    const totalAmount = base + taxAmount;
+
+    const serviceProduct = {
+      _id: new mongoose.Types.ObjectId(),
+      name: 'Labor',
+      sku: 'SERVICE-LABOR'
+    };
+
+    invoiceItems.push({
+      product: serviceProduct._id,
+      name: 'Labor',
+      description: `Labour ${lb.hours || 0}h @ ${lb.rate || 0}/h`,
+      sku: serviceProduct.sku,
+      quantity: 1,
+      unitPrice: base,
+      taxRate,
+      total: totalAmount
+    });
+  }
+
   // Add dynamic charges
   if (job.completionDetails?.charges && Array.isArray(job.completionDetails.charges)) {
     for (const charge of job.completionDetails.charges) {
@@ -877,11 +964,12 @@ async function createJobInvoice(job, partsUsed, partsReturned) {
 const completeJob = async (req, res) => {
   try {
     const {
-      actualDuration, 
-      charges, 
-      notes, 
-      partsUsed, 
-      partsReturned 
+      actualDuration,
+      charges,
+      notes,
+      partsUsed,
+      partsReturned,
+      labor
     } = req.body;
 
     const job = await WorkshopJob.findById(req.params.id)
@@ -907,9 +995,11 @@ const completeJob = async (req, res) => {
     // Update job with completion details
     job.status = 'completed';
     job.progress = 100;
-    // Sanitize charges: drop empty rows so schema doesn't require fields
+    // Sanitize charges: drop empty rows and exclude labour if mistakenly included
     const safeCharges = Array.isArray(charges)
-      ? charges.filter((c) => c && String(c.name || '').trim().length > 0 && !isNaN(parseFloat(c.amount)))
+      ? charges
+          .filter((c) => c && String(c.name || '').trim().length > 0 && !isNaN(parseFloat(c.amount)))
+          .filter((c) => String(c.name).toLowerCase() !== 'labor' && String(c.name).toLowerCase() !== 'labour')
       : [];
 
     job.completionDetails = {
@@ -920,6 +1010,22 @@ const completeJob = async (req, res) => {
       completedBy: req.user._id
     };
     job.lastUpdatedBy = req.user._id;
+
+    // Compute/store labour details on job card if provided
+    if (labor && (labor.hours || labor.rate)) {
+      const hours = Number(labor.hours) || 0;
+      const rate = Number(labor.rate) || 0;
+      const tax = Number(labor.tax) || 0;
+      const base = hours * rate;
+      const taxAmt = (base * tax) / 100;
+      const total = base + taxAmt;
+
+      job.jobCard = job.jobCard || {};
+      job.jobCard.laborHours = hours;
+      job.jobCard.laborCost = base;
+      // Persist labour in completionDetails for invoice helper to read if needed
+      job.completionDetails.labor = { hours, rate, tax, base, total };
+    }
 
     // Update parts with actual usage and returns
     if (partsUsed && job.parts) {
@@ -2556,7 +2662,9 @@ const updateJobTask = async (req, res) => {
       tools, 
       parts,
       status,
-      progress 
+      progress,
+      deadline,
+      vehicle
     } = req.body;
     
     const job = await WorkshopJob.findById(req.params.id);
@@ -2575,6 +2683,26 @@ const updateJobTask = async (req, res) => {
     if (estimatedDuration) job.estimatedDuration = estimatedDuration;
     if (status) job.status = status;
     if (progress !== undefined) job.progress = progress;
+    if (deadline !== undefined) {
+      job.deadline = deadline && deadline !== '' ? new Date(deadline) : null;
+    }
+    
+    // Update vehicle information (including timeForCollection)
+    if (vehicle) {
+      if (!job.vehicle) job.vehicle = {};
+      if (vehicle.timeForCollection !== undefined) {
+        job.vehicle.timeForCollection = vehicle.timeForCollection && vehicle.timeForCollection !== '' ? new Date(vehicle.timeForCollection) : null;
+      }
+      if (vehicle.timeIn !== undefined) {
+        job.vehicle.timeIn = vehicle.timeIn ? new Date(vehicle.timeIn) : null;
+      }
+      // Allow updating other vehicle fields if provided
+      if (vehicle.make !== undefined) job.vehicle.make = vehicle.make;
+      if (vehicle.model !== undefined) job.vehicle.model = vehicle.model;
+      if (vehicle.regNumber !== undefined) job.vehicle.regNumber = vehicle.regNumber;
+      if (vehicle.vinNumber !== undefined) job.vehicle.vinNumber = vehicle.vinNumber;
+      if (vehicle.odometer !== undefined) job.vehicle.odometer = vehicle.odometer;
+    }
 
     // Handle technician updates
     if (technicians) {

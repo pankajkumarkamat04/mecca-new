@@ -64,10 +64,17 @@ const createTransaction = async (req, res) => {
       }
 
       // Check stock availability
-      if (product.inventory.currentStock < item.quantity) {
+      const currentStock = product.inventory.currentStock || 0;
+      if (currentStock <= 0) {
         return res.status(400).json({
           success: false,
-          message: `Insufficient stock for product: ${product.name}`
+          message: `Product ${product.name} is out of stock (current stock: ${currentStock})`
+        });
+      }
+      if (currentStock < item.quantity) {
+        return res.status(400).json({
+          success: false,
+          message: `Insufficient stock for product: ${product.name}. Available: ${currentStock}, Requested: ${item.quantity}`
         });
       }
     }
@@ -187,8 +194,12 @@ const createTransaction = async (req, res) => {
     for (const item of transactionData.items) {
       const product = await Product.findById(item.product);
       if (!product) continue;
-      if (product.inventory.currentStock < item.quantity) {
-        return res.status(400).json({ success: false, message: `Insufficient stock for product: ${product.name}` });
+      const currentStock = product.inventory.currentStock || 0;
+      if (currentStock <= 0) {
+        return res.status(400).json({ success: false, message: `Product ${product.name} is out of stock (current stock: ${currentStock})` });
+      }
+      if (currentStock < item.quantity) {
+        return res.status(400).json({ success: false, message: `Insufficient stock for product: ${product.name}. Available: ${currentStock}, Requested: ${item.quantity}` });
       }
       const previousStock = Number(product.inventory.currentStock || 0);
       const quantity = Number(item.quantity || 0);

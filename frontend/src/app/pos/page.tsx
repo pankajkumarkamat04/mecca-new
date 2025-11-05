@@ -256,6 +256,14 @@ const POSPage: React.FC = () => {
   };
 
   const addToCart = (product: any) => {
+    // Check if product has inventory
+    const currentStock = product?.inventory?.currentStock || 0;
+    if (currentStock <= 0) {
+      toast.error(`Cannot add ${product.name || 'product'}: Out of stock`);
+      setIsProductModalOpen(false);
+      return;
+    }
+
     const existingItem = cart.find(item => item.product._id === product._id);
     
     if (existingItem) {
@@ -276,6 +284,16 @@ const POSPage: React.FC = () => {
     if (quantity <= 0) {
       removeFromCart(productId);
       return;
+    }
+    
+    // Check if requested quantity exceeds available inventory
+    const cartItem = cart.find(item => item.product._id === productId);
+    if (cartItem) {
+      const currentStock = cartItem.product?.inventory?.currentStock || 0;
+      if (quantity > currentStock) {
+        toast.error(`Insufficient stock. Available: ${currentStock}`);
+        return;
+      }
     }
     
     setCart(cart.map(item =>
@@ -339,14 +357,48 @@ const POSPage: React.FC = () => {
 
   // Use universal price calculator
   const getPriceCalculation = () => {
-    const priceItems = cart.map(item => ({
-      product: item.product,
-      quantity: item.quantity,
-      unitPrice: item.price,
-      discount: 0, // POS doesn't use discounts per item
-      // Prefer per-item override if provided; otherwise fall back to product/default
-      taxRate: (typeof item.taxRate === 'number' ? item.taxRate : (item.product?.pricing?.taxRate ?? company?.defaultTaxRate ?? 0))
-    }));
+    const priceItems = cart.map(item => {
+      let taxRate = 0;
+      
+      // 1. Check if universal tax override is set (applies to all items)
+      if (universalTaxOverride !== undefined) {
+        if (universalTaxOverride === false) {
+          // No Tax selected - always 0
+          taxRate = 0;
+        } else {
+          // Apply Tax selected - use manual override if set, otherwise product/default rate
+          // Check if item has a manual tax rate override (from the Tax Rate input field)
+          if (typeof item.taxRate === 'number' && item.taxRate > 0 && item.taxRate <= 100) {
+            taxRate = item.taxRate;
+          } else {
+            // Use product's default tax rate, or company default, or 0
+            const productTaxRate = item.product?.pricing?.taxRate ?? 0;
+            const defaultTaxRate = company?.defaultTaxRate ?? 0;
+            taxRate = productTaxRate > 0 ? productTaxRate : defaultTaxRate;
+          }
+        }
+      }
+      // 2. Check if item has specific tax rate override (0-100) - manual entry takes priority
+      else if (typeof item.taxRate === 'number' && item.taxRate >= 0 && item.taxRate <= 100) {
+        taxRate = item.taxRate;
+      }
+      // 3. Check if item has applyTax override
+      else if (item.applyTax !== undefined) {
+        taxRate = item.applyTax ? (item.product?.pricing?.taxRate ?? company?.defaultTaxRate ?? 0) : 0;
+      }
+      // 4. Use product default tax rate
+      else {
+        taxRate = item.product?.pricing?.taxRate ?? company?.defaultTaxRate ?? 0;
+      }
+
+      return {
+        product: item.product,
+        quantity: item.quantity,
+        unitPrice: item.price,
+        discount: 0, // POS doesn't use discounts per item
+        taxRate
+      };
+    });
 
     return calculatePrice(priceItems);
   };
@@ -437,13 +489,27 @@ const POSPage: React.FC = () => {
     
     try {
       const saleData = {
-        items: cart.map(item => ({
-          product: item.product._id,
-          quantity: item.quantity,
-          price: item.price,
-          applyTax: item.applyTax, // Include individual item tax override
-          taxRate: typeof item.taxRate === 'number' ? item.taxRate : undefined, // Include per-item tax rate override
-        })),
+        items: cart.map(item => {
+          // If universal tax override is set, don't send item-level tax overrides
+          // (backend will use transactionData.applyTax for all items)
+          if (universalTaxOverride !== undefined) {
+            return {
+              product: item.product._id,
+              quantity: item.quantity,
+              price: item.price,
+              // Don't send item-level tax overrides when universal override is active
+            };
+          }
+          
+          // No universal override - send item-level overrides if they exist
+          return {
+            product: item.product._id,
+            quantity: item.quantity,
+            price: item.price,
+            applyTax: item.applyTax, // Include individual item tax override
+            taxRate: typeof item.taxRate === 'number' ? item.taxRate : undefined, // Include per-item tax rate override
+          };
+        }),
         customer: selectedCustomerId || undefined,
         customerName: customerName || undefined,
         customerPhone: customerPhone,
@@ -453,7 +519,7 @@ const POSPage: React.FC = () => {
         tenderedAmount: paymentMethod === 'cash' ? tenderedAmount : 0,
         total: getTotal(),
         displayCurrency: displayCurrency, // Include selected currency
-        applyTax: universalTaxOverride, // Include universal tax override
+        applyTax: universalTaxOverride, // Include universal tax override (undefined, true, or false)
       };
       
       await processSaleMutation.mutateAsync(saleData);
@@ -652,22 +718,33 @@ const POSPage: React.FC = () => {
               </div>
             ) : (
               <div className="space-y-3 overflow-y-auto flex-1">
-                {cart.map((item) => {
-                  const itemPrice = Number(item.price) || 0;
-                  const itemTotal = Number(item.total) || 0;
-                  const productTaxRate = item.product.pricing?.taxRate || 0;
-                  const isProductTaxable = item.product.taxSettings?.isTaxable !== false;
+                {(() => {
+                  // Get calculated prices for all items (respects tax overrides)
+                  const priceCalc = getPriceCalculation();
+                  const calculatedItems = priceCalc.items || [];
                   
-                  return (
-                    <div key={item.product._id} className="border border-gray-200 rounded-lg p-3 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <div className="flex-1">
-                          <h4 className="font-medium text-gray-900">{item.product.name || 'Unknown Product'}</h4>
-                          <p className="text-sm text-gray-500">{formatAmount(itemPrice)}</p>
-                          {productTaxRate > 0 && (
-                            <p className="text-xs text-blue-600">Tax: {productTaxRate}%</p>
-                          )}
-                        </div>
+                  return cart.map((item, index) => {
+                    const itemPrice = Number(item.price) || 0;
+                    const calculatedItem = calculatedItems[index];
+                    const itemSubtotal = calculatedItem?.subtotal || (itemPrice * item.quantity);
+                    const itemTax = calculatedItem?.taxAmount || 0;
+                    const itemTotal = calculatedItem?.total || (itemPrice * item.quantity);
+                    const effectiveTaxRate = calculatedItem?.taxRate || 0;
+                    const productTaxRate = item.product.pricing?.taxRate || 0;
+                    const isProductTaxable = item.product.taxSettings?.isTaxable !== false;
+                    
+                    return (
+                      <div key={item.product._id} className="border border-gray-200 rounded-lg p-3 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1">
+                            <h4 className="font-medium text-gray-900">{item.product.name || 'Unknown Product'}</h4>
+                            <p className="text-sm text-gray-500">{formatAmount(itemPrice)}</p>
+                            {effectiveTaxRate > 0 ? (
+                              <p className="text-xs text-blue-600">Tax: {effectiveTaxRate.toFixed(1)}%</p>
+                            ) : productTaxRate > 0 ? (
+                              <p className="text-xs text-gray-400">Tax: {productTaxRate}% (excluded)</p>
+                            ) : null}
+                          </div>
                         <div className="flex items-center space-x-2">
                           <button
                             onClick={() => updateQuantity(item.product._id, item.quantity - 1)}
@@ -691,11 +768,14 @@ const POSPage: React.FC = () => {
                         </div>
                         <div className="text-right">
                           <p className="font-medium text-gray-900">{formatAmount(itemTotal)}</p>
+                          {itemTax > 0 && (
+                            <p className="text-xs text-gray-500">incl. {formatAmount(itemTax)} tax</p>
+                          )}
                         </div>
                       </div>
                       
                       {/* Tax Override Controls */}
-                      {isProductTaxable && productTaxRate > 0 && (
+                      {isProductTaxable && productTaxRate > 0 && universalTaxOverride === undefined && (
                         <div className="flex items-center justify-between text-sm">
                           <span className="text-gray-600">Apply Tax:</span>
                           <div className="flex items-center space-x-2">
@@ -742,14 +822,20 @@ const POSPage: React.FC = () => {
                               type="number"
                               min={0}
                               max={100}
-                              value={typeof item.taxRate === 'number' && item.taxRate > 0 ? item.taxRate : ''}
+                              value={(() => {
+                                // Show manual override if set, otherwise show product default
+                                if (typeof item.taxRate === 'number' && item.taxRate >= 0) {
+                                  return item.taxRate;
+                                }
+                                return item.product?.pricing?.taxRate || '';
+                              })()}
                               onChange={(e) => {
                                 const value = e.target.value;
                                 if (value === '' || value === '0') {
-                                  const next = 0;
+                                  // Setting to 0 means clear the override, use product default
                                   setCart(cart.map(ci =>
                                     ci.product._id === item.product._id
-                                      ? { ...ci, taxRate: next }
+                                      ? { ...ci, taxRate: undefined }
                                       : ci
                                   ));
                                 } else {
@@ -769,7 +855,8 @@ const POSPage: React.FC = () => {
                       )}
                     </div>
                   );
-                })}
+                });
+                })()}
               </div>
             )}
           </div>
@@ -832,41 +919,64 @@ const POSPage: React.FC = () => {
 
             {/* Universal Tax Override */}
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Tax Override</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Tax Override
+                {universalTaxOverride !== undefined && (
+                  <span className="ml-2 text-xs font-normal text-orange-600">
+                    (Active: {universalTaxOverride ? 'Apply Tax' : 'No Tax'})
+                  </span>
+                )}
+              </label>
               <div className="flex items-center space-x-2">
                 <button
-                  onClick={() => setUniversalTaxOverride(true)}
-                  className={`px-3 py-2 rounded text-sm ${
+                  type="button"
+                  onClick={() => {
+                    setUniversalTaxOverride(true);
+                    toast.success('Tax will be applied to all items');
+                  }}
+                  className={`px-3 py-2 rounded text-sm font-medium transition-colors ${
                     universalTaxOverride === true 
-                      ? 'bg-green-100 text-green-800 border border-green-300' 
-                      : 'bg-gray-100 text-gray-600 border border-gray-300'
+                      ? 'bg-green-100 text-green-800 border-2 border-green-400' 
+                      : 'bg-gray-100 text-gray-600 border border-gray-300 hover:bg-gray-200'
                   }`}
                 >
                   Apply Tax
                 </button>
                 <button
-                  onClick={() => setUniversalTaxOverride(false)}
-                  className={`px-3 py-2 rounded text-sm ${
+                  type="button"
+                  onClick={() => {
+                    setUniversalTaxOverride(false);
+                    toast.success('Tax removed from all items');
+                  }}
+                  className={`px-3 py-2 rounded text-sm font-medium transition-colors ${
                     universalTaxOverride === false 
-                      ? 'bg-red-100 text-red-800 border border-red-300' 
-                      : 'bg-gray-100 text-gray-600 border border-gray-300'
+                      ? 'bg-red-100 text-red-800 border-2 border-red-400' 
+                      : 'bg-gray-100 text-gray-600 border border-gray-300 hover:bg-gray-200'
                   }`}
                 >
                   No Tax
                 </button>
                 <button
-                  onClick={() => setUniversalTaxOverride(undefined)}
-                  className={`px-3 py-2 rounded text-sm ${
+                  type="button"
+                  onClick={() => {
+                    setUniversalTaxOverride(undefined);
+                    toast.success('Tax settings reset to auto');
+                  }}
+                  className={`px-3 py-2 rounded text-sm font-medium transition-colors ${
                     universalTaxOverride === undefined 
-                      ? 'bg-blue-100 text-blue-800 border border-blue-300' 
-                      : 'bg-gray-100 text-gray-600 border border-gray-300'
+                      ? 'bg-blue-100 text-blue-800 border-2 border-blue-400' 
+                      : 'bg-gray-100 text-gray-600 border border-gray-300 hover:bg-gray-200'
                   }`}
                 >
                   Auto
                 </button>
               </div>
               <p className="text-xs text-gray-500 mt-1">
-                Auto: Uses customer and product settings
+                {universalTaxOverride === undefined 
+                  ? 'Auto: Uses customer and product settings' 
+                  : universalTaxOverride 
+                    ? 'Tax will be applied to all taxable items' 
+                    : 'Tax will be removed from all items'}
               </p>
             </div>
 
@@ -899,21 +1009,25 @@ const POSPage: React.FC = () => {
                 </span>
               </div>
               
-              {getTax() > 0 && (
-                <div className="flex justify-between text-sm text-blue-600">
-                  <span>Tax:</span>
-                  <span className="font-medium">
-                    +{(() => {
-                      try {
-                        return formatAmount(getTax());
-                      } catch (e) {
-                        console.error('Error formatting tax:', e);
-                        return '$0.00';
-                      }
-                    })()}
-                  </span>
-                </div>
-              )}
+              <div className={`flex justify-between text-sm ${getTax() > 0 ? 'text-blue-600' : 'text-gray-500'}`}>
+                <span>Tax:</span>
+                <span className="font-medium">
+                  {(() => {
+                    try {
+                      const tax = getTax();
+                      return tax > 0 ? `+${formatAmount(tax)}` : formatAmount(0);
+                    } catch (e) {
+                      console.error('Error formatting tax:', e);
+                      return '$0.00';
+                    }
+                  })()}
+                  {universalTaxOverride !== undefined && (
+                    <span className="ml-1 text-xs text-orange-600">
+                      ({universalTaxOverride ? 'applied' : 'removed'})
+                    </span>
+                  )}
+                </span>
+              </div>
               
               <div className="flex justify-between text-lg font-semibold border-t pt-2 mt-2">
                 <span>Total ({displayCurrency}):</span>

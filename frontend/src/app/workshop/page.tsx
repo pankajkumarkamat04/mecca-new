@@ -675,7 +675,6 @@ const JobCompletionModal: React.FC<{
 
   // Predefined charges
   const predefinedCharges = [
-    { name: 'Labor', amount: '', tax: 0 },
     { name: 'Service Fee', amount: '', tax: 0 },
     { name: 'Diagnostic Fee', amount: '', tax: 0 },
     { name: 'Emergency Service', amount: '', tax: 0 },
@@ -750,84 +749,137 @@ const JobCompletionModal: React.FC<{
           {/* Service Details */}
           <div className="space-y-6">
             <div>
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Service Details</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Input
-                  label="Actual Duration (hours)"
-                  type="number"
-                  step="0.5"
-                  value={finalDetails.actualDuration}
-                  onChange={(e) => setFinalDetails(prev => ({ ...prev, actualDuration: e.target.value }))}
-                  placeholder="Enter actual time taken in hours"
-                />
-                        <div className="w-full">
-                          <label className="block text-sm font-medium text-gray-700 mb-2">Charges</label>
-                          <div className="space-y-3">
-                            {finalDetails.charges.map((charge, index) => (
-                              <div key={index} className="flex items-center space-x-3 p-3 border border-gray-200 rounded-lg bg-gray-50">
-                                <div className="flex-1">
-                                  <select
-                                    value={charge.name}
-                                    onChange={(e) => updateCharge(index, 'name', e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                                  >
-                                    <option value="">Select charge type</option>
-                                    {predefinedCharges.map((predefinedCharge) => (
-                                      <option key={predefinedCharge.name} value={predefinedCharge.name}>
-                                        {predefinedCharge.name}
-                                      </option>
-                                    ))}
-                                  </select>
-                                </div>
-                                <div className="w-32">
-                                  <input
-                                    type="number"
-                                    step="0.01"
-                                    value={charge.amount}
-                                    onChange={(e) => updateCharge(index, 'amount', e.target.value)}
-                                    placeholder="Amount"
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                                  />
-                                </div>
-                                <div className="w-24">
-                                  <input
-                                    type="number"
-                                    step="0.1"
-                                    min="0"
-                                    max="100"
-                                    value={charge.tax}
-                                    onChange={(e) => updateCharge(index, 'tax', parseFloat(e.target.value) || 0)}
-                                    placeholder="Tax %"
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                                  />
-                                </div>
-                                {finalDetails.charges.length > 1 && (
-                                  <button
-                                    type="button"
-                                    onClick={() => removeCharge(index)}
-                                    className="text-red-500 hover:text-red-700 p-1 flex-shrink-0"
-                                    title="Remove charge"
-                                  >
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                    </svg>
-                                  </button>
-                                )}
-                              </div>
-                            ))}
-                            <button
-                              type="button"
-                              onClick={addCharge}
-                              className="w-full p-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-gray-400 hover:text-gray-600 transition-colors"
-                            >
-                              <svg className="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                              </svg>
-                              Add Charge
-                            </button>
-                          </div>
-                        </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Labour & Service Details</h3>
+              {/* Labour Section */}
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4">
+                <h4 className="font-medium text-gray-900 mb-3">Labour</h4>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                  <div>
+                    <Input
+                      label="Actual Work Hours"
+                      type="number"
+                      step="0.5"
+                      value={finalDetails.actualDuration}
+                      onChange={(e) => setFinalDetails(prev => ({ ...prev, actualDuration: e.target.value }))}
+                      placeholder="Total hours"
+                    />
+                  </div>
+                  <div>
+                    <Input
+                      label="Hourly Rate"
+                      type="number"
+                      step="0.01"
+                      value={(finalDetails as any).laborRate || ''}
+                      onChange={(e) => setFinalDetails(prev => ({ ...prev, laborRate: e.target.value }))}
+                      placeholder="0.00"
+                    />
+                  </div>
+                  <div>
+                    <Input
+                      label="Tax %"
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      max="100"
+                      value={(finalDetails as any).laborTax ?? 0}
+                      onChange={(e) => setFinalDetails(prev => ({ ...prev, laborTax: parseFloat(e.target.value) || 0 }))}
+                      placeholder="0"
+                    />
+                  </div>
+                  <div>
+                    <div className="text-sm text-gray-600 mb-1">Labour Total (incl. tax)</div>
+                    <div className="text-lg font-semibold text-gray-900">
+                      {(() => {
+                        const hours = parseFloat(String(finalDetails.actualDuration)) || 0;
+                        const rate = parseFloat(String((finalDetails as any).laborRate)) || 0;
+                        const tax = parseFloat(String((finalDetails as any).laborTax)) || 0;
+                        const base = hours * rate;
+                        const taxAmt = (base * tax) / 100;
+                        return `$${(base + taxAmt).toFixed(2)}`;
+                      })()}
+                    </div>
+                  </div>
+                </div>
               </div>
+
+              {/* Service Charges (non-labour) */}
+              <div className="w-full">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Service Charges</label>
+                <div className="space-y-3">
+                  {finalDetails.charges.map((charge, index) => (
+                    <div key={index} className="p-3 border border-gray-200 rounded-lg bg-gray-50">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+                        <div>
+                          <label className="block text-xs text-gray-600 mb-1">Charge Name</label>
+                          <select
+                            value={charge.name}
+                            onChange={(e) => updateCharge(index, 'name', e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                          >
+                            <option value="">Select charge type</option>
+                            {predefinedCharges
+                              .filter(pc => pc.name.toLowerCase() !== 'labor' && pc.name.toLowerCase() !== 'labour')
+                              .map((predefinedCharge) => (
+                                <option key={predefinedCharge.name} value={predefinedCharge.name}>
+                                  {predefinedCharge.name}
+                                </option>
+                              ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-600 mb-1">Amount</label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={charge.amount}
+                            onChange={(e) => updateCharge(index, 'amount', e.target.value)}
+                            placeholder="0.00"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-600 mb-1">Tax %</label>
+                          <input
+                            type="number"
+                            step="0.1"
+                            min="0"
+                            max="100"
+                            value={charge.tax}
+                            onChange={(e) => updateCharge(index, 'tax', parseFloat(e.target.value) || 0)}
+                            placeholder="0"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                          />
+                        </div>
+                      </div>
+                      {finalDetails.charges.length > 1 && (
+                        <div className="mt-2 text-right">
+                          <button
+                            type="button"
+                            onClick={() => removeCharge(index)}
+                            className="text-red-500 hover:text-red-700 p-1"
+                            title="Remove charge"
+                          >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={addCharge}
+                    className="w-full p-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    <svg className="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    </svg>
+                    Add Charge
+                  </button>
+                </div>
+              </div>
+
               <div className="mt-4">
                 <TextArea
                   label="Completion Notes"
@@ -917,6 +969,19 @@ const JobCompletionModal: React.FC<{
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <h3 className="text-lg font-medium text-blue-900 mb-2">Total Charges</h3>
                       <div className="space-y-2 text-sm">
+                        {(() => {
+                          const hours = parseFloat(String(finalDetails.actualDuration)) || 0;
+                          const rate = parseFloat(String((finalDetails as any).laborRate)) || 0;
+                          const ltax = parseFloat(String((finalDetails as any).laborTax)) || 0;
+                          const lbase = hours * rate;
+                          const ltaxAmount = (lbase * ltax) / 100;
+                          return (
+                            <div className="space-y-1">
+                              <div className="flex justify-between"><span>Labour Subtotal:</span><span>${lbase.toFixed(2)}</span></div>
+                              <div className="flex justify-between"><span>Labour Tax:</span><span>${ltaxAmount.toFixed(2)}</span></div>
+                            </div>
+                          );
+                        })()}
                         {finalDetails.charges.map((charge, index) => {
                           if (!charge.name || !charge.amount) return null;
                           const amount = parseFloat(charge.amount) || 0;
@@ -944,6 +1009,12 @@ const JobCompletionModal: React.FC<{
                           );
                         })}
                 {(() => {
+                  const hours = parseFloat(String(finalDetails.actualDuration)) || 0;
+                  const rate = parseFloat(String((finalDetails as any).laborRate)) || 0;
+                  const ltax = parseFloat(String((finalDetails as any).laborTax)) || 0;
+                  const labourBase = hours * rate;
+                  const labourTax = (labourBase * ltax) / 100;
+
                   const chargesBase = finalDetails.charges.reduce((sum, c) => sum + (parseFloat(c.amount) || 0), 0);
                   const chargesTax = finalDetails.charges.reduce((sum, c) => {
                     const a = parseFloat(c.amount) || 0;
@@ -964,7 +1035,7 @@ const JobCompletionModal: React.FC<{
                     return sum + (base * rate) / 100;
                   }, 0);
 
-                  const grandTotal = chargesBase + chargesTax + partsBase + partsTax;
+                  const grandTotal = labourBase + labourTax + chargesBase + chargesTax + partsBase + partsTax;
 
                   return (
                     <div className="mt-2 space-y-1">
@@ -972,6 +1043,8 @@ const JobCompletionModal: React.FC<{
                       <div className="flex justify-between"><span>Parts Tax:</span><span>${partsTax.toFixed(2)}</span></div>
                       <div className="flex justify-between"><span>Charges Subtotal:</span><span>${chargesBase.toFixed(2)}</span></div>
                       <div className="flex justify-between"><span>Charges Tax:</span><span>${chargesTax.toFixed(2)}</span></div>
+                      <div className="flex justify-between"><span>Labour Subtotal:</span><span>${labourBase.toFixed(2)}</span></div>
+                      <div className="flex justify-between"><span>Labour Tax:</span><span>${labourTax.toFixed(2)}</span></div>
                       <div className="border-t border-blue-200 pt-2 flex justify-between font-medium text-blue-900">
                         <span>Grand Total:</span>
                         <span>${grandTotal.toFixed(2)}</span>
@@ -1248,6 +1321,11 @@ const WorkshopPage: React.FC = () => {
       await api.post(`/workshop/${selectedJob._id}/complete`, {
         ...completionData,
         actualDuration: parseFloat(completionData.actualDuration) || 0,
+        labor: {
+          hours: parseFloat(String(completionData.actualDuration)) || 0,
+          rate: parseFloat(String((completionData as any).laborRate)) || 0,
+          tax: parseFloat(String((completionData as any).laborTax)) || 0
+        },
         status: 'completed',
         completedAt: new Date().toISOString()
       });
@@ -1444,6 +1522,65 @@ const WorkshopPage: React.FC = () => {
       }
     },
     {
+      key: 'deadline',
+      label: 'Deadline',
+      render: (job: any) => {
+        if (!job.deadline) {
+          return <span className="text-gray-500">Not set</span>;
+        }
+        const deadlineDate = new Date(job.deadline);
+        const isOverdue = deadlineDate < new Date() && job.status !== 'completed';
+        return (
+          <div className="flex flex-col">
+            <span className={`text-sm ${isOverdue ? 'text-red-600 font-medium' : 'text-gray-900'}`}>
+              {deadlineDate.toLocaleDateString()}
+            </span>
+            {isOverdue && (
+              <span className="text-xs text-red-600">Overdue</span>
+            )}
+          </div>
+        );
+      }
+    },
+    {
+      key: 'timeIn',
+      label: 'Time In',
+      render: (job: any) => {
+        const timeIn = job.vehicle?.timeIn;
+        if (!timeIn) {
+          return <span className="text-gray-500">Not set</span>;
+        }
+        const timeInDate = new Date(timeIn);
+        const formattedDate = timeInDate.toLocaleDateString();
+        const formattedTime = timeInDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        return (
+          <div className="flex flex-col">
+            <span className="text-sm text-gray-900">{formattedDate}</span>
+            <span className="text-xs text-gray-600">{formattedTime}</span>
+          </div>
+        );
+      }
+    },
+    {
+      key: 'expectedCollection',
+      label: 'Expected Collection',
+      render: (job: any) => {
+        const timeForCollection = job.vehicle?.timeForCollection;
+        if (!timeForCollection) {
+          return <span className="text-gray-500">Not set</span>;
+        }
+        const collectionDate = new Date(timeForCollection);
+        const formattedDate = collectionDate.toLocaleDateString();
+        const formattedTime = collectionDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        return (
+          <div className="flex flex-col">
+            <span className="text-sm text-gray-900">{formattedDate}</span>
+            <span className="text-xs text-gray-600">{formattedTime}</span>
+          </div>
+        );
+      }
+    },
+    {
       key: 'actions',
       label: 'Actions',
       render: (job: any) => (
@@ -1541,7 +1678,7 @@ const WorkshopPage: React.FC = () => {
           </Button>
           
           {/* 5. Complete */}
-          {job.status === 'in_progress' && (
+          {(job.status === 'in_progress' || job.status === 'overdue') && (
             <Button
               variant="ghost"
               size="sm"
@@ -2010,7 +2147,10 @@ const WorkshopPage: React.FC = () => {
         {selectedJob && (
           <JobProgressVisualization 
             jobId={selectedJob._id} 
-            onClose={() => setIsProgressModalOpen(false)} 
+            onClose={() => {
+              setIsVisualizationOpen(false);
+              setSelectedJob(null);
+            }} 
           />
         )}
       </Modal>
@@ -2825,21 +2965,12 @@ const CreateJobForm: React.FC<{
               required
             />
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Input
-                label="Order Number"
-                name="orderNumber"
-                value={formData.customerInfo.orderNumber}
-                onChange={(e) => handleInputChange('customerInfo.orderNumber', e.target.value)}
-              />
-              <Input
-                label="Service Date"
-                name="serviceDate"
-                type="date"
-                value={formData.deadline}
-                onChange={(e) => handleInputChange('deadline', e.target.value)}
-              />
-            </div>
+            <Input
+              label="Order Number"
+              name="orderNumber"
+              value={formData.customerInfo.orderNumber}
+              onChange={(e) => handleInputChange('customerInfo.orderNumber', e.target.value)}
+            />
             
             {/* Display selected customer details */}
             {formData.selectedCustomer && (
@@ -2975,6 +3106,13 @@ const CreateJobForm: React.FC<{
                 type="datetime-local"
                 value={formData.timeInfo.timeIn}
                 onChange={(e) => handleInputChange('timeInfo.timeIn', e.target.value)}
+              />
+              <Input
+                label="Deadline"
+                name="deadline"
+                type="date"
+                value={formData.deadline}
+                onChange={(e) => handleInputChange('deadline', e.target.value)}
               />
               <Input
                 label="Expected Collection"
@@ -3465,9 +3603,26 @@ const EditJobForm: React.FC<{
     priority: job?.priority || 'medium',
     status: job?.status || 'scheduled',
     deadline: job?.deadline ? new Date(job.deadline).toISOString().split('T')[0] : '',
-    // Progress is now calculated automatically from task completion
-    estimatedDuration: job?.estimatedDuration ? job.estimatedDuration.toString() : ''
+    expectedCollection: job?.vehicle?.timeForCollection 
+      ? new Date(job.vehicle.timeForCollection).toISOString().slice(0, 16) 
+      : ''
   });
+
+  // Update jobInfo when job prop changes
+  useEffect(() => {
+    if (job) {
+      setJobInfo({
+        title: job.title || '',
+        description: job.description || '',
+        priority: job.priority || 'medium',
+        status: job.status || 'scheduled',
+        deadline: job.deadline ? new Date(job.deadline).toISOString().split('T')[0] : '',
+        expectedCollection: job.vehicle?.timeForCollection 
+          ? new Date(job.vehicle.timeForCollection).toISOString().slice(0, 16) 
+          : ''
+      });
+    }
+  }, [job]);
 
   // Basic safety check
   if (!job || typeof job !== 'object') {
@@ -3765,10 +3920,15 @@ const EditJobForm: React.FC<{
   const handleJobInfoUpdate = async () => {
     setIsUpdating(true);
     try {
-      const updatedJobInfo = {
-        ...jobInfo,
-        estimatedDuration: parseFloat(jobInfo.estimatedDuration) || 0
+      const updatedJobInfo: any = {
+        ...jobInfo
       };
+      
+      // Include vehicle timeForCollection (even if empty to allow clearing)
+      updatedJobInfo.vehicle = {
+        timeForCollection: jobInfo.expectedCollection || null
+      };
+      
       await api.put(`/workshop/${job._id}/update-task`, updatedJobInfo);
       toast.success('Job information updated successfully');
       setIsEditingJobInfo(false);
@@ -3851,13 +4011,11 @@ const EditJobForm: React.FC<{
                 value={jobInfo.deadline}
                 onChange={(e) => setJobInfo(prev => ({ ...prev, deadline: e.target.value }))}
           />
-          {/* Progress is now calculated automatically from task completion - removed manual input */}
           <Input
-            label="Estimated Duration (hours)"
-            type="number"
-            step="0.5"
-                value={jobInfo.estimatedDuration}
-                onChange={(e) => setJobInfo(prev => ({ ...prev, estimatedDuration: e.target.value }))}
+            label="Expected Collection"
+            type="datetime-local"
+                value={jobInfo.expectedCollection}
+                onChange={(e) => setJobInfo(prev => ({ ...prev, expectedCollection: e.target.value }))}
           />
         </div>
         <TextArea
@@ -4799,6 +4957,33 @@ const JobDetailsView: React.FC<{
               <span className="text-sm text-gray-600">Job Card:</span>
               <span className="text-sm text-gray-900">{currentJob.jobCard?.cardNumber || 'N/A'}</span>
             </div>
+            {currentJob.deadline && (
+              <div className="flex justify-between">
+                <span className="text-sm text-gray-600">Deadline:</span>
+                <span className={`text-sm ${new Date(currentJob.deadline) < new Date() && currentJob.status !== 'completed' ? 'text-red-600 font-medium' : 'text-gray-900'}`}>
+                  {formatDate(currentJob.deadline)}
+                  {new Date(currentJob.deadline) < new Date() && currentJob.status !== 'completed' && (
+                    <span className="ml-1 text-xs">(Overdue)</span>
+                  )}
+                </span>
+              </div>
+            )}
+            {currentJob.vehicle?.timeIn && (
+              <div className="flex justify-between">
+                <span className="text-sm text-gray-600">Time In:</span>
+                <span className="text-sm text-gray-900">
+                  {formatDate(currentJob.vehicle.timeIn)} {new Date(currentJob.vehicle.timeIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </span>
+              </div>
+            )}
+            {currentJob.vehicle?.timeForCollection && (
+              <div className="flex justify-between">
+                <span className="text-sm text-gray-600">Expected Collection:</span>
+                <span className="text-sm text-gray-900">
+                  {formatDate(currentJob.vehicle.timeForCollection)} {new Date(currentJob.vehicle.timeForCollection).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </span>
+              </div>
+            )}
           </div>
         </div>
 

@@ -206,7 +206,7 @@ const workshopJobSchema = new mongoose.Schema({
   // Track detailed progress events for visualization and auditing
   progressHistory: [{
     progress: { type: Number, min: 0, max: 100, required: true },
-    status: { type: String, enum: ['scheduled', 'in_progress', 'on_hold', 'completed', 'cancelled'] },
+    status: { type: String, enum: ['scheduled', 'in_progress', 'on_hold', 'completed', 'cancelled', 'overdue'] },
     step: { type: String, trim: true }, // e.g., 'assessment', 'resource_assignment', 'work_started', 'quality_check', 'completion'
     message: { type: String, trim: true },
     updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
