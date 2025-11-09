@@ -31,7 +31,7 @@ const ToolManagement: React.FC = () => {
   const [isStockCountOpen, setIsStockCountOpen] = useState(false);
   const [isAdjustInventoryOpen, setIsAdjustInventoryOpen] = useState(false);
   const [selectedTool, setSelectedTool] = useState<any>(null);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<any>({
     name: '',
     description: '',
     category: '',
@@ -425,13 +425,13 @@ const ToolManagement: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">Tool Management</h2>
-          <p className="text-gray-600">Manage workshop tools and equipment with inventory tracking</p>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="space-y-1">
+          <h2 className="text-xl font-bold text-gray-900 sm:text-2xl">Tool Management</h2>
+          <p className="text-sm text-gray-600 sm:text-base">Manage workshop tools and equipment with inventory tracking</p>
         </div>
-        <Button onClick={() => setIsCreateOpen(true)}>
-          <PlusIcon className="h-5 w-5 mr-2" />
+        <Button onClick={() => setIsCreateOpen(true)} className="w-full sm:w-auto">
+          <PlusIcon className="mr-2 h-5 w-5" />
           Add Tool
         </Button>
       </div>
@@ -457,13 +457,13 @@ const ToolManagement: React.FC = () => {
             <Input
               label="Tool Name"
               value={formData.name}
-              onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+              onChange={(e) => setFormData((prev: any) => ({ ...prev, name: e.target.value }))}
               required
             />
             <Select
               label="Category"
               value={formData.category}
-              onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
+              onChange={(e) => setFormData((prev: any) => ({ ...prev, category: e.target.value }))}
               required
               options={[
                 { value: '', label: 'Select Category' },
@@ -481,7 +481,7 @@ const ToolManagement: React.FC = () => {
             <Input
               label="Size"
               value={formData.specifications.size}
-              onChange={(e) => setFormData(prev => ({ 
+              onChange={(e) => setFormData((prev: any) => ({ 
                 ...prev, 
                 specifications: { ...prev.specifications, size: e.target.value }
               }))}
@@ -491,7 +491,7 @@ const ToolManagement: React.FC = () => {
               label="Weight (kg)"
               type="number"
               value={formData.specifications.weight}
-              onChange={(e) => setFormData(prev => ({ 
+              onChange={(e) => setFormData((prev: any) => ({ 
                 ...prev, 
                 specifications: { ...prev.specifications, weight: parseFloat(e.target.value) || 0 }
               }))}
@@ -501,7 +501,7 @@ const ToolManagement: React.FC = () => {
             <Select
               label="Power Source"
               value={formData.specifications.powerSource}
-              onChange={(e) => setFormData(prev => ({ 
+              onChange={(e) => setFormData((prev: any) => ({ 
                 ...prev, 
                 specifications: { ...prev.specifications, powerSource: e.target.value }
               }))}
@@ -517,7 +517,7 @@ const ToolManagement: React.FC = () => {
             <Input
               label="Voltage"
               value={formData.specifications.voltage}
-              onChange={(e) => setFormData(prev => ({ 
+              onChange={(e) => setFormData((prev: any) => ({ 
                 ...prev, 
                 specifications: { ...prev.specifications, voltage: e.target.value }
               }))}
@@ -528,7 +528,7 @@ const ToolManagement: React.FC = () => {
             <Input
               label="Torque"
               value={formData.specifications.torque}
-              onChange={(e) => setFormData(prev => ({ 
+              onChange={(e) => setFormData((prev: any) => ({ 
                 ...prev, 
                 specifications: { ...prev.specifications, torque: e.target.value }
               }))}
@@ -537,7 +537,7 @@ const ToolManagement: React.FC = () => {
             <Input
               label="Capacity"
               value={formData.specifications.capacity}
-              onChange={(e) => setFormData(prev => ({ 
+              onChange={(e) => setFormData((prev: any) => ({ 
                 ...prev, 
                 specifications: { ...prev.specifications, capacity: e.target.value }
               }))}
@@ -550,7 +550,7 @@ const ToolManagement: React.FC = () => {
               type="number"
               min="1"
               value={formData.inventory.quantity}
-              onChange={(e) => setFormData(prev => ({ 
+              onChange={(e) => setFormData((prev: any) => ({ 
                 ...prev, 
                 inventory: { ...prev.inventory, quantity: parseInt(e.target.value) || 1 }
               }))}
@@ -560,7 +560,7 @@ const ToolManagement: React.FC = () => {
               type="number"
               min="0"
               value={formData.inventory.availableQuantity}
-              onChange={(e) => setFormData(prev => ({ 
+              onChange={(e) => setFormData((prev: any) => ({ 
                 ...prev, 
                 inventory: { ...prev.inventory, availableQuantity: parseInt(e.target.value) || 0 }
               }))}
@@ -569,14 +569,14 @@ const ToolManagement: React.FC = () => {
           <TextArea
             label="Description"
             value={formData.description}
-            onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+            onChange={(e) => setFormData((prev: any) => ({ ...prev, description: e.target.value }))}
             rows={3}
           />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Select
               label="Status"
               value={formData.status}
-              onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value }))}
+              onChange={(e) => setFormData((prev: any) => ({ ...prev, status: e.target.value }))}
               options={[
                 { value: 'available', label: 'Available' },
                 { value: 'in_use', label: 'In Use' },
@@ -587,7 +587,7 @@ const ToolManagement: React.FC = () => {
             <Select
               label="Condition"
               value={formData.condition}
-              onChange={(e) => setFormData(prev => ({ ...prev, condition: e.target.value }))}
+              onChange={(e) => setFormData((prev: any) => ({ ...prev, condition: e.target.value }))}
               options={[
                 { value: 'excellent', label: 'Excellent' },
                 { value: 'good', label: 'Good' },
@@ -600,13 +600,13 @@ const ToolManagement: React.FC = () => {
             <Input
               label="Location"
               value={formData.location}
-              onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
+              onChange={(e) => setFormData((prev: any) => ({ ...prev, location: e.target.value }))}
             />
             <Input
               label="Purchase Price"
               type="number"
               value={formData.purchasePrice}
-              onChange={(e) => setFormData(prev => ({ ...prev, purchasePrice: parseFloat(e.target.value) || 0 }))}
+              onChange={(e) => setFormData((prev: any) => ({ ...prev, purchasePrice: parseFloat(e.target.value) || 0 }))}
             />
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -614,39 +614,41 @@ const ToolManagement: React.FC = () => {
               label="Purchase Date"
               type="date"
               value={formData.purchaseDate}
-              onChange={(e) => setFormData(prev => ({ ...prev, purchaseDate: e.target.value }))}
+              onChange={(e) => setFormData((prev: any) => ({ ...prev, purchaseDate: e.target.value }))}
             />
             <Input
               label="Warranty Expiry"
               type="date"
               value={formData.warrantyExpiry}
-              onChange={(e) => setFormData(prev => ({ ...prev, warrantyExpiry: e.target.value }))}
+              onChange={(e) => setFormData((prev: any) => ({ ...prev, warrantyExpiry: e.target.value }))}
             />
           </div>
           <Input
             label="Supplier"
             value={formData.supplier}
-            onChange={(e) => setFormData(prev => ({ ...prev, supplier: e.target.value }))}
+            onChange={(e) => setFormData((prev: any) => ({ ...prev, supplier: e.target.value }))}
           />
           <TextArea
             label="Notes"
             value={formData.notes}
-            onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+            onChange={(e) => setFormData((prev: any) => ({ ...prev, notes: e.target.value }))}
             rows={2}
           />
-          <div className="flex justify-end space-x-3">
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end sm:gap-3">
             <Button
               variant="outline"
               onClick={() => {
                 setIsCreateOpen(false);
                 resetForm();
               }}
+              className="w-full sm:w-auto"
             >
               Cancel
             </Button>
             <Button
               onClick={handleCreate}
               loading={createToolMutation.isPending}
+              className="w-full sm:w-auto"
             >
               Add Tool
             </Button>
@@ -670,13 +672,13 @@ const ToolManagement: React.FC = () => {
             <Input
               label="Tool Name"
               value={formData.name}
-              onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+              onChange={(e) => setFormData((prev: any) => ({ ...prev, name: e.target.value }))}
               required
             />
             <Select
               label="Category"
               value={formData.category}
-              onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
+              onChange={(e) => setFormData((prev: any) => ({ ...prev, category: e.target.value }))}
               required
               options={[
                 { value: '', label: 'Select Category' },
@@ -694,7 +696,7 @@ const ToolManagement: React.FC = () => {
             <Input
               label="Size"
               value={formData.specifications.size}
-              onChange={(e) => setFormData(prev => ({ 
+              onChange={(e) => setFormData((prev: any) => ({ 
                 ...prev, 
                 specifications: { ...prev.specifications, size: e.target.value }
               }))}
@@ -704,7 +706,7 @@ const ToolManagement: React.FC = () => {
               label="Weight (kg)"
               type="number"
               value={formData.specifications.weight}
-              onChange={(e) => setFormData(prev => ({ 
+              onChange={(e) => setFormData((prev: any) => ({ 
                 ...prev, 
                 specifications: { ...prev.specifications, weight: parseFloat(e.target.value) || 0 }
               }))}
@@ -714,7 +716,7 @@ const ToolManagement: React.FC = () => {
             <Select
               label="Power Source"
               value={formData.specifications.powerSource}
-              onChange={(e) => setFormData(prev => ({ 
+              onChange={(e) => setFormData((prev: any) => ({ 
                 ...prev, 
                 specifications: { ...prev.specifications, powerSource: e.target.value }
               }))}
@@ -730,7 +732,7 @@ const ToolManagement: React.FC = () => {
             <Input
               label="Voltage"
               value={formData.specifications.voltage}
-              onChange={(e) => setFormData(prev => ({ 
+              onChange={(e) => setFormData((prev: any) => ({ 
                 ...prev, 
                 specifications: { ...prev.specifications, voltage: e.target.value }
               }))}
@@ -741,7 +743,7 @@ const ToolManagement: React.FC = () => {
             <Input
               label="Torque"
               value={formData.specifications.torque}
-              onChange={(e) => setFormData(prev => ({ 
+              onChange={(e) => setFormData((prev: any) => ({ 
                 ...prev, 
                 specifications: { ...prev.specifications, torque: e.target.value }
               }))}
@@ -750,7 +752,7 @@ const ToolManagement: React.FC = () => {
             <Input
               label="Capacity"
               value={formData.specifications.capacity}
-              onChange={(e) => setFormData(prev => ({ 
+              onChange={(e) => setFormData((prev: any) => ({ 
                 ...prev, 
                 specifications: { ...prev.specifications, capacity: e.target.value }
               }))}
@@ -763,7 +765,7 @@ const ToolManagement: React.FC = () => {
               type="number"
               min="1"
               value={formData.inventory.quantity}
-              onChange={(e) => setFormData(prev => ({ 
+              onChange={(e) => setFormData((prev: any) => ({ 
                 ...prev, 
                 inventory: { ...prev.inventory, quantity: parseInt(e.target.value) || 1 }
               }))}
@@ -773,7 +775,7 @@ const ToolManagement: React.FC = () => {
               type="number"
               min="0"
               value={formData.inventory.availableQuantity}
-              onChange={(e) => setFormData(prev => ({ 
+              onChange={(e) => setFormData((prev: any) => ({ 
                 ...prev, 
                 inventory: { ...prev.inventory, availableQuantity: parseInt(e.target.value) || 0 }
               }))}
@@ -782,14 +784,14 @@ const ToolManagement: React.FC = () => {
           <TextArea
             label="Description"
             value={formData.description}
-            onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+            onChange={(e) => setFormData((prev: any) => ({ ...prev, description: e.target.value }))}
             rows={3}
           />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Select
               label="Status"
               value={formData.status}
-              onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value }))}
+              onChange={(e) => setFormData((prev: any) => ({ ...prev, status: e.target.value }))}
               options={[
                 { value: 'available', label: 'Available' },
                 { value: 'in_use', label: 'In Use' },
@@ -800,7 +802,7 @@ const ToolManagement: React.FC = () => {
             <Select
               label="Condition"
               value={formData.condition}
-              onChange={(e) => setFormData(prev => ({ ...prev, condition: e.target.value }))}
+              onChange={(e) => setFormData((prev: any) => ({ ...prev, condition: e.target.value }))}
               options={[
                 { value: 'excellent', label: 'Excellent' },
                 { value: 'good', label: 'Good' },
@@ -813,13 +815,13 @@ const ToolManagement: React.FC = () => {
             <Input
               label="Location"
               value={formData.location}
-              onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
+              onChange={(e) => setFormData((prev: any) => ({ ...prev, location: e.target.value }))}
             />
             <Input
               label="Purchase Price"
               type="number"
               value={formData.purchasePrice}
-              onChange={(e) => setFormData(prev => ({ ...prev, purchasePrice: parseFloat(e.target.value) || 0 }))}
+              onChange={(e) => setFormData((prev: any) => ({ ...prev, purchasePrice: parseFloat(e.target.value) || 0 }))}
             />
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -827,27 +829,27 @@ const ToolManagement: React.FC = () => {
               label="Purchase Date"
               type="date"
               value={formData.purchaseDate}
-              onChange={(e) => setFormData(prev => ({ ...prev, purchaseDate: e.target.value }))}
+              onChange={(e) => setFormData((prev: any) => ({ ...prev, purchaseDate: e.target.value }))}
             />
             <Input
               label="Warranty Expiry"
               type="date"
               value={formData.warrantyExpiry}
-              onChange={(e) => setFormData(prev => ({ ...prev, warrantyExpiry: e.target.value }))}
+              onChange={(e) => setFormData((prev: any) => ({ ...prev, warrantyExpiry: e.target.value }))}
             />
           </div>
           <Input
             label="Supplier"
             value={formData.supplier}
-            onChange={(e) => setFormData(prev => ({ ...prev, supplier: e.target.value }))}
+            onChange={(e) => setFormData((prev: any) => ({ ...prev, supplier: e.target.value }))}
           />
           <TextArea
             label="Notes"
             value={formData.notes}
-            onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+            onChange={(e) => setFormData((prev: any) => ({ ...prev, notes: e.target.value }))}
             rows={2}
           />
-          <div className="flex justify-end space-x-3">
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end sm:gap-3">
             <Button
               variant="outline"
               onClick={() => {
@@ -855,12 +857,14 @@ const ToolManagement: React.FC = () => {
                 setSelectedTool(null);
                 resetForm();
               }}
+              className="w-full sm:w-auto"
             >
               Cancel
             </Button>
             <Button
               onClick={handleUpdate}
               loading={updateToolMutation.isPending}
+              className="w-full sm:w-auto"
             >
               Update Tool
             </Button>
@@ -891,7 +895,7 @@ const ToolManagement: React.FC = () => {
             type="number"
             min="0"
             value={stockCountData.actualQuantity}
-            onChange={(e) => setStockCountData(prev => ({ 
+            onChange={(e) => setStockCountData((prev: any) => ({ 
               ...prev, 
               actualQuantity: parseInt(e.target.value) || 0 
             }))}
@@ -900,14 +904,14 @@ const ToolManagement: React.FC = () => {
           <TextArea
             label="Notes"
             value={stockCountData.notes}
-            onChange={(e) => setStockCountData(prev => ({ 
+            onChange={(e) => setStockCountData((prev: any) => ({ 
               ...prev, 
               notes: e.target.value 
             }))}
             placeholder="Any notes about the stock count..."
             rows={3}
           />
-          <div className="flex justify-end space-x-3">
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end sm:gap-3">
             <Button
               variant="outline"
               onClick={() => {
@@ -915,12 +919,14 @@ const ToolManagement: React.FC = () => {
                 setSelectedTool(null);
                 setStockCountData({ actualQuantity: 0, notes: '' });
               }}
+              className="w-full sm:w-auto"
             >
               Cancel
             </Button>
             <Button
               onClick={performStockCount}
               loading={stockCountMutation.isPending}
+              className="w-full sm:w-auto"
             >
               Complete Stock Count
             </Button>
@@ -949,7 +955,7 @@ const ToolManagement: React.FC = () => {
           <Select
             label="Adjustment Type"
             value={adjustmentData.adjustmentType}
-            onChange={(e) => setAdjustmentData(prev => ({ 
+            onChange={(e) => setAdjustmentData((prev: any) => ({ 
               ...prev, 
               adjustmentType: e.target.value 
             }))}
@@ -965,7 +971,7 @@ const ToolManagement: React.FC = () => {
             type="number"
             min="1"
             value={adjustmentData.quantity}
-            onChange={(e) => setAdjustmentData(prev => ({ 
+            onChange={(e) => setAdjustmentData((prev: any) => ({ 
               ...prev, 
               quantity: parseInt(e.target.value) || 0 
             }))}
@@ -974,7 +980,7 @@ const ToolManagement: React.FC = () => {
           <TextArea
             label="Reason"
             value={adjustmentData.reason}
-            onChange={(e) => setAdjustmentData(prev => ({ 
+            onChange={(e) => setAdjustmentData((prev: any) => ({ 
               ...prev, 
               reason: e.target.value 
             }))}
@@ -982,7 +988,7 @@ const ToolManagement: React.FC = () => {
             rows={3}
             required
           />
-          <div className="flex justify-end space-x-3">
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end sm:gap-3">
             <Button
               variant="outline"
               onClick={() => {
@@ -990,12 +996,14 @@ const ToolManagement: React.FC = () => {
                 setSelectedTool(null);
                 setAdjustmentData({ adjustmentType: 'found', quantity: 0, reason: '' });
               }}
+              className="w-full sm:w-auto"
             >
               Cancel
             </Button>
             <Button
               onClick={performInventoryAdjustment}
               loading={adjustInventoryMutation.isPending}
+              className="w-full sm:w-auto"
             >
               Adjust Inventory
             </Button>
@@ -1013,7 +1021,7 @@ const TechnicianManagement: React.FC = () => {
   const [isSkillOpen, setIsSkillOpen] = useState(false);
   const [isCertificationOpen, setIsCertificationOpen] = useState(false);
   const [selectedTechnician, setSelectedTechnician] = useState<any>(null);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<any>({
     name: '',
     employeeId: '',
     department: 'workshop',
@@ -1393,13 +1401,13 @@ const TechnicianManagement: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">Technician Management</h2>
-          <p className="text-gray-600">Manage workshop technicians and staff</p>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="space-y-1">
+          <h2 className="text-xl font-bold text-gray-900 sm:text-2xl">Technician Management</h2>
+          <p className="text-sm text-gray-600 sm:text-base">Manage workshop technicians and staff</p>
         </div>
-        <Button onClick={() => setIsCreateOpen(true)}>
-          <PlusIcon className="h-5 w-5 mr-2" />
+        <Button onClick={() => setIsCreateOpen(true)} className="w-full sm:w-auto">
+          <PlusIcon className="mr-2 h-5 w-5" />
           Add Technician
         </Button>
       </div>
@@ -1425,13 +1433,13 @@ const TechnicianManagement: React.FC = () => {
             <Input
               label="Technician Name"
               value={formData.name}
-              onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+              onChange={(e) => setFormData((prev: any) => ({ ...prev, name: e.target.value }))}
               required
             />
             <Input
               label="Employee ID"
               value={formData.employeeId}
-              onChange={(e) => setFormData(prev => ({ ...prev, employeeId: e.target.value }))}
+              onChange={(e) => setFormData((prev: any) => ({ ...prev, employeeId: e.target.value }))}
               placeholder="Optional"
             />
           </div>
@@ -1439,7 +1447,7 @@ const TechnicianManagement: React.FC = () => {
             <Select
               label="Department"
               value={formData.department}
-              onChange={(e) => setFormData(prev => ({ ...prev, department: e.target.value }))}
+              onChange={(e) => setFormData((prev: any) => ({ ...prev, department: e.target.value }))}
               options={[
                 { value: 'workshop', label: 'Workshop' },
                 { value: 'diagnostics', label: 'Diagnostics' },
@@ -1452,7 +1460,7 @@ const TechnicianManagement: React.FC = () => {
             <Select
               label="Position"
               value={formData.position}
-              onChange={(e) => setFormData(prev => ({ ...prev, position: e.target.value }))}
+              onChange={(e) => setFormData((prev: any) => ({ ...prev, position: e.target.value }))}
               options={[
                 { value: 'junior_technician', label: 'Junior Technician' },
                 { value: 'technician', label: 'Technician' },
@@ -1468,12 +1476,12 @@ const TechnicianManagement: React.FC = () => {
               label="Hire Date"
               type="date"
               value={formData.hireDate}
-              onChange={(e) => setFormData(prev => ({ ...prev, hireDate: e.target.value }))}
+              onChange={(e) => setFormData((prev: any) => ({ ...prev, hireDate: e.target.value }))}
             />
             <Select
               label="Employment Status"
               value={formData.employmentStatus}
-              onChange={(e) => setFormData(prev => ({ ...prev, employmentStatus: e.target.value }))}
+              onChange={(e) => setFormData((prev: any) => ({ ...prev, employmentStatus: e.target.value }))}
               options={[
                 { value: 'active', label: 'Active' },
                 { value: 'on_leave', label: 'On Leave' },
@@ -1486,7 +1494,7 @@ const TechnicianManagement: React.FC = () => {
             <Select
               label="Preferred Shift"
               value={formData.workInfo.preferredShift}
-              onChange={(e) => setFormData(prev => ({ 
+              onChange={(e) => setFormData((prev: any) => ({ 
                 ...prev, 
                 workInfo: { ...prev.workInfo, preferredShift: e.target.value }
               }))}
@@ -1503,7 +1511,7 @@ const TechnicianManagement: React.FC = () => {
               min="1"
               max="80"
               value={formData.workInfo.maxHoursPerWeek}
-              onChange={(e) => setFormData(prev => ({ 
+              onChange={(e) => setFormData((prev: any) => ({ 
                 ...prev, 
                 workInfo: { ...prev.workInfo, maxHoursPerWeek: parseInt(e.target.value) || 40 }
               }))}
@@ -1513,7 +1521,7 @@ const TechnicianManagement: React.FC = () => {
             <Input
               label="Phone"
               value={formData.contactInfo.phone}
-              onChange={(e) => setFormData(prev => ({ 
+              onChange={(e) => setFormData((prev: any) => ({ 
                 ...prev, 
                 contactInfo: { ...prev.contactInfo, phone: e.target.value }
               }))}
@@ -1522,7 +1530,7 @@ const TechnicianManagement: React.FC = () => {
               label="Email"
               type="email"
               value={formData.contactInfo.email}
-              onChange={(e) => setFormData(prev => ({ 
+              onChange={(e) => setFormData((prev: any) => ({ 
                 ...prev, 
                 contactInfo: { ...prev.contactInfo, email: e.target.value }
               }))}
@@ -1531,7 +1539,7 @@ const TechnicianManagement: React.FC = () => {
           <Input
             label="Address"
             value={formData.contactInfo.address}
-            onChange={(e) => setFormData(prev => ({ 
+            onChange={(e) => setFormData((prev: any) => ({ 
               ...prev, 
               contactInfo: { ...prev.contactInfo, address: e.target.value }
             }))}
@@ -1539,22 +1547,24 @@ const TechnicianManagement: React.FC = () => {
           <TextArea
             label="Notes"
             value={formData.notes}
-            onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+            onChange={(e) => setFormData((prev: any) => ({ ...prev, notes: e.target.value }))}
             rows={3}
           />
-          <div className="flex justify-end space-x-3">
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end sm:gap-3">
             <Button
               variant="outline"
               onClick={() => {
                 setIsCreateOpen(false);
                 resetForm();
               }}
+              className="w-full sm:w-auto"
             >
               Cancel
             </Button>
             <Button
               onClick={handleCreate}
               loading={createTechnicianMutation.isPending}
+              className="w-full sm:w-auto"
             >
               Add Technician
             </Button>
@@ -1578,124 +1588,184 @@ const TechnicianManagement: React.FC = () => {
             <Input
               label="Technician Name"
               value={formData.name}
-              onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+              onChange={(e) => setFormData((prev: any) => ({ ...prev, name: e.target.value }))}
               required
             />
-            <Input
-              label="Employee ID"
-              value={formData.employeeId}
-              onChange={(e) => setFormData(prev => ({ ...prev, employeeId: e.target.value }))}
-              placeholder="Optional"
-            />
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Select
-              label="Department"
-              value={formData.department}
-              onChange={(e) => setFormData(prev => ({ ...prev, department: e.target.value }))}
+              label="Category"
+              value={formData.category}
+              onChange={(e) => setFormData((prev: any) => ({ ...prev, category: e.target.value }))}
+              required
               options={[
-                { value: 'workshop', label: 'Workshop' },
-                { value: 'diagnostics', label: 'Diagnostics' },
-                { value: 'body_shop', label: 'Body Shop' },
-                { value: 'paint_shop', label: 'Paint Shop' },
-                { value: 'assembly', label: 'Assembly' },
-                { value: 'quality_control', label: 'Quality Control' }
-              ]}
-            />
-            <Select
-              label="Position"
-              value={formData.position}
-              onChange={(e) => setFormData(prev => ({ ...prev, position: e.target.value }))}
-              options={[
-                { value: 'junior_technician', label: 'Junior Technician' },
-                { value: 'technician', label: 'Technician' },
-                { value: 'senior_technician', label: 'Senior Technician' },
-                { value: 'lead_technician', label: 'Lead Technician' },
-                { value: 'specialist', label: 'Specialist' },
-                { value: 'supervisor', label: 'Supervisor' }
+                { value: '', label: 'Select Category' },
+                { value: 'hand_tool', label: 'Hand Tools' },
+                { value: 'power_tool', label: 'Power Tools' },
+                { value: 'diagnostic_tool', label: 'Diagnostic Equipment' },
+                { value: 'specialty_tool', label: 'Specialty Tools' },
+                { value: 'measuring_tool', label: 'Measuring Tools' },
+                { value: 'cutting_tool', label: 'Cutting Tools' },
+                { value: 'other', label: 'Other' }
               ]}
             />
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input
-              label="Hire Date"
-              type="date"
-              value={formData.hireDate}
-              onChange={(e) => setFormData(prev => ({ ...prev, hireDate: e.target.value }))}
+              label="Size"
+              value={formData.specifications.size}
+              onChange={(e) => setFormData((prev: any) => ({ 
+                ...prev, 
+                specifications: { ...prev.specifications, size: e.target.value }
+              }))}
+              placeholder="e.g., 3, 10mm, 1/2 inch"
             />
+            <Input
+              label="Weight (kg)"
+              type="number"
+              value={formData.specifications.weight}
+              onChange={(e) => setFormData((prev: any) => ({ 
+                ...prev, 
+                specifications: { ...prev.specifications, weight: parseFloat(e.target.value) || 0 }
+              }))}
+            />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Select
-              label="Employment Status"
-              value={formData.employmentStatus}
-              onChange={(e) => setFormData(prev => ({ ...prev, employmentStatus: e.target.value }))}
+              label="Power Source"
+              value={formData.specifications.powerSource}
+              onChange={(e) => setFormData((prev: any) => ({ 
+                ...prev, 
+                specifications: { ...prev.specifications, powerSource: e.target.value }
+              }))}
               options={[
-                { value: 'active', label: 'Active' },
-                { value: 'on_leave', label: 'On Leave' },
-                { value: 'terminated', label: 'Terminated' },
+                { value: '', label: 'Select Power Source' },
+                { value: 'manual', label: 'Manual' },
+                { value: 'electric', label: 'Electric' },
+                { value: 'pneumatic', label: 'Pneumatic' },
+                { value: 'hydraulic', label: 'Hydraulic' },
+                { value: 'battery', label: 'Battery' }
+              ]}
+            />
+            <Input
+              label="Voltage"
+              value={formData.specifications.voltage}
+              onChange={(e) => setFormData((prev: any) => ({ 
+                ...prev, 
+                specifications: { ...prev.specifications, voltage: e.target.value }
+              }))}
+              placeholder="e.g., 220V, 12V"
+            />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Input
+              label="Torque"
+              value={formData.specifications.torque}
+              onChange={(e) => setFormData((prev: any) => ({ 
+                ...prev, 
+                specifications: { ...prev.specifications, torque: e.target.value }
+              }))}
+              placeholder="e.g., 50 Nm"
+            />
+            <Input
+              label="Capacity"
+              value={formData.specifications.capacity}
+              onChange={(e) => setFormData((prev: any) => ({ 
+                ...prev, 
+                specifications: { ...prev.specifications, capacity: e.target.value }
+              }))}
+              placeholder="e.g., 1000kg"
+            />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Input
+              label="Quantity"
+              type="number"
+              min="1"
+              value={formData.inventory.quantity}
+              onChange={(e) => setFormData((prev: any) => ({ 
+                ...prev, 
+                inventory: { ...prev.inventory, quantity: parseInt(e.target.value) || 1 }
+              }))}
+            />
+            <Input
+              label="Available Quantity"
+              type="number"
+              min="0"
+              value={formData.inventory.availableQuantity}
+              onChange={(e) => setFormData((prev: any) => ({ 
+                ...prev, 
+                inventory: { ...prev.inventory, availableQuantity: parseInt(e.target.value) || 0 }
+              }))}
+            />
+          </div>
+          <TextArea
+            label="Description"
+            value={formData.description}
+            onChange={(e) => setFormData((prev: any) => ({ ...prev, description: e.target.value }))}
+            rows={3}
+          />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Select
+              label="Status"
+              value={formData.status}
+              onChange={(e) => setFormData((prev: any) => ({ ...prev, status: e.target.value }))}
+              options={[
+                { value: 'available', label: 'Available' },
+                { value: 'in_use', label: 'In Use' },
+                { value: 'maintenance', label: 'Maintenance' },
                 { value: 'retired', label: 'Retired' }
               ]}
             />
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Select
-              label="Preferred Shift"
-              value={formData.workInfo.preferredShift}
-              onChange={(e) => setFormData(prev => ({ 
-                ...prev, 
-                workInfo: { ...prev.workInfo, preferredShift: e.target.value }
-              }))}
+              label="Condition"
+              value={formData.condition}
+              onChange={(e) => setFormData((prev: any) => ({ ...prev, condition: e.target.value }))}
               options={[
-                { value: 'morning', label: 'Morning Shift' },
-                { value: 'afternoon', label: 'Afternoon Shift' },
-                { value: 'night', label: 'Night Shift' },
-                { value: 'flexible', label: 'Flexible' }
+                { value: 'excellent', label: 'Excellent' },
+                { value: 'good', label: 'Good' },
+                { value: 'fair', label: 'Fair' },
+                { value: 'poor', label: 'Poor' }
               ]}
             />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input
-              label="Max Hours per Week"
+              label="Location"
+              value={formData.location}
+              onChange={(e) => setFormData((prev: any) => ({ ...prev, location: e.target.value }))}
+            />
+            <Input
+              label="Purchase Price"
               type="number"
-              min="1"
-              max="80"
-              value={formData.workInfo.maxHoursPerWeek}
-              onChange={(e) => setFormData(prev => ({ 
-                ...prev, 
-                workInfo: { ...prev.workInfo, maxHoursPerWeek: parseInt(e.target.value) || 40 }
-              }))}
+              value={formData.purchasePrice}
+              onChange={(e) => setFormData((prev: any) => ({ ...prev, purchasePrice: parseFloat(e.target.value) || 0 }))}
             />
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input
-              label="Phone"
-              value={formData.contactInfo.phone}
-              onChange={(e) => setFormData(prev => ({ 
-                ...prev, 
-                contactInfo: { ...prev.contactInfo, phone: e.target.value }
-              }))}
+              label="Purchase Date"
+              type="date"
+              value={formData.purchaseDate}
+              onChange={(e) => setFormData((prev: any) => ({ ...prev, purchaseDate: e.target.value }))}
             />
             <Input
-              label="Email"
-              type="email"
-              value={formData.contactInfo.email}
-              onChange={(e) => setFormData(prev => ({ 
-                ...prev, 
-                contactInfo: { ...prev.contactInfo, email: e.target.value }
-              }))}
+              label="Warranty Expiry"
+              type="date"
+              value={formData.warrantyExpiry}
+              onChange={(e) => setFormData((prev: any) => ({ ...prev, warrantyExpiry: e.target.value }))}
             />
           </div>
           <Input
-            label="Address"
-            value={formData.contactInfo.address}
-            onChange={(e) => setFormData(prev => ({ 
-              ...prev, 
-              contactInfo: { ...prev.contactInfo, address: e.target.value }
-            }))}
+            label="Supplier"
+            value={formData.supplier}
+            onChange={(e) => setFormData((prev: any) => ({ ...prev, supplier: e.target.value }))}
           />
           <TextArea
             label="Notes"
             value={formData.notes}
-            onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-            rows={3}
+            onChange={(e) => setFormData((prev: any) => ({ ...prev, notes: e.target.value }))}
+            rows={2}
           />
-          <div className="flex justify-end space-x-3">
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end sm:gap-3">
             <Button
               variant="outline"
               onClick={() => {
@@ -1703,12 +1773,14 @@ const TechnicianManagement: React.FC = () => {
                 setSelectedTechnician(null);
                 resetForm();
               }}
+              className="w-full sm:w-auto"
             >
               Cancel
             </Button>
             <Button
               onClick={handleUpdate}
               loading={updateTechnicianMutation.isPending}
+              className="w-full sm:w-auto"
             >
               Update Technician
             </Button>
@@ -1735,13 +1807,13 @@ const TechnicianManagement: React.FC = () => {
             <Input
               label="Skill Name"
               value={skillData.name}
-              onChange={(e) => setSkillData(prev => ({ ...prev, name: e.target.value }))}
+              onChange={(e) => setSkillData((prev: any) => ({ ...prev, name: e.target.value }))}
               required
             />
             <Input
               label="Category"
               value={skillData.category}
-              onChange={(e) => setSkillData(prev => ({ ...prev, category: e.target.value }))}
+              onChange={(e) => setSkillData((prev: any) => ({ ...prev, category: e.target.value }))}
               placeholder="e.g., Mechanical, Electrical"
             />
           </div>
@@ -1749,7 +1821,7 @@ const TechnicianManagement: React.FC = () => {
             <Select
               label="Skill Level"
               value={skillData.level}
-              onChange={(e) => setSkillData(prev => ({ ...prev, level: e.target.value }))}
+              onChange={(e) => setSkillData((prev: any) => ({ ...prev, level: e.target.value }))}
               options={[
                 { value: 'beginner', label: 'Beginner' },
                 { value: 'intermediate', label: 'Intermediate' },
@@ -1762,10 +1834,10 @@ const TechnicianManagement: React.FC = () => {
               type="number"
               min="0"
               value={skillData.yearsExperience}
-              onChange={(e) => setSkillData(prev => ({ ...prev, yearsExperience: parseInt(e.target.value) || 0 }))}
+              onChange={(e) => setSkillData((prev: any) => ({ ...prev, yearsExperience: parseInt(e.target.value) || 0 }))}
             />
           </div>
-          <div className="flex justify-end space-x-3">
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end sm:gap-3">
             <Button
               variant="outline"
               onClick={() => {
@@ -1773,12 +1845,14 @@ const TechnicianManagement: React.FC = () => {
                 setSelectedTechnician(null);
                 setSkillData({ name: '', category: '', level: 'intermediate', yearsExperience: 0 });
               }}
+              className="w-full sm:w-auto"
             >
               Cancel
             </Button>
             <Button
               onClick={addSkill}
               loading={addSkillMutation.isPending}
+              className="w-full sm:w-auto"
             >
               Add Skill
             </Button>
@@ -1805,20 +1879,20 @@ const TechnicianManagement: React.FC = () => {
             <Input
               label="Certification Name"
               value={certificationData.name}
-              onChange={(e) => setCertificationData(prev => ({ ...prev, name: e.target.value }))}
+              onChange={(e) => setCertificationData((prev: any) => ({ ...prev, name: e.target.value }))}
               required
             />
             <Input
               label="Issuing Body"
               value={certificationData.issuingBody}
-              onChange={(e) => setCertificationData(prev => ({ ...prev, issuingBody: e.target.value }))}
+              onChange={(e) => setCertificationData((prev: any) => ({ ...prev, issuingBody: e.target.value }))}
               required
             />
           </div>
           <Input
             label="Certificate Number"
             value={certificationData.certificateNumber}
-            onChange={(e) => setCertificationData(prev => ({ ...prev, certificateNumber: e.target.value }))}
+            onChange={(e) => setCertificationData((prev: any) => ({ ...prev, certificateNumber: e.target.value }))}
             required
           />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1826,24 +1900,24 @@ const TechnicianManagement: React.FC = () => {
               label="Issued Date"
               type="date"
               value={certificationData.issuedDate}
-              onChange={(e) => setCertificationData(prev => ({ ...prev, issuedDate: e.target.value }))}
+              onChange={(e) => setCertificationData((prev: any) => ({ ...prev, issuedDate: e.target.value }))}
               required
             />
             <Input
               label="Expiry Date"
               type="date"
               value={certificationData.expiryDate}
-              onChange={(e) => setCertificationData(prev => ({ ...prev, expiryDate: e.target.value }))}
+              onChange={(e) => setCertificationData((prev: any) => ({ ...prev, expiryDate: e.target.value }))}
               required
             />
           </div>
           <TextArea
             label="Notes"
             value={certificationData.notes}
-            onChange={(e) => setCertificationData(prev => ({ ...prev, notes: e.target.value }))}
+            onChange={(e) => setCertificationData((prev: any) => ({ ...prev, notes: e.target.value }))}
             rows={3}
           />
-          <div className="flex justify-end space-x-3">
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end sm:gap-3">
             <Button
               variant="outline"
               onClick={() => {
@@ -1851,12 +1925,14 @@ const TechnicianManagement: React.FC = () => {
                 setSelectedTechnician(null);
                 setCertificationData({ name: '', issuingBody: '', certificateNumber: '', issuedDate: '', expiryDate: '', notes: '' });
               }}
+              className="w-full sm:w-auto"
             >
               Cancel
             </Button>
             <Button
               onClick={addCertification}
               loading={addCertificationMutation.isPending}
+              className="w-full sm:w-auto"
             >
               Add Certification
             </Button>
@@ -1874,7 +1950,7 @@ const MachineManagement: React.FC = () => {
   const [isMaintenanceOpen, setIsMaintenanceOpen] = useState(false);
   const [isBookingOpen, setIsBookingOpen] = useState(false);
   const [selectedMachine, setSelectedMachine] = useState<any>(null);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<any>({
     name: '',
     model: '',
     manufacturer: '',
@@ -2342,13 +2418,13 @@ const MachineManagement: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">Machine Management</h2>
-          <p className="text-gray-600">Manage workshop machines and equipment</p>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="space-y-1">
+          <h2 className="text-xl font-bold text-gray-900 sm:text-2xl">Machine Management</h2>
+          <p className="text-sm text-gray-600 sm:text-base">Manage workshop machines and equipment</p>
         </div>
-        <Button onClick={() => setIsCreateOpen(true)}>
-          <PlusIcon className="h-5 w-5 mr-2" />
+        <Button onClick={() => setIsCreateOpen(true)} className="w-full sm:w-auto">
+          <PlusIcon className="mr-2 h-5 w-5" />
           Add Machine
         </Button>
       </div>
@@ -2374,32 +2450,32 @@ const MachineManagement: React.FC = () => {
             <Input
               label="Machine Name"
               value={formData.name}
-              onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+              onChange={(e) => setFormData((prev: any) => ({ ...prev, name: e.target.value }))}
               required
             />
             <Input
               label="Model"
               value={formData.model}
-              onChange={(e) => setFormData(prev => ({ ...prev, model: e.target.value }))}
+              onChange={(e) => setFormData((prev: any) => ({ ...prev, model: e.target.value }))}
             />
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input
               label="Manufacturer"
               value={formData.manufacturer}
-              onChange={(e) => setFormData(prev => ({ ...prev, manufacturer: e.target.value }))}
+              onChange={(e) => setFormData((prev: any) => ({ ...prev, manufacturer: e.target.value }))}
             />
             <Input
               label="Serial Number"
               value={formData.serialNumber}
-              onChange={(e) => setFormData(prev => ({ ...prev, serialNumber: e.target.value }))}
+              onChange={(e) => setFormData((prev: any) => ({ ...prev, serialNumber: e.target.value }))}
             />
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Select
               label="Category"
               value={formData.category}
-              onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
+              onChange={(e) => setFormData((prev: any) => ({ ...prev, category: e.target.value }))}
               options={[
                 { value: '', label: 'Select Category' },
                 { value: 'diagnostic', label: 'Diagnostic' },
@@ -2414,7 +2490,7 @@ const MachineManagement: React.FC = () => {
             <Select
               label="Status"
               value={formData.status}
-              onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value }))}
+              onChange={(e) => setFormData((prev: any) => ({ ...prev, status: e.target.value }))}
               options={[
                 { value: 'operational', label: 'Operational' },
                 { value: 'maintenance', label: 'Maintenance' },
@@ -2426,13 +2502,13 @@ const MachineManagement: React.FC = () => {
           <Input
             label="Location"
             value={formData.location}
-            onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
+            onChange={(e) => setFormData((prev: any) => ({ ...prev, location: e.target.value }))}
           />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input
               label="Capacity"
               value={formData.specifications.capacity}
-              onChange={(e) => setFormData(prev => ({ 
+              onChange={(e) => setFormData((prev: any) => ({ 
                 ...prev, 
                 specifications: { ...prev.specifications, capacity: e.target.value }
               }))}
@@ -2441,7 +2517,7 @@ const MachineManagement: React.FC = () => {
             <Input
               label="Power Rating"
               value={formData.specifications.powerRating}
-              onChange={(e) => setFormData(prev => ({ 
+              onChange={(e) => setFormData((prev: any) => ({ 
                 ...prev, 
                 specifications: { ...prev.specifications, powerRating: e.target.value }
               }))}
@@ -2452,7 +2528,7 @@ const MachineManagement: React.FC = () => {
             <Input
               label="Dimensions"
               value={formData.specifications.dimensions}
-              onChange={(e) => setFormData(prev => ({ 
+              onChange={(e) => setFormData((prev: any) => ({ 
                 ...prev, 
                 specifications: { ...prev.specifications, dimensions: e.target.value }
               }))}
@@ -2462,7 +2538,7 @@ const MachineManagement: React.FC = () => {
               label="Weight (kg)"
               type="number"
               value={formData.specifications.weight}
-              onChange={(e) => setFormData(prev => ({ 
+              onChange={(e) => setFormData((prev: any) => ({ 
                 ...prev, 
                 specifications: { ...prev.specifications, weight: parseFloat(e.target.value) || 0 }
               }))}
@@ -2472,7 +2548,7 @@ const MachineManagement: React.FC = () => {
             <Input
               label="Operating Temperature"
               value={formData.specifications.operatingTemperature}
-              onChange={(e) => setFormData(prev => ({ 
+              onChange={(e) => setFormData((prev: any) => ({ 
                 ...prev, 
                 specifications: { ...prev.specifications, operatingTemperature: e.target.value }
               }))}
@@ -2481,7 +2557,7 @@ const MachineManagement: React.FC = () => {
             <Input
               label="Operating Pressure"
               value={formData.specifications.operatingPressure}
-              onChange={(e) => setFormData(prev => ({ 
+              onChange={(e) => setFormData((prev: any) => ({ 
                 ...prev, 
                 specifications: { ...prev.specifications, operatingPressure: e.target.value }
               }))}
@@ -2493,7 +2569,7 @@ const MachineManagement: React.FC = () => {
               label="Purchase Date"
               type="date"
               value={formData.purchaseInfo.purchaseDate}
-              onChange={(e) => setFormData(prev => ({ 
+              onChange={(e) => setFormData((prev: any) => ({ 
                 ...prev, 
                 purchaseInfo: { ...prev.purchaseInfo, purchaseDate: e.target.value }
               }))}
@@ -2502,7 +2578,7 @@ const MachineManagement: React.FC = () => {
               label="Purchase Price"
               type="number"
               value={formData.purchaseInfo.purchasePrice}
-              onChange={(e) => setFormData(prev => ({ 
+              onChange={(e) => setFormData((prev: any) => ({ 
                 ...prev, 
                 purchaseInfo: { ...prev.purchaseInfo, purchasePrice: parseFloat(e.target.value) || 0 }
               }))}
@@ -2512,7 +2588,7 @@ const MachineManagement: React.FC = () => {
             <Input
               label="Supplier"
               value={formData.purchaseInfo.supplier}
-              onChange={(e) => setFormData(prev => ({ 
+              onChange={(e) => setFormData((prev: any) => ({ 
                 ...prev, 
                 purchaseInfo: { ...prev.purchaseInfo, supplier: e.target.value }
               }))}
@@ -2521,7 +2597,7 @@ const MachineManagement: React.FC = () => {
               label="Warranty Expiry"
               type="date"
               value={formData.purchaseInfo.warrantyExpiry}
-              onChange={(e) => setFormData(prev => ({ 
+              onChange={(e) => setFormData((prev: any) => ({ 
                 ...prev, 
                 purchaseInfo: { ...prev.purchaseInfo, warrantyExpiry: e.target.value }
               }))}
@@ -2530,22 +2606,24 @@ const MachineManagement: React.FC = () => {
           <TextArea
             label="Notes"
             value={formData.notes}
-            onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+            onChange={(e) => setFormData((prev: any) => ({ ...prev, notes: e.target.value }))}
             rows={3}
           />
-          <div className="flex justify-end space-x-3">
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end sm:gap-3">
             <Button
               variant="outline"
               onClick={() => {
                 setIsCreateOpen(false);
                 resetForm();
               }}
+              className="w-full sm:w-auto"
             >
               Cancel
             </Button>
             <Button
               onClick={handleCreate}
               loading={createMachineMutation.isPending}
+              className="w-full sm:w-auto"
             >
               Add Machine
             </Button>
@@ -2569,32 +2647,32 @@ const MachineManagement: React.FC = () => {
             <Input
               label="Machine Name"
               value={formData.name}
-              onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+              onChange={(e) => setFormData((prev: any) => ({ ...prev, name: e.target.value }))}
               required
             />
             <Input
               label="Model"
               value={formData.model}
-              onChange={(e) => setFormData(prev => ({ ...prev, model: e.target.value }))}
+              onChange={(e) => setFormData((prev: any) => ({ ...prev, model: e.target.value }))}
             />
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input
               label="Manufacturer"
               value={formData.manufacturer}
-              onChange={(e) => setFormData(prev => ({ ...prev, manufacturer: e.target.value }))}
+              onChange={(e) => setFormData((prev: any) => ({ ...prev, manufacturer: e.target.value }))}
             />
             <Input
               label="Serial Number"
               value={formData.serialNumber}
-              onChange={(e) => setFormData(prev => ({ ...prev, serialNumber: e.target.value }))}
+              onChange={(e) => setFormData((prev: any) => ({ ...prev, serialNumber: e.target.value }))}
             />
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Select
               label="Category"
               value={formData.category}
-              onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
+              onChange={(e) => setFormData((prev: any) => ({ ...prev, category: e.target.value }))}
               options={[
                 { value: '', label: 'Select Category' },
                 { value: 'diagnostic', label: 'Diagnostic' },
@@ -2609,7 +2687,7 @@ const MachineManagement: React.FC = () => {
             <Select
               label="Status"
               value={formData.status}
-              onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value }))}
+              onChange={(e) => setFormData((prev: any) => ({ ...prev, status: e.target.value }))}
               options={[
                 { value: 'operational', label: 'Operational' },
                 { value: 'maintenance', label: 'Maintenance' },
@@ -2621,13 +2699,13 @@ const MachineManagement: React.FC = () => {
           <Input
             label="Location"
             value={formData.location}
-            onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
+            onChange={(e) => setFormData((prev: any) => ({ ...prev, location: e.target.value }))}
           />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input
               label="Capacity"
               value={formData.specifications.capacity}
-              onChange={(e) => setFormData(prev => ({ 
+              onChange={(e) => setFormData((prev: any) => ({ 
                 ...prev, 
                 specifications: { ...prev.specifications, capacity: e.target.value }
               }))}
@@ -2636,7 +2714,7 @@ const MachineManagement: React.FC = () => {
             <Input
               label="Power Rating"
               value={formData.specifications.powerRating}
-              onChange={(e) => setFormData(prev => ({ 
+              onChange={(e) => setFormData((prev: any) => ({ 
                 ...prev, 
                 specifications: { ...prev.specifications, powerRating: e.target.value }
               }))}
@@ -2647,7 +2725,7 @@ const MachineManagement: React.FC = () => {
             <Input
               label="Dimensions"
               value={formData.specifications.dimensions}
-              onChange={(e) => setFormData(prev => ({ 
+              onChange={(e) => setFormData((prev: any) => ({ 
                 ...prev, 
                 specifications: { ...prev.specifications, dimensions: e.target.value }
               }))}
@@ -2657,7 +2735,7 @@ const MachineManagement: React.FC = () => {
               label="Weight (kg)"
               type="number"
               value={formData.specifications.weight}
-              onChange={(e) => setFormData(prev => ({ 
+              onChange={(e) => setFormData((prev: any) => ({ 
                 ...prev, 
                 specifications: { ...prev.specifications, weight: parseFloat(e.target.value) || 0 }
               }))}
@@ -2667,7 +2745,7 @@ const MachineManagement: React.FC = () => {
             <Input
               label="Operating Temperature"
               value={formData.specifications.operatingTemperature}
-              onChange={(e) => setFormData(prev => ({ 
+              onChange={(e) => setFormData((prev: any) => ({ 
                 ...prev, 
                 specifications: { ...prev.specifications, operatingTemperature: e.target.value }
               }))}
@@ -2676,7 +2754,7 @@ const MachineManagement: React.FC = () => {
             <Input
               label="Operating Pressure"
               value={formData.specifications.operatingPressure}
-              onChange={(e) => setFormData(prev => ({ 
+              onChange={(e) => setFormData((prev: any) => ({ 
                 ...prev, 
                 specifications: { ...prev.specifications, operatingPressure: e.target.value }
               }))}
@@ -2688,7 +2766,7 @@ const MachineManagement: React.FC = () => {
               label="Purchase Date"
               type="date"
               value={formData.purchaseInfo.purchaseDate}
-              onChange={(e) => setFormData(prev => ({ 
+              onChange={(e) => setFormData((prev: any) => ({ 
                 ...prev, 
                 purchaseInfo: { ...prev.purchaseInfo, purchaseDate: e.target.value }
               }))}
@@ -2697,7 +2775,7 @@ const MachineManagement: React.FC = () => {
               label="Purchase Price"
               type="number"
               value={formData.purchaseInfo.purchasePrice}
-              onChange={(e) => setFormData(prev => ({ 
+              onChange={(e) => setFormData((prev: any) => ({ 
                 ...prev, 
                 purchaseInfo: { ...prev.purchaseInfo, purchasePrice: parseFloat(e.target.value) || 0 }
               }))}
@@ -2707,7 +2785,7 @@ const MachineManagement: React.FC = () => {
             <Input
               label="Supplier"
               value={formData.purchaseInfo.supplier}
-              onChange={(e) => setFormData(prev => ({ 
+              onChange={(e) => setFormData((prev: any) => ({ 
                 ...prev, 
                 purchaseInfo: { ...prev.purchaseInfo, supplier: e.target.value }
               }))}
@@ -2716,7 +2794,7 @@ const MachineManagement: React.FC = () => {
               label="Warranty Expiry"
               type="date"
               value={formData.purchaseInfo.warrantyExpiry}
-              onChange={(e) => setFormData(prev => ({ 
+              onChange={(e) => setFormData((prev: any) => ({ 
                 ...prev, 
                 purchaseInfo: { ...prev.purchaseInfo, warrantyExpiry: e.target.value }
               }))}
@@ -2725,10 +2803,10 @@ const MachineManagement: React.FC = () => {
           <TextArea
             label="Notes"
             value={formData.notes}
-            onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+            onChange={(e) => setFormData((prev: any) => ({ ...prev, notes: e.target.value }))}
             rows={3}
           />
-          <div className="flex justify-end space-x-3">
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end sm:gap-3">
             <Button
               variant="outline"
               onClick={() => {
@@ -2736,12 +2814,14 @@ const MachineManagement: React.FC = () => {
                 setSelectedMachine(null);
                 resetForm();
               }}
+              className="w-full sm:w-auto"
             >
               Cancel
             </Button>
             <Button
               onClick={handleUpdate}
               loading={updateMachineMutation.isPending}
+              className="w-full sm:w-auto"
             >
               Update Machine
             </Button>
@@ -2770,7 +2850,7 @@ const MachineManagement: React.FC = () => {
           <Input
             label="Job ID"
             value={bookingData.jobId}
-            onChange={(e) => setBookingData(prev => ({ ...prev, jobId: e.target.value }))}
+            onChange={(e) => setBookingData((prev: any) => ({ ...prev, jobId: e.target.value }))}
             required
             placeholder="Enter job ID or reference"
           />
@@ -2778,10 +2858,10 @@ const MachineManagement: React.FC = () => {
             label="Book Until"
             type="datetime-local"
             value={bookingData.until}
-            onChange={(e) => setBookingData(prev => ({ ...prev, until: e.target.value }))}
+            onChange={(e) => setBookingData((prev: any) => ({ ...prev, until: e.target.value }))}
             required
           />
-          <div className="flex justify-end space-x-3">
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end sm:gap-3">
             <Button
               variant="outline"
               onClick={() => {
@@ -2789,12 +2869,14 @@ const MachineManagement: React.FC = () => {
                 setSelectedMachine(null);
                 setBookingData({ jobId: '', until: '' });
               }}
+              className="w-full sm:w-auto"
             >
               Cancel
             </Button>
             <Button
               onClick={bookMachine}
               loading={bookMachineMutation.isPending}
+              className="w-full sm:w-auto"
             >
               Book Machine
             </Button>
@@ -2823,7 +2905,7 @@ const MachineManagement: React.FC = () => {
           <Select
             label="Maintenance Type"
             value={maintenanceData.type}
-            onChange={(e) => setMaintenanceData(prev => ({ ...prev, type: e.target.value }))}
+            onChange={(e) => setMaintenanceData((prev: any) => ({ ...prev, type: e.target.value }))}
             options={[
               { value: 'routine', label: 'Routine Maintenance' },
               { value: 'preventive', label: 'Preventive Maintenance' },
@@ -2836,7 +2918,7 @@ const MachineManagement: React.FC = () => {
           <TextArea
             label="Description"
             value={maintenanceData.description}
-            onChange={(e) => setMaintenanceData(prev => ({ ...prev, description: e.target.value }))}
+            onChange={(e) => setMaintenanceData((prev: any) => ({ ...prev, description: e.target.value }))}
             rows={3}
             required
             placeholder="Describe the maintenance work performed..."
@@ -2847,17 +2929,17 @@ const MachineManagement: React.FC = () => {
             min="0"
             step="0.01"
             value={maintenanceData.cost}
-            onChange={(e) => setMaintenanceData(prev => ({ ...prev, cost: parseFloat(e.target.value) || 0 }))}
+            onChange={(e) => setMaintenanceData((prev: any) => ({ ...prev, cost: parseFloat(e.target.value) || 0 }))}
             placeholder="Enter maintenance cost"
           />
           <TextArea
             label="Notes"
             value={maintenanceData.notes}
-            onChange={(e) => setMaintenanceData(prev => ({ ...prev, notes: e.target.value }))}
+            onChange={(e) => setMaintenanceData((prev: any) => ({ ...prev, notes: e.target.value }))}
             rows={2}
             placeholder="Additional notes or recommendations..."
           />
-          <div className="flex justify-end space-x-3">
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end sm:gap-3">
             <Button
               variant="outline"
               onClick={() => {
@@ -2865,12 +2947,14 @@ const MachineManagement: React.FC = () => {
                 setSelectedMachine(null);
                 setMaintenanceData({ type: 'routine', description: '', cost: 0, notes: '' });
               }}
+              className="w-full sm:w-auto"
             >
               Cancel
             </Button>
             <Button
               onClick={addMaintenance}
               loading={addMaintenanceMutation.isPending}
+              className="w-full sm:w-auto"
             >
               Add Maintenance Record
             </Button>
@@ -2912,33 +2996,28 @@ const ResourceManagementPage: React.FC = () => {
     <Layout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Resource Management</h1>
-            <p className="text-gray-600">Manage workshop tools, technicians, and equipment</p>
-          </div>
+        <div className="space-y-1">
+          <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">Resource Management</h1>
+          <p className="text-sm text-gray-600 sm:text-base">Manage tools, technicians, and machines in one place</p>
         </div>
 
         {/* Tabs */}
         <div className="border-b border-gray-200">
-          <nav className="-mb-px flex space-x-8">
-            {tabs.map((tab) => {
-              const Icon = tab.icon;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id as 'tools' | 'technicians' | 'machines')}
-                  className={`flex items-center py-2 px-1 border-b-2 font-medium text-sm ${
-                    activeTab === tab.id
-                      ? 'border-blue-500 text-blue-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-                >
-                  <Icon className="h-5 w-5 mr-2" />
-                  {tab.name}
-                </button>
-              );
-            })}
+          <nav className="-mb-px flex flex-wrap gap-4" aria-label="Resource sections">
+            {tabs.map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as typeof activeTab)}
+                className={`${
+                  activeTab === tab.id
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                } flex items-center gap-2 border-b-2 py-2 px-1 text-sm font-medium whitespace-nowrap`}
+              >
+                <tab.icon className="h-5 w-5" />
+                {tab.name}
+              </button>
+            ))}
           </nav>
         </div>
 

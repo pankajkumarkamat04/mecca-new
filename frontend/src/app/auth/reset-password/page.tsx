@@ -81,7 +81,7 @@ function ResetPasswordForm() {
     return (
       <AuthLayout>
         <div className="space-y-8">
-          <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl p-8 border border-white/20">
+          <div className="bg-white/95 backdrop-blur-sm rounded-2xl border border-white/20 p-6 shadow-2xl sm:p-8">
             <div className="text-center">
               <div className="mx-auto h-16 w-16 flex items-center justify-center rounded-full bg-gradient-to-br from-green-500 to-green-600 shadow-lg mb-6">
                 <CheckCircleIcon className="h-8 w-8 text-white" />
@@ -97,7 +97,7 @@ function ResetPasswordForm() {
               
               <Link
                 href="/auth/login"
-                className="w-full flex justify-center items-center px-4 py-3 border border-transparent text-sm font-semibold rounded-xl text-white bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-all duration-200 shadow-lg hover:shadow-xl"
+                className="flex w-full items-center justify-center rounded-xl border border-transparent px-4 py-3 text-sm font-semibold text-white transition-all duration-200 shadow-lg hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700"
               >
                 Sign In Now
               </Link>
@@ -111,7 +111,7 @@ function ResetPasswordForm() {
   if (!token) {
     return (
       <AuthLayout>
-        <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl p-8 border border-white/20">
+        <div className="bg-white/95 backdrop-blur-sm rounded-2xl border border-white/20 p-6 shadow-2xl sm:p-8">
           <div className="flex items-center justify-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600"></div>
           </div>
@@ -123,7 +123,7 @@ function ResetPasswordForm() {
   return (
     <AuthLayout>
       <div className="space-y-8">
-        <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl p-8 border border-white/20">
+        <div className="bg-white/95 backdrop-blur-sm rounded-2xl border border-white/20 p-6 shadow-2xl sm:p-8">
           <div className="text-center mb-8">
             <div className="mx-auto h-16 w-16 flex items-center justify-center rounded-full bg-gradient-to-br from-red-500 to-red-600 shadow-lg">
               <LockClosedIcon className="h-8 w-8 text-white" />
@@ -247,7 +247,7 @@ export default function ResetPasswordPage() {
   return (
     <Suspense fallback={
       <AuthLayout>
-        <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl p-8 border border-white/20">
+        <div className="bg-white/95 backdrop-blur-sm rounded-2xl border border-white/20 p-6 shadow-2xl sm:p-8">
           <div className="flex items-center justify-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600"></div>
           </div>

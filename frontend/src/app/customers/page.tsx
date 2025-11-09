@@ -199,22 +199,23 @@ const CustomersPage: React.FC = () => {
     <Layout title="Customers">
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Customers</h1>
-            <p className="text-gray-600">Manage customer relationships and accounts</p>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-1">
+            <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">Customers</h1>
+            <p className="text-sm text-gray-600 sm:text-base">Manage customer relationships and accounts</p>
           </div>
           <Button
             onClick={() => setIsCreateModalOpen(true)}
             leftIcon={<UsersIcon className="h-4 w-4" />}
+            className="w-full sm:w-auto"
           >
             Add Customer
           </Button>
         </div>
 
         {/* Search and Filters */}
-        <div className="bg-white p-4 rounded-lg shadow">
-          <div className="flex flex-col sm:flex-row gap-4">
+        <div className="rounded-lg bg-white p-4 shadow sm:p-6">
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_200px_auto]">
             <div className="flex-1">
               <Input
                 placeholder="Search customers by name, email, or customer code..."
@@ -223,7 +224,7 @@ const CustomersPage: React.FC = () => {
                 fullWidth
               />
             </div>
-            <div className="w-full sm:w-48">
+            <div className="w-full sm:max-w-xs lg:w-full">
               <Select
                 options={typeOptions}
                 value={filterType}
@@ -231,11 +232,11 @@ const CustomersPage: React.FC = () => {
                 fullWidth
               />
             </div>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm">
+            <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+              <Button variant="outline" size="sm" className="w-full sm:w-auto">
                 Top Customers
               </Button>
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" className="w-full sm:w-auto">
                 Export
               </Button>
             </div>
@@ -332,7 +333,7 @@ const CustomersPage: React.FC = () => {
         >
           {selectedCustomer && (
             <div className="space-y-6">
-              <div className="grid grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
                   <p className="text-sm text-gray-900">
@@ -370,10 +371,11 @@ const CustomersPage: React.FC = () => {
                   <p className="text-sm text-gray-900">{formatDate(selectedCustomer.createdAt)}</p>
                 </div>
               </div>
-              <div className="flex justify-end">
+              <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
                 <Button
                   variant="outline"
                   onClick={() => setIsViewModalOpen(false)}
+                  className="w-full sm:w-auto"
                 >
                   Close
                 </Button>

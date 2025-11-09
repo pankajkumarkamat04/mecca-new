@@ -169,15 +169,15 @@ const HelpPage: React.FC = () => {
 
   return (
     <Layout title="Help & Support">
-      <div className="max-w-6xl mx-auto">
+      <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-0">
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-gray-900">Help & Support</h1>
           <p className="text-gray-600">Find answers to your questions and get the help you need</p>
         </div>
 
         {/* Search Section */}
-        <div className="bg-white rounded-lg shadow p-6 mb-8">
-          <div className="flex items-center space-x-4">
+        <div className="mb-8 rounded-lg bg-white p-6 shadow">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
             <div className="flex-1">
               <div className="relative">
                 <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
@@ -190,13 +190,13 @@ const HelpPage: React.FC = () => {
                 />
               </div>
             </div>
-            <Button>
+            <Button className="w-full sm:w-auto">
               Search
             </Button>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-4">
           {/* Sidebar */}
           <div className="lg:col-span-1">
             <div className="bg-white rounded-lg shadow p-6">

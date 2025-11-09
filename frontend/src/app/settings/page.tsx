@@ -165,26 +165,32 @@ const SettingsPage: React.FC = () => {
     
     return (
       <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <div>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-1">
             <h3 className="text-lg font-medium text-gray-900">Company Settings</h3>
             <p className="text-sm text-gray-600">Manage your company information and preferences.</p>
           </div>
           {hasChanges && (
-            <div className="flex space-x-3">
-              <Button 
-                variant="outline" 
-                onClick={handleCancelChanges}
-                disabled={updateSettings.isPending}
-              >
-                Cancel
-              </Button>
-              <Button 
-                onClick={handleSaveSettings}
-                loading={updateSettings.isPending}
-              >
-                Save Changes
-              </Button>
+            <div className="flex flex-col gap-2 sm:flex-row sm:justify-end sm:gap-3 w-full sm:w-auto">
+              <div className="w-full sm:w-auto">
+                <Button 
+                  variant="outline" 
+                  onClick={handleCancelChanges}
+                  disabled={updateSettings.isPending}
+                  className="w-full"
+                >
+                  Cancel
+                </Button>
+              </div>
+              <div className="w-full sm:w-auto">
+                <Button 
+                  onClick={handleSaveSettings}
+                  loading={updateSettings.isPending}
+                  className="w-full"
+                >
+                  Save Changes
+                </Button>
+              </div>
             </div>
           )}
         </div>
@@ -193,7 +199,7 @@ const SettingsPage: React.FC = () => {
           {/* Logo Section */}
           <div>
             <h4 className="text-md font-medium text-gray-900 mb-4">Company Logo</h4>
-            <div className="flex items-center space-x-6">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-6">
               <div className="flex-shrink-0">
                 {logoPreview || currentCompany.logo?.url ? (
                   <Image
@@ -213,7 +219,7 @@ const SettingsPage: React.FC = () => {
                 )}
               </div>
               <div className="flex-1">
-                <div className="flex space-x-3">
+                <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
                   <input
                     type="file"
                     accept="image/*"
@@ -228,23 +234,28 @@ const SettingsPage: React.FC = () => {
                     </div>
                   </label>
                   {logoFile && (
-                    <Button onClick={handleUploadLogo} loading={uploadLogoMutation.isPending}>
-                      Upload
-                    </Button>
+                    <div className="w-full sm:w-auto">
+                      <Button onClick={handleUploadLogo} loading={uploadLogoMutation.isPending} className="w-full">
+                        Upload
+                      </Button>
+                    </div>
                   )}
                   {currentCompany.logo?.url && (
-                    <Button 
-                      variant="outline" 
-                      onClick={handleDeleteLogo} 
-                      leftIcon={<TrashIcon className="h-4 w-4" />}
-                      loading={deleteLogoMutation.isPending}
-                    >
-                      Delete
-                    </Button>
+                    <div className="w-full sm:w-auto">
+                      <Button 
+                        variant="outline" 
+                        onClick={handleDeleteLogo} 
+                        leftIcon={<TrashIcon className="h-4 w-4" />} 
+                        className="w-full text-red-600 hover:text-red-700 border-red-200 hover:border-red-300"
+                        disabled={uploadLogoMutation.isPending}
+                      >
+                        Remove
+                      </Button>
+                    </div>
                   )}
                 </div>
-                <p className="text-sm text-gray-500 mt-2">
-                  Recommended size: 200x200px. Max file size: 5MB
+                <p className="text-xs text-gray-500 mt-2">
+                  Recommended size: 200x200px PNG with transparent background.
                 </p>
               </div>
             </div>
@@ -347,22 +358,25 @@ const SettingsPage: React.FC = () => {
 
           {/* Currency Settings */}
           <div className="border-t border-gray-200 pt-6">
-            <div className="flex items-center justify-between mb-4">
+            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h4 className="text-md font-medium text-gray-900">Multi-Currency Settings</h4>
                 <p className="text-sm text-gray-600 mt-1">
                   Exchange rates are updated automatically using real-time APIs.
                 </p>
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => refreshExchangeRatesMutation.mutate()}
-                loading={refreshExchangeRatesMutation.isPending}
-                leftIcon={<ArrowPathIcon className="h-4 w-4" />}
-              >
-                Refresh Rates
-              </Button>
+              <div className="w-full sm:w-auto">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => refreshExchangeRatesMutation.mutate()}
+                  loading={refreshExchangeRatesMutation.isPending}
+                  leftIcon={<ArrowPathIcon className="h-4 w-4" />}
+                  className="w-full"
+                >
+                  Refresh Rates
+                </Button>
+              </div>
             </div>
             
             {currentCompany.currencySettings?.lastAutoUpdate && (
@@ -377,7 +391,7 @@ const SettingsPage: React.FC = () => {
             <div className="space-y-4">
               {/* USD Currency */}
               <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <h5 className="font-medium text-gray-900">$ USD - US Dollar</h5>
                     <p className="text-sm text-gray-500">Base Currency (Exchange Rate: 1.00)</p>
@@ -390,7 +404,7 @@ const SettingsPage: React.FC = () => {
 
               {/* ZWL Currency */}
               <div className="p-4 bg-white rounded-lg border border-gray-200">
-                <div className="flex items-center justify-between mb-3">
+                <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <h5 className="font-medium text-gray-900">Z$ ZWL - Zimbabwean Dollar (ZIG)</h5>
                     <p className="text-sm text-gray-500">1 USD = {currentCompany.currencySettings?.supportedCurrencies?.find((c: any) => c.code === 'ZWL')?.exchangeRate || 30} ZWL</p>
@@ -429,8 +443,8 @@ const SettingsPage: React.FC = () => {
                       setHasChanges(true);
                     }}
                   />
-                  <div className="flex items-end">
-                    <p className="text-xs text-gray-500 pb-2">
+                  <div className="flex flex-col gap-1 text-xs text-gray-500 sm:items-end sm:text-right">
+                    <p>
                       Last updated: {new Date(currentCompany.currencySettings?.supportedCurrencies?.find((c: any) => c.code === 'ZWL')?.lastUpdated || Date.now()).toLocaleDateString()}
                     </p>
                   </div>
@@ -483,26 +497,32 @@ const SettingsPage: React.FC = () => {
     
     return (
       <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <div>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-1">
             <h3 className="text-lg font-medium text-gray-900">System Settings</h3>
             <p className="text-sm text-gray-600">Configure system-wide settings and security policies.</p>
           </div>
           {hasChanges && (
-            <div className="flex space-x-3">
-              <Button 
-                variant="outline" 
-                onClick={handleCancelChanges}
-                disabled={updateSettings.isPending}
-              >
-                Cancel
-              </Button>
-              <Button 
-                onClick={handleSaveSettings}
-                loading={updateSettings.isPending}
-              >
-                Save Changes
-              </Button>
+            <div className="flex flex-col gap-2 sm:flex-row sm:justify-end sm:gap-3 w-full sm:w-auto">
+              <div className="w-full sm:w-auto">
+                <Button 
+                  variant="outline" 
+                  onClick={handleCancelChanges}
+                  disabled={updateSettings.isPending}
+                  className="w-full"
+                >
+                  Cancel
+                </Button>
+              </div>
+              <div className="w-full sm:w-auto">
+                <Button 
+                  onClick={handleSaveSettings}
+                  loading={updateSettings.isPending}
+                  className="w-full"
+                >
+                  Save Changes
+                </Button>
+              </div>
             </div>
           )}
         </div>
@@ -512,7 +532,7 @@ const SettingsPage: React.FC = () => {
           <div>
             <h4 className="text-md font-medium text-gray-900 mb-4">Security Settings</h4>
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <label className="text-sm font-medium text-gray-700">Maintenance Mode</label>
                   <p className="text-sm text-gray-500">Enable maintenance mode to restrict access</p>
@@ -525,7 +545,7 @@ const SettingsPage: React.FC = () => {
                 />
               </div>
               
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <label className="text-sm font-medium text-gray-700">Allow Registration</label>
                   <p className="text-sm text-gray-500">Allow new users to register</p>
@@ -570,7 +590,7 @@ const SettingsPage: React.FC = () => {
               />
               
               <div className="space-y-3">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <label className="text-sm font-medium text-gray-700">Require Uppercase Letters</label>
                   <input
                     type="checkbox"
@@ -580,7 +600,7 @@ const SettingsPage: React.FC = () => {
                   />
                 </div>
                 
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <label className="text-sm font-medium text-gray-700">Require Lowercase Letters</label>
                   <input
                     type="checkbox"
@@ -590,7 +610,7 @@ const SettingsPage: React.FC = () => {
                   />
                 </div>
                 
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <label className="text-sm font-medium text-gray-700">Require Numbers</label>
                   <input
                     type="checkbox"
@@ -600,7 +620,7 @@ const SettingsPage: React.FC = () => {
                   />
                 </div>
                 
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <label className="text-sm font-medium text-gray-700">Require Special Characters</label>
                   <input
                     type="checkbox"
@@ -617,7 +637,7 @@ const SettingsPage: React.FC = () => {
           <div className="border-t border-gray-200 pt-6">
             <h4 className="text-md font-medium text-gray-900 mb-4">Backup Settings</h4>
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <label className="text-sm font-medium text-gray-700">Auto Backup</label>
                   <p className="text-sm text-gray-500">Automatically backup data</p>

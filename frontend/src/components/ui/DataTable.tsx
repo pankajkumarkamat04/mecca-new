@@ -127,7 +127,7 @@ const DataTable: React.FC<DataTableProps> = ({
           <thead className="bg-gray-50">
             <tr>
               {selectable && (
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 sm:px-6">
                   <input
                     type="checkbox"
                     checked={selectAll}
@@ -140,7 +140,7 @@ const DataTable: React.FC<DataTableProps> = ({
                 <th
                   key={column.key}
                   className={cn(
-                    'px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider',
+                    'px-4 py-3 text-xs font-medium uppercase tracking-wider text-gray-500 sm:px-6',
                     column.sortable && 'cursor-pointer hover:bg-gray-100',
                     column.align === 'center' && 'text-center',
                     column.align === 'right' && 'text-right'
@@ -161,7 +161,7 @@ const DataTable: React.FC<DataTableProps> = ({
               <tr>
                 <td
                   colSpan={columns.length + (selectable ? 1 : 0)}
-                  className="px-6 py-12 text-center text-gray-500"
+                  className="px-4 py-12 text-center text-gray-500 sm:px-6"
                 >
                   {emptyMessage}
                 </td>
@@ -177,7 +177,7 @@ const DataTable: React.FC<DataTableProps> = ({
                   onClick={() => onRowClick?.(row)}
                 >
                   {selectable && (
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-4 py-4 text-sm text-gray-900 sm:px-6">
                       <input
                         type="checkbox"
                         checked={selectedRows.some(selected => selected.id === row.id)}
@@ -191,7 +191,8 @@ const DataTable: React.FC<DataTableProps> = ({
                     <td
                       key={column.key}
                       className={cn(
-                        'px-6 py-4 whitespace-nowrap text-sm text-gray-900',
+                        'px-4 py-4 text-sm text-gray-900 sm:px-6',
+                        'whitespace-normal break-words',
                         column.align === 'center' && 'text-center',
                         column.align === 'right' && 'text-right'
                       )}

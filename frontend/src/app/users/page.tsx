@@ -214,24 +214,25 @@ const UsersPage: React.FC = () => {
     <Layout title="Users">
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Users</h1>
-            <p className="text-gray-600">Manage system users and their permissions</p>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-1">
+            <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">Users</h1>
+            <p className="text-sm text-gray-600 sm:text-base">Manage system users and their permissions</p>
           </div>
           {/* All roles can create customer accounts */}
           <Button
             onClick={() => setIsCreateModalOpen(true)}
             leftIcon={<UserPlusIcon className="h-4 w-4" />}
+            className="w-full sm:w-auto"
           >
             Add User
           </Button>
         </div>
 
         {/* Search and Filters */}
-        <div className="bg-white p-4 rounded-lg shadow">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-1">
+        <div className="rounded-lg bg-white p-4 shadow">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
+            <div className="flex w-full flex-1">
               <Input
                 placeholder="Search users..."
                 value={searchTerm}
@@ -239,11 +240,11 @@ const UsersPage: React.FC = () => {
                 fullWidth
               />
             </div>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm">
+            <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+              <Button variant="outline" size="sm" className="w-full sm:w-auto">
                 Filter
               </Button>
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" className="w-full sm:w-auto">
                 Export
               </Button>
             </div>
@@ -294,7 +295,7 @@ const UsersPage: React.FC = () => {
         >
           {selectedUser && (
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Name</label>
                   <p className="mt-1 text-sm text-gray-900">
@@ -329,10 +330,11 @@ const UsersPage: React.FC = () => {
                   </p>
                 </div>
               </div>
-              <div className="flex justify-end">
+              <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
                 <Button
                   variant="outline"
                   onClick={() => setIsViewModalOpen(false)}
+                  className="w-full sm:w-auto"
                 >
                   Close
                 </Button>

@@ -279,41 +279,41 @@ const CustomerInquiriesPage: React.FC = () => {
     <Layout title="Customer Inquiries">
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Customer Inquiries</h1>
-            <p className="text-gray-600">Manage customer inquiries and convert them to quotations or orders</p>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-1">
+            <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">Customer Inquiries</h1>
+            <p className="text-sm text-gray-600 sm:text-base">Manage customer inquiries and convert them to quotations or orders</p>
           </div>
-          <Button onClick={() => setShowCreateModal(true)}>
-            <PlusIcon className="h-4 w-4 mr-2" />
+          <Button onClick={() => setShowCreateModal(true)} className="w-full sm:w-auto">
+            <PlusIcon className="mr-2 h-4 w-4" />
             New Inquiry
           </Button>
         </div>
 
         {/* Stats Cards */}
         {stats && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-            <div className="bg-white p-4 rounded-lg border">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-6">
+            <div className="rounded-lg border bg-white p-4">
               <div className="text-sm font-medium text-gray-500">Total Inquiries</div>
               <div className="text-2xl font-bold text-gray-900">{stats.total || 0}</div>
             </div>
-            <div className="bg-white p-4 rounded-lg border">
+            <div className="rounded-lg border bg-white p-4">
               <div className="text-sm font-medium text-gray-500">New</div>
               <div className="text-2xl font-bold text-blue-600">{stats.byStatus?.new || 0}</div>
             </div>
-            <div className="bg-white p-4 rounded-lg border">
+            <div className="rounded-lg border bg-white p-4">
               <div className="text-sm font-medium text-gray-500">Under Review</div>
               <div className="text-2xl font-bold text-purple-600">{stats.byStatus?.under_review || 0}</div>
             </div>
-            <div className="bg-white p-4 rounded-lg border">
+            <div className="rounded-lg border bg-white p-4">
               <div className="text-sm font-medium text-gray-500">Quoted</div>
               <div className="text-2xl font-bold text-orange-600">{stats.byStatus?.quoted || 0}</div>
             </div>
-            <div className="bg-white p-4 rounded-lg border">
+            <div className="rounded-lg border bg-white p-4">
               <div className="text-sm font-medium text-gray-500">Converted to Order</div>
               <div className="text-2xl font-bold text-green-600">{stats.byStatus?.converted_to_order || 0}</div>
             </div>
-            <div className="bg-white p-4 rounded-lg border">
+            <div className="rounded-lg border bg-white p-4">
               <div className="text-sm font-medium text-gray-500">Conversion Rate</div>
               <div className="text-2xl font-bold text-green-600">{stats.conversionRate || 0}%</div>
             </div>
@@ -321,9 +321,9 @@ const CustomerInquiriesPage: React.FC = () => {
         )}
 
         {/* Filters */}
-        <div className="bg-white p-4 rounded-lg border">
-          <div className="flex flex-wrap gap-4">
-            <div className="flex-1 min-w-64">
+        <div className="rounded-lg border bg-white p-4 sm:p-6">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-[minmax(0,1fr)] lg:grid-cols-[minmax(0,1fr)_200px_200px]">
+            <div className="flex-1">
               <Input
                 placeholder="Search inquiries..."
                 value={searchTerm}
@@ -331,35 +331,37 @@ const CustomerInquiriesPage: React.FC = () => {
                 leftIcon={<MagnifyingGlassIcon className="h-4 w-4" />}
               />
             </div>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="">All Statuses</option>
-              <option value="new">New</option>
-              <option value="under_review">Under Review</option>
-              <option value="quoted">Quoted</option>
-              <option value="converted_to_order">Converted to Order</option>
-              <option value="closed">Closed</option>
-              <option value="cancelled">Cancelled</option>
-            </select>
-            <select
-              value={priorityFilter}
-              onChange={(e) => setPriorityFilter(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="">All Priorities</option>
-              <option value="low">Low</option>
-              <option value="normal">Normal</option>
-              <option value="high">High</option>
-              <option value="urgent">Urgent</option>
-            </select>
+            <div className="flex flex-col gap-4 sm:flex-row lg:flex-col lg:gap-4">
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">All Statuses</option>
+                <option value="new">New</option>
+                <option value="under_review">Under Review</option>
+                <option value="quoted">Quoted</option>
+                <option value="converted_to_order">Converted to Order</option>
+                <option value="closed">Closed</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+              <select
+                value={priorityFilter}
+                onChange={(e) => setPriorityFilter(e.target.value)}
+                className="rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">All Priorities</option>
+                <option value="low">Low</option>
+                <option value="normal">Normal</option>
+                <option value="high">High</option>
+                <option value="urgent">Urgent</option>
+              </select>
+            </div>
           </div>
         </div>
 
         {/* Inquiries Table */}
-        <div className="bg-white rounded-lg border">
+        <div className="rounded-lg border bg-white">
           <Table
             data={inquiries}
             columns={columns}
@@ -394,7 +396,7 @@ const CustomerInquiriesPage: React.FC = () => {
         >
           {selectedInquiry && (
             <div className="space-y-6">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Inquiry Number</label>
                   <p className="mt-1 text-sm text-gray-900">{selectedInquiry.inquiryNumber}</p>
@@ -445,10 +447,11 @@ const CustomerInquiriesPage: React.FC = () => {
                 </div>
               )}
 
-              <div className="flex justify-end gap-2">
+              <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
                 <Button
                   variant="outline"
                   onClick={() => setShowDetailsModal(false)}
+                  className="w-full sm:w-auto"
                 >
                   Close
                 </Button>
@@ -457,6 +460,7 @@ const CustomerInquiriesPage: React.FC = () => {
                     setShowDetailsModal(false);
                     handleUpdateStatus(selectedInquiry);
                   }}
+                  className="w-full sm:w-auto"
                 >
                   Update Status
                 </Button>
@@ -498,16 +502,18 @@ const CustomerInquiriesPage: React.FC = () => {
                   placeholder="Add notes..."
                 />
               </div>
-              <div className="flex justify-end gap-2">
+              <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
                 <Button
                   variant="outline"
                   onClick={() => setShowStatusModal(false)}
+                  className="w-full sm:w-auto"
                 >
                   Cancel
                 </Button>
                 <Button
                   onClick={handleStatusUpdate}
                   loading={updateStatusMutation.isPending}
+                  className="w-full sm:w-auto"
                 >
                   Update Status
                 </Button>

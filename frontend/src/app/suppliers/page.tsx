@@ -287,8 +287,8 @@ const SuppliersPage: React.FC = () => {
     <ConditionalLayout title="Suppliers">
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex justify-between items-center">
-          <div>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-1">
             <h1 className="text-2xl font-bold text-gray-900">Suppliers</h1>
             <p className="text-gray-600">Manage supplier relationships and purchase orders</p>
           </div>
@@ -296,6 +296,7 @@ const SuppliersPage: React.FC = () => {
             <Button
               onClick={() => setIsCreateModalOpen(true)}
               leftIcon={<TruckIcon className="h-4 w-4" />}
+              className="w-full sm:w-auto"
             >
               Add Supplier
             </Button>
@@ -304,7 +305,7 @@ const SuppliersPage: React.FC = () => {
 
         {/* Search and Filters */}
         <div className="bg-white p-4 rounded-lg shadow">
-          <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex flex-col gap-4 sm:flex-row">
             <div className="flex-1">
               <Input
                 placeholder="Search suppliers by name, email, or code..."
@@ -321,11 +322,11 @@ const SuppliersPage: React.FC = () => {
                 fullWidth
               />
             </div>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm">
+            <div className="flex flex-col gap-2 sm:flex-row sm:w-auto">
+              <Button variant="outline" size="sm" className="w-full sm:w-auto">
                 Top Suppliers
               </Button>
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" className="w-full sm:w-auto">
                 Export
               </Button>
             </div>

@@ -19,7 +19,7 @@ const Layout: React.FC<LayoutProps> = ({ children, title, hideSidebar = false })
 
   return (
     <AccessControl>
-      <div className="h-screen flex overflow-hidden bg-gray-100">
+      <div className="flex min-h-screen bg-gray-100">
         {/* Sidebar */}
         {!hideSidebar && (
           hasRole('customer') ? (
@@ -30,18 +30,18 @@ const Layout: React.FC<LayoutProps> = ({ children, title, hideSidebar = false })
         )}
 
         {/* Main content */}
-        <div className="flex-1 flex flex-col overflow-hidden lg:ml-0">
+        <div className="flex min-w-0 flex-1 flex-col">
           {/* Header */}
-          <Header 
-            onMenuClick={hideSidebar ? undefined : () => setSidebarOpen(true)} 
+          <Header
+            onMenuClick={hideSidebar ? undefined : () => setSidebarOpen(true)}
             title={title}
             hideMenuButton={hideSidebar}
           />
 
           {/* Page content */}
-          <main className="flex-1 overflow-y-auto bg-gray-50 scrollbar-light">
+          <main className="scrollbar-light flex-1 overflow-x-hidden overflow-y-auto bg-gray-50">
             <div className="py-6">
-              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
                 {children}
               </div>
             </div>

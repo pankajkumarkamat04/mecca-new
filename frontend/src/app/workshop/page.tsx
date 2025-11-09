@@ -311,7 +311,7 @@ const TaskManagementModal: React.FC<{
               rows={2}
             />
             
-            <div className="flex justify-end space-x-3">
+            <div className="flex flex-col gap-2 sm:flex-row sm:justify-end sm:gap-3">
               <Button
                 type="button"
                 variant="outline"
@@ -326,13 +326,14 @@ const TaskManagementModal: React.FC<{
                     notes: ''
                   });
                 }}
+                className="w-full sm:w-auto"
               >
                 Cancel
               </Button>
               <Button
                 type="submit"
                 loading={addTaskMutation.isPending}
-                className="bg-blue-600 hover:bg-blue-700"
+                className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto"
               >
                 Add Task
               </Button>
@@ -383,7 +384,7 @@ const TaskManagementModal: React.FC<{
               rows={2}
               className="mt-4"
             />
-            <div className="flex justify-end space-x-3 mt-4">
+            <div className="flex flex-col gap-2 mt-4 sm:flex-row sm:justify-end sm:gap-3">
               <Button
                 type="button"
                 variant="outline"
@@ -391,13 +392,14 @@ const TaskManagementModal: React.FC<{
                   setEditingTask(null);
                   setEditTaskData({ actualDuration: '', notes: '' });
                 }}
+                className="w-full sm:w-auto"
               >
                 Cancel
               </Button>
               <Button
                 type="submit"
                 loading={updateTaskStatusMutation.isPending}
-                className="bg-blue-600 hover:bg-blue-700"
+                className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto"
               >
                 Update Task
               </Button>
@@ -568,17 +570,18 @@ const TaskManagementModal: React.FC<{
       </div>
 
       {/* Footer Actions */}
-      <div className="flex justify-end space-x-3 pt-6 border-t border-gray-200">
+      <div className="flex flex-col gap-2 border-t border-gray-200 pt-6 sm:flex-row sm:justify-end sm:gap-3">
         <Button
           variant="outline"
           onClick={onClose}
+          className="w-full sm:w-auto"
         >
           Close
         </Button>
         <Button
           onClick={() => refetch()}
           variant="outline"
-          className="text-blue-600 border-blue-600 hover:bg-blue-50"
+          className="w-full text-blue-600 border-blue-600 hover:bg-blue-50 sm:w-auto"
         >
           Refresh
         </Button>
@@ -1061,14 +1064,14 @@ const JobCompletionModal: React.FC<{
         
         {/* Footer - Fixed */}
         <div className="border-t border-gray-200 p-6 bg-gray-50">
-          <div className="flex justify-end space-x-3">
-            <Button variant="outline" onClick={onClose} disabled={isSubmitting}>
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end sm:gap-3">
+            <Button variant="outline" onClick={onClose} disabled={isSubmitting} className="w-full sm:w-auto">
               Cancel
             </Button>
             <Button
               onClick={handleSubmit}
               disabled={isSubmitting}
-              className="bg-green-600 hover:bg-green-700"
+              className="bg-green-600 hover:bg-green-700 w-full sm:w-auto"
             >
               {isSubmitting ? 'Completing...' : 'Complete Job'}
             </Button>
@@ -1726,22 +1729,22 @@ const WorkshopPage: React.FC = () => {
     <Layout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex justify-between items-center">
-          <div>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-1">
             <h1 className="text-2xl font-bold text-gray-900">Workshop Management</h1>
             <p className="text-gray-600">Manage jobs with resource allocation and task tracking</p>
           </div>
-          <div className="flex space-x-3">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
             <Button
               variant="outline"
               onClick={() => setIsDashboardOpen(true)}
-              className="flex items-center"
+              className="flex w-full items-center sm:w-auto"
             >
               <ChartBarIcon className="h-5 w-5 mr-2" />
               Dashboard
             </Button>
             {hasPermission('workshop', 'create') && (
-              <Button onClick={() => setIsCreateOpen(true)}>
+              <Button onClick={() => setIsCreateOpen(true)} className="w-full sm:w-auto">
                 <PlusIcon className="h-5 w-5 mr-2" />
                 Create Job
               </Button>
@@ -2113,13 +2116,14 @@ const WorkshopPage: React.FC = () => {
               <p className="text-sm text-gray-600">Job ID: {selectedJob._id}</p>
             </div>
           )}
-          <div className="flex justify-end space-x-3">
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end sm:gap-3">
             <Button
               variant="outline"
               onClick={() => {
                 setIsDeleteModalOpen(false);
                 setSelectedJob(null);
               }}
+              className="w-full sm:w-auto"
             >
               Cancel
             </Button>
@@ -2127,6 +2131,7 @@ const WorkshopPage: React.FC = () => {
               variant="danger"
               onClick={() => selectedJob && handleDeleteJob(selectedJob._id)}
               loading={deleteJobMutation.isPending}
+              className="w-full sm:w-auto"
             >
               Delete Job
             </Button>
@@ -3494,18 +3499,12 @@ const CreateJobForm: React.FC<{
         </div>
       </div>
 
-      <div className="flex justify-end space-x-3">
-        <Button type="button" variant="outline" onClick={onCancel}>
-          Cancel
+      <div className="flex flex-col gap-2 sm:flex-row sm:justify-end sm:gap-3">
+        <Button type="button" variant="outline" onClick={onCancel} className="w-full sm:w-auto">
+          Close
         </Button>
-        <Button 
-          type="button"
-          loading={loading} 
-          disabled={!formData.termsAccepted || !formData.customer}
-          title={!formData.termsAccepted ? 'Please accept terms and conditions' : !formData.customer ? 'Please select a customer' : ''}
-          onClick={handleSubmit}
-        >
-          Create Job Card
+        <Button type="submit" loading={loading} className="w-full sm:w-auto">
+          Add Task
         </Button>
       </div>
       
@@ -4024,18 +4023,19 @@ const EditJobForm: React.FC<{
               onChange={(e) => setJobInfo(prev => ({ ...prev, description: e.target.value }))}
           rows={3}
         />
-            <div className="flex justify-end space-x-3">
+            <div className="flex flex-col gap-2 sm:flex-row sm:justify-end sm:gap-3">
               <Button
                 variant="outline"
                 onClick={() => setIsEditingJobInfo(false)}
                 disabled={isUpdating}
+                className="w-full sm:w-auto"
               >
                 Cancel
               </Button>
               <Button
                 onClick={handleJobInfoUpdate}
                 disabled={isUpdating || job.status === 'completed'}
-                className={`${job.status === 'completed' ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}
+                className={`w-full sm:w-auto ${job.status === 'completed' ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}
                 title={job.status === 'completed' ? 'Cannot update job info for completed job' : ''}
               >
                 {isUpdating ? 'Updating...' : 'Update Job Info'}
@@ -4466,28 +4466,29 @@ const EditJobForm: React.FC<{
                 variant="outline"
                 onClick={clearAllSelections}
                 disabled={isUpdating}
-              >
-                Clear All
-                </Button>
-                <Button
-                onClick={handleBulkUpdate}
-                disabled={isUpdating || job.status === 'completed'}
-                className={`${job.status === 'completed' ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}
-                title={job.status === 'completed' ? 'Cannot update resources for completed job' : ''}
-              >
-                {isUpdating ? 'Updating...' : 'Update Resources'}
-              </Button>
-            </div>
+                className="w-full sm:w-auto"
+               >
+                 Clear All
+                 </Button>
+                 <Button
+                 onClick={handleBulkUpdate}
+                 disabled={isUpdating || job.status === 'completed'}
+                 className={`w-full sm:w-auto ${job.status === 'completed' ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}
+                 title={job.status === 'completed' ? 'Cannot update resources for completed job' : ''}
+               >
+                 {isUpdating ? 'Updating...' : 'Update Resources'}
+               </Button>
+             </div>
           </div>
         </div>
       )}
 
-      <div className="flex justify-end space-x-3">
-        <Button variant="outline" onClick={onCancel}>
+      <div className="flex flex-col gap-2 sm:flex-row sm:justify-end sm:gap-3">
+        <Button variant="outline" onClick={onCancel} className="w-full sm:w-auto">
           Close
         </Button>
-        </div>
       </div>
+    </div>
   );
 };
 
@@ -4875,11 +4876,11 @@ const AddTaskForm: React.FC<{
         />
       </div>
 
-      <div className="flex justify-end space-x-3">
-        <Button type="button" variant="outline" onClick={onCancel}>
-          Cancel
+      <div className="flex flex-col gap-2 sm:flex-row sm:justify-end sm:gap-3">
+        <Button type="button" variant="outline" onClick={onCancel} className="w-full sm:w-auto">
+          Close
         </Button>
-        <Button type="submit" loading={loading}>
+        <Button type="submit" loading={loading} className="w-full sm:w-auto">
           Add Task
         </Button>
       </div>
@@ -5470,7 +5471,7 @@ const AssignResourcesForm: React.FC<{
         <div className="bg-red-50 border border-red-200 rounded-lg p-4">
           <p className="text-red-600">Invalid job data provided</p>
         </div>
-        <div className="flex justify-end space-x-3">
+        <div className="flex flex-col gap-2 sm:flex-row sm:justify-end sm:gap-3">
           <Button variant="outline" onClick={onCancel}>
             Close
           </Button>
@@ -5689,7 +5690,7 @@ const AssignResourcesForm: React.FC<{
                             className="w-16 px-2 py-1 text-xs border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500"
                             onClick={(e) => e.stopPropagation()}
                           />
-          </div>
+            </div>
                       )}
         </div>
                   ))}
@@ -5722,23 +5723,24 @@ const AssignResourcesForm: React.FC<{
                 variant="outline"
                 onClick={clearAllSelections}
                 disabled={isUpdating}
-              >
-                Clear All
-              </Button>
-              <Button
-                onClick={handleBulkAssign}
-                disabled={isUpdating}
-                className="bg-blue-600 hover:bg-blue-700"
-              >
-                {isUpdating ? 'Assigning...' : 'Assign Resources'}
-              </Button>
-            </div>
+                className="w-full sm:w-auto"
+               >
+                 Clear All
+                 </Button>
+                 <Button
+                 onClick={handleBulkAssign}
+                 disabled={isUpdating}
+                 className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto"
+               >
+                 {isUpdating ? 'Assigning...' : 'Assign Resources'}
+               </Button>
+             </div>
           </div>
         </div>
       )}
 
-      <div className="flex justify-end space-x-3">
-        <Button variant="outline" onClick={onCancel}>
+      <div className="flex flex-col gap-2 sm:flex-row sm:justify-end sm:gap-3">
+        <Button variant="outline" onClick={onCancel} className="w-full sm:w-auto">
           Close
         </Button>
       </div>

@@ -84,21 +84,21 @@ const WarehouseDashboard: React.FC = () => {
     <Layout title="Warehouse Dashboard">
       <div className="space-y-6">
         {/* Header */}
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Warehouse Dashboard</h1>
-          <p className="text-gray-600">Monitor warehouse operations, stock levels, and deliveries</p>
+        <div className="space-y-1">
+          <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">Warehouse Dashboard</h1>
+          <p className="text-sm text-gray-600 sm:text-base">Monitor warehouse operations, stock levels, and deliveries</p>
         </div>
 
         {/* Tabs */}
         <div className="border-b border-gray-200">
-          <nav className="-mb-px flex space-x-8">
+          <nav className="-mb-px flex flex-wrap gap-4">
             {tabs.map((tab) => {
               const Icon = tab.icon;
               return (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 py-2 px-1 border-b-2 font-medium text-sm ${
+                  className={`flex items-center gap-2 border-b-2 py-2 px-1 text-sm font-medium ${
                     activeTab === tab.id
                       ? 'border-blue-500 text-blue-600'
                       : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -116,8 +116,8 @@ const WarehouseDashboard: React.FC = () => {
         {activeTab === 'overview' && (
           <div className="space-y-6">
             {/* Key Metrics */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="bg-white p-6 rounded-lg border">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              <div className="rounded-lg border bg-white p-6">
                 <div className="flex items-center">
                   <div className="flex-shrink-0">
                     <ExclamationTriangleIcon className="h-8 w-8 text-red-500" />
@@ -131,7 +131,7 @@ const WarehouseDashboard: React.FC = () => {
                 </div>
               </div>
 
-              <div className="bg-white p-6 rounded-lg border">
+              <div className="rounded-lg border bg-white p-6">
                 <div className="flex items-center">
                   <div className="flex-shrink-0">
                     <ArchiveBoxIcon className="h-8 w-8 text-yellow-500" />
@@ -145,7 +145,7 @@ const WarehouseDashboard: React.FC = () => {
                 </div>
               </div>
 
-              <div className="bg-white p-6 rounded-lg border">
+              <div className="rounded-lg border bg-white p-6">
                 <div className="flex items-center">
                   <div className="flex-shrink-0">
                     <TruckIcon className="h-8 w-8 text-blue-500" />
@@ -159,7 +159,7 @@ const WarehouseDashboard: React.FC = () => {
                 </div>
               </div>
 
-              <div className="bg-white p-6 rounded-lg border">
+              <div className="rounded-lg border bg-white p-6">
                 <div className="flex items-center">
                   <div className="flex-shrink-0">
                     <DocumentTextIcon className="h-8 w-8 text-green-500" />
@@ -175,15 +175,15 @@ const WarehouseDashboard: React.FC = () => {
             </div>
 
             {/* Recent Alerts */}
-            <div className="bg-white rounded-lg border">
-              <div className="px-6 py-4 border-b border-gray-200">
+            <div className="rounded-lg border bg-white">
+              <div className="border-b border-gray-200 px-4 py-4 sm:px-6">
                 <h3 className="text-lg font-medium text-gray-900">Recent Stock Alerts</h3>
               </div>
               <div className="divide-y divide-gray-200">
                 {Array.isArray(alerts) ? alerts.slice(0, 5).map((alert: any, index: number) => (
-                  <div key={index} className="px-6 py-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-3">
+                  <div key={index} className="px-4 py-4 sm:px-6">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="flex items-start gap-3">
                         <div className="flex-shrink-0">
                           {getAlertBadge(alert.severity)}
                         </div>
@@ -210,8 +210,8 @@ const WarehouseDashboard: React.FC = () => {
         {/* Stock Alerts Tab */}
         {activeTab === 'alerts' && (
           <div className="space-y-6">
-            <div className="bg-white rounded-lg border">
-              <div className="px-6 py-4 border-b border-gray-200">
+            <div className="rounded-lg border bg-white">
+              <div className="border-b border-gray-200 px-4 py-4 sm:px-6">
                 <h3 className="text-lg font-medium text-gray-900">Stock Alerts</h3>
               </div>
               <div className="overflow-x-auto">
@@ -274,11 +274,11 @@ const WarehouseDashboard: React.FC = () => {
         {/* Replenishment Tab */}
         {activeTab === 'replenishment' && (
           <div className="space-y-6">
-            <div className="bg-white rounded-lg border">
-              <div className="px-6 py-4 border-b border-gray-200">
-                <div className="flex items-center justify-between">
+            <div className="rounded-lg border bg-white">
+              <div className="border-b border-gray-200 px-4 py-4 sm:px-6">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <h3 className="text-lg font-medium text-gray-900">Replenishment Suggestions</h3>
-                  <Button size="sm">
+                  <Button size="sm" className="w-full sm:w-auto">
                     Create Purchase Orders
                   </Button>
                 </div>
@@ -343,8 +343,8 @@ const WarehouseDashboard: React.FC = () => {
         {/* Deliveries Tab */}
         {activeTab === 'deliveries' && (
           <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="bg-white p-6 rounded-lg border">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              <div className="rounded-lg border bg-white p-6">
                 <div className="flex items-center">
                   <div className="flex-shrink-0">
                     <ClockIcon className="h-8 w-8 text-yellow-500" />
@@ -358,7 +358,7 @@ const WarehouseDashboard: React.FC = () => {
                 </div>
               </div>
 
-              <div className="bg-white p-6 rounded-lg border">
+              <div className="rounded-lg border bg-white p-6">
                 <div className="flex items-center">
                   <div className="flex-shrink-0">
                     <TruckIcon className="h-8 w-8 text-blue-500" />
@@ -372,7 +372,7 @@ const WarehouseDashboard: React.FC = () => {
                 </div>
               </div>
 
-              <div className="bg-white p-6 rounded-lg border">
+              <div className="rounded-lg border bg-white p-6">
                 <div className="flex items-center">
                   <div className="flex-shrink-0">
                     <CheckCircleIcon className="h-8 w-8 text-green-500" />

@@ -185,18 +185,18 @@ const WarehouseEmployeesInner: React.FC<{ warehouseId: string | null }> = ({ war
     <WarehousePortalLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Warehouse Employees</h1>
-            <p className="text-gray-600">Manage employees assigned to this warehouse</p>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-1">
+            <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">Warehouse Employees</h1>
+            <p className="text-sm text-gray-600 sm:text-base">Manage employees assigned to this warehouse</p>
           </div>
           {/* Only show create button for warehouse managers and admins */}
           {canManageEmployees && (
             <Button
               onClick={() => setShowCreateUserModal(true)}
-              className="flex items-center"
+              className="flex w-full items-center justify-center gap-2 sm:w-auto"
             >
-              <UserPlusIcon className="h-5 w-5 mr-2" />
+              <UserPlusIcon className="h-5 w-5" />
               Create Warehouse Employee
             </Button>
           )}
@@ -204,13 +204,13 @@ const WarehouseEmployeesInner: React.FC<{ warehouseId: string | null }> = ({ war
 
         {/* Manager Section */}
         {manager && (
-          <div className="bg-white p-6 rounded-lg shadow">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">
-              <ShieldCheckIcon className="h-5 w-5 inline mr-2 text-purple-600" />
+          <div className="rounded-lg bg-white p-6 shadow">
+            <h3 className="mb-4 text-lg font-medium text-gray-900">
+              <ShieldCheckIcon className="mr-2 inline h-5 w-5 text-purple-600" />
               Warehouse Manager
             </h3>
-            <div className="bg-purple-50 p-4 rounded-lg">
-              <div className="flex items-center justify-between">
+            <div className="rounded-lg bg-purple-50 p-4">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <div className="font-medium text-gray-900">
                     {manager.firstName} {manager.lastName}
@@ -229,14 +229,14 @@ const WarehouseEmployeesInner: React.FC<{ warehouseId: string | null }> = ({ war
 
         {/* Permission Notice */}
         {!canManageEmployees && (
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+          <div className="space-y-3 rounded-lg border border-yellow-200 bg-yellow-50 p-4">
             <div className="flex">
-              <ShieldCheckIcon className="h-5 w-5 text-yellow-600 mr-2 mt-0.5" />
+              <ShieldCheckIcon className="mr-2 mt-0.5 h-5 w-5 text-yellow-600" />
               <div>
                 <h3 className="text-sm font-medium text-yellow-800">
                   Limited Access
                 </h3>
-                <p className="text-sm text-yellow-700 mt-1">
+                <p className="mt-1 text-sm text-yellow-700">
                   Only warehouse managers and admins can create new employees or remove existing ones.
                 </p>
               </div>
@@ -245,8 +245,8 @@ const WarehouseEmployeesInner: React.FC<{ warehouseId: string | null }> = ({ war
         )}
 
         {/* Employees Table */}
-        <div className="bg-white rounded-lg shadow">
-          <div className="px-6 py-4 border-b border-gray-200">
+        <div className="rounded-lg bg-white shadow">
+          <div className="border-b border-gray-200 px-4 py-4 sm:px-6">
             <h3 className="text-lg font-medium text-gray-900">Employees</h3>
           </div>
           <DataTable
@@ -304,8 +304,8 @@ const CreateUserForm: React.FC<{
       loading={mutation.isPending}
     >{(methods) => (
       <div className="space-y-6">
-        <div className="bg-blue-50 p-4 rounded-lg">
-          <h3 className="text-lg font-medium text-blue-900 mb-2">
+        <div className="rounded-lg bg-blue-50 p-4">
+          <h3 className="mb-2 text-lg font-medium text-blue-900">
             Create Warehouse Employee
           </h3>
           <p className="text-sm text-blue-800">
@@ -315,7 +315,7 @@ const CreateUserForm: React.FC<{
         </div>
 
         <FormSection title="Employee Details">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <FormField label="First Name" required error={methods.formState.errors.firstName?.message as string}>
               <Input {...methods.register('firstName')} fullWidth />
             </FormField>
@@ -334,9 +334,9 @@ const CreateUserForm: React.FC<{
           </div>
         </FormSection>
 
-        <div className="bg-gray-50 p-4 rounded-lg">
-          <h4 className="text-sm font-medium text-gray-900 mb-2">Assignment Details</h4>
-          <div className="text-sm text-gray-600 space-y-1">
+        <div className="rounded-lg bg-gray-50 p-4">
+          <h4 className="mb-2 text-sm font-medium text-gray-900">Assignment Details</h4>
+          <div className="space-y-1 text-sm text-gray-600">
             <p>• <strong>Role:</strong> warehouse_employee</p>
             <p>• <strong>Assigned to:</strong> Current warehouse</p>
             <p>• <strong>Permissions:</strong> Can view and edit inventory</p>

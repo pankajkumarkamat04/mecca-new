@@ -96,30 +96,28 @@ const CustomerPurchasesPage: React.FC = () => {
   return (
     <Layout title="My Purchases">
       <div className="space-y-6">
-        <div className="bg-white shadow rounded-lg p-6">
-          <div className="flex items-center justify-between">
-            <div>
+        <div className="rounded-lg bg-white p-6 shadow">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="space-y-1">
               <h2 className="text-xl font-bold text-gray-900">Purchase History</h2>
-              <p className="text-gray-600">View all your purchases and order history</p>
+              <p className="text-sm text-gray-600 sm:text-base">View all your purchases and order history</p>
             </div>
             <div className="flex items-center text-sm text-gray-500">
-              <DocumentTextIcon className="h-5 w-5 mr-2" />
+              <DocumentTextIcon className="mr-2 h-5 w-5" />
               {purchasesData?.data?.pagination?.total || 0} total purchases
             </div>
           </div>
         </div>
 
         {/* Purchases Section */}
-        <div className="bg-white shadow rounded-lg">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <DocumentTextIcon className="h-5 w-5 text-gray-400 mr-2" />
-                <h3 className="text-lg font-medium text-gray-900">Purchase History</h3>
-              </div>
-              <div className="text-sm text-gray-500">
-                {purchasesData?.data?.pagination?.total || 0} total purchases
-              </div>
+        <div className="rounded-lg bg-white shadow">
+          <div className="flex flex-col gap-2 border-b border-gray-200 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center">
+              <DocumentTextIcon className="mr-2 h-5 w-5 text-gray-400" />
+              <h3 className="text-lg font-medium text-gray-900">Purchase History</h3>
+            </div>
+            <div className="text-sm text-gray-500">
+              {purchasesData?.data?.pagination?.total || 0} total purchases
             </div>
           </div>
           <div className="p-6">
@@ -167,7 +165,7 @@ const CustomerPurchasesPage: React.FC = () => {
         >
           {selectedInvoice && (
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <label className="text-sm font-medium text-gray-500">Invoice Number</label>
                   <p className="text-sm text-gray-900">{selectedInvoice.invoiceNumber}</p>
@@ -199,8 +197,8 @@ const CustomerPurchasesPage: React.FC = () => {
                     <label className="text-sm font-medium text-gray-500">Items</label>
                     <div className="mt-2 space-y-2">
                       {selectedInvoice.items.map((item: InvoiceItem, index: number) => (
-                        <div key={index} className="p-2 bg-gray-50 rounded">
-                          <div className="flex justify-between items-start mb-1">
+                        <div key={index} className="rounded bg-gray-50 p-3">
+                          <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
                             <div className="flex-1">
                               <p className="text-sm font-medium">{item.name}</p>
                               <p className="text-xs text-gray-500">

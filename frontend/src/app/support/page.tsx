@@ -299,14 +299,15 @@ const SupportPage: React.FC = () => {
     <Layout title="Support Tickets">
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex justify-between items-center">
-          <div>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-1">
             <h1 className="text-2xl font-bold text-gray-900">Support Tickets</h1>
             <p className="text-gray-600">Manage customer support and technical issues</p>
           </div>
           <Button
             onClick={() => setIsCreateModalOpen(true)}
             leftIcon={<PlusIcon className="h-4 w-4" />}
+            className="w-full sm:w-auto"
           >
             New Ticket
           </Button>
@@ -454,9 +455,11 @@ const SupportPage: React.FC = () => {
                   </p>
                 </div>
                 <div className="text-right">
-                  <div className="flex justify-end space-x-2 mb-2">
+                  <div className="mb-2 flex flex-wrap justify-end gap-2">
+                    <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800">
+                      {selectedTicket.priority}
+                    </span>
                     {getStatusBadge(selectedTicket.status)}
-                    {getPriorityBadge(selectedTicket.priority)}
                   </div>
                   <div className="text-sm text-gray-600">
                     Category: <span className="capitalize">{selectedTicket.category.replace('_', ' ')}</span>
@@ -501,7 +504,7 @@ const SupportPage: React.FC = () => {
                   <div className="space-y-4 max-h-64 overflow-y-auto">
                     {selectedTicket.conversations.map((conversation, index) => (
                       <div key={index} className="border border-gray-200 rounded-lg p-4">
-                        <div className="flex justify-between items-start mb-2">
+                        <div className="mb-2 flex flex-col gap-2 sm:mb-0 sm:flex-row sm:items-center sm:justify-between">
                           <div className="flex items-center">
                             <UserIcon className="h-4 w-4 text-gray-400 mr-2" />
                             <span className="text-sm font-medium text-gray-900">
@@ -516,11 +519,13 @@ const SupportPage: React.FC = () => {
                               </span>
                             )}
                           </div>
-                          <span className="text-xs text-gray-500">{formatDate(conversation.createdAt)}</span>
+                          <span className="text-xs text-gray-500">
+                            {formatDate(conversation.createdAt)}
+                          </span>
                         </div>
                         <p className="text-sm text-gray-700">{conversation.message}</p>
                         {conversation.attachments && conversation.attachments.length > 0 && (
-                          <div className="mt-2 flex space-x-2">
+                          <div className="mt-2 flex flex-wrap gap-2">
                             {conversation.attachments.map((attachment, attIndex) => (
                               <div key={attIndex} className="flex items-center text-xs text-gray-500">
                                 <PaperClipIcon className="h-3 w-3 mr-1" />
@@ -536,8 +541,8 @@ const SupportPage: React.FC = () => {
               )}
 
               {/* Actions */}
-              <div className="flex justify-between">
-                <div className="flex space-x-3">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-wrap gap-2">
                   <Button
                     variant="outline"
                     onClick={() => handleUpdateStatus(selectedTicket._id, 'in_progress')}
@@ -554,6 +559,7 @@ const SupportPage: React.FC = () => {
                 <Button
                   variant="outline"
                   onClick={() => setIsViewModalOpen(false)}
+                  className="w-full sm:w-auto"
                 >
                   Close
                 </Button>

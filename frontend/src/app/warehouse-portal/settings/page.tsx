@@ -204,18 +204,16 @@ const WarehouseSettings: React.FC = () => {
     <WarehousePortalLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Warehouse Settings</h1>
-            <p className="text-gray-600">Configure warehouse settings and preferences</p>
-          </div>
+        <div className="space-y-1">
+          <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">Warehouse Settings</h1>
+          <p className="text-sm text-gray-600 sm:text-base">Configure warehouse settings and preferences</p>
         </div>
 
         <div className="space-y-8">
           {/* Basic Information */}
-          <div className="bg-white p-6 rounded-lg shadow">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Basic Information</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="rounded-lg bg-white p-6 shadow">
+            <h3 className="mb-4 text-lg font-medium text-gray-900">Basic Information</h3>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Warehouse Name *
@@ -236,14 +234,14 @@ const WarehouseSettings: React.FC = () => {
                   required
                 />
               </div>
-              <div className="md:col-span-2">
+              <div className="sm:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Description
                 </label>
                 <textarea
                   value={formData.description}
                   onChange={(e) => handleInputChange('description', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   rows={3}
                 />
               </div>
@@ -251,10 +249,10 @@ const WarehouseSettings: React.FC = () => {
           </div>
 
           {/* Address Information */}
-          <div className="bg-white p-6 rounded-lg shadow">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Address Information</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="md:col-span-2">
+          <div className="rounded-lg bg-white p-6 shadow">
+            <h3 className="mb-4 text-lg font-medium text-gray-900">Address Information</h3>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="sm:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Street Address
                 </label>
@@ -303,9 +301,9 @@ const WarehouseSettings: React.FC = () => {
           </div>
 
           {/* Contact Information */}
-          <div className="bg-white p-6 rounded-lg shadow">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Contact Information</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="rounded-lg bg-white p-6 shadow">
+            <h3 className="mb-4 text-lg font-medium text-gray-900">Contact Information</h3>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Phone
@@ -329,9 +327,9 @@ const WarehouseSettings: React.FC = () => {
           </div>
 
           {/* Capacity Settings */}
-          <div className="bg-white p-6 rounded-lg shadow">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Capacity Settings</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="rounded-lg bg-white p-6 shadow">
+            <h3 className="mb-4 text-lg font-medium text-gray-900">Capacity Settings</h3>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Total Capacity
@@ -356,8 +354,8 @@ const WarehouseSettings: React.FC = () => {
           </div>
 
           {/* Warehouse Settings */}
-          <div className="bg-white p-6 rounded-lg shadow">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Warehouse Settings</h3>
+          <div className="rounded-lg bg-white p-6 shadow">
+            <h3 className="mb-4 text-lg font-medium text-gray-900">Warehouse Settings</h3>
             <div className="space-y-4">
               <div className="flex items-center">
                 <input
@@ -395,7 +393,7 @@ const WarehouseSettings: React.FC = () => {
                   Allow negative stock levels
                 </label>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Low Stock Threshold
@@ -421,12 +419,12 @@ const WarehouseSettings: React.FC = () => {
           </div>
 
           {/* Operating Hours */}
-          <div className="bg-white p-6 rounded-lg shadow">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Operating Hours</h3>
+          <div className="rounded-lg bg-white p-6 shadow">
+            <h3 className="mb-4 text-lg font-medium text-gray-900">Operating Hours</h3>
             <div className="space-y-4">
               {days.map((day) => (
-                <div key={day.key} className="flex items-center space-x-4">
-                  <div className="w-24">
+                <div key={day.key} className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+                  <div className="w-32">
                     <label className="text-sm font-medium text-gray-700">{day.label}</label>
                   </div>
                   <div className="flex items-center">
@@ -446,7 +444,7 @@ const WarehouseSettings: React.FC = () => {
                     <span className="text-sm text-gray-700">Open</span>
                   </div>
                   {formData.operatingHours[day.key as keyof typeof formData.operatingHours].isOpen && (
-                    <>
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
                       <Input
                         type="time"
                         value={formData.operatingHours[day.key as keyof typeof formData.operatingHours].open}
@@ -458,7 +456,7 @@ const WarehouseSettings: React.FC = () => {
                           };
                           handleInputChange('operatingHours', newHours);
                         }}
-                        className="w-32"
+                        className="w-full sm:w-32"
                       />
                       <span className="text-sm text-gray-500">to</span>
                       <Input
@@ -472,9 +470,9 @@ const WarehouseSettings: React.FC = () => {
                           };
                           handleInputChange('operatingHours', newHours);
                         }}
-                        className="w-32"
+                        className="w-full sm:w-32"
                       />
-                    </>
+                    </div>
                   )}
                 </div>
               ))}
@@ -482,11 +480,12 @@ const WarehouseSettings: React.FC = () => {
           </div>
 
           {/* Submit Button */}
-          <div className="flex justify-end">
+          <div className="flex flex-col items-stretch pt-2 sm:flex-row sm:justify-end sm:gap-3">
             <Button
               type="button"
               onClick={handleSubmit}
               disabled={updateWarehouseMutation.isPending}
+              className="w-full sm:w-auto"
             >
               {updateWarehouseMutation.isPending ? 'Updating...' : 'Update Settings'}
             </Button>

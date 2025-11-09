@@ -1341,27 +1341,27 @@ const InventoryPage: React.FC = () => {
     <ConditionalLayout title="Inventory Management">
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Inventory Management</h1>
-            <p className="text-gray-600">Track stock levels, movements, and manage inventory</p>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-1">
+            <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">Inventory Management</h1>
+            <p className="text-sm text-gray-600 sm:text-base">Track stock levels, movements, and manage inventory</p>
           </div>
         </div>
 
         {/* Tabs */}
         <div className="border-b border-gray-200">
-          <nav className="-mb-px flex space-x-8">
+          <nav className="-mb-px flex flex-wrap gap-4">
             {tabs.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center py-2 px-1 border-b-2 font-medium text-sm ${
+                className={`flex items-center gap-2 border-b-2 py-2 px-1 text-sm font-medium ${
                   activeTab === tab.id
                     ? 'border-blue-500 text-blue-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
               >
-                <tab.icon className="h-4 w-4 mr-2" />
+                <tab.icon className="h-4 w-4" />
                 {tab.name}
               </button>
             ))}
@@ -1429,7 +1429,7 @@ const InventoryPage: React.FC = () => {
 
             {/* Recent Alerts */}
             <div className="bg-white p-6 rounded-lg shadow-sm border">
-              <div className="flex justify-between items-center mb-4">
+              <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <h3 className="text-lg font-semibold text-gray-900">Recent Alerts</h3>
                 <Button
                   onClick={() => setActiveTab('alerts')}
@@ -1469,7 +1469,7 @@ const InventoryPage: React.FC = () => {
         {/* Inventory Levels Tab */}
         {activeTab === 'levels' && (
           <div className="space-y-4">
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
               <div className="flex-1">
                 <Input
                   placeholder="Search products..."
@@ -1492,17 +1492,17 @@ const InventoryPage: React.FC = () => {
         {/* Stock Movements Tab */}
         {activeTab === 'movements' && (
           <div className="space-y-4">
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex-1">
                 <Input
                   placeholder="Search movements..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   leftIcon={<MagnifyingGlassIcon className="h-4 w-4" />}
-                  className="max-w-md"
+                  className="w-full sm:max-w-md"
                 />
               </div>
-              <div className="flex space-x-3">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
                 <Select
                   options={movementTypeOptions}
                   value={movementType}

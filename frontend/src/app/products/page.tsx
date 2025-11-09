@@ -328,15 +328,16 @@ const ProductsPage: React.FC = () => {
     <ConditionalLayout title="Products">
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Products</h1>
-            <p className="text-gray-600">Manage your product catalog and inventory</p>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-1">
+            <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">Products</h1>
+            <p className="text-sm text-gray-600 sm:text-base">Manage your product catalog and inventory</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row">
             <Button
               variant="outline"
               onClick={() => setIsManageCategoriesOpen(true)}
+              className="w-full sm:w-auto"
             >
               Manage Categories
             </Button>
@@ -344,6 +345,7 @@ const ProductsPage: React.FC = () => {
               <Button
                 onClick={() => setIsCreateModalOpen(true)}
                 leftIcon={<PlusIcon className="h-4 w-4" />}
+                className="w-full sm:w-auto"
               >
                 Add Product
               </Button>
@@ -352,8 +354,8 @@ const ProductsPage: React.FC = () => {
         </div>
 
         {/* Search and Filters */}
-        <div className="bg-white p-4 rounded-lg shadow">
-          <div className="flex flex-col sm:flex-row gap-4">
+        <div className="rounded-lg bg-white p-4 shadow">
+          <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)] sm:items-center lg:grid-cols-[minmax(0,1fr)_180px_auto]">
             <div className="flex-1">
               <Input
                 placeholder="Search products by name, SKU, or description..."
@@ -362,7 +364,7 @@ const ProductsPage: React.FC = () => {
                 fullWidth
               />
             </div>
-            <div className="w-full sm:w-48">
+            <div className="w-full sm:max-w-xs lg:w-full">
               <Select
                 options={statusOptions}
                 value={filterStatus}
@@ -370,12 +372,12 @@ const ProductsPage: React.FC = () => {
                 fullWidth
               />
             </div>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm">
-                <ExclamationTriangleIcon className="h-4 w-4 mr-1" />
+            <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+              <Button variant="outline" size="sm" className="w-full sm:w-auto">
+                <ExclamationTriangleIcon className="mr-1 h-4 w-4" />
                 Low Stock
               </Button>
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" className="w-full sm:w-auto">
                 Export
               </Button>
             </div>

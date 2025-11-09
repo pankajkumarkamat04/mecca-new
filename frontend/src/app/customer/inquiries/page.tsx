@@ -94,19 +94,19 @@ const CustomerInquiriesPage: React.FC = () => {
     <Layout title="My Inquiries">
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">My Inquiries</h1>
-            <p className="text-gray-600">Track your product inquiries and requests</p>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-1">
+            <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">My Inquiries</h1>
+            <p className="text-sm text-gray-600 sm:text-base">Track your product inquiries and requests</p>
           </div>
-          <Button onClick={() => setShowCreateModal(true)}>
-            <PlusIcon className="h-4 w-4 mr-2" />
+          <Button onClick={() => setShowCreateModal(true)} className="w-full sm:w-auto">
+            <PlusIcon className="mr-2 h-4 w-4" />
             New Inquiry
           </Button>
         </div>
 
         {/* Inquiries List */}
-        <div className="bg-white rounded-lg border">
+        <div className="rounded-lg border bg-white">
           {isLoading ? (
             <div className="p-6">
               <div className="space-y-4">
@@ -121,20 +121,20 @@ const CustomerInquiriesPage: React.FC = () => {
           ) : inquiries.length > 0 ? (
             <div className="divide-y divide-gray-200">
               {inquiries.map((inquiry: any) => (
-                <div key={inquiry._id} className="p-6 hover:bg-gray-50">
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
+                <div key={inquiry._id} className="p-6 transition-colors hover:bg-gray-50">
+                  <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                    <div className="flex-1 space-y-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <h3 className="text-lg font-medium text-gray-900">
                           {inquiry.subject}
                         </h3>
                         {getStatusBadge(inquiry.status)}
                         {getPriorityBadge(inquiry.priority)}
                       </div>
-                      <p className="text-sm text-gray-600 mb-2">
+                      <p className="text-sm text-gray-600">
                         {inquiry.description}
                       </p>
-                      <div className="flex items-center gap-4 text-xs text-gray-500">
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-gray-500">
                         <span>Inquiry #{inquiry.inquiryNumber}</span>
                         <span>Created: {formatDate(inquiry.inquiryDate)}</span>
                         {inquiry.assignedTo && (
@@ -142,7 +142,7 @@ const CustomerInquiriesPage: React.FC = () => {
                         )}
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <Button
                         variant="ghost"
                         size="sm"
@@ -157,15 +157,15 @@ const CustomerInquiriesPage: React.FC = () => {
               ))}
             </div>
           ) : (
-            <div className="text-center py-12">
+            <div className="py-12 text-center">
               <ChatBubbleLeftRightIcon className="mx-auto h-12 w-12 text-gray-400" />
               <h3 className="mt-2 text-sm font-medium text-gray-900">No inquiries found</h3>
               <p className="mt-1 text-sm text-gray-500">
                 You haven't submitted any inquiries yet.
               </p>
               <div className="mt-6">
-                <Button onClick={() => setShowCreateModal(true)}>
-                  <PlusIcon className="h-4 w-4 mr-2" />
+                <Button onClick={() => setShowCreateModal(true)} className="w-full sm:w-auto">
+                  <PlusIcon className="mr-2 h-4 w-4" />
                   Submit Your First Inquiry
                 </Button>
               </div>
@@ -182,7 +182,7 @@ const CustomerInquiriesPage: React.FC = () => {
         >
           {selectedInquiry && (
             <div className="space-y-6">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Inquiry Number</label>
                   <p className="mt-1 text-sm text-gray-900">{selectedInquiry.inquiryNumber}</p>
@@ -251,10 +251,11 @@ const CustomerInquiriesPage: React.FC = () => {
                 </div>
               )}
 
-              <div className="flex justify-end">
+              <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
                 <Button
                   variant="outline"
                   onClick={() => setShowDetailsModal(false)}
+                  className="w-full sm:w-auto"
                 >
                   Close
                 </Button>

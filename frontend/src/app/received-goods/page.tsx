@@ -32,12 +32,12 @@ const ReceivedGoodsPage: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(10);
   const [filterStatus, setFilterStatus] = useState('all');
-  
+
   // State for quality inspection form data
   const [qualityInspectionData, setQualityInspectionData] = useState<any[]>([]);
 
   const queryClient = useQueryClient();
-  
+
   // Permission checks
   const canCreate = hasPermission('receivedGoods', 'create');
   const canUpdate = hasPermission('receivedGoods', 'update');
@@ -57,7 +57,7 @@ const ReceivedGoodsPage: React.FC = () => {
       setQualityInspectionData(initialData);
     }
   };
-  
+
   // Fetch received goods
   const { data: receivedGoodsData, isPending } = useQuery({
     queryKey: ['receivedGoods', currentPage, pageSize, searchTerm, filterStatus],
@@ -196,13 +196,13 @@ const ReceivedGoodsPage: React.FC = () => {
       key: 'actions',
       label: 'Actions',
       render: (row: any) => (
-        <div className="flex space-x-2">
+        <div className="flex flex-wrap gap-2">
           <Button
             variant="outline"
             size="sm"
             onClick={() => {
               setSelectedReceivedGoods(row);
-    setIsViewModalOpen(true);
+              setIsViewModalOpen(true);
             }}
           >
             <EyeIcon className="h-4 w-4" />
@@ -282,11 +282,11 @@ const ReceivedGoodsPage: React.FC = () => {
     },
   ];
 
-    return (
+  return (
     <ConditionalLayout title="Received Goods">
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex justify-between items-center">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Received Goods</h1>
             <p className="text-gray-600">Manage and inspect received goods from purchase orders</p>
@@ -310,7 +310,7 @@ const ReceivedGoodsPage: React.FC = () => {
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
                 fullWidth
-                />
+              />
             </div>
           </div>
         </div>
@@ -348,7 +348,7 @@ const ReceivedGoodsPage: React.FC = () => {
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Purchase Order</label>
                   <p className="mt-1 text-sm text-gray-900">{selectedReceivedGoods.purchaseOrderNumber}</p>
-      </div>
+                </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Supplier</label>
                   <p className="mt-1 text-sm text-gray-900">{selectedReceivedGoods.supplierName}</p>
@@ -405,16 +405,16 @@ const ReceivedGoodsPage: React.FC = () => {
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Notes</label>
                   <p className="mt-1 text-sm text-gray-900">{selectedReceivedGoods.notes}</p>
-            </div>
+                </div>
               )}
 
               {/* Actions */}
-              <div className="flex justify-end space-x-3">
+              <div className="flex flex-wrap justify-end gap-3">
                 <Button
                   variant="outline"
-                onClick={() => setIsViewModalOpen(false)}
-              >
-                Close
+                  onClick={() => setIsViewModalOpen(false)}
+                >
+                  Close
                 </Button>
                 {['pending', 'inspected'].includes(selectedReceivedGoods.status) && canUpdate && (
                   <Button
@@ -427,8 +427,8 @@ const ReceivedGoodsPage: React.FC = () => {
                   >
                     Approve & Add to Inventory
                   </Button>
-                          )}
-                        </div>
+                )}
+              </div>
             </div>
           )}
         </Modal>
@@ -443,20 +443,20 @@ const ReceivedGoodsPage: React.FC = () => {
           {selectedReceivedGoods && (
             <div className="space-y-6">
               <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4">
-                <div className="flex">
+                <div className="flex flex-col gap-3 sm:flex-row">
                   <div className="flex-shrink-0">
                     <ClipboardDocumentListIcon className="h-5 w-5 text-yellow-400" />
               </div>
-                  <div className="ml-3">
+                  <div className="sm:ml-3">
                     <h3 className="text-sm font-medium text-yellow-800">
                       Quality Inspection Required
                     </h3>
                     <div className="mt-2 text-sm text-yellow-700">
                       <p>Please inspect the received items and mark them as passed or failed.</p>
-                </div>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
 
               <div className="space-y-4">
                 <div>
@@ -490,21 +490,21 @@ const ReceivedGoodsPage: React.FC = () => {
                     rows={4}
                     placeholder="Add inspection notes..."
                   />
-        </div>
-      </div>
+                </div>
+              </div>
 
-              <div className="flex justify-end space-x-3">
+              <div className="flex flex-wrap justify-end gap-3">
                 <Button
                   variant="outline"
                   onClick={() => setIsInspectModalOpen(false)}
-              >
-                Cancel
+                >
+                  Cancel
                 </Button>
                 <Button
                   onClick={() => {
                     const inspectionResult = document.querySelector('input[name="inspectionResult"]:checked') as HTMLInputElement;
                     const notes = (document.querySelector('textarea') as HTMLTextAreaElement).value;
-                    
+
                     if (!inspectionResult) {
                       toast.error('Please select an inspection result');
                       return;
@@ -523,9 +523,9 @@ const ReceivedGoodsPage: React.FC = () => {
                 >
                   Complete Inspection
                 </Button>
-          </div>
-        </div>
-      )}
+              </div>
+            </div>
+          )}
         </Modal>
 
 
@@ -540,31 +540,31 @@ const ReceivedGoodsPage: React.FC = () => {
           {selectedReceivedGoods && (
             <div className="space-y-6">
               <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4">
-                <div className="flex">
+                <div className="flex flex-col gap-3 sm:flex-row">
                   <div className="flex-shrink-0">
                     <XCircleIcon className="h-5 w-5 text-yellow-400" />
                   </div>
-                  <div className="ml-3">
+                  <div className="sm:ml-3">
                     <h3 className="text-sm font-medium text-yellow-800">
                       Discrepancy Resolution Required
                     </h3>
                     <div className="mt-2 text-sm text-yellow-700">
                       <p>Resolve discrepancies found during inspection before approval.</p>
                     </div>
-            </div>
-          </div>
-        </div>
+                  </div>
+                </div>
+              </div>
 
-            <div className="space-y-4">
+              <div className="space-y-4">
                 <h4 className="text-lg font-medium text-gray-900">Discrepancy Resolution</h4>
                 {selectedReceivedGoods.items?.filter((item: any) => item.hasDiscrepancy).map((item: any, index: number) => (
                   <div key={index} className="border rounded-lg p-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                      <div>
                         <label className="block text-sm font-medium text-gray-700">Product</label>
                         <p className="mt-1 text-sm text-gray-900">{item.productName}</p>
-                </div>
-                <div>
+                      </div>
+                      <div>
                         <label className="block text-sm font-medium text-gray-700">Discrepancy Type</label>
                         <p className="mt-1 text-sm text-gray-900">{item.discrepancyType}</p>
                       </div>
@@ -575,13 +575,13 @@ const ReceivedGoodsPage: React.FC = () => {
                           rows={3}
                           placeholder="Describe how this discrepancy was resolved..."
                         />
-                </div>
-              </div>
-            </div>
+                      </div>
+                    </div>
+                  </div>
                 ))}
               </div>
 
-              <div className="flex justify-end space-x-3">
+              <div className="flex flex-wrap justify-end gap-3">
                 <Button
                   variant="outline"
                   onClick={() => setIsDiscrepancyModalOpen(false)}
@@ -598,7 +598,7 @@ const ReceivedGoodsPage: React.FC = () => {
                       })),
                       notes: 'Discrepancies resolved'
                     };
-                    
+
                     resolveDiscrepancyMutation.mutate({
                       id: selectedReceivedGoods._id,
                       resolutionData
@@ -608,9 +608,9 @@ const ReceivedGoodsPage: React.FC = () => {
                 >
                   Resolve Discrepancies
                 </Button>
-          </div>
-        </div>
-      )}
+              </div>
+            </div>
+          )}
         </Modal>
 
         {/* Quality Inspection Modal */}
@@ -624,11 +624,11 @@ const ReceivedGoodsPage: React.FC = () => {
             <div className="space-y-6">
               {/* Header */}
               <div className="border rounded-md p-4 bg-green-50 border-green-200">
-                <div className="flex">
+                <div className="flex flex-col gap-3 sm:flex-row">
                   <div className="flex-shrink-0">
                     <MagnifyingGlassIcon className="h-5 w-5 text-green-400" />
                   </div>
-                  <div className="ml-3">
+                  <div className="sm:ml-3">
                     <h3 className="text-sm font-medium text-green-800">
                       Comprehensive Quality Inspection
                     </h3>
@@ -648,16 +648,16 @@ const ReceivedGoodsPage: React.FC = () => {
                   const inspectionItem = qualityInspectionData[index] || {};
                   return (
                     <div key={index} className="border rounded-lg p-4">
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <div>
                           <label className="block text-sm font-medium text-gray-700">Product</label>
                           <p className="mt-1 text-sm text-gray-900">{item.productName}</p>
-                </div>
-                <div>
+                        </div>
+                        <div>
                           <label className="block text-sm font-medium text-gray-700">Received Quantity</label>
                           <p className="mt-1 text-sm text-gray-900">{item.receivedQuantity}</p>
-                </div>
-                <div>
+                        </div>
+                        <div>
                           <label className="block text-sm font-medium text-gray-700">Defective Quantity</label>
                           <Input
                             type="number"
@@ -670,8 +670,8 @@ const ReceivedGoodsPage: React.FC = () => {
                             min="0"
                             max={item.receivedQuantity}
                           />
-                </div>
-                <div>
+                        </div>
+                        <div>
                           <label className="block text-sm font-medium text-gray-700">Damaged Quantity</label>
                           <Input
                             type="number"
@@ -684,8 +684,8 @@ const ReceivedGoodsPage: React.FC = () => {
                             min="0"
                             max={item.receivedQuantity}
                           />
-                </div>
-                <div>
+                        </div>
+                        <div>
                           <label className="block text-sm font-medium text-gray-700">Quality Status</label>
                           <Select
                             options={[
@@ -701,8 +701,8 @@ const ReceivedGoodsPage: React.FC = () => {
                               setQualityInspectionData(newData);
                             }}
                           />
-              </div>
-              <div>
+                        </div>
+                        <div>
                           <label className="block text-sm font-medium text-gray-700">Quality Notes</label>
                           <textarea
                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -715,15 +715,15 @@ const ReceivedGoodsPage: React.FC = () => {
                               setQualityInspectionData(newData);
                             }}
                           />
-                </div>
-              </div>
-            </div>
+                        </div>
+                      </div>
+                    </div>
                   );
                 })}
               </div>
 
               {/* Action Buttons */}
-              <div className="flex justify-end space-x-3">
+              <div className="flex flex-wrap justify-end gap-3">
                 <Button variant="outline" onClick={() => setIsCombinedInspectionModalOpen(false)}>
                   Cancel
                 </Button>
@@ -755,9 +755,9 @@ const ReceivedGoodsPage: React.FC = () => {
                 >
                   Complete Quality Inspection
                 </Button>
-          </div>
-        </div>
-      )}
+              </div>
+            </div>
+          )}
         </Modal>
       </div>
     </ConditionalLayout>

@@ -68,7 +68,7 @@ function LoginForm() {
   return (
     <AuthLayout>
       <div className="space-y-8">
-        <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl p-8 border border-white/20">
+        <div className="bg-white/95 backdrop-blur-sm rounded-2xl border border-white/20 p-6 shadow-2xl sm:p-8">
           <div className="text-center mb-8">
             <div className="mx-auto h-16 w-16 flex items-center justify-center rounded-full bg-gradient-to-br from-red-500 to-red-600 shadow-lg">
               <LockClosedIcon className="h-8 w-8 text-white" />
@@ -147,7 +147,7 @@ function LoginForm() {
               </div>
             </div>
 
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center">
                 <input
                   id="remember-me"

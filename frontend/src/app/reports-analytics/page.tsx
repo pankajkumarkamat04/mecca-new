@@ -201,17 +201,17 @@ const ReportsAnalyticsPage: React.FC = () => {
       <div className="space-y-6">
         {/* Download buttons */}
         {canDownloadReports && (
-          <div className="flex justify-end gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
             <button
               onClick={() => handleDownloadReport('Order Analytics', data, 'pdf')}
-              className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+              className="flex items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-white transition-colors hover:bg-red-700 sm:w-auto"
             >
               <DocumentArrowDownIcon className="h-5 w-5" />
               Download PDF
             </button>
             <button
               onClick={() => handleDownloadReport('Order Analytics', data, 'csv')}
-              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+              className="flex items-center justify-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-white transition-colors hover:bg-green-700 sm:w-auto"
             >
               <ArrowDownTrayIcon className="h-5 w-5" />
               Download CSV
@@ -646,17 +646,17 @@ const ReportsAnalyticsPage: React.FC = () => {
       <div className="space-y-6">
         {/* Download buttons */}
         {canDownloadReports && (
-          <div className="flex justify-end gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
             <button
               onClick={() => handleDownloadReport('POS Sales', data, 'pdf')}
-              className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+              className="flex items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-white transition-colors hover:bg-red-700 sm:w-auto"
             >
               <DocumentArrowDownIcon className="h-5 w-5" />
               Download PDF
             </button>
             <button
               onClick={() => handleDownloadReport('POS Sales', data, 'csv')}
-              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+              className="flex items-center justify-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-white transition-colors hover:bg-green-700 sm:w-auto"
             >
               <ArrowDownTrayIcon className="h-5 w-5" />
               Download CSV
@@ -756,17 +756,17 @@ const ReportsAnalyticsPage: React.FC = () => {
       <div className="space-y-6">
         {/* Download buttons */}
         {canDownloadReports && (
-          <div className="flex justify-end gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
             <button
               onClick={() => handleDownloadReport('Workshop Analytics', data, 'pdf')}
-              className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+              className="flex items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-white transition-colors hover:bg-red-700 sm:w-auto"
             >
               <DocumentArrowDownIcon className="h-5 w-5" />
               Download PDF
             </button>
             <button
               onClick={() => handleDownloadReport('Workshop Analytics', data, 'csv')}
-              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+              className="flex items-center justify-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-white transition-colors hover:bg-green-700 sm:w-auto"
             >
               <ArrowDownTrayIcon className="h-5 w-5" />
               Download CSV
@@ -925,17 +925,17 @@ const ReportsAnalyticsPage: React.FC = () => {
       <div className="space-y-6">
         {/* Download buttons */}
         {canDownloadReports && (
-          <div className="flex justify-end gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
             <button
               onClick={() => handleDownloadReport('Inventory Analytics', data, 'pdf')}
-              className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+              className="flex items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-white transition-colors hover:bg-red-700 sm:w-auto"
             >
               <DocumentArrowDownIcon className="h-5 w-5" />
               Download PDF
             </button>
             <button
               onClick={() => handleDownloadReport('Inventory Analytics', data, 'csv')}
-              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+              className="flex items-center justify-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-white transition-colors hover:bg-green-700 sm:w-auto"
             >
               <ArrowDownTrayIcon className="h-5 w-5" />
               Download CSV
@@ -1076,17 +1076,17 @@ const ReportsAnalyticsPage: React.FC = () => {
       <div className="space-y-6">
         {/* Download buttons */}
         {canDownloadReports && (
-          <div className="flex justify-end gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
             <button
               onClick={() => handleDownloadSalesPersonReport('pdf')}
-              className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+              className="flex items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-white transition-colors hover:bg-red-700 sm:w-auto"
             >
               <DocumentArrowDownIcon className="h-5 w-5" />
               Download PDF
             </button>
             <button
               onClick={() => handleDownloadSalesPersonReport('csv')}
-              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+              className="flex items-center justify-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-white transition-colors hover:bg-green-700 sm:w-auto"
             >
               <ArrowDownTrayIcon className="h-5 w-5" />
               Download CSV
@@ -1269,17 +1269,17 @@ const ReportsAnalyticsPage: React.FC = () => {
       <div className="space-y-6">
         {/* Download buttons */}
         {canDownloadReports && (
-          <div className="flex justify-end gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
             <button
               onClick={() => handleDownloadReport('Transactions', {}, 'pdf')}
-              className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+              className="flex items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-white transition-colors hover:bg-red-700 sm:w-auto"
             >
               <DocumentArrowDownIcon className="h-5 w-5" />
               Download PDF
             </button>
             <button
               onClick={() => handleDownloadReport('Transactions', {}, 'csv')}
-              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+              className="flex items-center justify-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-white transition-colors hover:bg-green-700 sm:w-auto"
             >
               <ArrowDownTrayIcon className="h-5 w-5" />
               Download CSV
@@ -1410,18 +1410,18 @@ const ReportsAnalyticsPage: React.FC = () => {
     <Layout title="Reports & Analytics">
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Reports & Analytics</h1>
-            <p className="text-gray-600">Real-time insights and analytics for your business</p>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-1">
+            <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">Reports & Analytics</h1>
+            <p className="text-sm text-gray-600 sm:text-base">Real-time insights and analytics for your business</p>
           </div>
-          
-          <div className="flex items-center space-x-4">
-            <label className="text-sm font-medium text-gray-700">Period:</label>
+
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+            <label className="text-sm font-medium text-gray-700 sm:whitespace-nowrap">Period</label>
             <select
               value={selectedPeriod}
               onChange={(e) => setSelectedPeriod(e.target.value)}
-              className="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+              className="w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:w-auto"
             >
               {periodOptions.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -1434,7 +1434,7 @@ const ReportsAnalyticsPage: React.FC = () => {
 
         {/* Tabs */}
         <div className="border-b border-gray-200">
-          <nav className="-mb-px flex space-x-8">
+          <nav className="-mb-px flex flex-wrap gap-4">
             {tabs.map((tab) => (
               <button
                 key={tab.id}
@@ -1443,9 +1443,9 @@ const ReportsAnalyticsPage: React.FC = () => {
                   activeTab === tab.id
                     ? 'border-blue-500 text-blue-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                } whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm flex items-center`}
+                } flex items-center gap-2 border-b-2 py-2 px-1 text-sm font-medium whitespace-nowrap`}
               >
-                <tab.icon className="h-5 w-5 mr-2" />
+                <tab.icon className="h-5 w-5" />
                 {tab.name}
               </button>
             ))}

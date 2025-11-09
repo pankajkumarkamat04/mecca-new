@@ -438,28 +438,28 @@ const OutletSalesReportPage: React.FC = () => {
     <Layout title="Outlet Sales Report">
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex justify-between items-start">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Outlet Sales Report</h1>
-            <p className="text-gray-600">Sales transactions by outlet over a specific period</p>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-1">
+            <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">Outlet Sales Report</h1>
+            <p className="text-sm text-gray-600 sm:text-base">Sales transactions by outlet over a specific period</p>
           </div>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => handleDownloadReport('pdf')}>
-              <DocumentArrowDownIcon className="h-4 w-4 mr-1" />
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+            <Button variant="outline" size="sm" onClick={() => handleDownloadReport('pdf')} className="w-full sm:w-auto">
+              <DocumentArrowDownIcon className="mr-1 h-4 w-4" />
               PDF
             </Button>
-            <Button variant="outline" size="sm" onClick={exportCsv}>
-              <ArrowDownTrayIcon className="h-4 w-4 mr-1" />
+            <Button variant="outline" size="sm" onClick={exportCsv} className="w-full sm:w-auto">
+              <ArrowDownTrayIcon className="mr-1 h-4 w-4" />
               CSV
             </Button>
           </div>
         </div>
 
         {/* Sales Outlets List */}
-        <div className="bg-white rounded-lg shadow-sm border">
-          <div className="p-4 border-b">
-            <h2 className="text-lg font-semibold text-gray-900 flex items-center">
-              <BuildingStorefrontIcon className="h-5 w-5 mr-2" />
+        <div className="rounded-lg border bg-white shadow-sm">
+          <div className="border-b p-4">
+            <h2 className="flex items-center text-lg font-semibold text-gray-900">
+              <BuildingStorefrontIcon className="mr-2 h-5 w-5" />
               Sales Outlets
             </h2>
           </div>
@@ -469,13 +469,13 @@ const OutletSalesReportPage: React.FC = () => {
                 No sales outlets found
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
                 {outlets.map((outlet: any) => (
                   <div
                     key={outlet._id || outlet.id}
                     className="border border-gray-200 rounded-lg p-4 hover:border-blue-300 hover:shadow-md transition-all"
                   >
-                    <div className="flex items-start justify-between">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                       <div className="flex-1">
                         <h3 className="text-lg font-semibold text-gray-900">{outlet.name || 'Unknown Outlet'}</h3>
                         {outlet.outletCode && (
@@ -489,8 +489,9 @@ const OutletSalesReportPage: React.FC = () => {
                         variant="primary"
                         size="sm"
                         onClick={() => handleViewOutletDetails(outlet._id || outlet.id)}
+                        className="w-full sm:w-auto"
                       >
-                        <EyeIcon className="h-4 w-4 mr-1" />
+                        <EyeIcon className="mr-1 h-4 w-4" />
                         View
                       </Button>
                     </div>
@@ -502,8 +503,8 @@ const OutletSalesReportPage: React.FC = () => {
         </div>
 
         {/* Filters */}
-        <div className="bg-white p-4 rounded-lg shadow-sm border">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-8 gap-4">
+        <div className="rounded-lg border bg-white p-4 shadow-sm sm:p-6">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 <BuildingStorefrontIcon className="h-4 w-4 inline mr-1" />
@@ -827,7 +828,7 @@ const OutletSalesReportPage: React.FC = () => {
           ) : selectedInvoice ? (
             <div className="space-y-6">
               {/* Invoice Header */}
-              <div className="grid grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900">
                     Invoice #{(selectedInvoice as any).invoiceNumber}
@@ -839,8 +840,8 @@ const OutletSalesReportPage: React.FC = () => {
                     Due: {(selectedInvoice as any).dueDate ? formatDate((selectedInvoice as any).dueDate) : 'N/A'}
                   </p>
                 </div>
-                <div className="text-right">
-                  <div className="flex items-center justify-end gap-3">
+                <div className="text-left sm:text-right">
+                  <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-end sm:gap-3">
                     {company?.logo?.url && (
                       <Image
                         width={40}
@@ -1125,7 +1126,7 @@ const OutletSalesReportPage: React.FC = () => {
 
               {/* Invoice Metadata */}
               <div className="border-t border-gray-200 pt-4">
-                <div className="grid grid-cols-2 gap-4 text-sm text-gray-600">
+                <div className="grid grid-cols-1 gap-4 text-sm text-gray-600 sm:grid-cols-2">
                   {(selectedInvoice as any).createdBy && typeof (selectedInvoice as any).createdBy === 'object' && (
                     <div>
                       <span className="font-medium text-gray-700">Created By:</span>{' '}

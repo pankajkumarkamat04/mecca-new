@@ -195,16 +195,14 @@ const WarehouseInventory: React.FC = () => {
     <WarehousePortalLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Warehouse Inventory</h1>
-            <p className="text-gray-600">Manage inventory in this warehouse</p>
-          </div>
+        <div className="space-y-1">
+          <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">Warehouse Inventory</h1>
+          <p className="text-sm text-gray-600 sm:text-base">Manage inventory in this warehouse</p>
         </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <div className="bg-white p-6 rounded-lg shadow">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="rounded-lg bg-white p-6 shadow">
             <div className="flex items-center">
               <div className="h-8 w-8 bg-blue-100 rounded-full flex items-center justify-center">
                 <span className="text-blue-600 font-bold">📦</span>
@@ -215,7 +213,7 @@ const WarehouseInventory: React.FC = () => {
               </div>
             </div>
           </div>
-          <div className="bg-white p-6 rounded-lg shadow">
+          <div className="rounded-lg bg-white p-6 shadow">
             <div className="flex items-center">
               <div className="h-8 w-8 bg-green-100 rounded-full flex items-center justify-center">
                 <CheckCircleIcon className="h-5 w-5 text-green-600" />
@@ -228,7 +226,7 @@ const WarehouseInventory: React.FC = () => {
               </div>
             </div>
           </div>
-          <div className="bg-white p-6 rounded-lg shadow">
+          <div className="rounded-lg bg-white p-6 shadow">
             <div className="flex items-center">
               <div className="h-8 w-8 bg-yellow-100 rounded-full flex items-center justify-center">
                 <ExclamationTriangleIcon className="h-5 w-5 text-yellow-600" />
@@ -241,7 +239,7 @@ const WarehouseInventory: React.FC = () => {
               </div>
             </div>
           </div>
-          <div className="bg-white p-6 rounded-lg shadow">
+          <div className="rounded-lg bg-white p-6 shadow">
             <div className="flex items-center">
               <div className="h-8 w-8 bg-red-100 rounded-full flex items-center justify-center">
                 <ExclamationTriangleIcon className="h-5 w-5 text-red-600" />
@@ -257,8 +255,8 @@ const WarehouseInventory: React.FC = () => {
         </div>
 
         {/* Filters */}
-        <div className="bg-white p-4 rounded-lg shadow">
-          <div className="flex flex-col sm:flex-row gap-4">
+        <div className="rounded-lg bg-white p-4 shadow sm:p-6">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-[minmax(0,1fr)_200px]">
             <div className="flex-1">
               <Input
                 placeholder="Search products..."
@@ -266,7 +264,7 @@ const WarehouseInventory: React.FC = () => {
                 onChange={(e) => handleSearch(e.target.value)}
               />
             </div>
-            <div className="w-full sm:w-48">
+            <div className="flex w-full items-center">
               <Select
                 value={statusFilter}
                 onChange={(e) => handleStatusFilter(e.target.value)}
@@ -282,7 +280,7 @@ const WarehouseInventory: React.FC = () => {
         </div>
 
         {/* Inventory Table */}
-        <div className="bg-white rounded-lg shadow">
+        <div className="rounded-lg bg-white shadow">
           <DataTable
             data={filteredInventory}
             columns={columns}
@@ -298,9 +296,9 @@ const WarehouseInventory: React.FC = () => {
         >
           {selectedProduct && (
             <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">Product Information</h3>
+                  <h3 className="mb-2 text-lg font-medium text-gray-900">Product Information</h3>
                   <dl className="space-y-2">
                     <div>
                       <dt className="text-sm font-medium text-gray-500">Name</dt>
@@ -325,7 +323,7 @@ const WarehouseInventory: React.FC = () => {
                   </dl>
                 </div>
                 <div>
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">Inventory Information</h3>
+                  <h3 className="mb-2 text-lg font-medium text-gray-900">Inventory Information</h3>
                   <dl className="space-y-2">
                     <div>
                       <dt className="text-sm font-medium text-gray-500">Current Stock</dt>
@@ -439,8 +437,8 @@ const EditInventoryForm: React.FC<{
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="bg-gray-50 p-4 rounded-lg">
-        <h3 className="font-medium text-gray-900 mb-2">Product Information</h3>
+      <div className="rounded-lg bg-gray-50 p-4">
+        <h3 className="mb-2 font-medium text-gray-900">Product Information</h3>
         <div className="text-sm text-gray-600">
           <p><strong>Name:</strong> {product.product.name}</p>
           <p><strong>SKU:</strong> {product.product.sku}</p>
@@ -448,7 +446,7 @@ const EditInventoryForm: React.FC<{
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Current Stock *
@@ -464,8 +462,8 @@ const EditInventoryForm: React.FC<{
       </div>
 
       <div className="border-t pt-4">
-        <h3 className="text-lg font-medium text-gray-900 mb-3">Location Information</h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <h3 className="mb-3 text-lg font-medium text-gray-900">Location Information</h3>
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Zone
@@ -522,23 +520,23 @@ const EditInventoryForm: React.FC<{
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label className="mb-1 block text-sm font-medium text-gray-700">
           Notes
         </label>
         <textarea
           value={formData.notes}
           onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
           rows={3}
           placeholder="Add notes about inventory changes..."
         />
       </div>
 
-      <div className="flex justify-end space-x-3 pt-4">
-        <Button type="button" variant="secondary" onClick={onClose}>
+      <div className="flex flex-col gap-2 pt-4 sm:flex-row sm:justify-end sm:gap-3">
+        <Button type="button" variant="secondary" onClick={onClose} className="w-full sm:w-auto">
           Cancel
         </Button>
-        <Button type="submit" disabled={updateInventoryMutation.isPending}>
+        <Button type="submit" disabled={updateInventoryMutation.isPending} className="w-full sm:w-auto">
           {updateInventoryMutation.isPending ? 'Updating...' : 'Update Inventory'}
         </Button>
       </div>

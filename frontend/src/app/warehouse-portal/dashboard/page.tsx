@@ -184,8 +184,8 @@ const WarehouseDashboardInner: React.FC<{ warehouseId: string | null }> = ({ war
       <WarehousePortalLayout>
         <div className="space-y-6">
           {/* Header */}
-          <div className="flex justify-between items-center">
-            <div>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="space-y-1">
               <h1 className="text-2xl font-bold text-gray-900">
                 Warehouse Dashboard
               </h1>
@@ -265,30 +265,30 @@ const WarehouseDashboardInner: React.FC<{ warehouseId: string | null }> = ({ war
     <WarehousePortalLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-1">
+            <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">
               {dashboardData?.warehouse?.name || 'Warehouse'} Dashboard
             </h1>
-            <p className="text-gray-600">Manage your warehouse operations and employees</p>
+            <p className="text-sm text-gray-600 sm:text-base">Manage your warehouse operations and employees</p>
           </div>
-          <div className="flex space-x-3">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
             {/* Only show create button for warehouse managers and admins */}
             {canManageEmployees && (
               <Button
                 onClick={() => setShowCreateUserModal(true)}
-                className="flex items-center"
+                className="flex items-center justify-center gap-2 sm:w-auto"
               >
-                <UserPlusIcon className="h-5 w-5 mr-2" />
+                <UserPlusIcon className="h-5 w-5" />
                 Create Warehouse Employee
               </Button>
             )}
             <Button
               onClick={() => setShowEmployeesModal(true)}
               variant="secondary"
-              className="flex items-center"
+              className="flex items-center justify-center gap-2 sm:w-auto"
             >
-              <UserGroupIcon className="h-5 w-5 mr-2" />
+              <UserGroupIcon className="h-5 w-5" />
               View Employees
             </Button>
           </div>
@@ -312,8 +312,8 @@ const WarehouseDashboardInner: React.FC<{ warehouseId: string | null }> = ({ war
         )}
 
         {/* Statistics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <div className="bg-white p-6 rounded-lg shadow">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="rounded-lg bg-white p-6 shadow">
             <div className="flex items-center">
               <div className="h-8 w-8 bg-blue-100 rounded-full flex items-center justify-center">
                 <span className="text-blue-600 font-bold">📦</span>
@@ -326,7 +326,7 @@ const WarehouseDashboardInner: React.FC<{ warehouseId: string | null }> = ({ war
               </div>
             </div>
           </div>
-          <div className="bg-white p-6 rounded-lg shadow">
+          <div className="rounded-lg bg-white p-6 shadow">
             <div className="flex items-center">
               <div className="h-8 w-8 bg-yellow-100 rounded-full flex items-center justify-center">
                 <ExclamationTriangleIcon className="h-5 w-5 text-yellow-600" />
@@ -339,7 +339,7 @@ const WarehouseDashboardInner: React.FC<{ warehouseId: string | null }> = ({ war
               </div>
             </div>
           </div>
-          <div className="bg-white p-6 rounded-lg shadow">
+          <div className="rounded-lg bg-white p-6 shadow">
             <div className="flex items-center">
               <div className="h-8 w-8 bg-green-100 rounded-full flex items-center justify-center">
                 <span className="text-green-600 font-bold">👥</span>
@@ -352,7 +352,7 @@ const WarehouseDashboardInner: React.FC<{ warehouseId: string | null }> = ({ war
               </div>
             </div>
           </div>
-          <div className="bg-white p-6 rounded-lg shadow">
+          <div className="rounded-lg bg-white p-6 shadow">
             <div className="flex items-center">
               <div className="h-8 w-8 bg-purple-100 rounded-full flex items-center justify-center">
                 <span className="text-purple-600 font-bold">%</span>
@@ -368,48 +368,42 @@ const WarehouseDashboardInner: React.FC<{ warehouseId: string | null }> = ({ war
         </div>
 
         {/* Quick Actions */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Quick Actions</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="rounded-lg bg-white p-6 shadow">
+          <h3 className="mb-4 text-lg font-medium text-gray-900">Quick Actions</h3>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
             <Button
               onClick={() => window.location.href = '/products'}
-              className="flex items-center justify-center p-4 h-auto"
+              className="flex h-auto w-full flex-col items-center justify-center gap-2 border-dashed border-gray-300 p-4 text-center"
               variant="outline"
             >
-              <div className="text-center">
-                <CubeIcon className="h-8 w-8 mx-auto mb-2 text-blue-600" />
-                <div className="font-medium">Manage Products</div>
-                <div className="text-sm text-gray-500">Add, edit, or view products</div>
-              </div>
+              <CubeIcon className="h-8 w-8 text-blue-600" />
+              <div className="font-medium text-gray-900">Manage Products</div>
+              <div className="text-sm text-gray-500">Add, edit, or view products</div>
             </Button>
             <Button
               onClick={() => window.location.href = '/inventory'}
-              className="flex items-center justify-center p-4 h-auto"
+              className="flex h-auto w-full flex-col items-center justify-center gap-2 border-dashed border-gray-300 p-4 text-center"
               variant="outline"
             >
-              <div className="text-center">
-                <ArchiveBoxIcon className="h-8 w-8 mx-auto mb-2 text-green-600" />
-                <div className="font-medium">Inventory Management</div>
-                <div className="text-sm text-gray-500">Stock levels and movements</div>
-              </div>
+              <ArchiveBoxIcon className="h-8 w-8 text-green-600" />
+              <div className="font-medium text-gray-900">Inventory Management</div>
+              <div className="text-sm text-gray-500">Stock levels and movements</div>
             </Button>
             <Button
               onClick={() => window.location.href = '/received-goods'}
-              className="flex items-center justify-center p-4 h-auto"
+              className="flex h-auto w-full flex-col items-center justify-center gap-2 border-dashed border-gray-300 p-4 text-center"
               variant="outline"
             >
-              <div className="text-center">
-                <TruckIcon className="h-8 w-8 mx-auto mb-2 text-orange-600" />
-                <div className="font-medium">Received Goods</div>
-                <div className="text-sm text-gray-500">Inspect and manage deliveries</div>
-              </div>
+              <TruckIcon className="h-8 w-8 text-orange-600" />
+              <div className="font-medium text-gray-900">Received Goods</div>
+              <div className="text-sm text-gray-500">Inspect and manage deliveries</div>
             </Button>
           </div>
         </div>
 
         {/* Additional Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-white p-6 rounded-lg shadow">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="rounded-lg bg-white p-6 shadow">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-500">Total Stock Value</p>
@@ -422,7 +416,7 @@ const WarehouseDashboardInner: React.FC<{ warehouseId: string | null }> = ({ war
               </div>
             </div>
           </div>
-          <div className="bg-white p-6 rounded-lg shadow">
+          <div className="rounded-lg bg-white p-6 shadow">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-500">Total Locations</p>
@@ -438,16 +432,16 @@ const WarehouseDashboardInner: React.FC<{ warehouseId: string | null }> = ({ war
         </div>
 
         {/* Recent Stock Movements */}
-        <div className="bg-white rounded-lg shadow">
-          <div className="px-6 py-4 border-b border-gray-200">
+        <div className="rounded-lg bg-white shadow">
+          <div className="border-b border-gray-200 px-4 py-4 sm:px-6">
             <h3 className="text-lg font-medium text-gray-900">Recent Stock Movements</h3>
           </div>
-          <div className="p-6">
+          <div className="p-4 sm:p-6">
             {dashboardData?.recentMovements && dashboardData.recentMovements.length > 0 ? (
               <div className="space-y-4">
                 {dashboardData.recentMovements.map((movement) => (
-                  <div key={movement._id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                    <div className="flex items-center">
+                  <div key={movement._id} className="flex flex-col gap-3 rounded-lg bg-gray-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-start gap-3">
                       <div className={`h-8 w-8 rounded-full flex items-center justify-center mr-3 ${
                         movement.movementType === 'in' ? 'bg-green-100' : 'bg-red-100'
                       }`}>
@@ -457,14 +451,14 @@ const WarehouseDashboardInner: React.FC<{ warehouseId: string | null }> = ({ war
                           <ArrowDownIcon className="h-4 w-4 text-red-600" />
                         )}
                       </div>
-                      <div>
+                      <div className="flex-1">
                         <div className="font-medium text-gray-900">{movement.product.name}</div>
                         <div className="text-sm text-gray-500">
                           {movement.movementType} • {movement.quantity} units
                         </div>
                       </div>
                     </div>
-                    <div className="text-right">
+                    <div className="text-sm text-gray-500 sm:text-right">
                       <div className="text-sm text-gray-500">
                         {movement.createdBy.firstName} {movement.createdBy.lastName}
                       </div>
@@ -511,9 +505,9 @@ const WarehouseDashboardInner: React.FC<{ warehouseId: string | null }> = ({ war
           {employees.length > 0 ? (
             <div className="space-y-2">
               {employees.map((employee) => (
-                <div key={employee._id} className="bg-gray-50 p-4 rounded-lg">
-                  <div className="flex items-center justify-between">
-                    <div>
+                <div key={employee._id} className="rounded-lg bg-gray-50 p-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="space-y-1">
                       <div className="font-medium text-gray-900">
                         {employee.user.firstName} {employee.user.lastName}
                       </div>
@@ -528,19 +522,21 @@ const WarehouseDashboardInner: React.FC<{ warehouseId: string | null }> = ({ war
                       </div>
                     </div>
                     {/* Only warehouse managers and admins can remove employees */}
-                    {canManageEmployees ? (
-                      <button
-                        onClick={() => handleRemoveEmployee(employee._id)}
-                        className="text-red-600 hover:text-red-800"
-                        title="Remove Employee"
-                      >
-                        <UserMinusIcon className="h-4 w-4" />
-                      </button>
-                    ) : (
-                      <span className="text-gray-400">
-                        <UserMinusIcon className="h-4 w-4" />
-                      </span>
-                    )}
+                    <div className="flex justify-end">
+                      {canManageEmployees ? (
+                        <button
+                          onClick={() => handleRemoveEmployee(employee._id)}
+                          className="text-red-600 hover:text-red-800"
+                          title="Remove Employee"
+                        >
+                          <UserMinusIcon className="h-4 w-4" />
+                        </button>
+                      ) : (
+                        <span className="text-gray-400">
+                          <UserMinusIcon className="h-4 w-4" />
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
               ))}
@@ -592,7 +588,7 @@ const CreateUserForm: React.FC<{
       loading={mutation.isPending}
     >{(methods) => (
       <div className="space-y-6">
-        <div className="bg-blue-50 p-4 rounded-lg">
+        <div className="rounded-lg bg-blue-50 p-4">
           <h3 className="text-lg font-medium text-blue-900 mb-2">
             Create Warehouse Employee
           </h3>
@@ -603,7 +599,7 @@ const CreateUserForm: React.FC<{
         </div>
 
         <FormSection title="Employee Details">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <FormField label="First Name" required error={methods.formState.errors.firstName?.message as string}>
               <Input {...methods.register('firstName')} fullWidth />
             </FormField>
@@ -622,7 +618,7 @@ const CreateUserForm: React.FC<{
           </div>
         </FormSection>
 
-        <div className="bg-gray-50 p-4 rounded-lg">
+        <div className="rounded-lg bg-gray-50 p-4">
           <h4 className="text-sm font-medium text-gray-900 mb-2">Assignment Details</h4>
           <div className="text-sm text-gray-600 space-y-1">
             <p>• <strong>Role:</strong> warehouse_employee</p>

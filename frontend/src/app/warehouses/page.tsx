@@ -345,18 +345,28 @@ const WarehousesPage: React.FC = () => {
     <Layout title="Warehouses">
       <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="space-y-1">
           <h1 className="text-2xl font-bold text-gray-900">Warehouses</h1>
-          <p className="text-gray-600">Manage your warehouse locations and inventory</p>
+          <p className="text-gray-600">Manage warehouses, capacity, and assignments</p>
         </div>
-        <Button
-          onClick={() => setShowCreateModal(true)}
-          className="flex items-center"
-        >
-          <PlusIcon className="h-5 w-5 mr-2" />
-          Add Warehouse
-        </Button>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:space-x-2">
+          <Button
+            onClick={() => setShowCreateModal(true)}
+            leftIcon={<PlusIcon className="h-4 w-4" />}
+            className="w-full sm:w-auto"
+          >
+            Add Warehouse
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => queryClient.invalidateQueries({ queryKey: ['warehouses'] })}
+            leftIcon={<ArrowPathIcon className="h-4 w-4" />}
+            className="w-full sm:w-auto"
+          >
+            Refresh
+          </Button>
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -555,17 +565,19 @@ const WarehousesPage: React.FC = () => {
               ]}
             />
           </div>
-          <div className="flex justify-end space-x-3 pt-4">
+          <div className="flex flex-col gap-2 pt-4 sm:flex-row sm:justify-end sm:gap-3">
             <Button 
               type="button" 
               variant="secondary" 
               onClick={() => setShowAssignManagerModal(false)}
+              className="w-full sm:w-auto"
             >
               Cancel
             </Button>
             <Button 
               onClick={handleAssignManager}
               disabled={assignManagerMutation.isPending || !selectedManagerId}
+              className="w-full sm:w-auto"
             >
               {assignManagerMutation.isPending ? 'Assigning...' : 'Assign Manager'}
             </Button>
@@ -586,7 +598,7 @@ const WarehousesPage: React.FC = () => {
               <h3 className="text-lg font-medium text-gray-900 mb-2">Manager</h3>
               {selectedWarehouse.manager ? (
                 <div className="bg-gray-50 p-3 rounded-lg">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <div className="font-medium text-gray-900">
                         {selectedWarehouse.manager.firstName} {selectedWarehouse.manager.lastName}
@@ -608,20 +620,27 @@ const WarehousesPage: React.FC = () => {
               {selectedWarehouse.employees && selectedWarehouse.employees.length > 0 ? (
                 <div className="space-y-2">
                   {selectedWarehouse.employees.map((employee) => (
-                    <div key={employee._id} className="bg-gray-50 p-3 rounded-lg">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <div className="font-medium text-gray-900">
-                            {employee.user.firstName} {employee.user.lastName}
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            {employee.user.email} • {employee.user.phone}
-                          </div>
-                          <div className="text-xs text-gray-400">
-                            Position: {employee.position.replace('warehouse_', '').replace('_', ' ')}
-                          </div>
-                        </div>
+                    <div key={employee._id} className="flex flex-col gap-2 rounded bg-gray-50 p-2 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="text-sm text-gray-800">
+                        {employee.user?.firstName} {employee.user?.lastName} — {employee.position.replace('warehouse_', '').replace('_', ' ')}
                       </div>
+                      <button
+                        type="button"
+                        className="text-red-600 hover:text-red-800 text-sm"
+                        onClick={async () => {
+                          try {
+                            if (!selectedWarehouse) return;
+                            await warehouseAPI.removeEmployee(selectedWarehouse._id, employee._id);
+                            toast.success('Employee removed');
+                            // Invalidate queries to refresh the data
+                            queryClient.invalidateQueries({ queryKey: ['warehouses'] });
+                          } catch (err: any) {
+                            toast.error(err?.response?.data?.message || 'Failed to remove employee');
+                          }
+                        }}
+                      >
+                        Remove
+                      </button>
                     </div>
                   ))}
                 </div>
@@ -881,33 +900,20 @@ const CreateWarehouseForm: React.FC<{
         </div>
       </div>
 
-      <div className="flex items-center space-x-4">
-        <label className="flex items-center">
-          <input
-            type="checkbox"
-            checked={formData.isActive}
-            onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
-            className="mr-2"
-          />
-          Active
-        </label>
-        <label className="flex items-center">
-          <input
-            type="checkbox"
-            checked={formData.isDefault}
-            onChange={(e) => setFormData({ ...formData, isDefault: e.target.checked })}
-            className="mr-2"
-          />
-          Default Warehouse
-        </label>
-      </div>
-
-      <div className="flex justify-end space-x-3 pt-4">
-        <Button type="button" variant="secondary" onClick={onCancel}>
+      <div className="flex flex-col gap-2 pt-4 sm:flex-row sm:justify-end sm:gap-3">
+        <Button
+          variant="outline"
+          onClick={onCancel}
+          className="w-full sm:w-auto"
+        >
           Cancel
         </Button>
-        <Button type="button" onClick={handleSubmit} disabled={mutation.isPending}>
-          {mutation.isPending ? 'Creating...' : 'Create Warehouse'}
+        <Button
+          onClick={handleSubmit}
+          loading={mutation.isPending}
+          className="w-full sm:w-auto"
+        >
+          Create Warehouse
         </Button>
       </div>
     </div>
@@ -1096,7 +1102,7 @@ const EditWarehouseForm: React.FC<{
               <h4 className="text-sm font-medium text-gray-700 mb-2">Current Employees ({(warehouse.employees || []).length})</h4>
               <div className="space-y-2">
                 {(warehouse.employees || []).map((emp) => (
-                  <div key={emp._id} className="flex items-center justify-between bg-gray-50 p-2 rounded">
+                  <div key={emp._id} className="flex flex-col gap-2 rounded bg-gray-50 p-2 sm:flex-row sm:items-center sm:justify-between">
                     <div className="text-sm text-gray-800">
                       {emp.user?.firstName} {emp.user?.lastName} — {emp.position.replace('warehouse_', '').replace('_', ' ')}
                     </div>
@@ -1337,7 +1343,7 @@ const EditWarehouseForm: React.FC<{
         </div>
       </div>
 
-      <div className="flex items-center space-x-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:space-x-4">
         <label className="flex items-center">
           <input
             type="checkbox"
@@ -1358,7 +1364,7 @@ const EditWarehouseForm: React.FC<{
         </label>
       </div>
 
-      <div className="flex justify-end space-x-3 pt-4">
+      <div className="flex flex-col gap-2 pt-4 sm:flex-row sm:justify-end sm:gap-3">
         <Button type="button" variant="secondary" onClick={onCancel}>
           Cancel
         </Button>

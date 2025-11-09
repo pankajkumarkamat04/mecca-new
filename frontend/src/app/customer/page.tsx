@@ -6,7 +6,7 @@ import Layout from '@/components/layout/Layout';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { invoicesAPI, customersAPI, supportAPI } from '@/lib/api';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { formatCurrency, formatDate, cn } from '@/lib/utils';
 import { 
   DocumentTextIcon, 
   TicketIcon, 
@@ -110,80 +110,90 @@ const CustomerDashboardPage: React.FC = () => {
       ? recentTickets.data
       : [];
 
+  type QuickActionColor = 'blue' | 'green' | 'purple' | 'orange' | 'red' | 'indigo' | 'yellow';
+
+  const quickActionVariants: Record<QuickActionColor, string> = {
+    blue: 'hover:border-blue-500 hover:bg-blue-50 focus-visible:ring-blue-500',
+    green: 'hover:border-green-500 hover:bg-green-50 focus-visible:ring-green-500',
+    purple: 'hover:border-purple-500 hover:bg-purple-50 focus-visible:ring-purple-500',
+    orange: 'hover:border-orange-500 hover:bg-orange-50 focus-visible:ring-orange-500',
+    red: 'hover:border-red-500 hover:bg-red-50 focus-visible:ring-red-500',
+    indigo: 'hover:border-indigo-500 hover:bg-indigo-50 focus-visible:ring-indigo-500',
+    yellow: 'hover:border-yellow-500 hover:bg-yellow-50 focus-visible:ring-yellow-500',
+  };
+
+  const quickActions: Array<{ href: string; icon: string; title: string; description: string; color: QuickActionColor }> = [
+    { href: '/customer/inquiries', icon: '💬', title: 'My Inquiries', description: 'Track requests', color: 'blue' },
+    { href: '/customer/quotations', icon: '📋', title: 'My Quotations', description: 'View quotes', color: 'green' },
+    { href: '/customer/orders', icon: '🛍️', title: 'My Orders', description: 'Track orders', color: 'purple' },
+    { href: '/customer/invoices', icon: '📄', title: 'My Invoices', description: 'View billing history', color: 'orange' },
+    { href: '/customer/support', icon: '🛟', title: 'Support Tickets', description: 'Get help', color: 'red' },
+    { href: '/customer/purchases', icon: '🛒', title: 'My Purchases', description: 'Purchase history', color: 'indigo' },
+    { href: '/profile', icon: '👤', title: 'My Profile', description: 'Update details', color: 'yellow' },
+  ];
+
 
   return (
     <Layout title="My Dashboard">
       <div className="space-y-6">
         {/* Welcome Header */}
-        <div className="bg-gradient-to-r from-blue-600 to-blue-700 shadow-lg rounded-lg p-6 text-white">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold">Welcome back, {user?.firstName}!</h1>
-              <p className="text-blue-100 mt-1">Here's what's happening with your account</p>
+        <div className="rounded-lg bg-gradient-to-r from-blue-600 to-blue-700 p-6 text-white shadow-lg sm:p-8">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="space-y-1">
+              <h1 className="text-2xl font-bold sm:text-3xl">Welcome back, {user?.firstName}!</h1>
+              <p className="text-sm text-blue-100 sm:text-base">Here's what's happening with your account</p>
             </div>
-            <div className="text-right">
-              <p className="text-blue-100 text-sm">Member since</p>
-                <p className="text-lg font-semibold">
-                  {formatDate(customerData?.data?.createdAt || new Date().toISOString())}
-                </p>
+            <div className="text-sm text-blue-100 sm:text-right">
+              <p>Member since</p>
+              <p className="text-base font-semibold text-white sm:text-lg">
+                {formatDate(customerData?.data?.createdAt || new Date().toISOString())}
+              </p>
             </div>
           </div>
         </div>
 
         {/* Key Metrics */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
 
-          <div className="bg-white shadow rounded-lg p-6">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <ArrowTrendingUpIcon className="h-8 w-8 text-green-600" />
-              </div>
-              <div className="ml-4">
+          <div className="rounded-lg bg-white p-5 shadow">
+            <div className="flex items-start gap-4">
+              <ArrowTrendingUpIcon className="h-8 w-8 flex-shrink-0 text-green-600" />
+              <div className="space-y-2">
                 <h3 className="text-sm font-medium text-gray-500">Total Spent</h3>
-                <p className="mt-2 text-3xl font-bold text-green-600">
+                <p className="text-2xl font-bold text-green-600 sm:text-3xl">
                   {formatCurrency(totalSpent)}
                 </p>
-                <div className="mt-4">
-                  <Link href="/customer/invoices" className="text-sm text-green-600 hover:text-green-800 flex items-center">
-                    View invoices <ArrowRightIcon className="h-4 w-4 ml-1" />
-                  </Link>
-                </div>
+                <Link href="/customer/invoices" className="inline-flex items-center text-sm text-green-600 transition-colors hover:text-green-800">
+                  View invoices <ArrowRightIcon className="ml-1 h-4 w-4" />
+                </Link>
               </div>
             </div>
           </div>
 
-          <div className="bg-white shadow rounded-lg p-6">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <ShoppingBagIcon className="h-8 w-8 text-purple-600" />
-              </div>
-              <div className="ml-4">
+          <div className="rounded-lg bg-white p-5 shadow">
+            <div className="flex items-start gap-4">
+              <ShoppingBagIcon className="h-8 w-8 flex-shrink-0 text-purple-600" />
+              <div className="space-y-2">
                 <h3 className="text-sm font-medium text-gray-500">Total Visits</h3>
-                <p className="mt-2 text-3xl font-bold text-purple-600">{visitCount}</p>
-                <div className="mt-4">
-                  <Link href="/customer/purchases" className="text-sm text-purple-600 hover:text-purple-800 flex items-center">
-                    View purchases <ArrowRightIcon className="h-4 w-4 ml-1" />
-                  </Link>
-                </div>
+                <p className="text-2xl font-bold text-purple-600 sm:text-3xl">{visitCount}</p>
+                <Link href="/customer/purchases" className="inline-flex items-center text-sm text-purple-600 transition-colors hover:text-purple-800">
+                  View purchases <ArrowRightIcon className="ml-1 h-4 w-4" />
+                </Link>
               </div>
             </div>
           </div>
 
-          <div className="bg-white shadow rounded-lg p-6">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <TicketIcon className="h-8 w-8 text-orange-600" />
-              </div>
-              <div className="ml-4">
+          <div className="rounded-lg bg-white p-5 shadow">
+            <div className="flex items-start gap-4">
+              <TicketIcon className="h-8 w-8 flex-shrink-0 text-orange-600" />
+              <div className="space-y-2">
                 <h3 className="text-sm font-medium text-gray-500">Open Tickets</h3>
-                <p className="mt-2 text-3xl font-bold text-orange-600">
+                <p className="text-2xl font-bold text-orange-600 sm:text-3xl">
                   {tickets.filter((t: any) => t.status !== 'closed' && t.status !== 'resolved').length}
                 </p>
-                <div className="mt-4">
-                  <Link href="/customer/support" className="text-sm text-orange-600 hover:text-orange-800 flex items-center">
-                    View support <ArrowRightIcon className="h-4 w-4 ml-1" />
-                  </Link>
-                </div>
+                <Link href="/customer/support" className="inline-flex items-center text-sm text-orange-600 transition-colors hover:text-orange-800">
+                  View support <ArrowRightIcon className="ml-1 h-4 w-4" />
+                </Link>
               </div>
             </div>
           </div>
@@ -301,65 +311,23 @@ const CustomerDashboardPage: React.FC = () => {
 
 
         {/* Quick Actions */}
-        <div className="bg-white shadow rounded-lg p-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Quick Actions</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Link href="/customer/inquiries" className="p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors">
-              <div className="text-center">
-                <div className="text-2xl mb-2">💬</div>
-                <div className="text-sm font-medium text-gray-900">My Inquiries</div>
-                <div className="text-xs text-gray-500">Track requests</div>
-              </div>
-            </Link>
-
-            <Link href="/customer/quotations" className="p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-green-500 hover:bg-green-50 transition-colors">
-              <div className="text-center">
-                <div className="text-2xl mb-2">📋</div>
-                <div className="text-sm font-medium text-gray-900">My Quotations</div>
-                <div className="text-xs text-gray-500">View quotes</div>
-              </div>
-            </Link>
-
-            <Link href="/customer/orders" className="p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-purple-500 hover:bg-purple-50 transition-colors">
-              <div className="text-center">
-                <div className="text-2xl mb-2">🛍️</div>
-                <div className="text-sm font-medium text-gray-900">My Orders</div>
-                <div className="text-xs text-gray-500">Track orders</div>
-              </div>
-            </Link>
-
-            <Link href="/customer/invoices" className="p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-orange-500 hover:bg-orange-50 transition-colors">
-              <div className="text-center">
-                <div className="text-2xl mb-2">📄</div>
-                <div className="text-sm font-medium text-gray-900">My Invoices</div>
-                <div className="text-xs text-gray-500">View billing history</div>
-              </div>
-            </Link>
-
-
-            <Link href="/customer/support" className="p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-red-500 hover:bg-red-50 transition-colors">
-              <div className="text-center">
-                <div className="text-2xl mb-2">🛟</div>
-                <div className="text-sm font-medium text-gray-900">Support Tickets</div>
-                <div className="text-xs text-gray-500">Get help</div>
-              </div>
-            </Link>
-
-            <Link href="/customer/purchases" className="p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-indigo-500 hover:bg-indigo-50 transition-colors">
-              <div className="text-center">
-                <div className="text-2xl mb-2">🛒</div>
-                <div className="text-sm font-medium text-gray-900">My Purchases</div>
-                <div className="text-xs text-gray-500">Purchase history</div>
-              </div>
-            </Link>
-
-            <Link href="/profile" className="p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-yellow-500 hover:bg-yellow-50 transition-colors">
-              <div className="text-center">
-                <div className="text-2xl mb-2">👤</div>
-                <div className="text-sm font-medium text-gray-900">My Profile</div>
-                <div className="text-xs text-gray-500">Update details</div>
-              </div>
-            </Link>
+        <div className="rounded-lg bg-white p-6 shadow">
+          <h3 className="mb-4 text-lg font-medium text-gray-900">Quick Actions</h3>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            {quickActions.map((action) => (
+              <Link
+                key={action.href}
+                href={action.href}
+                className={cn(
+                  'flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 p-4 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
+                  quickActionVariants[action.color]
+                )}
+              >
+                <div className="text-2xl">{action.icon}</div>
+                <div className="mt-2 text-sm font-medium text-gray-900">{action.title}</div>
+                <div className="text-xs text-gray-500">{action.description}</div>
+              </Link>
+            ))}
           </div>
         </div>
 

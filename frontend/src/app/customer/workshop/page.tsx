@@ -78,9 +78,9 @@ const CustomerWorkshopPage: React.FC = () => {
     <Layout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="text-center">
-          <h1 className="text-3xl font-bold text-gray-900">My Workshop Jobs</h1>
-          <p className="text-gray-600 mt-2">Track the progress of your vehicle repairs and services</p>
+        <div className="space-y-2 text-center sm:text-left">
+          <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">My Workshop Jobs</h1>
+          <p className="text-sm text-gray-600 sm:text-base">Track the progress of your vehicle repairs and services</p>
         </div>
 
         {/* Jobs List */}
@@ -98,10 +98,10 @@ const CustomerWorkshopPage: React.FC = () => {
             </div>
           ) : (
             jobs.map((job: any) => (
-              <div key={job._id} className="bg-white rounded-lg shadow p-6">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
+              <div key={job._id} className="rounded-lg bg-white p-6 shadow">
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                  <div className="flex-1 space-y-4">
+                    <div className="flex flex-wrap items-center gap-2">
                       <h3 className="text-lg font-semibold text-gray-900">{job.title}</h3>
                       <Badge color={getStatusColor(job.status)}>
                         {job.status.replace('_', ' ')}
@@ -112,31 +112,31 @@ const CustomerWorkshopPage: React.FC = () => {
                     </div>
                     
                     {job.description && (
-                      <p className="text-gray-600 mb-3">{job.description}</p>
+                      <p className="text-sm text-gray-600">{job.description}</p>
                     )}
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                      <div className="flex items-center text-sm text-gray-600">
-                        <ClockIcon className="h-4 w-4 mr-2" />
+                    <div className="grid grid-cols-1 gap-3 text-sm text-gray-600 sm:grid-cols-2 xl:grid-cols-3">
+                      <div className="flex items-center gap-2">
+                        <ClockIcon className="h-4 w-4" />
                         <span>Created: {formatDate(job.createdAt)}</span>
                       </div>
                       {job.deadline && (
-                        <div className="flex items-center text-sm text-gray-600">
-                          <ExclamationTriangleIcon className="h-4 w-4 mr-2" />
+                        <div className="flex items-center gap-2">
+                          <ExclamationTriangleIcon className="h-4 w-4" />
                           <span>Deadline: {formatDate(job.deadline)}</span>
                         </div>
                       )}
-                      <div className="flex items-center text-sm text-gray-600">
-                        <CheckCircleIcon className="h-4 w-4 mr-2" />
+                      <div className="flex items-center gap-2">
+                        <CheckCircleIcon className="h-4 w-4" />
                         <span>Progress: {job.progress || 0}%</span>
                       </div>
                     </div>
 
                     {/* Progress Bar */}
-                    <div className="mb-4">
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div 
-                          className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
+                    <div>
+                      <div className="h-2 w-full rounded-full bg-gray-200">
+                        <div
+                          className="h-2 rounded-full bg-blue-600 transition-all duration-300"
                           style={{ width: `${job.progress || 0}%` }}
                         ></div>
                       </div>
@@ -144,29 +144,29 @@ const CustomerWorkshopPage: React.FC = () => {
 
                     {/* Assigned Technicians */}
                     {job.resources?.assignedTechnicians?.length > 0 && (
-                      <div className="mb-3">
-                        <h4 className="text-sm font-medium text-gray-700 mb-2">Assigned Technicians</h4>
+                      <div className="space-y-2">
+                        <h4 className="text-sm font-medium text-gray-700">Assigned Technicians</h4>
                         <div className="flex flex-wrap gap-2">
                           {job.resources.assignedTechnicians.map((tech: any, index: number) => (
-                            <div key={index} className="flex items-center bg-blue-50 px-3 py-1 rounded-full">
-                              <UserIcon className="h-4 w-4 text-blue-600 mr-1" />
-                              <span className="text-sm text-blue-800">{tech.name}</span>
+                            <div key={index} className="flex items-center rounded-full bg-blue-50 px-3 py-1 text-sm text-blue-800">
+                              <UserIcon className="mr-1 h-4 w-4 text-blue-600" />
+                              {tech.name}
                             </div>
                           ))}
                         </div>
                       </div>
                     )}
 
-                    {/* Job Card Number */}
-                      <div className="text-sm text-gray-600 mb-3">
+                    <div className="text-sm text-gray-600">
                       <strong>Job Card:</strong> {job.jobCard?.cardNumber || 'N/A'}
-                      </div>
+                    </div>
                   </div>
 
-                  <div className="ml-4 flex gap-2">
+                  <div className="flex flex-col gap-2 sm:flex-row lg:flex-col">
                     <Button
                       variant="outline"
                       onClick={() => handleViewDetails(job)}
+                      className="w-full"
                     >
                       View Details
                     </Button>
@@ -176,7 +176,7 @@ const CustomerWorkshopPage: React.FC = () => {
                         setSelectedJob(job);
                         setIsProgressOpen(true);
                       }}
-                      className="flex items-center gap-2"
+                      className="flex w-full items-center justify-center gap-2"
                     >
                       <ChartBarIcon className="h-4 w-4" />
                       View Progress
@@ -405,8 +405,8 @@ const JobDetailsView: React.FC<{
         </div>
       )}
 
-      <div className="flex justify-end">
-        <Button variant="outline" onClick={onClose}>
+      <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+        <Button variant="outline" onClick={onClose} className="w-full sm:w-auto">
           Close
         </Button>
       </div>
@@ -701,8 +701,7 @@ const CustomerWorkflowSteps: React.FC<{ job: any }> = ({ job }) => {
     <ol className="flex items-center w-full">
       {steps.map((label, index) => (
         <li key={index} className="flex-1 flex items-center">
-          <div className={`flex items-center ${index !== steps.length - 1 ? 'w-full' : ''}`}>
-            <div className={`flex items-center justify-center h-7 w-7 rounded-full text-[10px] font-bold transition-colors ${
+          <div className={`flex items-center justify-center h-7 w-7 rounded-full text-[10px] font-bold transition-colors ${
               isStepCompleted(index)
                 ? 'bg-green-100 text-green-700 border border-green-300'
                 : isStepCurrent(index)
@@ -720,7 +719,6 @@ const CustomerWorkflowSteps: React.FC<{ job: any }> = ({ job }) => {
                   : 'bg-gray-200'
               }`} />
             )}
-          </div>
           <div className="ml-2 text-[11px] text-gray-700 hidden md:block">{label}</div>
         </li>
       ))}

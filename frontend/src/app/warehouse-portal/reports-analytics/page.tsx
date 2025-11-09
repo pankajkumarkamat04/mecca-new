@@ -186,19 +186,19 @@ const WarehouseReportsAnalyticsPage: React.FC = () => {
     <WarehousePortalLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Reports & Analytics</h1>
-            <p className="text-gray-600">{warehouse?.name || 'Warehouse Analytics'}</p>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-1">
+            <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">Reports & Analytics</h1>
+            <p className="text-sm text-gray-600 sm:text-base">{warehouse?.name || 'Warehouse Analytics'}</p>
           </div>
-          <div className="flex gap-3">
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end sm:gap-3">
             {canDownloadReports && (
               <>
                 <Button
                   onClick={() => downloadReport('pdf')}
                   variant="outline"
                   size="sm"
-                  className="flex items-center gap-2"
+                  className="flex items-center justify-center gap-2 sm:w-auto"
                 >
                   <DocumentArrowDownIcon className="h-5 w-5" />
                   Download PDF
@@ -207,7 +207,7 @@ const WarehouseReportsAnalyticsPage: React.FC = () => {
                   onClick={() => downloadReport('csv')}
                   variant="outline"
                   size="sm"
-                  className="flex items-center gap-2"
+                  className="flex items-center justify-center gap-2 sm:w-auto"
                 >
                   <ArrowDownTrayIcon className="h-5 w-5" />
                   Download CSV
@@ -217,7 +217,7 @@ const WarehouseReportsAnalyticsPage: React.FC = () => {
             <select
               value={selectedPeriod}
               onChange={(e) => setSelectedPeriod(e.target.value)}
-              className="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm"
+              className="rounded-md border-gray-300 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500"
             >
               <option value="7d">Last 7 Days</option>
               <option value="30d">Last 30 Days</option>
@@ -230,13 +230,13 @@ const WarehouseReportsAnalyticsPage: React.FC = () => {
 
         {/* Tabs */}
         <div className="border-b border-gray-200">
-          <nav className="-mb-px flex space-x-8">
+          <nav className="-mb-px flex flex-wrap gap-4">
             {tabs.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={`
-                  flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap
+                  flex items-center gap-2 border-b-2 py-3 px-1 text-sm font-medium whitespace-nowrap
                   ${activeTab === tab.id
                     ? 'border-blue-500 text-blue-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -254,9 +254,9 @@ const WarehouseReportsAnalyticsPage: React.FC = () => {
         {activeTab === 'overview' && (
           <div className="space-y-6">
             {/* Key Metrics */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
               {/* Total Products */}
-              <div className="bg-white rounded-lg shadow p-6">
+              <div className="rounded-lg bg-white p-6 shadow">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-600">Total Products</p>
@@ -271,7 +271,7 @@ const WarehouseReportsAnalyticsPage: React.FC = () => {
               </div>
 
               {/* Low Stock Alerts */}
-              <div className="bg-white rounded-lg shadow p-6">
+              <div className="rounded-lg bg-white p-6 shadow">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-600">Low Stock Alerts</p>
@@ -286,7 +286,7 @@ const WarehouseReportsAnalyticsPage: React.FC = () => {
               </div>
 
               {/* Total Stock Value */}
-              <div className="bg-white rounded-lg shadow p-6">
+              <div className="rounded-lg bg-white p-6 shadow">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-600">Total Stock Value</p>
@@ -301,7 +301,7 @@ const WarehouseReportsAnalyticsPage: React.FC = () => {
               </div>
 
               {/* Active Employees */}
-              <div className="bg-white rounded-lg shadow p-6">
+              <div className="rounded-lg bg-white p-6 shadow">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-600">Active Employees</p>
@@ -317,12 +317,12 @@ const WarehouseReportsAnalyticsPage: React.FC = () => {
             </div>
 
             {/* Orders Summary */}
-            <div className="bg-white rounded-lg shadow">
-              <div className="px-6 py-4 border-b border-gray-200">
+            <div className="rounded-lg bg-white shadow">
+              <div className="border-b border-gray-200 px-4 py-4 sm:px-6">
                 <h3 className="text-lg font-medium text-gray-900">Orders Summary</h3>
               </div>
-              <div className="p-6">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="p-4 sm:p-6">
+                <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
                   <div className="text-center">
                     <p className="text-sm text-gray-600">Total Orders</p>
                     <p className="text-3xl font-bold text-gray-900 mt-2">{orders.length}</p>
@@ -341,8 +341,8 @@ const WarehouseReportsAnalyticsPage: React.FC = () => {
 
                 {/* Orders by Status */}
                 <div className="mt-6">
-                  <h4 className="text-sm font-medium text-gray-700 mb-3">Orders by Status</h4>
-                  <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                  <h4 className="mb-3 text-sm font-medium text-gray-700">Orders by Status</h4>
+                  <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-5">
                     {Object.entries(ordersByStatus).map(([status, count]: any) => (
                       <div key={status} className="bg-gray-50 rounded-lg p-4 text-center">
                         <p className="text-xs text-gray-600 capitalize">{status.replace('_', ' ')}</p>
@@ -355,8 +355,8 @@ const WarehouseReportsAnalyticsPage: React.FC = () => {
             </div>
 
             {/* Recent Stock Movements */}
-            <div className="bg-white rounded-lg shadow">
-              <div className="px-6 py-4 border-b border-gray-200">
+            <div className="rounded-lg bg-white shadow">
+              <div className="border-b border-gray-200 px-4 py-4 sm:px-6">
                 <h3 className="text-lg font-medium text-gray-900">Recent Stock Movements</h3>
               </div>
               <div className="overflow-x-auto">
@@ -412,9 +412,9 @@ const WarehouseReportsAnalyticsPage: React.FC = () => {
         {activeTab === 'inventory' && (
           <div className="space-y-6">
             {/* Stock Value Analysis */}
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Stock Movement Analysis</h3>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="rounded-lg bg-white p-6 shadow">
+              <h3 className="mb-4 text-lg font-medium text-gray-900">Stock Movement Analysis</h3>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 {stockMovements.map((movement: any) => (
                   <div key={movement._id} className="bg-gray-50 rounded-lg p-4">
                     <p className="text-sm text-gray-600 capitalize">{movement._id.replace('_', ' ')}</p>
@@ -426,8 +426,8 @@ const WarehouseReportsAnalyticsPage: React.FC = () => {
             </div>
 
             {/* Top Moving Products */}
-            <div className="bg-white rounded-lg shadow">
-              <div className="px-6 py-4 border-b border-gray-200">
+            <div className="rounded-lg bg-white shadow">
+              <div className="border-b border-gray-200 px-4 py-4 sm:px-6">
                 <h3 className="text-lg font-medium text-gray-900">Top Moving Products</h3>
               </div>
               <div className="overflow-x-auto">
@@ -460,8 +460,8 @@ const WarehouseReportsAnalyticsPage: React.FC = () => {
 
             {/* Reorder Alerts */}
             {reorderAlerts.length > 0 && (
-              <div className="bg-white rounded-lg shadow">
-                <div className="px-6 py-4 border-b border-gray-200">
+              <div className="rounded-lg bg-white shadow">
+                <div className="border-b border-gray-200 px-4 py-4 sm:px-6">
                   <h3 className="text-lg font-medium text-gray-900">Reorder Alerts</h3>
                 </div>
                 <div className="overflow-x-auto">
@@ -506,9 +506,9 @@ const WarehouseReportsAnalyticsPage: React.FC = () => {
         {/* Orders Tab */}
         {activeTab === 'orders' && (
           <div className="space-y-6">
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Orders Statistics</h3>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div className="rounded-lg bg-white p-6 shadow">
+              <h3 className="mb-4 text-lg font-medium text-gray-900">Orders Statistics</h3>
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
                 <div className="text-center">
                   <p className="text-sm text-gray-600">Total Orders</p>
                   <p className="text-3xl font-bold text-gray-900 mt-2">{orders.length}</p>
@@ -531,9 +531,9 @@ const WarehouseReportsAnalyticsPage: React.FC = () => {
             </div>
 
             {/* Orders by Status Chart */}
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Orders by Status</h3>
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <div className="rounded-lg bg-white p-6 shadow">
+              <h3 className="mb-4 text-lg font-medium text-gray-900">Orders by Status</h3>
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-5">
                 {Object.entries(ordersByStatus).map(([status, count]: any) => (
                   <div key={status} className="bg-gray-50 rounded-lg p-4 text-center">
                     <p className="text-xs text-gray-600 capitalize">{status.replace('_', ' ')}</p>
@@ -549,16 +549,16 @@ const WarehouseReportsAnalyticsPage: React.FC = () => {
         {activeTab === 'receiving' && (
           <div className="space-y-6">
             {receivedGoodsStatsLoading ? (
-              <div className="bg-white rounded-lg shadow p-12 text-center">
+              <div className="rounded-lg bg-white p-12 text-center shadow">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
                 <p className="text-gray-600 mt-4">Loading receiving analytics...</p>
               </div>
             ) : (
               <>
                 {/* Receiving Statistics */}
-                <div className="bg-white rounded-lg shadow p-6">
-                  <h3 className="text-lg font-medium text-gray-900 mb-4">Receiving Statistics</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <div className="rounded-lg bg-white p-6 shadow">
+                  <h3 className="mb-4 text-lg font-medium text-gray-900">Receiving Statistics</h3>
+                  <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
                     <div className="text-center">
                       <p className="text-sm text-gray-600">Total Receipts</p>
                       <p className="text-3xl font-bold text-gray-900 mt-2">
@@ -587,9 +587,9 @@ const WarehouseReportsAnalyticsPage: React.FC = () => {
                 </div>
 
                 {/* Received Goods by Status */}
-                <div className="bg-white rounded-lg shadow p-6">
-                  <h3 className="text-lg font-medium text-gray-900 mb-4">Receiving by Status</h3>
-                  <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                <div className="rounded-lg bg-white p-6 shadow">
+                  <h3 className="mb-4 text-lg font-medium text-gray-900">Receiving by Status</h3>
+                  <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-5">
                     <div className="bg-gray-50 rounded-lg p-4 text-center">
                       <p className="text-xs text-gray-600">Pending</p>
                       <p className="text-2xl font-bold text-gray-900 mt-1">
@@ -625,8 +625,8 @@ const WarehouseReportsAnalyticsPage: React.FC = () => {
 
                 {/* Recent Receipts */}
                 {receivedGoodsData && (
-                  <div className="bg-white rounded-lg shadow">
-                    <div className="px-6 py-4 border-b border-gray-200">
+                  <div className="rounded-lg bg-white shadow">
+                    <div className="border-b border-gray-200 px-4 py-4 sm:px-6">
                       <h3 className="text-lg font-medium text-gray-900">Recent Receipts</h3>
                     </div>
                     <div className="overflow-x-auto">
@@ -685,16 +685,16 @@ const WarehouseReportsAnalyticsPage: React.FC = () => {
         {activeTab === 'procurement' && (
           <div className="space-y-6">
             {purchaseOrdersStatsLoading ? (
-              <div className="bg-white rounded-lg shadow p-12 text-center">
+              <div className="rounded-lg bg-white p-12 text-center shadow">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
                 <p className="text-gray-600 mt-4">Loading procurement analytics...</p>
               </div>
             ) : (
               <>
                 {/* Procurement Statistics */}
-                <div className="bg-white rounded-lg shadow p-6">
-                  <h3 className="text-lg font-medium text-gray-900 mb-4">Procurement Statistics</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <div className="rounded-lg bg-white p-6 shadow">
+                  <h3 className="mb-4 text-lg font-medium text-gray-900">Procurement Statistics</h3>
+                  <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
                     <div className="text-center">
                       <p className="text-sm text-gray-600">Total Orders</p>
                       <p className="text-3xl font-bold text-gray-900 mt-2">
@@ -723,9 +723,9 @@ const WarehouseReportsAnalyticsPage: React.FC = () => {
                 </div>
 
                 {/* Purchase Orders by Status */}
-                <div className="bg-white rounded-lg shadow p-6">
-                  <h3 className="text-lg font-medium text-gray-900 mb-4">Purchase Orders by Status</h3>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="rounded-lg bg-white p-6 shadow">
+                  <h3 className="mb-4 text-lg font-medium text-gray-900">Purchase Orders by Status</h3>
+                  <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4">
                     <div className="bg-gray-50 rounded-lg p-4 text-center">
                       <p className="text-xs text-gray-600">Draft</p>
                       <p className="text-2xl font-bold text-gray-900 mt-1">
@@ -779,8 +779,8 @@ const WarehouseReportsAnalyticsPage: React.FC = () => {
 
                 {/* Recent Purchase Orders */}
                 {purchaseOrdersData && (
-                  <div className="bg-white rounded-lg shadow">
-                    <div className="px-6 py-4 border-b border-gray-200">
+                  <div className="rounded-lg bg-white shadow">
+                    <div className="border-b border-gray-200 px-4 py-4 sm:px-6">
                       <h3 className="text-lg font-medium text-gray-900">Recent Purchase Orders</h3>
                     </div>
                     <div className="overflow-x-auto">

@@ -368,26 +368,26 @@ const SalesReportPage: React.FC = () => {
     <Layout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex justify-between items-start">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Sales Report</h1>
-            <p className="text-gray-600">Detailed sales transactions with type information</p>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-1">
+            <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">Sales Report</h1>
+            <p className="text-sm text-gray-600 sm:text-base">Detailed sales transactions with type information</p>
           </div>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => handleDownloadReport('pdf')}>
-              <DocumentArrowDownIcon className="h-4 w-4 mr-1" />
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+            <Button variant="outline" size="sm" onClick={() => handleDownloadReport('pdf')} className="w-full sm:w-auto">
+              <DocumentArrowDownIcon className="mr-1 h-4 w-4" />
               PDF
             </Button>
-            <Button variant="outline" size="sm" onClick={exportCsv}>
-              <ArrowDownTrayIcon className="h-4 w-4 mr-1" />
+            <Button variant="outline" size="sm" onClick={exportCsv} className="w-full sm:w-auto">
+              <ArrowDownTrayIcon className="mr-1 h-4 w-4" />
               CSV
             </Button>
           </div>
         </div>
 
         {/* Filters */}
-        <div className="bg-white p-4 rounded-lg shadow-sm border">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-4">
+        <div className="rounded-lg border bg-white p-4 shadow-sm sm:p-6">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Search</label>
               <Input
@@ -613,7 +613,7 @@ const SalesReportPage: React.FC = () => {
           ) : selectedInvoice ? (
             <div className="space-y-6">
               {/* Invoice Header */}
-              <div className="grid grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900">
                     Invoice #{(selectedInvoice as any).invoiceNumber}
@@ -625,8 +625,8 @@ const SalesReportPage: React.FC = () => {
                     Due: {(selectedInvoice as any).dueDate ? formatDate((selectedInvoice as any).dueDate) : 'N/A'}
                   </p>
                 </div>
-                <div className="text-right">
-                  <div className="flex items-center justify-end gap-3">
+                <div className="text-left sm:text-right">
+                  <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-end sm:gap-3">
                     {company?.logo?.url && (
                       <Image
                         width={40}

@@ -217,7 +217,7 @@ const PurchaseOrdersPage: React.FC = () => {
       key: 'actions',
       label: 'Actions',
       render: (row: PurchaseOrder) => (
-        <div className="flex items-center space-x-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => {
               setSelectedOrder(row);
@@ -309,72 +309,72 @@ const PurchaseOrdersPage: React.FC = () => {
   return (
     <ConditionalLayout title="Purchase Orders">
       <div className="space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Purchase Orders</h1>
-          <p className="text-gray-600">Manage your supplier purchase orders</p>
+        {/* Header */}
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Purchase Orders</h1>
+            <p className="text-gray-600">Manage your supplier purchase orders</p>
+          </div>
+          {canCreate && (
+            <Button
+              onClick={() => setShowCreateModal(true)}
+              className="flex items-center"
+            >
+              <PlusIcon className="h-5 w-5 mr-2" />
+              Create Purchase Order
+            </Button>
+          )}
         </div>
-        {canCreate && (
-          <Button
-            onClick={() => setShowCreateModal(true)}
-            className="flex items-center"
-          >
-            <PlusIcon className="h-5 w-5 mr-2" />
-            Create Purchase Order
-          </Button>
-        )}
-      </div>
 
-      {/* Stats Cards */}
-      {stats && (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <div className="bg-white p-6 rounded-lg shadow">
-            <div className="flex items-center">
-              <ShoppingCartIcon className="h-8 w-8 text-red-600" />
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">Total Orders</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.totalOrders}</p>
+        {/* Stats Cards */}
+        {stats && (
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="bg-white p-6 rounded-lg shadow">
+              <div className="flex items-center">
+                <ShoppingCartIcon className="h-8 w-8 text-red-600" />
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-500">Total Orders</p>
+                  <p className="text-2xl font-bold text-gray-900">{stats.totalOrders}</p>
+                </div>
+              </div>
+            </div>
+            <div className="bg-white p-6 rounded-lg shadow">
+              <div className="flex items-center">
+                <div className="h-8 w-8 bg-yellow-100 rounded-full flex items-center justify-center">
+                  <span className="text-yellow-600 font-bold">!</span>
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-500">Pending Orders</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {(stats.draftOrders || 0) + (stats.sentOrders || 0) + (stats.confirmedOrders || 0) + (stats.partialOrders || 0)}
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="bg-white p-6 rounded-lg shadow">
+              <div className="flex items-center">
+                <div className="h-8 w-8 bg-green-100 rounded-full flex items-center justify-center">
+                  <span className="text-green-600 font-bold">✓</span>
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-500">Completed Orders</p>
+                  <p className="text-2xl font-bold text-gray-900">{stats.completedOrders}</p>
+                </div>
+              </div>
+            </div>
+            <div className="bg-white p-6 rounded-lg shadow">
+              <div className="flex items-center">
+                <div className="h-8 w-8 bg-red-100 rounded-full flex items-center justify-center">
+                  <span className="text-red-600 font-bold">!</span>
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-500">Overdue Orders</p>
+                  <p className="text-2xl font-bold text-gray-900">{stats.overdueOrders}</p>
+                </div>
               </div>
             </div>
           </div>
-          <div className="bg-white p-6 rounded-lg shadow">
-            <div className="flex items-center">
-              <div className="h-8 w-8 bg-yellow-100 rounded-full flex items-center justify-center">
-                <span className="text-yellow-600 font-bold">!</span>
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">Pending Orders</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {(stats.draftOrders || 0) + (stats.sentOrders || 0) + (stats.confirmedOrders || 0) + (stats.partialOrders || 0)}
-                </p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-white p-6 rounded-lg shadow">
-            <div className="flex items-center">
-              <div className="h-8 w-8 bg-green-100 rounded-full flex items-center justify-center">
-                <span className="text-green-600 font-bold">✓</span>
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">Completed Orders</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.completedOrders}</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-white p-6 rounded-lg shadow">
-            <div className="flex items-center">
-              <div className="h-8 w-8 bg-red-100 rounded-full flex items-center justify-center">
-                <span className="text-red-600 font-bold">!</span>
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">Overdue Orders</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.overdueOrders}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+        )}
 
       {/* Filters */}
       <div className="bg-white p-4 rounded-lg shadow">

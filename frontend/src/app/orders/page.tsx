@@ -399,17 +399,17 @@ const OrdersPage: React.FC = () => {
     <Layout title="Orders">
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Orders</h1>
-            <p className="text-gray-600">Manage customer orders and fulfillment</p>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-1">
+            <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">Orders</h1>
+            <p className="text-sm text-gray-600 sm:text-base">Manage customer orders and fulfillment</p>
           </div>
           <Button
             onClick={() => {
               setSelectedOrder(null);
               setShowCreateModal(true);
             }}
-            className="flex items-center space-x-2"
+            className="flex w-full items-center justify-center gap-2 sm:w-auto"
           >
             <PlusIcon className="h-5 w-5" />
             <span>New Order</span>
@@ -417,8 +417,8 @@ const OrdersPage: React.FC = () => {
         </div>
 
         {/* Filters */}
-        <div className="bg-white p-4 rounded-lg shadow">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="rounded-lg bg-white p-4 shadow sm:p-6">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <Input
               placeholder="Search orders..."
               value={searchTerm}
@@ -622,7 +622,7 @@ const OrdersPage: React.FC = () => {
             <div className="space-y-4">
               <div className="bg-gray-50 p-4 rounded-lg">
                 <h3 className="text-sm font-medium text-gray-900 mb-2">Order Information</h3>
-                <div className="grid grid-cols-2 gap-4 text-sm">
+                <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
                   <div>
                     <span className="text-gray-600">Order:</span>
                     <span className="ml-2 font-medium">{selectedOrder.orderNumber}</span>
@@ -662,12 +662,23 @@ const OrdersPage: React.FC = () => {
                   <strong>Note:</strong> Changing the order status will update the order workflow and may trigger notifications.
                 </p>
               </div>
-              <div className="flex justify-end space-x-3">
+              <div className="flex flex-col gap-2 sm:flex-row sm:justify-end sm:space-x-3">
                 <Button
                   variant="outline"
                   onClick={() => setShowStatusModal(false)}
+                  className="w-full sm:w-auto"
                 >
                   Cancel
+                </Button>
+                <Button
+                  onClick={() => {
+                    setSelectedOrder(selectedOrder);
+                    setShowStatusModal(false);
+                    setShowAssignModal(true);
+                  }}
+                  className="w-full sm:w-auto"
+                >
+                  Assign Order
                 </Button>
               </div>
             </div>
@@ -709,21 +720,20 @@ const OrdersPage: React.FC = () => {
                   </div>
                 )}
               </div>
-              <div className="flex justify-end space-x-3">
+              <div className="flex flex-col gap-2 sm:flex-row sm:justify-end sm:space-x-3">
                 <Button
                   variant="outline"
-                  onClick={() => {
-                    setShowAssignModal(false);
-                    setSelectedWarehouseId('');
-                  }}
+                  onClick={() => setShowAssignModal(false)}
+                  className="w-full sm:w-auto"
                 >
                   Cancel
                 </Button>
                 <Button
                   onClick={handleAssign}
                   disabled={!selectedWarehouseId || assignOrderMutation.isPending}
+                  className="w-full sm:w-auto"
                 >
-                  {assignOrderMutation.isPending ? 'Assigning...' : 'Assign to Warehouse'}
+                  {assignOrderMutation.isPending ? 'Assigning...' : 'Assign Order'}
                 </Button>
               </div>
             </div>
@@ -771,16 +781,22 @@ const OrdersPage: React.FC = () => {
               <p className="text-sm text-gray-500">
                 This will create a new invoice with the same items and amounts as the order.
               </p>
-              <div className="flex justify-end space-x-3">
+              <div className="flex flex-col gap-2 sm:flex-row sm:justify-end sm:space-x-3">
                 <Button
                   variant="outline"
                   onClick={() => setShowConvertModal(false)}
+                  className="w-full sm:w-auto"
                 >
                   Cancel
                 </Button>
                 <Button
-                  onClick={() => handleConvert(selectedOrder._id)}
+                  onClick={() => {
+                    if (selectedOrder) {
+                      handleConvert(selectedOrder._id);
+                    }
+                  }}
                   disabled={convertToInvoiceMutation.isPending}
+                  className="w-full sm:w-auto"
                 >
                   {convertToInvoiceMutation.isPending ? 'Converting...' : 'Convert to Invoice'}
                 </Button>

@@ -249,7 +249,7 @@ const QuotationsPage: React.FC = () => {
       key: 'actions',
       header: 'Actions',
       render: (quotation: any) => (
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button
             variant="ghost"
             size="sm"
@@ -374,7 +374,7 @@ const QuotationsPage: React.FC = () => {
     <Layout title="Quotations">
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Quotations</h1>
             <p className="text-gray-600">Manage customer quotations and check inventory availability</p>
@@ -387,7 +387,7 @@ const QuotationsPage: React.FC = () => {
 
         {/* Stats Cards */}
         {stats && (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <div className="bg-white p-4 rounded-lg border">
               <div className="text-sm font-medium text-gray-500">Total Quotations</div>
               <div className="text-2xl font-bold text-gray-900">{stats.total || 0}</div>
@@ -409,8 +409,8 @@ const QuotationsPage: React.FC = () => {
 
         {/* Filters */}
         <div className="bg-white p-4 rounded-lg border">
-          <div className="flex flex-wrap gap-4">
-            <div className="flex-1 min-w-64">
+          <div className="flex flex-col gap-4 md:flex-row md:flex-wrap">
+            <div className="flex-1 min-w-0 w-full">
               <Input
                 placeholder="Search quotations..."
                 value={searchTerm}
@@ -421,9 +421,9 @@ const QuotationsPage: React.FC = () => {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+              className="block w-full sm:w-48 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
             >
-              <option value="">All Statuses</option>
+              <option value="all">All Statuses</option>
               <option value="draft">Draft</option>
               <option value="pending">Pending</option>
               <option value="approved">Approved</option>
@@ -488,7 +488,7 @@ const QuotationsPage: React.FC = () => {
         >
           {selectedQuotation && (
             <div className="space-y-6">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Quotation Number</label>
                   <p className="mt-1 text-sm text-gray-900">{selectedQuotation.quotationNumber}</p>

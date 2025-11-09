@@ -11,7 +11,7 @@ import BarChart from '@/components/charts/BarChart';
 import { DashboardStats as DashboardStatsType } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { getDashboardTitle } from '@/lib/roleRouting';
-import { formatCurrency } from '@/lib/utils';
+import { cn, formatCurrency } from '@/lib/utils';
 import toast from 'react-hot-toast';
 import {
   ChartBarIcon,
@@ -24,6 +24,24 @@ import {
   ClipboardDocumentListIcon,
   CubeIcon,
 } from '@heroicons/react/24/outline';
+
+type QuickActionColor = 'blue' | 'green' | 'purple' | 'yellow' | 'red';
+
+interface QuickAction {
+  icon: string;
+  title: string;
+  description: string;
+  href: string;
+  color: QuickActionColor;
+}
+
+const quickActionVariants: Record<QuickActionColor, string> = {
+  blue: 'hover:border-blue-500 hover:bg-blue-50 focus-visible:ring-blue-500',
+  green: 'hover:border-green-500 hover:bg-green-50 focus-visible:ring-green-500',
+  purple: 'hover:border-purple-500 hover:bg-purple-50 focus-visible:ring-purple-500',
+  yellow: 'hover:border-yellow-500 hover:bg-yellow-50 focus-visible:ring-yellow-500',
+  red: 'hover:border-red-500 hover:bg-red-50 focus-visible:ring-red-500',
+};
 
 const DashboardPage: React.FC = () => {
   const router = useRouter();
@@ -142,18 +160,20 @@ const DashboardPage: React.FC = () => {
   // Get role-specific dashboard title
   const dashboardTitle = user ? getDashboardTitle(user.role) : 'Dashboard';
 
+  const recentMovements = warehouseData?.data?.data?.recentMovements ?? [];
+
   // Role-based quick actions
-  const getQuickActions = () => {
+  const getQuickActions = (): QuickAction[] => {
     if (!user) return [];
 
-    const baseActions = [
+    const baseActions: QuickAction[] = [
       {
         icon: '📊',
         title: 'View Reports',
         description: 'Business analytics',
         href: '/reports-analytics',
-        color: 'yellow'
-      }
+        color: 'yellow',
+      },
     ];
 
     switch (user.role) {
@@ -165,23 +185,23 @@ const DashboardPage: React.FC = () => {
             title: 'Create Invoice',
             description: 'Generate new invoice',
             href: '/invoices',
-            color: 'blue'
+            color: 'blue',
           },
           {
             icon: '🛒',
             title: 'New Sale',
             description: 'Process POS transaction',
             href: '/pos',
-            color: 'green'
+            color: 'green',
           },
           {
             icon: '👥',
             title: 'Add Customer',
             description: 'Register new customer',
             href: '/customers',
-            color: 'purple'
+            color: 'purple',
           },
-          ...baseActions
+          ...baseActions,
         ];
 
       case 'sales_person':
@@ -191,56 +211,55 @@ const DashboardPage: React.FC = () => {
             title: 'Create Invoice',
             description: 'Generate new invoice',
             href: '/invoices',
-            color: 'blue'
+            color: 'blue',
           },
           {
             icon: '🛒',
             title: 'New Sale',
             description: 'Process POS transaction',
             href: '/pos',
-            color: 'green'
+            color: 'green',
           },
           {
             icon: '👥',
             title: 'Add Customer',
             description: 'Register new customer',
             href: '/customers',
-            color: 'purple'
+            color: 'purple',
           },
-          ...baseActions
+          ...baseActions,
         ];
 
       case 'warehouse_manager':
-      case 'warehouse_employee':
         return [
           {
             icon: '📦',
             title: 'Manage Inventory',
             description: 'Update stock levels',
             href: '/warehouse-portal/inventory',
-            color: 'blue'
+            color: 'blue',
           },
           {
             icon: '🚚',
             title: 'Track Deliveries',
             description: 'Monitor shipments',
             href: '/warehouse-portal/deliveries',
-            color: 'green'
+            color: 'green',
           },
           {
             icon: '👥',
             title: 'Manage Team',
             description: 'Warehouse employees',
             href: '/warehouse-portal/employees',
-            color: 'purple'
+            color: 'purple',
           },
           {
             icon: '📋',
             title: 'View Orders',
             description: 'Process orders',
             href: '/warehouse-portal/orders',
-            color: 'yellow'
-          }
+            color: 'yellow',
+          },
         ];
 
       case 'warehouse_employee':
@@ -250,22 +269,22 @@ const DashboardPage: React.FC = () => {
             title: 'Update Inventory',
             description: 'Stock management',
             href: '/warehouse-portal/inventory',
-            color: 'blue'
+            color: 'blue',
           },
           {
             icon: '📋',
             title: 'View Orders',
             description: 'Process orders',
             href: '/warehouse-portal/orders',
-            color: 'green'
+            color: 'green',
           },
           {
             icon: '⚠️',
             title: 'Stock Alerts',
             description: 'Low stock items',
             href: '/stock-alerts',
-            color: 'red'
-          }
+            color: 'red',
+          },
         ];
 
       case 'customer':
@@ -275,29 +294,29 @@ const DashboardPage: React.FC = () => {
             title: 'My Orders',
             description: 'View order history',
             href: '/customer/orders',
-            color: 'blue'
+            color: 'blue',
           },
           {
             icon: '📄',
             title: 'My Invoices',
             description: 'View invoices',
             href: '/customer/invoices',
-            color: 'green'
+            color: 'green',
           },
           {
             icon: '💬',
             title: 'Support',
             description: 'Get help',
             href: '/customer/support',
-            color: 'purple'
+            color: 'purple',
           },
           {
             icon: '📋',
             title: 'My Inquiries',
             description: 'Track inquiries',
             href: '/customer/inquiries',
-            color: 'yellow'
-          }
+            color: 'yellow',
+          },
         ];
 
       default:
@@ -323,24 +342,25 @@ const DashboardPage: React.FC = () => {
     <Layout title={dashboardTitle}>
       <div className="space-y-6">
         {/* Welcome Section */}
-        <div className="bg-white shadow rounded-lg p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900">
+        <div className="rounded-lg bg-white p-6 shadow">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
+              <h2 className="text-xl font-bold text-gray-900 sm:text-2xl">
                 Welcome back, {user?.firstName}!
               </h2>
-              <p className="text-gray-600">
-                {user?.role === 'customer' 
+              <p className="mt-1 text-sm text-gray-600 sm:text-base">
+                {user?.role === 'customer'
                   ? "Here's your account overview and recent activity."
                   : user?.role?.includes('warehouse')
                   ? "Here's your warehouse dashboard and operations overview."
-                  : "Here's what's happening with your business today."
-                }
+                  : "Here's what's happening with your business today."}
               </p>
             </div>
-            <div className="text-sm text-gray-500 flex items-center">
-              <ClockIcon className="h-4 w-4 mr-1" />
-              Last updated: {new Date().toLocaleTimeString()}
+            <div className="flex items-center gap-2 text-sm text-gray-500">
+              <ClockIcon className="h-4 w-4" />
+              <span className="whitespace-nowrap">
+                Last updated: {new Date().toLocaleTimeString()}
+              </span>
             </div>
           </div>
         </div>
@@ -351,13 +371,13 @@ const DashboardPage: React.FC = () => {
           <div className="space-y-6">
             {/* Warehouse Stats */}
             {warehouseData?.data?.data && (
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 <div className="bg-white p-6 rounded-lg shadow">
-                  <div className="flex items-center">
+                  <div className="flex items-center gap-4">
                     <div className="h-8 w-8 bg-blue-100 rounded-full flex items-center justify-center">
-                      <span className="text-blue-600 font-bold">📦</span>
+                      <span className="font-bold text-blue-600">📦</span>
                     </div>
-                    <div className="ml-4">
+                    <div className="space-y-1">
                       <p className="text-sm font-medium text-gray-500">Total Products</p>
                       <p className="text-2xl font-bold text-gray-900">
                         {warehouseData?.data?.data?.statistics?.totalProducts || 0}
@@ -366,11 +386,11 @@ const DashboardPage: React.FC = () => {
                   </div>
                 </div>
                 <div className="bg-white p-6 rounded-lg shadow">
-                  <div className="flex items-center">
+                  <div className="flex items-center gap-4">
                     <div className="h-8 w-8 bg-yellow-100 rounded-full flex items-center justify-center">
                       <ExclamationTriangleIcon className="h-5 w-5 text-yellow-600" />
                     </div>
-                    <div className="ml-4">
+                    <div className="space-y-1">
                       <p className="text-sm font-medium text-gray-500">Low Stock</p>
                       <p className="text-2xl font-bold text-gray-900">
                         {warehouseData?.data?.data?.statistics?.lowStockProducts || 0}
@@ -379,11 +399,11 @@ const DashboardPage: React.FC = () => {
                   </div>
                 </div>
                 <div className="bg-white p-6 rounded-lg shadow">
-                  <div className="flex items-center">
+                  <div className="flex items-center gap-4">
                     <div className="h-8 w-8 bg-green-100 rounded-full flex items-center justify-center">
-                      <span className="text-green-600 font-bold">👥</span>
+                      <span className="font-bold text-green-600">👥</span>
                     </div>
-                    <div className="ml-4">
+                    <div className="space-y-1">
                       <p className="text-sm font-medium text-gray-500">Employees</p>
                       <p className="text-2xl font-bold text-gray-900">
                         {warehouseData?.data?.data?.statistics?.activeEmployees || 0}
@@ -392,11 +412,11 @@ const DashboardPage: React.FC = () => {
                   </div>
                 </div>
                 <div className="bg-white p-6 rounded-lg shadow">
-                  <div className="flex items-center">
+                  <div className="flex items-center gap-4">
                     <div className="h-8 w-8 bg-purple-100 rounded-full flex items-center justify-center">
-                      <span className="text-purple-600 font-bold">%</span>
+                      <span className="font-bold text-purple-600">%</span>
                     </div>
-                    <div className="ml-4">
+                    <div className="space-y-1">
                       <p className="text-sm font-medium text-gray-500">Capacity Used</p>
                       <p className="text-2xl font-bold text-gray-900">
                         {warehouseData?.data?.data?.warehouse?.capacityUtilization || 0}%
@@ -409,51 +429,62 @@ const DashboardPage: React.FC = () => {
 
             {/* Recent Stock Movements */}
             {warehouseData?.data?.data?.recentMovements && (
-              <div className="bg-white rounded-lg shadow">
-                <div className="px-6 py-4 border-b border-gray-200">
+              <div className="rounded-lg bg-white shadow">
+                <div className="border-b border-gray-200 px-6 py-4">
                   <h3 className="text-lg font-medium text-gray-900">Recent Stock Movements</h3>
                 </div>
                 <div className="p-6">
-                  {warehouseData?.data?.data?.recentMovements && warehouseData.data.data.recentMovements.length > 0 ? (
+                  {recentMovements.length > 0 ? (
                     <div className="space-y-4">
-                      {warehouseData.data.data.recentMovements.slice(0, 5).map((movement: any) => (
-                        <div key={movement._id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                          <div className="flex items-center">
-                            <div className={`h-8 w-8 rounded-full flex items-center justify-center mr-3 ${
-                              movement.movementType === 'in' ? 'bg-green-100' : 'bg-red-100'
-                            }`}>
-                              <span className={`text-sm font-bold ${
-                                movement.movementType === 'in' ? 'text-green-600' : 'text-red-600'
-                              }`}>
+                      {recentMovements.slice(0, 5).map((movement: any) => (
+                        <div
+                          key={movement._id}
+                          className="flex flex-col gap-4 rounded-lg bg-gray-50 p-4 sm:flex-row sm:items-center sm:justify-between"
+                        >
+                          <div className="flex items-start gap-3 sm:items-center">
+                            <div
+                              className={`flex h-8 w-8 items-center justify-center rounded-full ${
+                                movement.movementType === 'in' ? 'bg-green-100' : 'bg-red-100'
+                              }`}
+                            >
+                              <span
+                                className={`text-sm font-bold ${
+                                  movement.movementType === 'in' ? 'text-green-600' : 'text-red-600'
+                                }`}
+                              >
                                 {movement.movementType === 'in' ? '↗' : '↘'}
                               </span>
                             </div>
                             <div>
-                              <div className="font-medium text-gray-900">{movement?.product?.name || 'Unknown Product'}</div>
+                              <div className="font-medium text-gray-900">
+                                {movement?.product?.name || 'Unknown Product'}
+                              </div>
                               <div className="text-sm text-gray-500">
                                 {movement?.movementType || 'Unknown'} • {movement?.quantity || 0} units
                               </div>
                             </div>
                           </div>
-                          <div className="text-right">
-                            <div className="text-sm text-gray-500">
+                          <div className="text-sm text-gray-500 sm:text-right">
+                            <div>
                               {movement?.createdBy?.firstName || 'Unknown'} {movement?.createdBy?.lastName || 'User'}
                             </div>
                             <div className="text-xs text-gray-400">
-                              {movement?.createdAt ? new Date(movement.createdAt).toLocaleDateString() : 'Unknown Date'}
+                              {movement?.createdAt
+                                ? new Date(movement.createdAt).toLocaleDateString()
+                                : 'Unknown Date'}
                             </div>
-              </div>
-              </div>
+                          </div>
+                        </div>
                       ))}
-              </div>
+                    </div>
                   ) : (
-                    <div className="text-center py-8">
-                      <ArchiveBoxIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                    <div className="py-8 text-center">
+                      <ArchiveBoxIcon className="mx-auto mb-4 h-12 w-12 text-gray-400" />
                       <p className="text-gray-500">No recent movements</p>
-              </div>
+                    </div>
                   )}
-          </div>
-        </div>
+                </div>
+              </div>
             )}
           </div>
         ) : (
@@ -465,7 +496,7 @@ const DashboardPage: React.FC = () => {
         {/* Charts Section */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div className="bg-white shadow rounded-lg p-6">
-            <div className="flex items-center justify-between mb-4">
+            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <h3 className="text-lg font-medium text-gray-900">Sales Trend</h3>
               <ChartBarIcon className="h-5 w-5 text-gray-400" />
             </div>
@@ -510,7 +541,7 @@ const DashboardPage: React.FC = () => {
           </div>
           
           <div className="bg-white shadow rounded-lg p-6">
-            <div className="flex items-center justify-between mb-4">
+            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <h3 className="text-lg font-semibold text-gray-900">Top Products by Quantity</h3>
               <ChartBarIcon className="h-5 w-5 text-gray-400" />
             </div>
@@ -533,7 +564,10 @@ const DashboardPage: React.FC = () => {
                     const quantity = Number(p?.totalQuantity) || 0;
                     const revenue = p?.totalRevenue || 0;
                     return (
-                      <div key={p?._id || index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                      <div
+                        key={p?._id || index}
+                        className="flex flex-col gap-3 rounded-lg bg-gray-50 p-4 transition-colors hover:bg-gray-100 sm:flex-row sm:items-center sm:justify-between"
+                      >
                         <div className="flex items-center gap-3">
                           <div className="flex items-center justify-center w-8 h-8 bg-red-600 text-white rounded-full font-semibold">
                             {index + 1}
@@ -543,9 +577,9 @@ const DashboardPage: React.FC = () => {
                             <p className="text-sm text-gray-500">SKU: {p?.sku || 'N/A'}</p>
                           </div>
                         </div>
-                        <div className="text-right">
+                        <div className="flex flex-col items-start gap-1 text-left text-sm text-gray-500 sm:items-end sm:text-right">
                           <p className="font-semibold text-gray-900">{quantity.toLocaleString()} units</p>
-                          <p className="text-sm text-gray-500">{formatCurrency(revenue)}</p>
+                          <p>{formatCurrency(revenue)}</p>
                         </div>
                       </div>
                     );
@@ -561,15 +595,19 @@ const DashboardPage: React.FC = () => {
         {/* Quick Actions */}
         <div className="bg-white shadow rounded-lg p-6">
           <h3 className="text-lg font-medium text-gray-900 mb-4">Quick Actions</h3>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {getQuickActions().map((action, index) => (
               <button
-                key={index}
+                type="button"
+                key={`${action.href}-${index}`}
                 onClick={() => router.push(action.href)}
-                className={`p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-${action.color}-500 hover:bg-${action.color}-50 transition-colors`}
+                className={cn(
+                  'flex min-h-[130px] flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 p-4 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
+                  quickActionVariants[action.color]
+                )}
               >
-                <div className="text-center">
-                  <div className="text-2xl mb-2">{action.icon}</div>
+                <div className="space-y-1">
+                  <div className="text-2xl">{action.icon}</div>
                   <div className="text-sm font-medium text-gray-900">{action.title}</div>
                   <div className="text-xs text-gray-500">{action.description}</div>
                 </div>

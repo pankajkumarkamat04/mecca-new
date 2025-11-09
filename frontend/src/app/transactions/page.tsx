@@ -124,7 +124,7 @@ const TransactionsPage: React.FC = () => {
       key: 'actions',
       label: 'Actions',
       render: (row: any) => (
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button size="sm" variant="outline" onClick={() => handleViewTransaction(row)} disabled={loadingTransaction}>
             {loadingTransaction ? 'Loading...' : 'View'}
           </Button>
@@ -279,33 +279,31 @@ const TransactionsPage: React.FC = () => {
   return (
     <Layout title="Transactions">
       <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Transactions</h1>
-            <p className="text-gray-600">View and manage financial transactions</p>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-1">
+            <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">Transactions</h1>
+            <p className="text-sm text-gray-600 sm:text-base">View and manage financial transactions</p>
           </div>
-          <div className="flex gap-2">
-            {activeTab === 'transactions' && (
-              <>
-                {/* <Button size="sm" onClick={openCreate}>New Transaction</Button> */}
-                <Button variant="outline" size="sm" onClick={exportCsv}>Export</Button>
-              </>
-            )}
-          </div>
+          {activeTab === 'transactions' && (
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+              {/* <Button size="sm" onClick={openCreate}>New Transaction</Button> */}
+              <Button variant="outline" size="sm" onClick={exportCsv} className="w-full sm:w-auto">Export</Button>
+            </div>
+          )}
         </div>
 
         {/* Tabs */}
         <div className="border-b border-gray-200">
-          <nav className="-mb-px flex space-x-8">
+          <nav className="-mb-px flex flex-wrap gap-4">
             <button
               onClick={() => setActiveTab('transactions')}
               className={`${
                 activeTab === 'transactions'
                   ? 'border-blue-500 text-blue-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              } whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm flex items-center`}
+              } flex items-center gap-2 border-b-2 py-2 px-1 text-sm font-medium whitespace-nowrap`}
             >
-              <ChartBarIcon className="h-5 w-5 mr-2" />
+              <ChartBarIcon className="h-5 w-5" />
               Transactions
             </button>
             <button
@@ -314,9 +312,9 @@ const TransactionsPage: React.FC = () => {
                 activeTab === 'salesperson'
                   ? 'border-blue-500 text-blue-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              } whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm flex items-center`}
+              } flex items-center gap-2 border-b-2 py-2 px-1 text-sm font-medium whitespace-nowrap`}
             >
-              <UserGroupIcon className="h-5 w-5 mr-2" />
+              <UserGroupIcon className="h-5 w-5" />
               Salesperson Performance
             </button>
           </nav>
@@ -326,18 +324,18 @@ const TransactionsPage: React.FC = () => {
         {activeTab === 'salesperson' && (
           <div className="space-y-6">
             {/* Period selector */}
-            <div className="bg-white p-4 rounded-lg shadow">
-              <div className="flex gap-4 items-center">
+            <div className="rounded-lg bg-white p-4 shadow">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
                 <label className="text-sm font-medium text-gray-700">Period:</label>
                 <select
                   value={performancePeriod}
                   onChange={(e) => setPerformancePeriod(e.target.value as 'weekly' | 'monthly')}
-                  className="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  className="w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:w-auto"
                 >
                   <option value="weekly">Last 7 Days</option>
                   <option value="monthly">Last 30 Days</option>
                 </select>
-                <div className="flex gap-2">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                   <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} placeholder="Start Date" />
                   <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} placeholder="End Date" />
                 </div>
@@ -425,7 +423,7 @@ const TransactionsPage: React.FC = () => {
           <>
             {/* Salesperson Filter Indicator */}
             {selectedSalesPersonId && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-center justify-between">
+              <div className="flex flex-col gap-3 rounded-lg border border-blue-200 bg-blue-50 p-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center">
                   <UserGroupIcon className="h-5 w-5 text-blue-600 mr-2" />
                   <span className="text-sm font-medium text-blue-900">
@@ -749,7 +747,7 @@ const TransactionsPage: React.FC = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {selectedTx.attachments.map((attachment: any, index: number) => (
                       <div key={index} className="bg-gray-50 p-4 rounded-lg">
-                        <div className="flex items-center justify-between">
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                           <div className="flex-1">
                             <div className="font-medium text-sm">{attachment.name}</div>
                             <div className="text-xs text-gray-500">
@@ -943,10 +941,10 @@ const TransactionsPage: React.FC = () => {
 
             {/* Accounting Entries */}
             <div className="bg-gray-50 p-4 rounded-lg">
-              <div className="flex items-center justify-between mb-4">
+              <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <h3 className="text-lg font-semibold text-gray-900">Accounting Entries</h3>
-                <Button size="sm" onClick={addEntryRow} className="bg-blue-600 hover:bg-blue-700">
-                  <PlusIcon className="w-4 h-4 mr-1" />
+                <Button size="sm" onClick={addEntryRow} className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto">
+                  <PlusIcon className="mr-1 h-4 w-4" />
                   Add Entry
                 </Button>
               </div>
@@ -1037,19 +1035,11 @@ const TransactionsPage: React.FC = () => {
             </div>
 
             {/* Action Buttons */}
-            <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
-              <Button 
-                variant="outline" 
-                onClick={() => setEditOpen(false)}
-                className="px-6"
-              >
+            <div className="flex flex-col gap-2 border-t border-gray-200 pt-4 sm:flex-row sm:justify-end sm:gap-3">
+              <Button variant="outline" onClick={() => setEditOpen(false)} className="w-full sm:w-auto">
                 Cancel
               </Button>
-              <Button 
-                onClick={saveTransaction}
-                className="px-6 bg-blue-600 hover:bg-blue-700"
-                disabled={!formData.date || !formData.description || !formData.type}
-              >
+              <Button onClick={saveTransaction} className="w-full sm:w-auto">
                 {isEditing ? 'Update Transaction' : 'Create Transaction'}
               </Button>
             </div>

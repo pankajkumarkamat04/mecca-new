@@ -2,7 +2,6 @@
 
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { cn } from '@/lib/utils';
 import {
   Bars3Icon,
   MagnifyingGlassIcon,
@@ -27,85 +26,86 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, title, hideMenuButton = fa
   };
 
   return (
-    <header className="bg-gray-100 shadow-sm border-b border-gray-300">
-      <div className="flex items-center justify-between h-16 px-4">
+    <header className="bg-gray-100 border-b border-gray-200 shadow-sm">
+      <div className="mx-auto flex w-full items-center justify-between gap-3 px-4 py-3 sm:gap-4 sm:py-4">
         {/* Left side */}
-        <div className="flex items-center">
+        <div className="flex min-w-0 flex-1 items-center gap-3">
           {!hideMenuButton && (
             <button
               onClick={onMenuClick}
-              className="p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 lg:hidden"
+              className="rounded-md p-2 text-gray-600 transition-colors hover:bg-gray-200 hover:text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400 lg:hidden"
+              aria-label="Toggle sidebar"
             >
               <Bars3Icon className="h-6 w-6" />
             </button>
           )}
-          
+
           {title && (
-            <h1 className="ml-4 text-xl font-semibold text-gray-900 lg:ml-0">
+            <h1 className="truncate text-base font-semibold text-gray-900 sm:text-xl">
               {title}
             </h1>
           )}
         </div>
 
         {/* Right side */}
-        <div className="flex items-center space-x-4">
+        <div className="flex flex-shrink-0 items-center gap-2 sm:gap-4">
           {/* Search */}
-          <div className="hidden md:block">
+          <div className="hidden min-w-[200px] md:block">
             <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
                 <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
               </div>
               <input
                 type="text"
                 placeholder="Search..."
-                className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-gray-500 focus:border-gray-500 sm:text-sm"
+                className="block w-full rounded-md border border-gray-300 bg-white py-2 pl-10 pr-3 text-sm leading-5 placeholder-gray-500 focus:border-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-500"
               />
             </div>
           </div>
-
 
           {/* User menu */}
           <div className="relative">
             <button
               onClick={() => setShowUserMenu(!showUserMenu)}
-              className="flex items-center space-x-3 p-2 text-gray-700 hover:text-gray-900 hover:bg-gray-200 rounded-md transition-colors"
+              className="flex items-center gap-3 rounded-md p-2 text-gray-700 transition-colors hover:bg-gray-200 hover:text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400"
+              aria-expanded={showUserMenu}
             >
               {user?.avatar ? (
                 <img
-                  className="h-8 w-8 rounded-full"
+                  className="h-8 w-8 rounded-full object-cover"
                   src={user.avatar}
                   alt={`${user.firstName} ${user.lastName}`}
                 />
               ) : (
                 <UserCircleIcon className="h-8 w-8" />
               )}
-              <span className="hidden md:block text-sm font-medium">
+              <span className="hidden truncate text-sm font-medium md:block">
                 {user?.firstName} {user?.lastName}
               </span>
             </button>
 
             {/* User dropdown */}
             {showUserMenu && (
-              <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-50">
+              <div className="absolute right-0 z-50 mt-2 w-48 rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5">
                 <div className="py-1">
                   <a
                     href="/profile"
-                    className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    className="flex items-center px-4 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-100"
                   >
                     <UserCircleIcon className="mr-3 h-5 w-5" />
                     Your Profile
                   </a>
                   <a
                     href="/settings"
-                    className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    className="flex items-center px-4 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-100"
                   >
                     <CogIcon className="mr-3 h-5 w-5" />
                     Settings
                   </a>
-                  <div className="border-t border-gray-100"></div>
+                  <div className="border-t border-gray-100" />
                   <button
                     onClick={handleLogout}
-                    className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    className="flex w-full items-center px-4 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-100"
                   >
                     <span className="mr-3">🚪</span>
                     Sign out

@@ -191,7 +191,7 @@ const SalesOutletsPage: React.FC = () => {
       key: 'actions',
       label: 'Actions',
       render: (row: SalesOutlet) => (
-        <div className="flex space-x-2">
+        <div className="flex flex-wrap gap-2">
           <Button
             variant="outline"
             size="sm"
@@ -220,7 +220,7 @@ const SalesOutletsPage: React.FC = () => {
   return (
     <Layout title="Sales Outlets">
       <div className="space-y-6">
-        <div className="flex justify-between items-center">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Sales Outlets</h1>
             <p className="text-gray-600">Manage your retail locations and sales points</p>
@@ -393,7 +393,7 @@ const SalesOutletsPage: React.FC = () => {
             </div>
 
             {/* Actions */}
-            <div className="flex justify-end space-x-3 pt-4 border-t">
+            <div className="flex flex-wrap justify-end gap-3 pt-4 border-t">
               <Button
                 variant="outline"
                 onClick={() => {

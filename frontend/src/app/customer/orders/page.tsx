@@ -98,13 +98,13 @@ const CustomerOrdersPage: React.FC = () => {
     <Layout title="My Orders">
       <div className="space-y-6">
         {/* Header */}
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">My Orders</h1>
-          <p className="text-gray-600">Track your orders and delivery status</p>
+        <div className="space-y-1">
+          <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">My Orders</h1>
+          <p className="text-sm text-gray-600 sm:text-base">Track your orders and delivery status</p>
         </div>
 
         {/* Orders List */}
-        <div className="bg-white rounded-lg border">
+        <div className="rounded-lg border bg-white">
           {isLoading ? (
             <div className="p-6">
               <div className="space-y-4">
@@ -119,28 +119,28 @@ const CustomerOrdersPage: React.FC = () => {
           ) : orders.length > 0 ? (
             <div className="divide-y divide-gray-200">
               {orders.map((order: any) => (
-                <div key={order._id} className="p-6 hover:bg-gray-50">
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
+                <div key={order._id} className="p-6 transition-colors hover:bg-gray-50">
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                    <div className="flex-1 space-y-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <h3 className="text-lg font-medium text-gray-900">
                           Order #{order.orderNumber}
                         </h3>
                         {getStatusBadge(order.status)}
                         {getPaymentStatusBadge(order.paymentStatus)}
                       </div>
-                      <p className="text-sm text-gray-600 mb-2">
+                      <p className="text-sm text-gray-600">
                         Total Amount: {formatCurrency(
                           (order.totalAmount ?? order.total ?? 0)
                         )}
                       </p>
-                      <div className="flex items-center gap-4 text-xs text-gray-500">
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-gray-500">
                         <span>Order Date: {formatDate(order.orderDate)}</span>
                         <span>Expected Delivery: {formatDate(order.expectedDeliveryDate)}</span>
                         <span>Items: {order.items?.length || 0}</span>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <Button
                         variant="ghost"
                         size="sm"
@@ -160,7 +160,7 @@ const CustomerOrdersPage: React.FC = () => {
               ))}
             </div>
           ) : (
-            <div className="text-center py-12">
+            <div className="py-12 text-center">
               <ShoppingBagIcon className="mx-auto h-12 w-12 text-gray-400" />
               <h3 className="mt-2 text-sm font-medium text-gray-900">No orders found</h3>
               <p className="mt-1 text-sm text-gray-500">
@@ -179,7 +179,7 @@ const CustomerOrdersPage: React.FC = () => {
         >
           {selectedOrder && (
             <div className="space-y-6">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Order Number</label>
                   <p className="mt-1 text-sm text-gray-900">{selectedOrder.orderNumber}</p>
@@ -206,16 +206,16 @@ const CustomerOrdersPage: React.FC = () => {
                 </div>
               </div>
 
-              <div>
+              <div className="overflow-x-auto">
                 <label className="block text-sm font-medium text-gray-700 mb-2">Items</label>
-                <div className="border rounded-lg overflow-hidden">
-                  <table className="min-w-full divide-y divide-gray-200">
+                <div className="overflow-hidden rounded-lg border">
+                  <table className="min-w-full divide-y divide-gray-200 text-sm">
                     <thead className="bg-gray-50">
                       <tr>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Product</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Quantity</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Unit Price</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Total</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wide text-gray-500">Product</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wide text-gray-500">Quantity</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wide text-gray-500">Unit Price</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wide text-gray-500">Total</th>
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
@@ -277,15 +277,16 @@ const CustomerOrdersPage: React.FC = () => {
                 </div>
               )}
 
-              <div className="flex justify-end gap-2">
+              <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
                 <Button
                   variant="outline"
                   onClick={() => setShowDetailsModal(false)}
+                  className="w-full sm:w-auto"
                 >
                   Close
                 </Button>
                 {selectedOrder.status === 'delivered' && (
-                  <Button>
+                  <Button className="w-full sm:w-auto">
                     Track Delivery
                   </Button>
                 )}

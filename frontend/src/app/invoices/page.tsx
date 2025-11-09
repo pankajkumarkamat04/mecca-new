@@ -187,6 +187,10 @@ const InvoicesPage: React.FC = () => {
     }
   };
 
+  const totalAmount = selectedInvoice ? Number(selectedInvoice.total ?? 0) : 0;
+  const paidAmount = selectedInvoice ? Number(selectedInvoice.paid ?? 0) : 0;
+  const balanceAmount = selectedInvoice ? Math.max(0, totalAmount - paidAmount) : 0;
+
   const handleGenerateQR = (invoice: Invoice) => {
     const invoiceUrl = `${window.location.origin}/invoice/${invoice.invoiceNumber}`;
     const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(invoiceUrl)}`;
@@ -460,10 +464,10 @@ const InvoicesPage: React.FC = () => {
     <Layout title="Invoices">
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Invoices</h1>
-            <p className="text-gray-600">Manage invoices, payments, and billing</p>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-1">
+            <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">Invoices</h1>
+            <p className="text-sm text-gray-600 sm:text-base">Manage invoices, payments, and billing</p>
           </div>
           <Button
             onClick={() => {
@@ -471,14 +475,15 @@ const InvoicesPage: React.FC = () => {
               setIsCreateModalOpen(true);
             }}
             leftIcon={<DocumentTextIcon className="h-4 w-4" />}
+            className="w-full sm:w-auto"
           >
             Create Invoice
           </Button>
         </div>
 
         {/* Search and Filters */}
-        <div className="bg-white p-4 rounded-lg shadow">
-          <div className="flex flex-col sm:flex-row gap-4">
+        <div className="rounded-lg bg-white p-4 shadow sm:p-6">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-[minmax(0,1fr)_200px_auto]">
             <div className="flex-1">
               <div className="relative">
                 <Input
@@ -492,7 +497,7 @@ const InvoicesPage: React.FC = () => {
                 </div>
               </div>
             </div>
-            <div className="w-full sm:w-48">
+            <div className="w-full sm:max-w-xs">
               <Select
                 options={statusOptions}
                 value={filterStatus}
@@ -500,11 +505,11 @@ const InvoicesPage: React.FC = () => {
                 fullWidth
               />
             </div>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm">
+            <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+              <Button variant="outline" size="sm" className="w-full sm:w-auto">
                 Overdue
               </Button>
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" className="w-full sm:w-auto">
                 Export
               </Button>
             </div>
@@ -542,7 +547,7 @@ const InvoicesPage: React.FC = () => {
           >{(methods) => (
             <div className="space-y-6">
               <FormSection title="Invoice Details">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <FormField label="Customer" required error={typeof methods.formState.errors.customer?.message === 'string' ? methods.formState.errors.customer.message : ''}>
                     <CustomerSelector
                       value={(() => {
@@ -568,7 +573,7 @@ const InvoicesPage: React.FC = () => {
                     />
                   </FormField>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   <FormField label="Invoice Date" required error={methods.formState.errors.invoiceDate?.message as string}>
                     <Input type="date" {...methods.register('invoiceDate')} fullWidth />
                   </FormField>
@@ -588,7 +593,7 @@ const InvoicesPage: React.FC = () => {
               <FormSection title="Items">
                 <div className="space-y-3">
                   {methods.watch('items').map((item, idx) => (
-                    <div key={idx} className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                    <div key={idx} className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                       <FormField label="Product" required error={(methods.formState.errors.items as any)?.[idx]?.product?.message as string}>
                         <FormProductSelector
                           value={methods.watch(`items.${idx}.product` as const)}
@@ -758,7 +763,7 @@ const InvoicesPage: React.FC = () => {
                 );
               })()}
               {/* Invoice Header */}
-              <div className="grid grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900">
                     Invoice #{selectedInvoice.invoiceNumber}
@@ -770,8 +775,11 @@ const InvoicesPage: React.FC = () => {
                     Due: {selectedInvoice.dueDate ? formatDate(selectedInvoice.dueDate) : 'N/A'}
                   </p>
                 </div>
-                <div className="text-right">
-                  <InvoiceHeaderRight invoice={selectedInvoice as any} />
+                <div className="space-y-1 text-right">
+                  <p className="text-sm text-gray-500">Total</p>
+                  <p className="text-lg font-semibold text-gray-900">{formatCurrency(totalAmount)}</p>
+                  <p className="text-sm text-gray-500">Paid: {formatCurrency(paidAmount)}</p>
+                  <p className="text-sm font-medium text-gray-900">Balance: {formatCurrency(balanceAmount)}</p>
                   {getStatusBadge(selectedInvoice.status)}
                 </div>
               </div>
@@ -997,33 +1005,37 @@ const InvoicesPage: React.FC = () => {
                   </div>
                 )}
 
-                <div className="flex justify-end space-x-3">
-                <Button
-                  variant="outline"
+                <div className="flex flex-col gap-2 sm:flex-row sm:justify-end sm:space-x-3">
+                  <Button
+                    variant="outline"
                     onClick={() => handleShowReceipt(selectedInvoice, 'short')}
-                  leftIcon={<PrinterIcon className="h-4 w-4" />}
-                >
+                    leftIcon={<PrinterIcon className="h-4 w-4" />}
+                    className="w-full sm:w-auto"
+                  >
                     Print Short Receipt
                   </Button>
                   <Button
                     variant="outline"
                     onClick={() => handleShowReceipt(selectedInvoice, 'full')}
                     leftIcon={<ArrowDownTrayIcon className="h-4 w-4" />}
+                    className="w-full sm:w-auto"
                   >
                     Print Full Invoice
-                </Button>
-                <Button
-                  onClick={() => handleGenerateQR(selectedInvoice)}
-                  leftIcon={<QrCodeIcon className="h-4 w-4" />}
-                >
-                  Generate QR
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => setIsViewModalOpen(false)}
-                >
-                  Close
-                </Button>
+                  </Button>
+                  <Button
+                    onClick={() => handleGenerateQR(selectedInvoice)}
+                    leftIcon={<QrCodeIcon className="h-4 w-4" />}
+                    className="w-full sm:w-auto"
+                  >
+                    Generate QR
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => setIsViewModalOpen(false)}
+                    className="w-full sm:w-auto"
+                  >
+                    Close
+                  </Button>
                 </div>
               </div>
             </div>
@@ -1039,7 +1051,7 @@ const InvoicesPage: React.FC = () => {
               </label>
               <Input value={paymentForm.amount} onChange={(e) => setPaymentForm(prev => ({ ...prev, amount: e.target.value }))} fullWidth />
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Method</label>
                 <Select
@@ -1062,26 +1074,32 @@ const InvoicesPage: React.FC = () => {
               <label className="block text-sm font-medium text-gray-700 mb-1">Reference</label>
               <Input value={paymentForm.reference} onChange={(e) => setPaymentForm(prev => ({ ...prev, reference: e.target.value }))} placeholder="Optional" fullWidth />
             </div>
-            <div className="flex justify-end gap-3">
-              <Button variant="outline" onClick={() => setIsPayModalOpen(false)}>Cancel</Button>
-              <Button onClick={async () => {
-                if (!selectedInvoice) return;
-                const amountDisplay = Number(paymentForm.amount);
-                if (!Number.isFinite(amountDisplay) || amountDisplay <= 0) { toast.error('Enter a valid amount'); return; }
-                
-                // Convert from display currency to USD (base currency) for backend
-                const displayCurrency = selectedInvoice.currency?.displayCurrency || 'USD';
-                const exchangeRate = getExchangeRate(company?.currencySettings, displayCurrency);
-                const amountUSD = convertToBaseCurrency(amountDisplay, exchangeRate);
-                
-                await addPaymentMutation.mutateAsync({ id: (selectedInvoice as any)._id, payload: {
-                  amount: amountUSD,
-                  method: paymentForm.method,
-                  reference: paymentForm.reference || undefined,
-                  date: paymentForm.date,
-                } });
-              }} disabled={addPaymentMutation.isPending}>
-                {addPaymentMutation.isPending ? 'Saving...' : 'Record Payment'}
+            <div className="flex flex-col gap-2 sm:flex-row sm:justify-end sm:space-x-3">
+              <Button variant="outline" onClick={() => setIsPayModalOpen(false)} className="w-full sm:w-auto">
+                Cancel
+              </Button>
+              <Button
+                onClick={async () => {
+                  if (!selectedInvoice) return;
+                  const amountDisplay = Number(paymentForm.amount);
+                  if (!Number.isFinite(amountDisplay) || amountDisplay <= 0) { toast.error('Enter a valid amount'); return; }
+                  
+                  // Convert from display currency to USD (base currency) for backend
+                  const displayCurrency = selectedInvoice.currency?.displayCurrency || 'USD';
+                  const exchangeRate = getExchangeRate(company?.currencySettings, displayCurrency);
+                  const amountUSD = convertToBaseCurrency(amountDisplay, exchangeRate);
+                  
+                  await addPaymentMutation.mutateAsync({ id: (selectedInvoice as any)._id, payload: {
+                    amount: amountUSD,
+                    method: paymentForm.method,
+                    reference: paymentForm.reference || undefined,
+                    paymentDate: paymentForm.date,
+                  } });
+                }}
+                disabled={!paymentForm.amount || addPaymentMutation.isPending}
+                className="w-full sm:w-auto"
+              >
+                {addPaymentMutation.isPending ? 'Recording...' : 'Record Payment'}
               </Button>
             </div>
           </div>
@@ -1095,73 +1113,61 @@ const InvoicesPage: React.FC = () => {
           size="lg"
         >
           {selectedInvoice && (
-            <div className="space-y-4">
-              {/* Receipt Type Selector */}
-              <div className="flex justify-center space-x-4 mb-6">
-                <button
+            <div className="space-y-6">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-center sm:gap-4">
+                <Button
+                  variant={receiptType === 'short' ? 'primary' : 'outline'}
                   onClick={() => setReceiptType('short')}
-                  className={`px-4 py-2 rounded ${
-                    receiptType === 'short' 
-                      ? 'bg-red-600 text-white' 
-                      : 'bg-gray-200 text-gray-700'
-                  }`}
+                  className="w-full sm:w-auto"
                 >
                   Short Receipt
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant={receiptType === 'full' ? 'primary' : 'outline'}
                   onClick={() => setReceiptType('full')}
-                  className={`px-4 py-2 rounded ${
-                    receiptType === 'full' 
-                      ? 'bg-red-600 text-white' 
-                      : 'bg-gray-200 text-gray-700'
-                  }`}
+                  className="w-full sm:w-auto"
                 >
                   Full Invoice
-                </button>
+                </Button>
               </div>
 
-              {/* Receipt Component */}
               <InvoiceReceipt
                 invoice={selectedInvoice}
                 type={receiptType}
                 onPrint={handlePrintReceipt}
                 onDownload={handleDownloadReceipt}
               />
+
+              <div className="flex flex-col gap-2 sm:flex-row sm:justify-end sm:space-x-3">
+                <Button
+                  variant="outline"
+                  onClick={() => handleDownloadReceipt()}
+                  leftIcon={<ArrowDownTrayIcon className="h-4 w-4" />}
+                  className="w-full sm:w-auto"
+                >
+                  Download
+                </Button>
+                <Button
+                  onClick={() => handlePrintReceipt()}
+                  leftIcon={<PrinterIcon className="h-4 w-4" />}
+                  className="w-full sm:w-auto"
+                >
+                  Print
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowReceiptModal(false)}
+                  className="w-full sm:w-auto"
+                >
+                  Close
+                </Button>
+              </div>
             </div>
           )}
         </Modal>
       </div>
     </Layout>
   );
-};
+}
 
 export default InvoicesPage;
-
-// Header right block: company logo (if available) and total
-const InvoiceHeaderRight: React.FC<{ invoice: any }> = ({ invoice }) => {
-  const { company } = useSettings();
-
-  const amountBase = typeof invoice?.total === 'number' ? invoice.total : (invoice?.totalAmount ?? 0);
-  const displayCurrency = invoice?.currency?.displayCurrency || company?.currencySettings?.defaultDisplayCurrency || 'USD';
-
-  const formatted = formatAmountWithCurrency(amountBase, company?.currencySettings, displayCurrency);
-
-  return (
-    <div>
-      <div className="flex items-center justify-end gap-3">
-        {company?.logo?.url && (
-          <Image
-            width={40}
-            height={40}
-            src={getLogoUrl(company.logo.url)}
-            alt="Logo"
-            className="object-contain"
-          />
-        )}
-        <div className="text-2xl font-bold text-gray-900">
-          {formatted}
-        </div>
-      </div>
-    </div>
-  );
-};

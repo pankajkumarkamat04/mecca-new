@@ -160,7 +160,7 @@ const ProfilePage: React.FC = () => {
         {/* Avatar Section */}
         <div>
           <h4 className="text-md font-medium text-gray-900 mb-4">Profile Picture</h4>
-          <div className="flex items-center space-x-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-6">
             <div className="flex-shrink-0">
               {avatarPreview || user?.avatar ? (
                 <img
@@ -175,7 +175,7 @@ const ProfilePage: React.FC = () => {
                   )}
                 </div>
             <div className="flex-1">
-              <div className="flex space-x-3">
+              <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:gap-3">
                 <label className="cursor-pointer">
                   <input
                     type="file"
@@ -183,12 +183,12 @@ const ProfilePage: React.FC = () => {
                     onChange={handleAvatarChange}
                     className="hidden"
                   />
-                  <Button variant="outline" leftIcon={<PhotoIcon className="h-4 w-4" />}>
+                  <Button variant="outline" leftIcon={<PhotoIcon className="h-4 w-4" />} className="w-full sm:w-auto">
                     {avatarFile ? 'Change Photo' : 'Upload Photo'}
                   </Button>
                 </label>
                 {avatarFile && (
-                  <Button onClick={handleUploadAvatar} loading={loading}>
+                  <Button onClick={handleUploadAvatar} loading={loading} className="w-full sm:w-auto">
                     Upload
                 </Button>
                 )}
@@ -198,6 +198,7 @@ const ProfilePage: React.FC = () => {
                     onClick={handleDeleteAvatar} 
                     leftIcon={<TrashIcon className="h-4 w-4" />}
                     loading={loading}
+                    className="w-full sm:w-auto"
                   >
                     Delete
                   </Button>
@@ -279,8 +280,8 @@ const ProfilePage: React.FC = () => {
         </div>
       </div>
 
-      <div className="flex justify-end">
-        <Button onClick={() => handleSaveProfile(user)} loading={loading}>
+      <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+        <Button onClick={() => handleSaveProfile(user)} loading={loading} className="w-full sm:w-auto">
           Save Profile
               </Button>
             </div>
@@ -318,14 +319,14 @@ const ProfilePage: React.FC = () => {
 
         <div className="border-t border-gray-200 pt-6">
           <h4 className="text-md font-medium text-gray-900 mb-4">Two-Factor Authentication</h4>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-3 rounded-lg border border-gray-100 p-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <label className="text-sm font-medium text-gray-700">Enable 2FA</label>
               <p className="text-sm text-gray-500">Add an extra layer of security to your account</p>
             </div>
             <input
               type="checkbox"
-              className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded"
+              className="h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500"
             />
           </div>
         </div>
@@ -346,8 +347,8 @@ const ProfilePage: React.FC = () => {
         </div>
       </div>
 
-      <div className="flex justify-end">
-        <Button onClick={() => handleChangePassword({})} loading={loading}>
+      <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+        <Button onClick={() => handleChangePassword({})} loading={loading} className="w-full sm:w-auto">
           Update Security
         </Button>
       </div>
@@ -365,7 +366,7 @@ const ProfilePage: React.FC = () => {
       <div className="space-y-6">
         <div>
           <h4 className="text-md font-medium text-gray-900 mb-4">Theme</h4>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div className="border border-gray-200 rounded-lg p-4 cursor-pointer hover:border-red-500">
               <div className="flex items-center space-x-3">
                 <input
@@ -416,7 +417,7 @@ const ProfilePage: React.FC = () => {
 
         <div className="border-t border-gray-200 pt-6">
           <h4 className="text-md font-medium text-gray-900 mb-4">Display Settings</h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
             <Select
               label="Date Format"
               options={[
@@ -440,8 +441,8 @@ const ProfilePage: React.FC = () => {
         </div>
       </div>
 
-      <div className="flex justify-end">
-        <Button onClick={() => {}} loading={loading}>
+      <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+        <Button onClick={() => {}} loading={loading} className="w-full sm:w-auto">
           Save Appearance
               </Button>
             </div>
@@ -464,7 +465,7 @@ const ProfilePage: React.FC = () => {
 
   return (
     <Layout title="Profile">
-      <div className="max-w-4xl mx-auto">
+      <div className="mx-auto max-w-4xl px-4 sm:px-6">
         <div className="bg-white shadow rounded-lg">
           {/* Header */}
           <div className="px-6 py-4 border-b border-gray-200">
@@ -474,7 +475,7 @@ const ProfilePage: React.FC = () => {
 
           {/* Tabs */}
           <div className="border-b border-gray-200">
-            <nav className="-mb-px flex space-x-8 px-6">
+            <nav className="-mb-px flex flex-wrap gap-4 px-4 sm:px-6">
               {tabs.map((tab) => {
                 const Icon = tab.icon;
                 return (
@@ -482,7 +483,7 @@ const ProfilePage: React.FC = () => {
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
                     className={`
-                      flex items-center py-4 px-1 border-b-2 font-medium text-sm
+                      flex items-center gap-2 border-b-2 py-3 px-1 text-sm font-medium
                       ${
                         activeTab === tab.id
                           ? 'border-red-500 text-red-600'
@@ -490,7 +491,7 @@ const ProfilePage: React.FC = () => {
                       }
                     `}
                   >
-                    <Icon className="h-5 w-5 mr-2" />
+                    <Icon className="h-5 w-5" />
                     {tab.name}
                   </button>
                 );
@@ -499,7 +500,7 @@ const ProfilePage: React.FC = () => {
           </div>
 
           {/* Tab Content */}
-          <div className="p-6">
+          <div className="p-4 sm:p-6">
             {renderTabContent()}
           </div>
         </div>

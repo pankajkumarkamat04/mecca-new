@@ -594,63 +594,66 @@ const POSPage: React.FC = () => {
   // Quick add products removed in favor of using real products from the catalog
 
   return (
-    <div className="h-screen bg-gray-100">
+    <div className="min-h-screen bg-gray-100">
       {/* Header */}
-      <div className="bg-white shadow-sm border-b px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
+      <div className="border-b bg-white px-4 py-4 shadow-sm sm:px-6">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
             <Button
               variant="outline"
-              onClick={() => window.location.href = '/dashboard'}
+              onClick={() => (window.location.href = '/dashboard')}
               leftIcon={<ArrowLeftIcon className="h-4 w-4" />}
+              className="w-full sm:w-auto"
             >
               Back to Dashboard
             </Button>
-            <h1 className="text-2xl font-bold text-gray-900">MECCA POS</h1>
-            {selectedOutlet && (
-              <div className="flex items-center space-x-2 px-3 py-1 bg-blue-50 rounded-lg border border-blue-200">
-                <BuildingStorefrontIcon className="h-5 w-5 text-blue-600" />
-                <div>
-                  <div className="text-xs text-blue-600 font-medium">{selectedOutlet.outletCode}</div>
-                  <div className="text-xs text-blue-800">{selectedOutlet.name}</div>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+              <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">MECCA POS</h1>
+              {selectedOutlet && (
+                <div className="flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs sm:text-sm">
+                  <BuildingStorefrontIcon className="h-5 w-5 flex-shrink-0 text-blue-600" />
+                  <div className="min-w-0">
+                    <div className="font-medium text-blue-600">{selectedOutlet.outletCode}</div>
+                    <div className="truncate text-blue-800">{selectedOutlet.name}</div>
+                  </div>
+                  <button
+                    onClick={handleChangeOutlet}
+                    className="text-blue-600 underline transition-colors hover:text-blue-800"
+                  >
+                    Change
+                  </button>
                 </div>
-                <button
-                  onClick={handleChangeOutlet}
-                  className="ml-2 text-xs text-blue-600 hover:text-blue-800 underline"
-                >
-                  Change
-                </button>
-              </div>
-            )}
-          </div>
-          <div className="text-sm text-gray-500 font-mono">
-            <div className="flex items-center space-x-2">
-              <span>{currentTime.toLocaleDateString('en-US', { 
-                weekday: 'short', 
-                year: 'numeric', 
-                month: 'short', 
-                day: 'numeric' 
-              })}</span>
-              <span className="text-gray-400">•</span>
-              <span className="font-semibold text-blue-600">
-                {currentTime.toLocaleTimeString('en-US', { 
-                  hour: '2-digit', 
-                  minute: '2-digit', 
-                  second: '2-digit',
-                  hour12: true
-                })}
-              </span>
+              )}
             </div>
+          </div>
+          <div className="flex items-center gap-2 text-sm text-gray-500 font-mono">
+            <span>
+              {currentTime.toLocaleDateString('en-US', {
+                weekday: 'short',
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+              })}
+            </span>
+            <span className="hidden text-gray-400 sm:inline">•</span>
+            <span className="font-semibold text-blue-600">
+              {currentTime.toLocaleTimeString('en-US', {
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: true,
+              })}
+            </span>
           </div>
         </div>
       </div>
 
-      <div className="h-[calc(100vh-80px)] flex overflow-hidden">
+      <div className="flex flex-col overflow-hidden lg:flex-row lg:h-[calc(100vh-96px)]">
         {/* Left Panel - Products */}
-        <div className="flex-1 bg-white flex flex-col">
+        <div className="flex flex-1 flex-col bg-white">
           {/* Search Bar */}
-          <div className="p-6 border-b border-gray-200">
-            <div className="flex items-center space-x-4">
+          <div className="border-b border-gray-200 p-4 sm:p-6">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
               <div className="flex-1">
                 <Input
                   placeholder="Search products by name, SKU, or description..."
@@ -662,6 +665,7 @@ const POSPage: React.FC = () => {
               <Button
                 onClick={() => setIsProductModalOpen(true)}
                 leftIcon={<MagnifyingGlassIcon className="h-4 w-4" />}
+                className="w-full sm:w-auto"
               >
                 Search
               </Button>
@@ -669,9 +673,9 @@ const POSPage: React.FC = () => {
           </div>
 
           {/* Products Grid */}
-          <div className="p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Products</h2>
-            <div className="grid grid-cols-3 gap-4">
+          <div className="p-4 sm:p-6">
+            <h2 className="mb-4 text-lg font-semibold text-gray-900">Products</h2>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {productsData?.data?.data?.slice(0, 3).map((product: any) => {
                 const sellingPrice = Number(product?.pricing?.sellingPrice) || 0;
                 const stockQty = product?.inventory?.currentStock || 0;
@@ -707,10 +711,10 @@ const POSPage: React.FC = () => {
           </div>
 
           {/* Cart Items */}
-          <div className="border-t border-gray-200 p-6 flex-1 overflow-hidden flex flex-col">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Cart Items</h3>
+          <div className="flex flex-1 flex-col overflow-hidden border-t border-gray-200 p-4 sm:p-6">
+            <h3 className="mb-4 text-lg font-medium text-gray-900">Cart Items</h3>
             {cart.length === 0 ? (
-              <div className="text-center py-8 text-gray-500 flex-1 flex items-center justify-center">
+              <div className="flex flex-1 items-center justify-center py-8 text-center text-gray-500">
                 <div>
                   <ShoppingCartIcon className="h-12 w-12 mx-auto mb-2 text-gray-300" />
                   <p>Cart is empty</p>
@@ -778,7 +782,7 @@ const POSPage: React.FC = () => {
                       {isProductTaxable && productTaxRate > 0 && universalTaxOverride === undefined && (
                         <div className="flex items-center justify-between text-sm">
                           <span className="text-gray-600">Apply Tax:</span>
-                          <div className="flex items-center space-x-2">
+                          <div className="flex flex-wrap items-center gap-2">
                             <button
                               onClick={() => updateItemTaxOverride(item.product._id, true)}
                               className={`px-2 py-1 rounded text-xs ${
@@ -863,12 +867,12 @@ const POSPage: React.FC = () => {
         </div>
 
         {/* Right Panel - Checkout */}
-        <div className="w-96 bg-white border-l border-gray-200 flex flex-col overflow-hidden">
-          <div className="p-6 border-b border-gray-200">
+        <div className="w-full border-t border-gray-200 bg-white lg:w-[380px] lg:border-t-0 lg:border-l">
+          <div className="border-b border-gray-200 p-4 sm:p-6">
             <h2 className="text-xl font-semibold text-gray-900">Checkout</h2>
           </div>
           
-          <div className="flex-1 overflow-y-auto p-6">
+          <div className="h-full max-h-[520px] overflow-y-auto p-4 sm:p-6 lg:max-h-none lg:flex-1">
 
           {/* Customer Info */}
           <div className="mb-6 space-y-4">

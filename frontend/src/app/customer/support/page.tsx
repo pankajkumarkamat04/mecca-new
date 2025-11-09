@@ -274,15 +274,15 @@ const CustomerSupportPage: React.FC = () => {
     <Layout title="Support Tickets">
       <div className="space-y-6">
         {/* Header */}
-        <div className="bg-white shadow rounded-lg p-6">
-          <div className="flex items-center justify-between">
-            <div>
+        <div className="rounded-lg bg-white p-6 shadow">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="space-y-1">
               <h2 className="text-xl font-bold text-gray-900">Support Tickets</h2>
-              <p className="text-gray-600">Manage and track your support requests</p>
+              <p className="text-sm text-gray-600 sm:text-base">Manage and track your support requests</p>
             </div>
             <Button
               onClick={() => setShowCreateModal(true)}
-              className="flex items-center gap-2"
+              className="flex w-full items-center justify-center gap-2 sm:w-auto"
             >
               <PlusIcon className="h-5 w-5" />
               New Ticket
@@ -291,68 +291,32 @@ const CustomerSupportPage: React.FC = () => {
         </div>
 
         {/* Status Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-          <div className="bg-white shadow rounded-lg p-4">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <TicketIcon className="h-8 w-8 text-blue-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">Total</p>
-                <p className="text-2xl font-bold text-gray-900">{statusCounts.total}</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-white shadow rounded-lg p-4">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <ClockIcon className="h-8 w-8 text-blue-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">Open</p>
-                <p className="text-2xl font-bold text-blue-600">{statusCounts.open}</p>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
+          {[
+            { label: 'Total', value: statusCounts.total, icon: <TicketIcon className="h-8 w-8 text-blue-600" /> },
+            { label: 'Open', value: statusCounts.open, icon: <ClockIcon className="h-8 w-8 text-blue-600" />, textColor: 'text-blue-600' },
+            { label: 'In Progress', value: statusCounts.inProgress, icon: <ClockIcon className="h-8 w-8 text-yellow-600" />, textColor: 'text-yellow-600' },
+            { label: 'Resolved', value: statusCounts.resolved, icon: <CheckCircleIcon className="h-8 w-8 text-green-600" />, textColor: 'text-green-600' },
+            { label: 'Closed', value: statusCounts.closed, icon: <XCircleIcon className="h-8 w-8 text-gray-600" />, textColor: 'text-gray-600' },
+          ].map((card) => (
+            <div key={card.label} className="rounded-lg bg-white p-4 shadow">
+              <div className="flex items-center gap-4">
+                <div className="flex-shrink-0">
+                  {card.icon}
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">{card.label}</p>
+                  <p className={`text-2xl font-bold ${card.textColor ?? 'text-gray-900'}`}>{card.value}</p>
+                </div>
               </div>
             </div>
-          </div>
-          <div className="bg-white shadow rounded-lg p-4">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <ClockIcon className="h-8 w-8 text-yellow-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">In Progress</p>
-                <p className="text-2xl font-bold text-yellow-600">{statusCounts.inProgress}</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-white shadow rounded-lg p-4">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <CheckCircleIcon className="h-8 w-8 text-green-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">Resolved</p>
-                <p className="text-2xl font-bold text-green-600">{statusCounts.resolved}</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-white shadow rounded-lg p-4">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <XCircleIcon className="h-8 w-8 text-gray-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">Closed</p>
-                <p className="text-2xl font-bold text-gray-600">{statusCounts.closed}</p>
-              </div>
-            </div>
-          </div>
+          ))}
         </div>
 
         {/* Filters */}
-        <div className="bg-white shadow rounded-lg p-6">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="sm:w-48">
+        <div className="rounded-lg bg-white p-6 shadow">
+          <div className="flex flex-col gap-4 sm:flex-row">
+            <div className="w-full sm:w-48">
               <select
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 value={statusFilter}
@@ -365,7 +329,7 @@ const CustomerSupportPage: React.FC = () => {
                 <option value="closed">Closed</option>
               </select>
             </div>
-            <div className="sm:w-48">
+            <div className="w-full sm:w-48">
               <select
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 value={priorityFilter}
@@ -382,16 +346,14 @@ const CustomerSupportPage: React.FC = () => {
         </div>
 
         {/* Tickets Table */}
-        <div className="bg-white shadow rounded-lg">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <TicketIcon className="h-5 w-5 text-gray-400 mr-2" />
-                <h3 className="text-lg font-medium text-gray-900">Your Tickets</h3>
-              </div>
-              <div className="text-sm text-gray-500">
-                {ticketsData?.data?.pagination?.total || 0} total tickets
-              </div>
+        <div className="rounded-lg bg-white shadow">
+          <div className="flex flex-col gap-2 border-b border-gray-200 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center">
+              <TicketIcon className="mr-2 h-5 w-5 text-gray-400" />
+              <h3 className="text-lg font-medium text-gray-900">Your Tickets</h3>
+            </div>
+            <div className="text-sm text-gray-500">
+              {ticketsData?.data?.pagination?.total || 0} total tickets
             </div>
           </div>
           <div className="p-6">
@@ -473,10 +435,11 @@ const CustomerSupportPage: React.FC = () => {
               />
             </div>
 
-            <div className="flex justify-end space-x-3 pt-4">
+            <div className="flex flex-col gap-2 pt-4 sm:flex-row sm:justify-end sm:space-x-3">
               <Button
                 variant="outline"
                 onClick={() => setShowCreateModal(false)}
+                className="w-full sm:w-auto"
               >
                 Cancel
               </Button>
@@ -513,7 +476,7 @@ const CustomerSupportPage: React.FC = () => {
           {selectedTicket && (
             <div className="space-y-6">
               {/* Ticket Info */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <h4 className="font-medium text-gray-900">Ticket Details</h4>
                   <p className="text-sm text-gray-600">Subject: {selectedTicket.subject}</p>
@@ -547,13 +510,13 @@ const CustomerSupportPage: React.FC = () => {
               {/* Description */}
               <div>
                 <h4 className="font-medium text-gray-900 mb-2">Description</h4>
-                <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded">{selectedTicket.description}</p>
+                <p className="rounded bg-gray-50 p-3 text-sm text-gray-600">{selectedTicket.description}</p>
               </div>
 
               {/* Conversations */}
               <div>
                 <h4 className="font-medium text-gray-900 mb-3">Conversation</h4>
-                <div className="space-y-3 max-h-64 overflow-y-auto">
+                <div className="max-h-64 space-y-3 overflow-y-auto">
                   {selectedTicket.conversations?.map((conv: any, index: number) => (
                     <div key={index} className={`p-3 rounded-lg ${
                       conv.sender === 'customer' ? 'bg-blue-50 ml-8' : 'bg-gray-50 mr-8'
@@ -582,11 +545,11 @@ const CustomerSupportPage: React.FC = () => {
                     onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setNewMessage(e.target.value)}
                     placeholder="Type your message here..."
                   />
-                  <div className="flex justify-end">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
                     <Button
                       onClick={handleAddMessage}
                       disabled={!newMessage || addConversationMutation.isPending}
-                      className="flex items-center gap-2"
+                      className="flex items-center gap-2 sm:w-auto"
                     >
                       <ChatBubbleLeftRightIcon className="h-4 w-4" />
                       {addConversationMutation.isPending ? 'Sending...' : 'Send Message'}
