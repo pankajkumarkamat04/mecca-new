@@ -4,7 +4,7 @@ import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import AccessControl from '@/components/auth/AccessControl';
 import { useQuery } from '@tanstack/react-query';
-import { warehouseAPI } from '@/lib/api';
+import { warehouseAPI, stockAlertAPI } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   BuildingOfficeIcon,
@@ -16,6 +16,7 @@ import {
   ArrowLeftIcon,
   UserCircleIcon,
   WrenchScrewdriverIcon,
+  ExclamationTriangleIcon,
 } from '@heroicons/react/24/outline';
 
 interface Warehouse {
@@ -49,6 +50,13 @@ const WarehousePortalLayoutInner: React.FC<{ children: React.ReactNode }> = ({ c
   const [selectedWarehouseId, setSelectedWarehouseId] = useState<string>('');
   const [selectedWarehouse, setSelectedWarehouse] = useState<Warehouse | null>(null);
   const [showUserMenu, setShowUserMenu] = useState(false);
+
+  // Fetch stock alert stats for header badge
+  const { data: alertStatsData } = useQuery({
+    queryKey: ['stock-alert-stats'],
+    queryFn: () => stockAlertAPI.getStockAlertStats(),
+    refetchInterval: 30000,
+  });
 
   // Fetch user's assigned warehouse
   const { data: userData } = useQuery({
@@ -185,6 +193,20 @@ const WarehousePortalLayoutInner: React.FC<{ children: React.ReactNode }> = ({ c
             </div>
             
             <div className="flex items-center space-x-4">
+              {/* Stock Alerts Icon */}
+              <a
+                href="/stock-alerts"
+                className="relative p-2 text-gray-600 hover:text-red-600 transition-colors"
+                title="Stock Alerts"
+              >
+                <ExclamationTriangleIcon className="h-6 w-6" />
+                {alertStatsData?.data?.data?.totalAlerts > 0 && (
+                  <span className="absolute top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white transform translate-x-1/2 -translate-y-1/2 bg-red-600 rounded-full">
+                    {alertStatsData.data.data.totalAlerts}
+                  </span>
+                )}
+              </a>
+
               {/* Warehouse Selector for Admin/Manager */}
               {(userData?.role === 'admin' || userData?.role === 'manager') && (
                 <div className="flex items-center space-x-2">

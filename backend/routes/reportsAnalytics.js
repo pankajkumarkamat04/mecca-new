@@ -14,7 +14,8 @@ const {
   getSalesBySalesPerson,
   getSalesSummaryBySalesPerson,
   getSalespersonDashboard,
-  getSalesReport
+  getSalesReport,
+  getSalesUsers
 } = require('../controllers/reportsAnalyticsController');
 
 const router = express.Router();
@@ -92,5 +93,10 @@ router.get('/sales-summary-by-salesperson', authorize('admin', 'manager', 'sales
 // @desc    Get detailed sales report with transaction types
 // @access  Private (Admin, Manager, Sales Person)
 router.get('/sales-report', authorize('admin', 'manager', 'sales_person'), getSalesReport);
+
+// @route   GET /api/reports-analytics/sales-users
+// @desc    Get all users who have made sales in the system
+// @access  Private (Admin, Manager, Sales Person)
+router.get('/sales-users', authorize('admin', 'manager', 'sales_person'), getSalesUsers);
 
 module.exports = router;

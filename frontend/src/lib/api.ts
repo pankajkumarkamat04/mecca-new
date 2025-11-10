@@ -540,6 +540,7 @@ export const reportsAnalyticsAPI = {
   getSalesBySalesPerson: (params?: any) => api.get('/reports-analytics/sales-by-salesperson', { params }),
   getSalesSummaryBySalesPerson: (params?: any) => api.get('/reports-analytics/sales-summary-by-salesperson', { params }),
   getSalesReport: (params?: any) => api.get('/reports-analytics/sales-report', { params }),
+  getSalesUsers: () => api.get('/reports-analytics/sales-users'),
 };
 
 // Received Goods API

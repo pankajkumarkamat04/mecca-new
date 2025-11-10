@@ -322,13 +322,6 @@ const POSPage: React.FC = () => {
     setCart(cart.filter(item => item.product._id !== productId));
   };
 
-  const updateItemTaxOverride = (productId: string, applyTax: boolean | undefined) => {
-    setCart(cart.map(item => 
-      item.product._id === productId 
-        ? { ...item, applyTax }
-        : item
-    ));
-  };
 
   // Get exchange rate for selected currency
   const getExchangeRate = () => {
@@ -374,6 +367,8 @@ const POSPage: React.FC = () => {
   const getPriceCalculation = () => {
     const priceItems = cart.map(item => {
       let taxRate = 0;
+      const productTaxRate = item.product?.pricing?.taxRate ?? 0;
+      const defaultTaxRate = company?.defaultTaxRate ?? 0;
       
       // 1. Check if universal tax override is set (applies to all items)
       if (universalTaxOverride !== undefined) {
@@ -387,23 +382,20 @@ const POSPage: React.FC = () => {
             taxRate = item.taxRate;
           } else {
             // Use product's default tax rate, or company default, or 0
-            const productTaxRate = item.product?.pricing?.taxRate ?? 0;
-            const defaultTaxRate = company?.defaultTaxRate ?? 0;
             taxRate = productTaxRate > 0 ? productTaxRate : defaultTaxRate;
           }
         }
       }
-      // 2. Check if item has specific tax rate override (0-100) - manual entry takes priority
-      else if (typeof item.taxRate === 'number' && item.taxRate >= 0 && item.taxRate <= 100) {
+      // 2. Check if item has specific tax rate override - only if manually entered (> 0)
+      // If taxRate is 0 or undefined, it means no manual tax was entered, so use product's tax rate
+      else if (typeof item.taxRate === 'number' && item.taxRate > 0 && item.taxRate <= 100) {
+        // Manual tax rate was entered
         taxRate = item.taxRate;
       }
-      // 3. Check if item has applyTax override
-      else if (item.applyTax !== undefined) {
-        taxRate = item.applyTax ? (item.product?.pricing?.taxRate ?? company?.defaultTaxRate ?? 0) : 0;
-      }
-      // 4. Use product default tax rate
+      // 3. No manual tax entered, no auto setting - use product's tax rate if it exists
       else {
-        taxRate = item.product?.pricing?.taxRate ?? company?.defaultTaxRate ?? 0;
+        // If product has tax rate, use it; otherwise use company default
+        taxRate = productTaxRate > 0 ? productTaxRate : defaultTaxRate;
       }
 
       return {
@@ -516,13 +508,12 @@ const POSPage: React.FC = () => {
             };
           }
           
-          // No universal override - send item-level overrides if they exist
+          // No universal override - send item-level tax rate override if it exists
           return {
             product: item.product._id,
             quantity: item.quantity,
             price: item.price,
-            applyTax: item.applyTax, // Include individual item tax override
-            taxRate: typeof item.taxRate === 'number' ? item.taxRate : undefined, // Include per-item tax rate override
+            taxRate: typeof item.taxRate === 'number' && item.taxRate > 0 ? item.taxRate : undefined, // Include per-item tax rate override only if manually set
           };
         }),
         customer: selectedCustomerId || undefined,
@@ -793,45 +784,6 @@ const POSPage: React.FC = () => {
                         </div>
                       </div>
                       
-                      {/* Tax Override Controls */}
-                      {isProductTaxable && productTaxRate > 0 && universalTaxOverride === undefined && (
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-gray-600">Apply Tax:</span>
-                          <div className="flex flex-wrap items-center gap-2">
-                            <button
-                              onClick={() => updateItemTaxOverride(item.product._id, true)}
-                              className={`px-2 py-1 rounded text-xs ${
-                                item.applyTax === true 
-                                  ? 'bg-green-100 text-green-800 border border-green-300' 
-                                  : 'bg-gray-100 text-gray-600 border border-gray-300'
-                              }`}
-                            >
-                              Yes
-                            </button>
-                            <button
-                              onClick={() => updateItemTaxOverride(item.product._id, false)}
-                              className={`px-2 py-1 rounded text-xs ${
-                                item.applyTax === false 
-                                  ? 'bg-red-100 text-red-800 border border-red-300' 
-                                  : 'bg-gray-100 text-gray-600 border border-gray-300'
-                              }`}
-                            >
-                              No
-                            </button>
-                            <button
-                              onClick={() => updateItemTaxOverride(item.product._id, undefined)}
-                              className={`px-2 py-1 rounded text-xs ${
-                                item.applyTax === undefined 
-                                  ? 'bg-blue-100 text-blue-800 border border-blue-300' 
-                                  : 'bg-gray-100 text-gray-600 border border-gray-300'
-                              }`}
-                            >
-                              Auto
-                            </button>
-                          </div>
-                        </div>
-                      )}
-
                       {/* Tax Rate Editor */}
                       {isProductTaxable && (
                         <div className="flex items-center justify-between text-sm">

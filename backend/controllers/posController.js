@@ -111,31 +111,31 @@ const createTransaction = async (req, res) => {
       
       // Determine tax rate based on multiple factors
       let effectiveTaxRate = 0;
+      const productTaxRate = product.pricing?.taxRate || 0;
+      const isProductTaxable = product.taxSettings?.isTaxable !== false; // Default to true if not explicitly set to false
 
       // 0. Respect explicit item-level taxRate override if valid (0-100)
-      if (typeof item.taxRate === 'number' && item.taxRate >= 0 && item.taxRate <= 100) {
+      if (typeof item.taxRate === 'number' && item.taxRate > 0 && item.taxRate <= 100) {
+        // Manual tax rate was entered
         effectiveTaxRate = item.taxRate;
       } else {
       
       // 1. Check if universal tax override is applied
       if (transactionData.applyTax !== undefined) {
-        effectiveTaxRate = transactionData.applyTax ? (product.pricing.taxRate || 0) : 0;
+        effectiveTaxRate = transactionData.applyTax ? productTaxRate : 0;
       }
       // 2. Check if customer is tax exempt
       else if (customerTaxExempt) {
         effectiveTaxRate = 0;
       }
-      // 3. Check if product is taxable
-      else if (!product.taxSettings?.isTaxable) {
+      // 3. Check if product is explicitly marked as not taxable
+      else if (product.taxSettings?.isTaxable === false) {
         effectiveTaxRate = 0;
       }
-      // 4. Check if item has specific tax override
-      else if (item.applyTax !== undefined) {
-        effectiveTaxRate = item.applyTax ? (product.pricing.taxRate || 0) : 0;
-      }
-      // 5. Use default product tax rate
+      // 4. No manual tax entered, no auto setting - use product's tax rate if it exists
       else {
-        effectiveTaxRate = product.pricing.taxRate || 0;
+        // If product has a tax rate defined, use it (product is considered taxable by default)
+        effectiveTaxRate = productTaxRate;
       }
       }
       
@@ -153,11 +153,11 @@ const createTransaction = async (req, res) => {
         unitPrice: unitPriceBase, // Store in base currency (USD)
         discount: 0,
         taxRate: effectiveTaxRate, // Store the effective tax rate used (critical for receipt display)
+        taxAmount: lineTax, // Store the calculated tax amount for this item
         total: lineBase + lineTax, // Calculate total including tax
         taxOverride: {
-          applied: transactionData.applyTax !== undefined || item.applyTax !== undefined,
+          applied: transactionData.applyTax !== undefined,
           universalOverride: transactionData.applyTax !== undefined,
-          itemOverride: item.applyTax !== undefined,
           customerExempt: customerTaxExempt,
           productTaxable: product.taxSettings?.isTaxable !== false
         }

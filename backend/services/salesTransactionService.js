@@ -327,14 +327,59 @@ class SalesTransactionService {
       status: 'posted'
     };
     
-    // Only filter by sales person if provided
-    if (salesPersonId) {
-      filter['metadata.salesPerson.id'] = salesPersonId;
+    // Build date filter properly
+    if (options.startDate || options.endDate) {
+      filter.date = {};
+      if (options.startDate) {
+        filter.date.$gte = new Date(options.startDate);
+      }
+      if (options.endDate) {
+        // Set end date to end of day
+        const endDate = new Date(options.endDate);
+        endDate.setHours(23, 59, 59, 999);
+        filter.date.$lte = endDate;
+      }
     }
     
-    if (options.startDate) filter.date = { ...filter.date, $gte: new Date(options.startDate) };
-    if (options.endDate) filter.date = { ...filter.date, $lte: new Date(options.endDate) };
-    if (options.salesOutlet) filter['metadata.salesOutlet'] = options.salesOutlet;
+    if (options.salesOutlet) {
+      filter['metadata.salesOutlet'] = options.salesOutlet;
+    }
+    
+    // Filter by sales person if provided - check multiple sources
+    // Ensure salesPersonId is a valid non-empty string
+    if (salesPersonId && typeof salesPersonId === 'string' && salesPersonId.trim() !== '') {
+      const mongoose = require('mongoose');
+      let salesPersonObjectId;
+      
+      // Convert to ObjectId if it's a valid ObjectId string
+      try {
+        salesPersonObjectId = mongoose.Types.ObjectId.isValid(salesPersonId) 
+          ? new mongoose.Types.ObjectId(salesPersonId) 
+          : salesPersonId;
+      } catch (e) {
+        salesPersonObjectId = salesPersonId;
+      }
+      
+      // First, get invoices that have this salesPerson
+      const invoicesWithSalesPerson = await Invoice.find({
+        salesPerson: salesPersonObjectId
+      }).select('_id').lean();
+      const invoiceIds = invoicesWithSalesPerson.map(inv => inv._id);
+      
+      // Build filter to check:
+      // 1. metadata.salesPerson.id (for POS transactions)
+      // 2. invoice.salesPerson (via invoice ID lookup)
+      // 3. createdBy (user who created the transaction)
+      filter.$or = [
+        { 'metadata.salesPerson.id': salesPersonObjectId },
+        { createdBy: salesPersonObjectId }
+      ];
+      
+      // Add invoice filter if we found any invoices
+      if (invoiceIds.length > 0) {
+        filter.$or.push({ invoice: { $in: invoiceIds } });
+      }
+    }
     
     // Pagination
     const page = parseInt(options.page) || 1;
@@ -344,7 +389,7 @@ class SalesTransactionService {
     const [transactions, totalCount] = await Promise.all([
       Transaction.find(filter)
         .populate('customer', 'firstName lastName email')
-        .populate('invoice', 'invoiceNumber total status')
+        .populate('invoice', 'invoiceNumber total status salesPerson salesPersonName')
         .populate('entries.account', 'name code type')
         .populate('createdBy', 'firstName lastName email')
         .sort({ date: -1 })

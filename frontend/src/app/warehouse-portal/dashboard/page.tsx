@@ -326,19 +326,22 @@ const WarehouseDashboardInner: React.FC<{ warehouseId: string | null }> = ({ war
               </div>
             </div>
           </div>
-          <div className="rounded-lg bg-white p-6 shadow">
-            <div className="flex items-center">
-              <div className="h-8 w-8 bg-yellow-100 rounded-full flex items-center justify-center">
-                <ExclamationTriangleIcon className="h-5 w-5 text-yellow-600" />
+          <a href="/stock-alerts" className="rounded-lg bg-white p-6 shadow hover:shadow-md transition-shadow cursor-pointer">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <div className="h-8 w-8 bg-yellow-100 rounded-full flex items-center justify-center">
+                  <ExclamationTriangleIcon className="h-5 w-5 text-yellow-600" />
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-500">Low Stock</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {dashboardData?.statistics?.lowStockProducts || 0}
+                  </p>
+                </div>
               </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">Low Stock</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {dashboardData?.statistics?.lowStockProducts || 0}
-                </p>
-              </div>
+              <span className="text-sm text-blue-600">View →</span>
             </div>
-          </div>
+          </a>
           <div className="rounded-lg bg-white p-6 shadow">
             <div className="flex items-center">
               <div className="h-8 w-8 bg-green-100 rounded-full flex items-center justify-center">

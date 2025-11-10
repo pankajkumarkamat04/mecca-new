@@ -119,6 +119,13 @@ const ReportsAnalyticsPage: React.FC = () => {
     enabled: canViewOrders && activeTab === 'transactions',
   });
 
+  // Fetch all users who have made sales for dropdown
+  const { data: salesPersonsData } = useQuery({
+    queryKey: ['sales-users'],
+    queryFn: () => reportsAnalyticsAPI.getSalesUsers(),
+    enabled: canViewOrders && activeTab === 'sales',
+  });
+
   const { data: workshopAnalyticsChart, isLoading: workshopAnalyticsLoading } = useQuery({
     queryKey: ['reports-analytics-workshop-chart', selectedPeriod],
     queryFn: () => reportsAnalyticsAPI.getWorkshopAnalyticsChart({ period: selectedPeriod }),
@@ -432,8 +439,8 @@ const ReportsAnalyticsPage: React.FC = () => {
           ) : (
             <SalesChart
               type="line"
-              data={(revenueAnalyticsChart?.data?.data?.monthlyRevenue || []).map((d: any) => ({
-                date: `${d._id.year}-${d._id.month.toString().padStart(2, '0')}`,
+              data={(revenueAnalyticsChart?.data?.data?.dailyRevenue || revenueAnalyticsChart?.data?.data?.monthlyRevenue || []).map((d: any) => ({
+                date: `${d._id.year}-${d._id.month.toString().padStart(2, '0')}-${d._id.day.toString().padStart(2, '0')}`,
                 sales: d.revenue,
                 revenue: d.revenue,
                 orders: d.orderCount,
@@ -445,21 +452,83 @@ const ReportsAnalyticsPage: React.FC = () => {
     );
   };
   
-  const renderSalesPersonContent = () => {
+  const renderSalesPersonContent = (): React.ReactNode => {
     const isLoading = salesPersonFilters.reportType === 'summary' ? salesSummaryLoading : salesPersonLoading;
     const summaryData = salesSummaryBySalesPerson?.data;
     const detailedData = salesBySalesPerson?.data;
     const data = salesPersonFilters.reportType === 'summary' 
       ? (Array.isArray(summaryData?.data) ? summaryData?.data : [])
-      : (Array.isArray((detailedData as any)?.transactions) ? (detailedData as any)?.transactions : []);
+      : (Array.isArray((detailedData as any)?.data?.transactions) ? (detailedData as any)?.data?.transactions : []);
     
-    const pagination = (detailedData as any)?.pagination;
+    const pagination = (detailedData as any)?.data?.pagination;
 
     if (isLoading) {
       return <div className="flex justify-center items-center h-64">Loading...</div>;
     }
 
-    if (!data) return <div>No data available</div>;
+    // Check if data is empty array or undefined/null
+    if (!data || (Array.isArray(data) && data.length === 0)) {
+      return (
+        <div className="space-y-4">
+          {/* Filters */}
+          <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+            <h4 className="text-md font-semibold text-gray-900 mb-3">Report Filters</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Report Type</label>
+                <select
+                  value={salesPersonFilters.reportType}
+                  onChange={(e) => setSalesPersonFilters(prev => ({ ...prev, reportType: e.target.value, page: 1 }))}
+                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                >
+                  <option value="summary">Summary Report</option>
+                  <option value="detailed">Detailed Transactions</option>
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+                <input
+                  type="date"
+                  value={salesPersonFilters.startDate}
+                  onChange={(e) => setSalesPersonFilters(prev => ({ ...prev, startDate: e.target.value, page: 1 }))}
+                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+                <input
+                  type="date"
+                  value={salesPersonFilters.endDate}
+                  onChange={(e) => setSalesPersonFilters(prev => ({ ...prev, endDate: e.target.value, page: 1 }))}
+                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                />
+              </div>
+              
+              {salesPersonFilters.reportType === 'detailed' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Sales Person</label>
+                  <select
+                    value={salesPersonFilters.salesPersonId}
+                    onChange={(e) => setSalesPersonFilters(prev => ({ ...prev, salesPersonId: e.target.value, page: 1 }))}
+                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  >
+                    <option value="">Select Sales Person</option>
+                    {(salesPersonsData?.data?.data || []).map((person: any) => (
+                      <option key={person._id} value={person._id}>
+                        {person.firstName} {person.lastName} {person.email ? `(${person.email})` : ''} {person.role ? `[${person.role}]` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="text-center py-8 text-gray-500">No data available for the selected filters</div>
+        </div>
+      );
+    }
 
     return (
       <div className="space-y-4">
@@ -501,14 +570,19 @@ const ReportsAnalyticsPage: React.FC = () => {
             
             {salesPersonFilters.reportType === 'detailed' && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Sales Person ID</label>
-                <input
-                  type="text"
-                  placeholder="Enter Sales Person ID"
+                <label className="block text-sm font-medium text-gray-700 mb-1">Sales Person</label>
+                <select
                   value={salesPersonFilters.salesPersonId}
                   onChange={(e) => setSalesPersonFilters(prev => ({ ...prev, salesPersonId: e.target.value, page: 1 }))}
                   className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                />
+                >
+                  <option value="">Select Sales Person</option>
+                  {(salesPersonsData?.data?.data || []).map((person: any) => (
+                    <option key={person._id} value={person._id}>
+                      {person.firstName} {person.lastName} {person.email ? `(${person.email})` : ''} {person.role ? `[${person.role}]` : ''}
+                    </option>
+                  ))}
+                </select>
               </div>
             )}
           </div>
@@ -567,6 +641,7 @@ const ReportsAnalyticsPage: React.FC = () => {
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase">Transaction #</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase">Date</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase">Customer</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase">Sales Person</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase">Amount</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase">Payment Method</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase">Invoice #</th>
@@ -583,6 +658,15 @@ const ReportsAnalyticsPage: React.FC = () => {
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
                         {transaction.customer ? `${transaction.customer.firstName} ${transaction.customer.lastName}` : 'Walk-in'}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                        {transaction.invoice?.salesPersonName || 
+                         (transaction.invoice?.salesPerson && typeof transaction.invoice.salesPerson === 'object' 
+                           ? `${transaction.invoice.salesPerson.firstName || ''} ${transaction.invoice.salesPerson.lastName || ''}`.trim() 
+                           : transaction.metadata?.salesPerson?.name || 
+                             (transaction.createdBy && typeof transaction.createdBy === 'object'
+                               ? `${transaction.createdBy.firstName || ''} ${transaction.createdBy.lastName || ''}`.trim()
+                               : 'N/A'))}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
                         {formatCurrency(transaction.amount)}
@@ -627,9 +711,6 @@ const ReportsAnalyticsPage: React.FC = () => {
           </div>
         )}
 
-        {data.length === 0 && (
-          <div className="text-center py-8 text-gray-500">No data available for the selected filters</div>
-        )}
       </div>
     );
   };
@@ -730,8 +811,8 @@ const ReportsAnalyticsPage: React.FC = () => {
             ) : (
               <SalesChart
                 type="line"
-                data={(revenueAnalyticsChart?.data?.data?.monthlyRevenue || []).map((d: any) => ({
-                  date: `${d._id.year}-${d._id.month.toString().padStart(2, '0')}`,
+                data={(revenueAnalyticsChart?.data?.data?.dailyRevenue || revenueAnalyticsChart?.data?.data?.monthlyRevenue || []).map((d: any) => ({
+                  date: `${d._id.year}-${d._id.month.toString().padStart(2, '0')}-${d._id.day.toString().padStart(2, '0')}`,
                   sales: d.revenue,
                   revenue: d.revenue,
                   orders: d.orderCount,
@@ -1024,21 +1105,83 @@ const ReportsAnalyticsPage: React.FC = () => {
     );
   };
 
-  const renderSalesPersonAnalytics = () => {
+  const renderSalesPersonAnalytics = (): React.ReactNode => {
     const isLoading = salesPersonFilters.reportType === 'summary' ? salesSummaryLoading : salesPersonLoading;
     const summaryData = salesSummaryBySalesPerson?.data;
     const detailedData = salesBySalesPerson?.data;
     const data = salesPersonFilters.reportType === 'summary' 
       ? (Array.isArray(summaryData?.data) ? summaryData?.data : [])
-      : (Array.isArray((detailedData as any)?.transactions) ? (detailedData as any)?.transactions : []);
+      : (Array.isArray((detailedData as any)?.data?.transactions) ? (detailedData as any)?.data?.transactions : []);
     
-    const pagination = (detailedData as any)?.pagination;
+    const pagination = (detailedData as any)?.data?.pagination;
 
     if (isLoading) {
       return <div className="flex justify-center items-center h-64">Loading...</div>;
     }
 
-    if (!data) return <div>No data available</div>;
+    // Check if data is empty array or undefined/null
+    if (!data || (Array.isArray(data) && data.length === 0)) {
+      return (
+        <div className="space-y-6">
+          {/* Filters */}
+          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Report Filters</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Report Type</label>
+                <select
+                  value={salesPersonFilters.reportType}
+                  onChange={(e) => setSalesPersonFilters(prev => ({ ...prev, reportType: e.target.value, page: 1 }))}
+                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                >
+                  <option value="summary">Summary Report</option>
+                  <option value="detailed">Detailed Transactions</option>
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+                <input
+                  type="date"
+                  value={salesPersonFilters.startDate}
+                  onChange={(e) => setSalesPersonFilters(prev => ({ ...prev, startDate: e.target.value, page: 1 }))}
+                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+                <input
+                  type="date"
+                  value={salesPersonFilters.endDate}
+                  onChange={(e) => setSalesPersonFilters(prev => ({ ...prev, endDate: e.target.value, page: 1 }))}
+                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                />
+              </div>
+              
+              {salesPersonFilters.reportType === 'detailed' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Sales Person</label>
+                  <select
+                    value={salesPersonFilters.salesPersonId}
+                    onChange={(e) => setSalesPersonFilters(prev => ({ ...prev, salesPersonId: e.target.value, page: 1 }))}
+                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  >
+                    <option value="">Select Sales Person</option>
+                    {(salesPersonsData?.data?.data || []).map((person: any) => (
+                      <option key={person._id} value={person._id}>
+                        {person.firstName} {person.lastName} {person.email ? `(${person.email})` : ''} {person.role ? `[${person.role}]` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="text-center py-8 text-gray-500">No data available for the selected filters</div>
+        </div>
+      );
+    }
 
     // Helper to download sales person report
     const handleDownloadSalesPersonReport = async (format: 'pdf' | 'csv') => {
@@ -1131,14 +1274,19 @@ const ReportsAnalyticsPage: React.FC = () => {
             
             {salesPersonFilters.reportType === 'detailed' && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Sales Person ID</label>
-                <input
-                  type="text"
-                  placeholder="Enter Sales Person ID"
+                <label className="block text-sm font-medium text-gray-700 mb-1">Sales Person</label>
+                <select
                   value={salesPersonFilters.salesPersonId}
                   onChange={(e) => setSalesPersonFilters(prev => ({ ...prev, salesPersonId: e.target.value, page: 1 }))}
                   className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                />
+                >
+                  <option value="">Select Sales Person</option>
+                  {(salesPersonsData?.data?.data || []).map((person: any) => (
+                    <option key={person._id} value={person._id}>
+                      {person.firstName} {person.lastName} {person.email ? `(${person.email})` : ''} {person.role ? `[${person.role}]` : ''}
+                    </option>
+                  ))}
+                </select>
               </div>
             )}
           </div>
@@ -1199,6 +1347,7 @@ const ReportsAnalyticsPage: React.FC = () => {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Transaction #</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sales Person</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payment Method</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Invoice #</th>
@@ -1215,6 +1364,15 @@ const ReportsAnalyticsPage: React.FC = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {transaction.customer ? `${transaction.customer.firstName} ${transaction.customer.lastName}` : 'Walk-in'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {transaction.invoice?.salesPersonName || 
+                         (transaction.invoice?.salesPerson && typeof transaction.invoice.salesPerson === 'object' 
+                           ? `${transaction.invoice.salesPerson.firstName || ''} ${transaction.invoice.salesPerson.lastName || ''}`.trim() 
+                           : transaction.metadata?.salesPerson?.name || 
+                             (transaction.createdBy && typeof transaction.createdBy === 'object'
+                               ? `${transaction.createdBy.firstName || ''} ${transaction.createdBy.lastName || ''}`.trim()
+                               : 'N/A'))}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {formatCurrency(transaction.amount)}

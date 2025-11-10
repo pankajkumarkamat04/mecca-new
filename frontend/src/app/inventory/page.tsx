@@ -742,29 +742,14 @@ const InventoryPage: React.FC = () => {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   
   // Stock Alerts state
-  const [alertTypeFilter, setAlertTypeFilter] = useState('all');
-  const [severityFilter, setSeverityFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(10);
   const [movementType, setMovementType] = useState('all');
-  const [isViewAlertModalOpen, setIsViewAlertModalOpen] = useState(false);
-  const [selectedAlert, setSelectedAlert] = useState<any>(null);
 
   const queryClient = useQueryClient();
 
 
-  const checkLowStockMutation = useMutation({
-    mutationFn: (data: any) => stockAlertAPI.checkLowStock(data),
-    onSuccess: (response: any) => {
-      queryClient.invalidateQueries({ queryKey: ['stock-alerts'] });
-      queryClient.invalidateQueries({ queryKey: ['stock-alert-stats'] });
-      toast.success(`Stock check completed. ${response?.data?.data?.alertsFound || 0} alerts found.`);
-    },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to check low stock');
-    },
-  });
 
   // Fetch inventory levels
   const { data: inventoryLevels, isPending: levelsLoading } = useQuery({
@@ -798,31 +783,11 @@ const InventoryPage: React.FC = () => {
     enabled: activeTab === 'warehouse'
   });
 
-  // Stock Alerts data
-  const { data: alertsData, isLoading: alertsLoading } = useQuery({
-    queryKey: ['stock-alerts', { 
-      page: currentPage, 
-      limit: pageSize, 
-      search: searchTerm, 
-      alertType: alertTypeFilter === 'all' ? undefined : alertTypeFilter,
-      severity: severityFilter === 'all' ? undefined : severityFilter,
-    }],
-    queryFn: () => stockAlertAPI.getStockAlerts({
-      page: currentPage,
-      limit: pageSize,
-      search: searchTerm,
-      alertType: alertTypeFilter === 'all' ? undefined : alertTypeFilter,
-      severity: severityFilter === 'all' ? undefined : severityFilter,
-    }),
-    enabled: activeTab === 'alerts' || activeTab === 'overview',
-    refetchInterval: 30000, // Refetch every 30 seconds for real-time updates
-  });
-
-  // Stock Alert stats
-  const { data: alertStatsData, isLoading: alertStatsLoading, error: alertStatsError } = useQuery({
+  // Stock Alert stats (only for overview card)
+  const { data: alertStatsData } = useQuery({
     queryKey: ['stock-alert-stats'],
     queryFn: () => stockAlertAPI.getStockAlertStats(),
-    enabled: activeTab === 'alerts' || activeTab === 'overview',
+    enabled: activeTab === 'overview',
     refetchInterval: 30000, // Refetch every 30 seconds for real-time updates
   });
 
@@ -1333,7 +1298,6 @@ const InventoryPage: React.FC = () => {
     { id: 'overview', name: 'Overview', icon: ChartBarIcon },
     { id: 'levels', name: 'Stock Levels', icon: CubeIcon },
     { id: 'movements', name: 'Stock Movements', icon: ArrowPathIcon },
-    { id: 'alerts', name: 'Alerts & Monitoring', icon: ExclamationTriangleIcon },
     { id: 'stock-taking', name: 'Stock Take', icon: ClipboardDocumentListIcon },
   ];
 
@@ -1523,130 +1487,6 @@ const InventoryPage: React.FC = () => {
           </div>
         )}
 
-        {/* Stock Alerts Tab */}
-        {activeTab === 'alerts' && (
-          <div className="space-y-6">
-            {/* Alert Stats */}
-            {alertStatsData && (
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                <div className="bg-white p-6 rounded-lg shadow">
-              <div className="flex items-center">
-                    <ExclamationTriangleIcon className="h-8 w-8 text-red-600" />
-                    <div className="ml-4">
-                      <p className="text-sm font-medium text-gray-500">Total Alerts</p>
-                      <p className="text-2xl font-bold text-gray-900">{alertStatsData?.data?.data?.totalAlerts || 0}</p>
-              </div>
-                  </div>
-                </div>
-                <div className="bg-white p-6 rounded-lg shadow">
-                  <div className="flex items-center">
-                    <ExclamationTriangleIcon className="h-8 w-8 text-orange-600" />
-                    <div className="ml-4">
-                      <p className="text-sm font-medium text-gray-500">Critical Alerts</p>
-                      <p className="text-2xl font-bold text-gray-900">{alertStatsData?.data?.data?.criticalAlerts || 0}</p>
-                    </div>
-                  </div>
-                </div>
-                <div className="bg-white p-6 rounded-lg shadow">
-                  <div className="flex items-center">
-                    <CheckCircleIcon className="h-8 w-8 text-green-600" />
-                    <div className="ml-4">
-                      <p className="text-sm font-medium text-gray-500">Resolved Today</p>
-                      <p className="text-2xl font-bold text-gray-900">{alertStatsData?.data?.data?.resolvedToday || 0}</p>
-                    </div>
-                  </div>
-                </div>
-                <div className="bg-white p-6 rounded-lg shadow">
-                  <div className="flex items-center">
-                    <ClockIcon className="h-8 w-8 text-blue-600" />
-                    <div className="ml-4">
-                      <p className="text-sm font-medium text-gray-500">Avg Resolution Time</p>
-                      <p className="text-2xl font-bold text-gray-900">{alertStatsData?.data?.data?.avgResolutionTime || 0}h</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Filters and Actions */}
-            <div className="bg-white p-6 rounded-lg shadow">
-              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0 lg:space-x-4">
-                <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
-                  <div className="w-full sm:w-64">
-                    <Input
-                      type="text"
-                      placeholder="Search alerts..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      fullWidth
-                    />
-                  </div>
-                  <div className="w-full sm:w-48">
-                    <Select
-                      options={[
-                        { value: 'all', label: 'All Types' },
-                        { value: 'low_stock', label: 'Low Stock' },
-                        { value: 'out_of_stock', label: 'Out of Stock' },
-                        { value: 'overstock', label: 'Overstock' },
-                        { value: 'expiring_soon', label: 'Expiring Soon' },
-                        { value: 'expired', label: 'Expired' },
-                        { value: 'reorder_point', label: 'Reorder Point' },
-                      ]}
-                      value={alertTypeFilter}
-                      onChange={(e) => setAlertTypeFilter(e.target.value)}
-                      fullWidth
-                    />
-                  </div>
-                  <div className="w-full sm:w-48">
-                    <Select
-                      options={[
-                        { value: 'all', label: 'All Severities' },
-                        { value: 'low', label: 'Low' },
-                        { value: 'medium', label: 'Medium' },
-                        { value: 'high', label: 'High' },
-                        { value: 'critical', label: 'Critical' },
-                      ]}
-                      value={severityFilter}
-                      onChange={(e) => setSeverityFilter(e.target.value)}
-                      fullWidth
-                    />
-                  </div>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Button
-                    variant="primary"
-                    onClick={() => {
-                      checkLowStockMutation.mutate({
-                        checkAllProducts: true,
-                        autoResolve: false
-                      });
-                    }}
-                  >
-                    Check Low Stock
-                  </Button>
-                </div>
-              </div>
-            </div>
-
-            {/* Alerts Table */}
-            <div className="bg-white rounded-lg shadow">
-              <div className="px-6 py-4 border-b border-gray-200">
-                <h3 className="text-lg font-medium text-gray-900">Stock Alerts</h3>
-            </div>
-            <DataTable
-                columns={alertsColumns}
-                data={alertsData?.data?.data || []}
-                loading={alertsLoading}
-                pagination={{
-                  page: currentPage,
-                  limit: pageSize,
-                  total: alertsData?.data?.pagination?.total || 0,
-                  pages: alertsData?.data?.pagination?.pages || 1,
-                }}
-              />
-            </div>
-          </div>
-        )}
 
         {/* Stock Take Tab */}
         {activeTab === 'stock-taking' && (

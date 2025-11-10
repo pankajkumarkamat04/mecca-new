@@ -1112,25 +1112,82 @@ const getRevenueAnalyticsChart = async (req, res) => {
       };
     }
 
-    // Monthly revenue breakdown
+    // Daily revenue breakdown
     const orderDateFilter = {
       orderDate: dateFilter.createdAt
     };
-    const monthlyRevenue = await Order.aggregate([
+    const dailyRevenue = await Order.aggregate([
       { $match: orderDateFilter },
       {
         $group: {
           _id: {
             year: { $year: '$orderDate' },
-            month: { $month: '$orderDate' }
+            month: { $month: '$orderDate' },
+            day: { $dayOfMonth: '$orderDate' }
           },
           revenue: { $sum: '$totalAmount' },
           orderCount: { $sum: 1 },
           avgOrderValue: { $avg: '$totalAmount' }
         }
       },
-      { $sort: { '_id.year': 1, '_id.month': 1 } }
+      { $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1 } }
     ]);
+
+    // Also get POS daily revenue
+    const dailyPOSRevenue = await Invoice.aggregate([
+      { $match: { ...dateFilter, isPosTransaction: true } },
+      {
+        $group: {
+          _id: {
+            year: { $year: '$createdAt' },
+            month: { $month: '$createdAt' },
+            day: { $dayOfMonth: '$createdAt' }
+          },
+          revenue: { $sum: '$total' },
+          orderCount: { $sum: 1 },
+          avgOrderValue: { $avg: '$total' }
+        }
+      },
+      { $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1 } }
+    ]);
+
+    // Merge and combine daily revenue from both sources
+    const revenueMap = new Map();
+    
+    // Add Order revenue
+    dailyRevenue.forEach(item => {
+      const dateKey = `${item._id.year}-${item._id.month.toString().padStart(2, '0')}-${item._id.day.toString().padStart(2, '0')}`;
+      revenueMap.set(dateKey, {
+        _id: item._id,
+        revenue: item.revenue || 0,
+        orderCount: item.orderCount || 0,
+        avgOrderValue: item.avgOrderValue || 0
+      });
+    });
+
+    // Add POS revenue
+    dailyPOSRevenue.forEach(item => {
+      const dateKey = `${item._id.year}-${item._id.month.toString().padStart(2, '0')}-${item._id.day.toString().padStart(2, '0')}`;
+      const existing = revenueMap.get(dateKey);
+      if (existing) {
+        existing.revenue += (item.revenue || 0);
+        existing.orderCount += (item.orderCount || 0);
+        existing.avgOrderValue = (existing.avgOrderValue + (item.avgOrderValue || 0)) / 2;
+      } else {
+        revenueMap.set(dateKey, {
+          _id: item._id,
+          revenue: item.revenue || 0,
+          orderCount: item.orderCount || 0,
+          avgOrderValue: item.avgOrderValue || 0
+        });
+      }
+    });
+
+    const dailyRevenueCombined = Array.from(revenueMap.values()).sort((a, b) => {
+      if (a._id.year !== b._id.year) return a._id.year - b._id.year;
+      if (a._id.month !== b._id.month) return a._id.month - b._id.month;
+      return a._id.day - b._id.day;
+    });
 
     // Payment method breakdown - handle both paymentMethod (seed data) and payments array (model)
     const paymentMethodBreakdown = await Invoice.aggregate([
@@ -1184,7 +1241,8 @@ const getRevenueAnalyticsChart = async (req, res) => {
     res.json({
       success: true,
       data: {
-        monthlyRevenue,
+        dailyRevenue: dailyRevenueCombined,
+        monthlyRevenue: dailyRevenueCombined, // Keep for backward compatibility
         paymentMethodBreakdown,
         customerSegmentRevenue
       }
@@ -1494,12 +1552,33 @@ const getWorkshopAnalyticsChart = async (req, res) => {
 // @access  Private
 const getSalesBySalesPerson = async (req, res) => {
   try {
-    const { salesPersonId, startDate, endDate, salesOutlet } = req.query;
+    const { salesPersonId, startDate, endDate, salesOutlet, page, limit } = req.query;
+    
+    // Ensure salesPersonId is provided and valid for detailed reports
+    // If not provided, return empty result (frontend should prevent this query)
+    if (!salesPersonId || (typeof salesPersonId === 'string' && salesPersonId.trim() === '')) {
+      return res.json({
+        success: true,
+        data: {
+          transactions: [],
+          pagination: {
+            page: parseInt(page) || 1,
+            limit: parseInt(limit) || 20,
+            totalCount: 0,
+            totalPages: 0,
+            hasNext: false,
+            hasPrev: false
+          }
+        }
+      });
+    }
     
     const transactions = await SalesTransactionService.getSalesBySalesPerson(salesPersonId, {
       startDate,
       endDate,
-      salesOutlet
+      salesOutlet,
+      page,
+      limit
     });
     
     res.json({
@@ -2175,6 +2254,60 @@ const getSalesReport = async (req, res) => {
   }
 };
 
+// @desc    Get all users who have made sales
+// @route   GET /api/reports-analytics/sales-users
+// @access  Private
+const getSalesUsers = async (req, res) => {
+  try {
+    // Get unique user IDs from Transactions (type: 'sale')
+    const transactionUsers = await Transaction.distinct('createdBy', {
+      type: 'sale',
+      status: 'posted'
+    });
+
+    // Get unique user IDs from Invoices (type: 'sale')
+    const invoiceUsers = await Invoice.distinct('createdBy', {
+      type: 'sale'
+    });
+
+    // Get unique user IDs from Invoices where salesPerson is set
+    const invoiceSalesPersons = await Invoice.distinct('salesPerson', {
+      type: 'sale',
+      salesPerson: { $exists: true, $ne: null }
+    });
+
+    // Get unique user IDs from Orders
+    const orderUsers = await Order.distinct('createdBy', {});
+
+    // Combine all user IDs and get unique set
+    const allUserIds = [
+      ...transactionUsers,
+      ...invoiceUsers,
+      ...invoiceSalesPersons,
+      ...orderUsers
+    ].filter(id => id != null).map(id => id.toString());
+
+    const uniqueUserIds = [...new Set(allUserIds)];
+
+    // Fetch user details for all unique IDs
+    const users = await User.find({
+      _id: { $in: uniqueUserIds },
+      isActive: true
+    }).select('firstName lastName email role isActive').sort({ firstName: 1, lastName: 1 });
+
+    res.json({
+      success: true,
+      data: users
+    });
+  } catch (error) {
+    console.error('Get sales users error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+};
+
 module.exports = {
   getOrderAnalytics,
   getPOSSalesAnalytics,
@@ -2189,5 +2322,6 @@ module.exports = {
   getSalesBySalesPerson,
   getSalesSummaryBySalesPerson,
   getSalespersonDashboard,
-  getSalesReport
+  getSalesReport,
+  getSalesUsers
 };

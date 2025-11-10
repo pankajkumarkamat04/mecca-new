@@ -372,13 +372,19 @@ const getSidebarItems = (userRole: string): SidebarItem[] => {
         icon: ArchiveBoxIcon,
         children: [
           {
+            name: 'Stock Alerts',
+            href: '/stock-alerts',
+            icon: ExclamationTriangleIcon,
+            permission: { module: 'inventory', action: 'read' },
+          },
+          {
             name: 'Products',
             href: '/products',
             icon: CubeIcon,
             permission: { module: 'products', action: 'read' },
           },
           {
-            name: 'Inventory',
+            name: 'Inventory Management',
             href: '/inventory',
             icon: ArchiveBoxIcon,
             permission: { module: 'inventory', action: 'read' },

@@ -121,7 +121,11 @@ const transactionSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
   },
-  approvedAt: Date
+  approvedAt: Date,
+  metadata: {
+    type: mongoose.Schema.Types.Mixed,
+    default: {}
+  }
 }, {
   timestamps: true,
   toJSON: { virtuals: true },
@@ -180,6 +184,8 @@ transactionSchema.index({ customer: 1 });
 transactionSchema.index({ supplier: 1 });
 transactionSchema.index({ invoice: 1 });
 transactionSchema.index({ 'entries.account': 1 });
+transactionSchema.index({ 'metadata.salesPerson.id': 1 });
+transactionSchema.index({ createdBy: 1 });
 
 // Pre-save middleware to generate transaction number
 transactionSchema.pre('save', async function(next) {
