@@ -3503,8 +3503,8 @@ const CreateJobForm: React.FC<{
         <Button type="button" variant="outline" onClick={onCancel} className="w-full sm:w-auto">
           Close
         </Button>
-        <Button type="submit" loading={loading} className="w-full sm:w-auto">
-          Add Task
+        <Button type="button" onClick={handleSubmit} loading={loading} className="w-full sm:w-auto">
+          Create Job
         </Button>
       </div>
       

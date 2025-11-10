@@ -1591,179 +1591,119 @@ const TechnicianManagement: React.FC = () => {
               onChange={(e) => setFormData((prev: any) => ({ ...prev, name: e.target.value }))}
               required
             />
+            <Input
+              label="Employee ID"
+              value={formData.employeeId}
+              onChange={(e) => setFormData((prev: any) => ({ ...prev, employeeId: e.target.value }))}
+              placeholder="Optional"
+            />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Select
-              label="Category"
-              value={formData.category}
-              onChange={(e) => setFormData((prev: any) => ({ ...prev, category: e.target.value }))}
-              required
+              label="Department"
+              value={formData.department}
+              onChange={(e) => setFormData((prev: any) => ({ ...prev, department: e.target.value }))}
               options={[
-                { value: '', label: 'Select Category' },
-                { value: 'hand_tool', label: 'Hand Tools' },
-                { value: 'power_tool', label: 'Power Tools' },
-                { value: 'diagnostic_tool', label: 'Diagnostic Equipment' },
-                { value: 'specialty_tool', label: 'Specialty Tools' },
-                { value: 'measuring_tool', label: 'Measuring Tools' },
-                { value: 'cutting_tool', label: 'Cutting Tools' },
-                { value: 'other', label: 'Other' }
+                { value: 'workshop', label: 'Workshop' },
+                { value: 'diagnostics', label: 'Diagnostics' },
+                { value: 'body_shop', label: 'Body Shop' },
+                { value: 'paint_shop', label: 'Paint Shop' },
+                { value: 'assembly', label: 'Assembly' },
+                { value: 'quality_control', label: 'Quality Control' }
+              ]}
+            />
+            <Select
+              label="Position"
+              value={formData.position}
+              onChange={(e) => setFormData((prev: any) => ({ ...prev, position: e.target.value }))}
+              options={[
+                { value: 'junior_technician', label: 'Junior Technician' },
+                { value: 'technician', label: 'Technician' },
+                { value: 'senior_technician', label: 'Senior Technician' },
+                { value: 'lead_technician', label: 'Lead Technician' },
+                { value: 'specialist', label: 'Specialist' },
+                { value: 'supervisor', label: 'Supervisor' }
               ]}
             />
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input
-              label="Size"
-              value={formData.specifications.size}
-              onChange={(e) => setFormData((prev: any) => ({ 
-                ...prev, 
-                specifications: { ...prev.specifications, size: e.target.value }
-              }))}
-              placeholder="e.g., 3, 10mm, 1/2 inch"
+              label="Hire Date"
+              type="date"
+              value={formData.hireDate}
+              onChange={(e) => setFormData((prev: any) => ({ ...prev, hireDate: e.target.value }))}
             />
-            <Input
-              label="Weight (kg)"
-              type="number"
-              value={formData.specifications.weight}
-              onChange={(e) => setFormData((prev: any) => ({ 
-                ...prev, 
-                specifications: { ...prev.specifications, weight: parseFloat(e.target.value) || 0 }
-              }))}
-            />
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Select
-              label="Power Source"
-              value={formData.specifications.powerSource}
-              onChange={(e) => setFormData((prev: any) => ({ 
-                ...prev, 
-                specifications: { ...prev.specifications, powerSource: e.target.value }
-              }))}
+              label="Employment Status"
+              value={formData.employmentStatus}
+              onChange={(e) => setFormData((prev: any) => ({ ...prev, employmentStatus: e.target.value }))}
               options={[
-                { value: '', label: 'Select Power Source' },
-                { value: 'manual', label: 'Manual' },
-                { value: 'electric', label: 'Electric' },
-                { value: 'pneumatic', label: 'Pneumatic' },
-                { value: 'hydraulic', label: 'Hydraulic' },
-                { value: 'battery', label: 'Battery' }
-              ]}
-            />
-            <Input
-              label="Voltage"
-              value={formData.specifications.voltage}
-              onChange={(e) => setFormData((prev: any) => ({ 
-                ...prev, 
-                specifications: { ...prev.specifications, voltage: e.target.value }
-              }))}
-              placeholder="e.g., 220V, 12V"
-            />
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Input
-              label="Torque"
-              value={formData.specifications.torque}
-              onChange={(e) => setFormData((prev: any) => ({ 
-                ...prev, 
-                specifications: { ...prev.specifications, torque: e.target.value }
-              }))}
-              placeholder="e.g., 50 Nm"
-            />
-            <Input
-              label="Capacity"
-              value={formData.specifications.capacity}
-              onChange={(e) => setFormData((prev: any) => ({ 
-                ...prev, 
-                specifications: { ...prev.specifications, capacity: e.target.value }
-              }))}
-              placeholder="e.g., 1000kg"
-            />
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Input
-              label="Quantity"
-              type="number"
-              min="1"
-              value={formData.inventory.quantity}
-              onChange={(e) => setFormData((prev: any) => ({ 
-                ...prev, 
-                inventory: { ...prev.inventory, quantity: parseInt(e.target.value) || 1 }
-              }))}
-            />
-            <Input
-              label="Available Quantity"
-              type="number"
-              min="0"
-              value={formData.inventory.availableQuantity}
-              onChange={(e) => setFormData((prev: any) => ({ 
-                ...prev, 
-                inventory: { ...prev.inventory, availableQuantity: parseInt(e.target.value) || 0 }
-              }))}
-            />
-          </div>
-          <TextArea
-            label="Description"
-            value={formData.description}
-            onChange={(e) => setFormData((prev: any) => ({ ...prev, description: e.target.value }))}
-            rows={3}
-          />
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Select
-              label="Status"
-              value={formData.status}
-              onChange={(e) => setFormData((prev: any) => ({ ...prev, status: e.target.value }))}
-              options={[
-                { value: 'available', label: 'Available' },
-                { value: 'in_use', label: 'In Use' },
-                { value: 'maintenance', label: 'Maintenance' },
+                { value: 'active', label: 'Active' },
+                { value: 'on_leave', label: 'On Leave' },
+                { value: 'terminated', label: 'Terminated' },
                 { value: 'retired', label: 'Retired' }
               ]}
             />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Select
-              label="Condition"
-              value={formData.condition}
-              onChange={(e) => setFormData((prev: any) => ({ ...prev, condition: e.target.value }))}
+              label="Preferred Shift"
+              value={formData.workInfo?.preferredShift || 'morning'}
+              onChange={(e) => setFormData((prev: any) => ({ 
+                ...prev, 
+                workInfo: { ...prev.workInfo, preferredShift: e.target.value }
+              }))}
               options={[
-                { value: 'excellent', label: 'Excellent' },
-                { value: 'good', label: 'Good' },
-                { value: 'fair', label: 'Fair' },
-                { value: 'poor', label: 'Poor' }
+                { value: 'morning', label: 'Morning Shift' },
+                { value: 'afternoon', label: 'Afternoon Shift' },
+                { value: 'night', label: 'Night Shift' },
+                { value: 'flexible', label: 'Flexible' }
               ]}
             />
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input
-              label="Location"
-              value={formData.location}
-              onChange={(e) => setFormData((prev: any) => ({ ...prev, location: e.target.value }))}
-            />
-            <Input
-              label="Purchase Price"
+              label="Max Hours per Week"
               type="number"
-              value={formData.purchasePrice}
-              onChange={(e) => setFormData((prev: any) => ({ ...prev, purchasePrice: parseFloat(e.target.value) || 0 }))}
+              min="1"
+              max="80"
+              value={formData.workInfo?.maxHoursPerWeek || 40}
+              onChange={(e) => setFormData((prev: any) => ({ 
+                ...prev, 
+                workInfo: { ...prev.workInfo, maxHoursPerWeek: parseInt(e.target.value) || 40 }
+              }))}
             />
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input
-              label="Purchase Date"
-              type="date"
-              value={formData.purchaseDate}
-              onChange={(e) => setFormData((prev: any) => ({ ...prev, purchaseDate: e.target.value }))}
+              label="Phone"
+              value={formData.contactInfo?.phone || ''}
+              onChange={(e) => setFormData((prev: any) => ({ 
+                ...prev, 
+                contactInfo: { ...prev.contactInfo, phone: e.target.value }
+              }))}
             />
             <Input
-              label="Warranty Expiry"
-              type="date"
-              value={formData.warrantyExpiry}
-              onChange={(e) => setFormData((prev: any) => ({ ...prev, warrantyExpiry: e.target.value }))}
+              label="Email"
+              type="email"
+              value={formData.contactInfo?.email || ''}
+              onChange={(e) => setFormData((prev: any) => ({ 
+                ...prev, 
+                contactInfo: { ...prev.contactInfo, email: e.target.value }
+              }))}
             />
           </div>
           <Input
-            label="Supplier"
-            value={formData.supplier}
-            onChange={(e) => setFormData((prev: any) => ({ ...prev, supplier: e.target.value }))}
+            label="Address"
+            value={formData.contactInfo?.address || ''}
+            onChange={(e) => setFormData((prev: any) => ({ 
+              ...prev, 
+              contactInfo: { ...prev.contactInfo, address: e.target.value }
+            }))}
           />
           <TextArea
             label="Notes"
-            value={formData.notes}
+            value={formData.notes || ''}
             onChange={(e) => setFormData((prev: any) => ({ ...prev, notes: e.target.value }))}
-            rows={2}
+            rows={3}
           />
           <div className="flex flex-col gap-2 sm:flex-row sm:justify-end sm:gap-3">
             <Button

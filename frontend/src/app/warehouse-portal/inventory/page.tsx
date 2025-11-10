@@ -19,7 +19,13 @@ import {
   ArrowUpIcon,
   ArrowDownIcon,
   PencilIcon,
+  ClipboardDocumentListIcon,
+  PlusIcon,
+  XMarkIcon,
 } from '@heroicons/react/24/outline';
+import { productsAPI, enhancedInventoryAPI } from '@/lib/api';
+import ProductSelector from '@/components/ui/ProductSelector';
+import { Product } from '@/types';
 
 interface InventoryItem {
   product: {
@@ -46,6 +52,7 @@ const WarehouseInventory: React.FC = () => {
   const warehouseId = searchParams.get('warehouse');
   const [showProductModal, setShowProductModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showStockTakeModal, setShowStockTakeModal] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<InventoryItem | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -254,6 +261,61 @@ const WarehouseInventory: React.FC = () => {
           </div>
         </div>
 
+        {/* Stock Take Section */}
+        <div className="rounded-lg bg-white p-6 shadow">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900">Stock Taking / Cycle Count</h2>
+              <p className="text-sm text-gray-600 mt-1">
+                Perform physical inventory counts and adjust stock levels based on actual quantities
+              </p>
+            </div>
+            <Button
+              onClick={() => setShowStockTakeModal(true)}
+              leftIcon={<ClipboardDocumentListIcon className="h-5 w-5" />}
+              className="w-full sm:w-auto"
+            >
+              Start Stock Take
+            </Button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="rounded-lg bg-blue-50 border border-blue-200 p-4">
+              <div className="flex items-center">
+                <div className="h-8 w-8 bg-blue-100 rounded-full flex items-center justify-center">
+                  <ClipboardDocumentListIcon className="h-5 w-5 text-blue-600" />
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-500">Stock Take Process</p>
+                  <p className="text-lg font-semibold text-gray-900">Physical Count</p>
+                </div>
+              </div>
+            </div>
+            <div className="rounded-lg bg-green-50 border border-green-200 p-4">
+              <div className="flex items-center">
+                <div className="h-8 w-8 bg-green-100 rounded-full flex items-center justify-center">
+                  <CheckCircleIcon className="h-5 w-5 text-green-600" />
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-500">Accuracy</p>
+                  <p className="text-lg font-semibold text-gray-900">Verified</p>
+                </div>
+              </div>
+            </div>
+            <div className="rounded-lg bg-purple-50 border border-purple-200 p-4">
+              <div className="flex items-center">
+                <div className="h-8 w-8 bg-purple-100 rounded-full flex items-center justify-center">
+                  <ArrowUpIcon className="h-5 w-5 text-purple-600" />
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-500">Auto Adjustment</p>
+                  <p className="text-lg font-semibold text-gray-900">Enabled</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Filters */}
         <div className="rounded-lg bg-white p-4 shadow sm:p-6">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-[minmax(0,1fr)_200px]">
@@ -380,6 +442,19 @@ const WarehouseInventory: React.FC = () => {
               onClose={() => setShowEditModal(false)}
             />
           )}
+        </Modal>
+
+        {/* Stock Take Modal */}
+        <Modal
+          isOpen={showStockTakeModal}
+          onClose={() => setShowStockTakeModal(false)}
+          title="Stock Taking / Cycle Count"
+          size="xl"
+        >
+          <WarehouseStockTakingModal 
+            warehouseId={warehouseId} 
+            onClose={() => setShowStockTakeModal(false)} 
+          />
         </Modal>
       </div>
     </WarehousePortalLayout>
@@ -541,5 +616,200 @@ const EditInventoryForm: React.FC<{
         </Button>
       </div>
     </form>
+  );
+};
+
+// Warehouse Stock Taking Modal Component (adapted for warehouse portal)
+const WarehouseStockTakingModal: React.FC<{ 
+  warehouseId: string | null;
+  onClose: () => void;
+}> = ({ warehouseId, onClose }) => {
+  const queryClient = useQueryClient();
+  const [stockItems, setStockItems] = useState<Array<{ productId: string; actualQuantity: number }>>([]);
+  const [notes, setNotes] = useState('');
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [actualQuantity, setActualQuantity] = useState(0);
+
+  const { data: productsList, isLoading: productsLoading } = useQuery({
+    queryKey: ['products-list'],
+    queryFn: () => productsAPI.getProducts({ limit: 100, page: 1 }),
+    staleTime: 60_000
+  });
+
+  const stockTakingMutation = useMutation({
+    mutationFn: (data: any) => enhancedInventoryAPI.performStockTaking(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['warehouse-inventory'] });
+      queryClient.invalidateQueries({ queryKey: ['inventory-levels'] });
+      queryClient.invalidateQueries({ queryKey: ['stock-movements'] });
+      toast.success('Stock taking completed successfully');
+      onClose();
+      // Reset form
+      setStockItems([]);
+      setNotes('');
+      setSelectedProduct(null);
+      setActualQuantity(0);
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to complete stock taking');
+    }
+  });
+
+  const addStockItem = () => {
+    if (selectedProduct && actualQuantity >= 0) {
+      // Check if product already exists in the list
+      const existingIndex = stockItems.findIndex(item => item.productId === selectedProduct._id);
+      if (existingIndex >= 0) {
+        // Update existing item
+        const updated = [...stockItems];
+        updated[existingIndex] = { productId: selectedProduct._id, actualQuantity };
+        setStockItems(updated);
+      } else {
+        // Add new item
+        setStockItems([...stockItems, { productId: selectedProduct._id, actualQuantity }]);
+      }
+      setSelectedProduct(null);
+      setActualQuantity(0);
+    }
+  };
+
+  const removeStockItem = (index: number) => {
+    setStockItems(stockItems.filter((_, i) => i !== index));
+  };
+
+  const handleSubmit = () => {
+    if (!warehouseId) {
+      toast.error('Warehouse ID is required');
+      return;
+    }
+    if (stockItems.length === 0) {
+      toast.error('Please add at least one product to count');
+      return;
+    }
+
+    stockTakingMutation.mutate({
+      warehouseId,
+      products: stockItems,
+      notes
+    });
+  };
+
+  return (
+    <div className="space-y-6">
+      {productsLoading ? (
+        <div className="text-center py-4">
+          <div className="text-gray-500">Loading products...</div>
+        </div>
+      ) : (
+        <>
+          <div className="rounded-lg bg-blue-50 border border-blue-200 p-4">
+            <div className="flex items-center">
+              <BuildingOfficeIcon className="h-5 w-5 text-blue-600 mr-2" />
+              <div>
+                <p className="text-sm font-medium text-gray-700">Warehouse</p>
+                <p className="text-sm text-gray-600">Stock take will be performed for this warehouse</p>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Notes (Optional)</label>
+            <Input
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Add any notes about this stock take..."
+              fullWidth
+            />
+          </div>
+
+          <div className="border rounded-lg p-4 bg-gray-50">
+            <h3 className="text-lg font-medium mb-4 text-gray-900">Add Products to Count</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+              <ProductSelector
+                selectedProduct={selectedProduct}
+                onProductSelect={(product: Product | null) => {
+                  if (product) {
+                    setSelectedProduct(product);
+                    // Check if product already in list and pre-fill quantity
+                    const existing = stockItems.find(item => item.productId === product._id);
+                    if (existing) {
+                      setActualQuantity(existing.actualQuantity);
+                    }
+                  } else {
+                    setSelectedProduct(null);
+                  }
+                }}
+                placeholder="Select product..."
+              />
+              <Input
+                type="number"
+                step="1"
+                min="0"
+                value={actualQuantity}
+                onChange={(e) => setActualQuantity(Number(e.target.value))}
+                placeholder="Actual quantity found"
+                fullWidth
+              />
+              <Button 
+                onClick={addStockItem} 
+                disabled={!selectedProduct || actualQuantity < 0}
+                className="w-full"
+              >
+                <PlusIcon className="h-4 w-4 mr-2" />
+                Add Item
+              </Button>
+            </div>
+
+            {stockItems.length > 0 && (
+              <div className="space-y-2 mt-4">
+                <h4 className="font-medium text-gray-900">Products to Count:</h4>
+                <div className="max-h-60 overflow-y-auto space-y-2">
+                  {stockItems.map((item, index) => {
+                    const product = productsList?.data?.data?.find((p: any) => p._id === item.productId);
+                    const recordedStock = product?.inventory?.currentStock || 0;
+                    const difference = item.actualQuantity - recordedStock;
+                    return (
+                      <div key={index} className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg">
+                        <div className="flex-1">
+                          <p className="font-medium text-gray-900">{product?.name || 'Product not found'}</p>
+                          <div className="flex items-center gap-4 text-sm text-gray-600 mt-1">
+                            <span>Recorded: <strong>{recordedStock}</strong></span>
+                            <span>Actual: <strong className="text-blue-600">{item.actualQuantity}</strong></span>
+                            <span className={`font-medium ${difference !== 0 ? difference > 0 ? 'text-green-600' : 'text-red-600' : 'text-gray-600'}`}>
+                              {difference > 0 ? `+${difference}` : difference}
+                            </span>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => removeStockItem(index)}
+                          className="ml-4 p-1 text-red-600 hover:text-red-800"
+                          title="Remove"
+                        >
+                          <XMarkIcon className="h-5 w-5" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="flex justify-end gap-2 pt-4 border-t">
+            <Button variant="outline" onClick={onClose} className="w-full sm:w-auto">
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleSubmit} 
+              loading={stockTakingMutation.isPending}
+              disabled={!warehouseId || stockItems.length === 0}
+              className="w-full sm:w-auto"
+            >
+              Complete Stock Take
+            </Button>
+          </div>
+        </>
+      )}
+    </div>
   );
 };

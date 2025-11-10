@@ -102,7 +102,6 @@ const getTechnicianById = async (req, res) => {
 // @access  Private
 const createTechnician = async (req, res) => {
   try {
-    console.log('Create technician request body:', req.body);
     const { userId, name, employeeId, department, position, hireDate, user: userField, ...otherData } = req.body;
 
     // Validate required fields
@@ -164,17 +163,19 @@ const createTechnician = async (req, res) => {
 
     // Note: user field is already extracted separately above, so it won't be in cleanedOtherData
 
-    console.log('Cleaned otherData:', cleanedOtherData);
-
     const technicianData = {
       name: name.trim(),
-      employeeId: employeeId || null,
       department: department || 'workshop',
       position: position || 'technician',
       hireDate: validHireDate,
       ...cleanedOtherData,
       createdBy: req.user._id
     };
+
+    // Only set employeeId if it has a non-empty value (undefined works better with sparse index than null)
+    if (employeeId && employeeId.trim() !== '') {
+      technicianData.employeeId = employeeId.trim();
+    }
 
     // Only add user field if it's a valid ObjectId and user exists
     if (userId && userId.trim() !== '' && user) {
@@ -253,7 +254,18 @@ const updateTechnician = async (req, res) => {
     }
 
     // Update other fields
-    const { name, ...updateData } = req.body;
+    const { name, employeeId, ...updateData } = req.body;
+    
+    // Handle employeeId separately - only set if it has a non-empty value
+    if (employeeId !== undefined) {
+      if (employeeId && employeeId.trim() !== '') {
+        technician.employeeId = employeeId.trim();
+      } else {
+        // Remove employeeId if empty string is provided
+        technician.employeeId = undefined;
+      }
+    }
+    
     Object.assign(technician, updateData);
     technician.lastUpdatedBy = req.user._id;
     await technician.save();

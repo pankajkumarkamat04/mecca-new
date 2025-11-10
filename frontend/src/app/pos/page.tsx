@@ -202,12 +202,27 @@ const POSPage: React.FC = () => {
       ? Number((receipt as any).total) 
       : (paidAmount > 0 ? paidAmount : itemsSubtotal);
 
-    // If backend didn't provide totalTax, infer it from totals
-    let inferredTax = Math.max(0, total - subtotal - shippingCost + totalDiscount);
-    if (inferredTax === 0 && (company?.defaultTaxRate ?? 0) > 0) {
-      inferredTax = Math.max(0, (subtotal - totalDiscount) * (Number(company?.defaultTaxRate) / 100));
+    // Calculate tax from items if totalTax is not provided
+    // This ensures manual tax rates are properly reflected
+    let calculatedTax = 0;
+    if (typeof (receipt as any).totalTax === 'number') {
+      calculatedTax = (receipt as any).totalTax;
+    } else if (typeof (receipt as any).tax === 'number') {
+      calculatedTax = (receipt as any).tax;
+    } else {
+      // Calculate from items' taxRate
+      calculatedTax = (receipt.items || []).reduce((sum, it: any) => {
+        const qty = Number(it.quantity) || 0;
+        const unit = Number(it.unitPrice ?? it.price) || 0;
+        const taxRate = Number(it.taxRate) || 0;
+        const itemSubtotal = qty * unit;
+        const discount = Number(it.discount) || 0;
+        const afterDiscount = itemSubtotal - (itemSubtotal * discount / 100);
+        const itemTax = (afterDiscount * taxRate) / 100;
+        return sum + itemTax;
+      }, 0);
     }
-    const totalTax = typeof (receipt as any).totalTax === 'number' ? (receipt as any).totalTax : (Number((receipt as any).tax) || inferredTax);
+    const totalTax = calculatedTax;
 
     return {
       _id: receipt.transactionId,
@@ -1291,7 +1306,29 @@ const POSPage: React.FC = () => {
                     const rTotalDiscount = typeof (receipt as any).totalDiscount === 'number' ? (receipt as any).totalDiscount : Number((receipt as any).discount) || 0;
                     const rShipping = (receipt as any).shipping?.cost ? Number((receipt as any).shipping.cost) : 0;
                     const rTotal = typeof (receipt as any).total === 'number' ? Number((receipt as any).total) : rItemsSubtotal;
-                    const rTax = typeof (receipt as any).totalTax === 'number' ? (receipt as any).totalTax : Math.max(0, rTotal - rSubtotal - rShipping + rTotalDiscount);
+                    
+                    // Calculate tax from items if totalTax is not provided (for manual tax rates)
+                    let rTax = 0;
+                    if (typeof (receipt as any).totalTax === 'number') {
+                      rTax = (receipt as any).totalTax;
+                    } else {
+                      // Calculate from items' taxRate to ensure manual tax rates are reflected
+                      rTax = (receipt.items || []).reduce((sum: number, it: any) => {
+                        const qty = Number(it.quantity) || 0;
+                        const unit = Number(it.unitPrice ?? it.price) || 0;
+                        const taxRate = Number(it.taxRate) || 0;
+                        const itemSubtotal = qty * unit;
+                        const discount = Number(it.discount) || 0;
+                        const afterDiscount = itemSubtotal - (itemSubtotal * discount / 100);
+                        const itemTax = (afterDiscount * taxRate) / 100;
+                        return sum + itemTax;
+                      }, 0);
+                      
+                      // Fallback: infer from total if calculation gives 0
+                      if (rTax === 0) {
+                        rTax = Math.max(0, rTotal - rSubtotal - rShipping + rTotalDiscount);
+                      }
+                    }
                     return (
                       <>
                         <div className="flex justify-between text-sm text-gray-600">

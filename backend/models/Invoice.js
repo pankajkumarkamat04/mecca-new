@@ -313,14 +313,23 @@ invoiceSchema.pre('save', function(next) {
   }, 0);
 
   // Calculate total tax from both taxes array and individual item taxes
-  const taxesArrayTotal = this.taxes.reduce((sum, tax) => sum + tax.amount, 0);
-  const itemTaxesTotal = this.items.reduce((sum, item) => {
-    const discountAmount = (item.unitPrice * item.quantity * item.discount) / 100;
-    const afterDiscount = (item.unitPrice * item.quantity) - discountAmount;
-    const taxAmount = (afterDiscount * item.taxRate) / 100;
-    return sum + taxAmount;
-  }, 0);
-  this.totalTax = taxesArrayTotal + itemTaxesTotal;
+  // For POS transactions, respect the manually calculated totalTax if already set
+  // (to preserve manual tax overrides)
+  if (this.isPosTransaction && typeof this.totalTax === 'number' && this.totalTax >= 0) {
+    // Keep the manually set totalTax for POS transactions
+    // This preserves manual tax rate overrides set in POS
+    // Do NOT recalculate - use the value that was set when creating the invoice
+  } else {
+    // Recalculate for non-POS transactions or if totalTax wasn't set
+    const taxesArrayTotal = this.taxes.reduce((sum, tax) => sum + tax.amount, 0);
+    const itemTaxesTotal = this.items.reduce((sum, item) => {
+      const discountAmount = (item.unitPrice * item.quantity * item.discount) / 100;
+      const afterDiscount = (item.unitPrice * item.quantity) - discountAmount;
+      const taxAmount = (afterDiscount * item.taxRate) / 100;
+      return sum + taxAmount;
+    }, 0);
+    this.totalTax = taxesArrayTotal + itemTaxesTotal;
+  }
 
   // Calculate final total
   this.total = this.subtotal - this.totalDiscount + this.totalTax + (this.shipping?.cost || 0);

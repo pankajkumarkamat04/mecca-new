@@ -139,6 +139,7 @@ const createTransaction = async (req, res) => {
       }
       }
       
+      // Calculate tax on line base (before discount, since POS doesn't use discounts)
       const lineTax = (lineBase * effectiveTaxRate) / 100;
       subtotal += lineBase;
       totalTax += lineTax;
@@ -151,8 +152,8 @@ const createTransaction = async (req, res) => {
         quantity,
         unitPrice: unitPriceBase, // Store in base currency (USD)
         discount: 0,
-        taxRate: effectiveTaxRate, // Store the effective tax rate used
-        total: 0, // calculated by pre-save, but we keep our totals above
+        taxRate: effectiveTaxRate, // Store the effective tax rate used (critical for receipt display)
+        total: lineBase + lineTax, // Calculate total including tax
         taxOverride: {
           applied: transactionData.applyTax !== undefined || item.applyTax !== undefined,
           universalOverride: transactionData.applyTax !== undefined,
@@ -289,7 +290,7 @@ const createTransaction = async (req, res) => {
       shipping: { cost: shippingCost },
       subtotal,
       totalDiscount,
-      totalTax,
+      totalTax: Number(totalTax.toFixed(2)), // Ensure totalTax is explicitly set as a number
       total,
       paid: Number(paidAmount.toFixed(2)),
       balance: Number(balanceAmount.toFixed(2)),

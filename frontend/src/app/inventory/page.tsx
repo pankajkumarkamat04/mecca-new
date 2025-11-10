@@ -1648,6 +1648,70 @@ const InventoryPage: React.FC = () => {
           </div>
         )}
 
+        {/* Stock Take Tab */}
+        {activeTab === 'stock-taking' && (
+          <div className="space-y-6">
+            <div className="bg-white rounded-lg shadow-sm border p-6">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
+                <div>
+                  <h2 className="text-xl font-semibold text-gray-900">Stock Taking / Cycle Count</h2>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Perform physical inventory counts and adjust stock levels based on actual quantities
+                  </p>
+                </div>
+                <Button
+                  onClick={() => setIsStockTakingModalOpen(true)}
+                  leftIcon={<ClipboardDocumentListIcon className="h-5 w-5" />}
+                  className="w-full sm:w-auto"
+                >
+                  Start Stock Take
+                </Button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="flex items-center">
+                    <ClipboardDocumentListIcon className="h-8 w-8 text-blue-600" />
+                    <div className="ml-4">
+                      <p className="text-sm font-medium text-gray-500">Stock Take Process</p>
+                      <p className="text-lg font-semibold text-gray-900">Physical Count</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <div className="flex items-center">
+                    <CheckCircleIcon className="h-8 w-8 text-green-600" />
+                    <div className="ml-4">
+                      <p className="text-sm font-medium text-gray-500">Accuracy</p>
+                      <p className="text-lg font-semibold text-gray-900">Verified</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                  <div className="flex items-center">
+                    <ArrowPathIcon className="h-8 w-8 text-purple-600" />
+                    <div className="ml-4">
+                      <p className="text-sm font-medium text-gray-500">Auto Adjustment</p>
+                      <p className="text-lg font-semibold text-gray-900">Enabled</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="border-t border-gray-200 pt-6">
+                <h3 className="text-lg font-medium text-gray-900 mb-4">How to Perform Stock Take</h3>
+                <ol className="list-decimal list-inside space-y-2 text-sm text-gray-700">
+                  <li>Click "Start Stock Take" button above</li>
+                  <li>Select the warehouse you want to count</li>
+                  <li>Add products and enter the actual quantities found</li>
+                  <li>Review the differences between recorded and actual stock</li>
+                  <li>Complete the stock take to automatically adjust inventory levels</li>
+                </ol>
+              </div>
+            </div>
+          </div>
+        )}
+
 
 
 
