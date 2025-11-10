@@ -88,8 +88,19 @@ const SupportPage: React.FC = () => {
     },
   });
 
-  const handleViewTicket = (ticket: SupportTicket) => {
-    setSelectedTicket(ticket);
+  const handleViewTicket = async (ticket: SupportTicket) => {
+    // Fetch full ticket details with populated conversations.user
+    try {
+      const fullTicket = await supportAPI.getSupportTicketById(ticket._id);
+      if (fullTicket?.data?.data) {
+        setSelectedTicket(fullTicket.data.data);
+      } else {
+        setSelectedTicket(ticket);
+      }
+    } catch (error) {
+      console.error('Failed to fetch ticket details:', error);
+      setSelectedTicket(ticket);
+    }
     setIsViewModalOpen(true);
   };
 
@@ -198,8 +209,8 @@ const SupportPage: React.FC = () => {
       sortable: true,
       render: (row: SupportTicket) => (
         <div className="text-sm text-gray-900">
-          {typeof row.customer === 'object' 
-            ? `${row.customer.firstName} ${row.customer.lastName}`
+          {row.customer && typeof row.customer === 'object' && row.customer !== null
+            ? `${row.customer.firstName || ''} ${row.customer.lastName || ''}`.trim() || 'Unknown Customer'
             : 'Unknown Customer'
           }
         </div>
@@ -211,8 +222,8 @@ const SupportPage: React.FC = () => {
       sortable: true,
       render: (row: SupportTicket) => (
         <div className="text-sm text-gray-900">
-          {row.assignedTo && typeof row.assignedTo === 'object'
-            ? `${row.assignedTo.firstName} ${row.assignedTo.lastName}`
+          {row.assignedTo && typeof row.assignedTo === 'object' && row.assignedTo !== null
+            ? `${row.assignedTo.firstName || ''} ${row.assignedTo.lastName || ''}`.trim() || 'Unassigned'
             : 'Unassigned'
           }
         </div>
@@ -480,8 +491,8 @@ const SupportPage: React.FC = () => {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Customer</label>
                   <p className="text-sm text-gray-900">
-                    {typeof selectedTicket.customer === 'object' 
-                      ? `${selectedTicket.customer.firstName} ${selectedTicket.customer.lastName}`
+                    {selectedTicket.customer && typeof selectedTicket.customer === 'object' && selectedTicket.customer !== null
+                      ? `${selectedTicket.customer.firstName || ''} ${selectedTicket.customer.lastName || ''}`.trim() || 'Unknown Customer'
                       : 'Unknown Customer'
                     }
                   </p>
@@ -489,8 +500,8 @@ const SupportPage: React.FC = () => {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Assigned To</label>
                   <p className="text-sm text-gray-900">
-                    {selectedTicket.assignedTo && typeof selectedTicket.assignedTo === 'object'
-                      ? `${selectedTicket.assignedTo.firstName} ${selectedTicket.assignedTo.lastName}`
+                    {selectedTicket.assignedTo && typeof selectedTicket.assignedTo === 'object' && selectedTicket.assignedTo !== null
+                      ? `${selectedTicket.assignedTo.firstName || ''} ${selectedTicket.assignedTo.lastName || ''}`.trim() || 'Unassigned'
                       : 'Unassigned'
                     }
                   </p>
@@ -508,8 +519,8 @@ const SupportPage: React.FC = () => {
                           <div className="flex items-center">
                             <UserIcon className="h-4 w-4 text-gray-400 mr-2" />
                             <span className="text-sm font-medium text-gray-900">
-                              {typeof conversation.user === 'object' 
-                                ? `${conversation.user.firstName} ${conversation.user.lastName}`
+                              {conversation.user && typeof conversation.user === 'object' && conversation.user !== null
+                                ? `${conversation.user.firstName || ''} ${conversation.user.lastName || ''}`.trim() || 'Unknown User'
                                 : 'Unknown User'
                               }
                             </span>
@@ -578,7 +589,20 @@ const SupportPage: React.FC = () => {
           {selectedTicket && (
             <SupportReplyForm 
               ticket={selectedTicket}
-              onSuccess={() => setIsReplyModalOpen(false)}
+              onSuccess={async () => {
+                // Refetch the ticket details to get updated conversations with populated user
+                if (selectedTicket._id) {
+                  try {
+                    const updatedTicket = await supportAPI.getSupportTicketById(selectedTicket._id);
+                    if (updatedTicket?.data?.data) {
+                      setSelectedTicket(updatedTicket.data.data);
+                    }
+                  } catch (error) {
+                    console.error('Failed to refetch ticket:', error);
+                  }
+                }
+                setIsReplyModalOpen(false);
+              }}
             />
           )}
         </Modal>
@@ -659,15 +683,19 @@ const CreateTicketForm: React.FC<{ onClose: () => void; onSuccess: () => void }>
     }));
   };
 
-  const customerOptions = (customersData?.data?.data || []).map((customer: any) => ({
-    value: customer._id,
-    label: `${customer.firstName} ${customer.lastName} (${customer.email})`
-  }));
+  const customerOptions = (customersData?.data?.data || [])
+    .filter((customer: any) => customer && customer._id)
+    .map((customer: any) => ({
+      value: customer._id,
+      label: `${customer.firstName || ''} ${customer.lastName || ''} (${customer.email || 'No email'})`.trim()
+    }));
 
-  const userOptions = (usersData?.data?.data || []).map((user: any) => ({
-    value: user._id,
-    label: `${user.firstName} ${user.lastName} (${user.email})`
-  }));
+  const userOptions = (usersData?.data?.data || [])
+    .filter((user: any) => user && user._id)
+    .map((user: any) => ({
+      value: user._id,
+      label: `${user.firstName || ''} ${user.lastName || ''} (${user.email || 'No email'})`.trim()
+    }));
 
   return (
     <div className="space-y-6">
