@@ -791,6 +791,14 @@ const InventoryPage: React.FC = () => {
     refetchInterval: 30000, // Refetch every 30 seconds for real-time updates
   });
 
+  // Stock Alerts data (for recent alerts display in overview)
+  const { data: alertsData } = useQuery({
+    queryKey: ['stock-alerts', { limit: 5 }],
+    queryFn: () => stockAlertAPI.getStockAlerts({ limit: 5, page: 1 }),
+    enabled: activeTab === 'overview',
+    refetchInterval: 30000, // Refetch every 30 seconds for real-time updates
+  });
+
   // Stock Taking data (fetch when tab is active)
   const { data: stockTakingData } = useQuery({
     queryKey: ['stock-taking-data'],
@@ -1207,92 +1215,6 @@ const InventoryPage: React.FC = () => {
     };
     return colors[alertType as keyof typeof colors] || 'bg-gray-100 text-gray-800';
   };
-
-  // Stock Alerts columns
-  const alertsColumns = [
-    {
-      key: 'product',
-      label: 'Product',
-      render: (row: any) => (
-        <div className="flex items-center">
-          <ExclamationTriangleIcon className="h-5 w-5 text-gray-400 mr-2" />
-          <div>
-            <div className="font-medium text-gray-900">{row.productName}</div>
-            <div className="text-sm text-gray-500">{row.sku}</div>
-          </div>
-        </div>
-      ),
-    },
-    {
-      key: 'alertType',
-      label: 'Alert Type',
-      render: (row: any) => (
-        <div className="flex flex-col space-y-1">
-          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getAlertTypeColor(row.alertType)}`}>
-            {(row.alertType || 'unknown').replace('_', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
-          </span>
-          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getSeverityColor(row.severity)}`}>
-            {(row.severity || 'unknown').charAt(0).toUpperCase() + (row.severity || 'unknown').slice(1)}
-          </span>
-        </div>
-      ),
-    },
-    {
-      key: 'currentStock',
-      label: 'Stock Level',
-      render: (row: any) => (
-        <div className="text-sm">
-          <div className="text-gray-900">{row.currentStock} units</div>
-          <div className="text-gray-500">Threshold: {row.threshold}</div>
-        </div>
-      ),
-    },
-    {
-      key: 'warehouse',
-      label: 'Warehouse',
-      render: (row: any) => (
-        <div className="text-sm text-gray-900">
-          {row.warehouse?.name || 'No warehouse'}
-        </div>
-      ),
-    },
-    {
-      key: 'message',
-      label: 'Message',
-      render: (row: any) => (
-        <div className="text-sm text-gray-900 max-w-xs truncate">
-          {row.message}
-        </div>
-      ),
-    },
-    {
-      key: 'createdAt',
-      label: 'Created',
-      render: (row: any) => (
-        <div className="text-sm text-gray-900">
-          {new Date(row.createdAt).toLocaleDateString()}
-        </div>
-      ),
-    },
-    {
-      key: 'actions',
-      label: 'Actions',
-      render: (row: any) => (
-        <div className="flex items-center space-x-2">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => {
-              setSelectedAlert(row);
-              setIsViewAlertModalOpen(true);
-            }}
-          >
-            View
-          </Button>
-        </div>
-      ),
-    },
-  ];
 
   const tabs = [
     { id: 'overview', name: 'Overview', icon: ChartBarIcon },
@@ -1745,69 +1667,6 @@ const InventoryPage: React.FC = () => {
           <MoveStockModal onClose={() => setIsMoveStockModalOpen(false)} />
         </Modal>
 
-        {/* View Alert Modal */}
-        <Modal
-          isOpen={isViewAlertModalOpen}
-          onClose={() => setIsViewAlertModalOpen(false)}
-          title="Alert Details"
-          size="lg"
-        >
-          {selectedAlert && (
-            <div className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Product</label>
-                  <div className="text-sm text-gray-900">
-                    <div className="font-medium">{selectedAlert.productName}</div>
-                    <div className="text-gray-500">SKU: {selectedAlert.sku}</div>
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Warehouse</label>
-                  <div className="text-sm text-gray-900">{selectedAlert.warehouse?.name || 'No warehouse'}</div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Alert Type</label>
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getAlertTypeColor(selectedAlert.alertType)}`}>
-                    {(selectedAlert.alertType || 'unknown').replace('_', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
-                  </span>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Severity</label>
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getSeverityColor(selectedAlert.severity)}`}>
-                    {(selectedAlert.severity || 'unknown').charAt(0).toUpperCase() + (selectedAlert.severity || 'unknown').slice(1)}
-                  </span>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Current Stock</label>
-                  <div className="text-sm text-gray-900">{selectedAlert.currentStock} units</div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Threshold</label>
-                  <div className="text-sm text-gray-900">{selectedAlert.threshold} units</div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
-                  <div className="flex items-center space-x-2">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                      Active Alert
-                      </span>
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Created</label>
-                  <div className="text-sm text-gray-900">{new Date(selectedAlert.createdAt).toLocaleString()}</div>
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Message</label>
-                <div className="text-sm text-gray-900 p-3 bg-gray-50 rounded-md">
-                  {selectedAlert.message}
-                </div>
-              </div>
-            </div>
-          )}
-        </Modal>
 
       </div>
     </ConditionalLayout>
