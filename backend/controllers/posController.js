@@ -47,11 +47,12 @@ const createTransaction = async (req, res) => {
     const transactionData = req.body;
     transactionData.createdBy = req.user._id;
 
-    // Get settings for currency information
+    // Get settings for currency information and default tax rate
     const settings = await Setting.getSingleton();
     const displayCurrency = transactionData.displayCurrency || settings.company.currencySettings?.defaultDisplayCurrency || 'USD';
     const currencyData = prepareCurrencyData(settings, displayCurrency);
     const exchangeRate = currencyData.exchangeRate || 1;
+    const defaultTaxRate = Number(settings?.company?.defaultTaxRate || 0);
 
     // Validate items and stock availability (no stock changes here)
     for (const item of transactionData.items) {
@@ -122,7 +123,8 @@ const createTransaction = async (req, res) => {
       
       // 1. Check if universal tax override is applied
       if (transactionData.applyTax !== undefined) {
-        effectiveTaxRate = transactionData.applyTax ? productTaxRate : 0;
+        // Use product tax rate if available, otherwise fall back to default tax rate
+        effectiveTaxRate = transactionData.applyTax ? (productTaxRate > 0 ? productTaxRate : defaultTaxRate) : 0;
       }
       // 2. Check if customer is tax exempt
       else if (customerTaxExempt) {
@@ -132,10 +134,10 @@ const createTransaction = async (req, res) => {
       else if (product.taxSettings?.isTaxable === false) {
         effectiveTaxRate = 0;
       }
-      // 4. No manual tax entered, no auto setting - use product's tax rate if it exists
+      // 4. No manual tax entered, no auto setting - use product's tax rate if it exists, otherwise use default
       else {
-        // If product has a tax rate defined, use it (product is considered taxable by default)
-        effectiveTaxRate = productTaxRate;
+        // If product has a tax rate defined, use it; otherwise use company default tax rate
+        effectiveTaxRate = productTaxRate > 0 ? productTaxRate : defaultTaxRate;
       }
       }
       
