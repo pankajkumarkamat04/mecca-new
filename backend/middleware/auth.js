@@ -57,18 +57,112 @@ const checkPermission = (module, action) => {
       return next();
     }
 
-    // Check if user has specific permission
-    const hasPermission = req.user.permissions.some(permission => 
-      permission.module === module && permission.actions.includes(action)
-    );
+    // Check if user has specific permission in permissions array
+    if (req.user.permissions && req.user.permissions.length > 0) {
+      const hasPermission = req.user.permissions.some(permission => 
+        permission.module === module && permission.actions.includes(action)
+      );
 
-    if (!hasPermission) {
-      return res.status(403).json({ 
-        message: `Access denied. Required permission: ${module}.${action}` 
-      });
+      if (hasPermission) {
+        return next();
+      }
     }
 
-    next();
+    // Fallback to role-based permissions if no explicit permissions set
+    const rolePermissions = {
+      manager: {
+        users: ['read', 'create', 'update'],
+        products: ['read', 'create', 'update', 'delete'],
+        customers: ['read', 'create', 'update', 'delete'],
+        suppliers: ['read', 'create', 'update', 'delete'],
+        invoices: ['read', 'create', 'update', 'delete'],
+        inventory: ['read', 'create', 'update', 'delete'],
+        pos: ['read', 'create', 'update', 'delete'],
+        reports: ['read'],
+        reportsAnalytics: ['read'],
+        support: ['read', 'create', 'update', 'delete'],
+        accounts: ['read', 'create', 'update', 'delete'],
+        transactions: ['read', 'create', 'update', 'delete'],
+        workshop: ['read', 'create', 'update', 'delete'],
+        settings: ['read', 'create', 'update', 'delete'],
+        customerInquiries: ['read', 'create', 'update', 'delete'],
+        quotations: ['read', 'create', 'update', 'delete'],
+        orders: ['read', 'create', 'update', 'delete'],
+        deliveries: ['read', 'create', 'update', 'delete'],
+        warehouses: ['read', 'create', 'update', 'delete'],
+        stockAlerts: ['read', 'create', 'update', 'delete'],
+        purchaseOrders: ['read', 'create', 'update', 'delete'],
+        resources: ['read', 'create', 'update', 'delete'],
+        receivedGoods: ['read', 'create', 'update', 'delete'],
+      },
+      warehouse_manager: {
+        inventory: ['read', 'create', 'update', 'delete'],
+        products: ['read', 'create', 'update', 'delete'],
+        orders: ['read', 'create', 'update', 'delete'],
+        deliveries: ['read', 'create', 'update', 'delete'],
+        warehouses: ['read', 'create', 'update', 'delete'],
+        stockAlerts: ['read', 'create', 'update', 'delete'],
+        purchaseOrders: ['read', 'create', 'update', 'delete'],
+        receivedGoods: ['read', 'create', 'update', 'delete'],
+        reports: ['read', 'create'],
+        reportsAnalytics: ['read', 'create'],
+        stockTaking: ['read', 'create', 'update', 'delete'],
+        users: ['read'],
+        customers: ['read', 'create', 'update'],
+        suppliers: ['read', 'create', 'update'],
+      },
+      warehouse_employee: {
+        inventory: ['read', 'update'],
+        orders: ['read', 'update'],
+        deliveries: ['read', 'update'],
+        warehouses: ['read'],
+        stockAlerts: ['read', 'update'],
+        purchaseOrders: ['read'],
+        receivedGoods: ['read', 'create', 'update'],
+        customers: ['read', 'create', 'update'],
+        reportsAnalytics: ['read'],
+      },
+      sales_person: {
+        customers: ['read', 'create', 'update'],
+        products: ['read'],
+        invoices: ['read', 'create', 'update'],
+        quotations: ['read', 'create', 'update'],
+        orders: ['read', 'create', 'update'],
+        pos: ['read', 'create'],
+        reportsAnalytics: ['read'],
+      },
+      workshop_employee: {
+        workshop: ['read', 'create', 'update', 'delete'],
+        products: ['read'],
+        customers: ['read', 'create', 'update'],
+        invoices: ['read', 'create', 'update'],
+        reportsAnalytics: ['read'],
+      },
+    };
+
+    // Check role-based permissions
+    const userRole = req.user.role;
+    if (rolePermissions[userRole]) {
+      const modulePermissions = rolePermissions[userRole][module];
+      if (modulePermissions && modulePermissions.includes(action)) {
+        return next();
+      }
+    }
+
+    // Also check warehouse position if user has warehouse assignment
+    if (req.user.warehouse && req.user.warehouse.warehousePosition) {
+      const warehousePosition = req.user.warehouse.warehousePosition;
+      if (rolePermissions[warehousePosition]) {
+        const modulePermissions = rolePermissions[warehousePosition][module];
+        if (modulePermissions && modulePermissions.includes(action)) {
+          return next();
+        }
+      }
+    }
+
+    return res.status(403).json({ 
+      message: `Access denied. Required permission: ${module}.${action}` 
+    });
   };
 };
 

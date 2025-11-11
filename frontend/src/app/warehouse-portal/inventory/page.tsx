@@ -22,10 +22,15 @@ import {
   ClipboardDocumentListIcon,
   PlusIcon,
   XMarkIcon,
+  MapPinIcon,
+  ArrowDownTrayIcon,
+  MagnifyingGlassIcon,
 } from '@heroicons/react/24/outline';
 import { productsAPI, enhancedInventoryAPI } from '@/lib/api';
 import ProductSelector from '@/components/ui/ProductSelector';
 import { Product } from '@/types';
+import { generateReportPDF, generateReportCSV, generateReportExcel } from '@/lib/reportUtils';
+import { formatCurrency, formatNumber } from '@/lib/utils';
 
 interface InventoryItem {
   product: {
@@ -56,6 +61,9 @@ const WarehouseInventory: React.FC = () => {
   const [selectedProduct, setSelectedProduct] = useState<InventoryItem | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [showLocationModal, setShowLocationModal] = useState(false);
+  const [selectedProductLocation, setSelectedProductLocation] = useState<any>(null);
+  const [showExportMenu, setShowExportMenu] = useState(false);
 
   // Fetch warehouse inventory
   const { data: inventoryData, isLoading } = useQuery({
@@ -98,6 +106,116 @@ const WarehouseInventory: React.FC = () => {
     }
   };
 
+  // Function to format location
+  const formatLocation = (location: any) => {
+    if (!location) return 'N/A';
+    if (typeof location === 'string') return location;
+    const parts = [];
+    if (location.zone) parts.push(`Zone: ${location.zone}`);
+    if (location.aisle) parts.push(`Aisle: ${location.aisle}`);
+    if (location.shelf) parts.push(`Shelf: ${location.shelf}`);
+    if (location.bin) parts.push(`Bin: ${location.bin}`);
+    if (location.locationCode) parts.push(`Code: ${location.locationCode}`);
+    return parts.length > 0 ? parts.join(', ') : 'N/A';
+  };
+
+  // Function to get location display (short format)
+  const getLocationDisplay = (location: any) => {
+    if (!location) return 'N/A';
+    if (typeof location === 'string') return location;
+    if (location.locationCode) return location.locationCode;
+    const parts = [];
+    if (location.zone) parts.push(location.zone);
+    if (location.aisle) parts.push(location.aisle);
+    if (location.shelf) parts.push(location.shelf);
+    if (location.bin) parts.push(location.bin);
+    return parts.length > 0 ? parts.join('-') : 'N/A';
+  };
+
+  // Handle show location
+  const handleShowLocation = (row: InventoryItem) => {
+    setSelectedProductLocation({
+      product: row.product.name,
+      sku: row.product.sku,
+      location: row.location || null
+    });
+    setShowLocationModal(true);
+  };
+
+  // Handle download report
+  const handleDownloadReport = async (format: 'pdf' | 'csv' | 'excel') => {
+    try {
+      const exportColumns = [
+        { key: 'product', label: 'Product' },
+        { key: 'sku', label: 'SKU' },
+        { key: 'category', label: 'Category' },
+        { key: 'currentStock', label: 'Current Stock' },
+        { key: 'stockStatus', label: 'Status' },
+        { key: 'location', label: 'Location Code' },
+        { key: 'locationDetails', label: 'Location Details' },
+        { key: 'costPrice', label: 'Cost Price' },
+        { key: 'totalValue', label: 'Total Value' },
+      ];
+
+      // Prepare data for export
+      const exportData = filteredInventory.map((row: InventoryItem) => {
+        const location = row.location || {};
+        return {
+          product: row.product.name || 'N/A',
+          sku: row.product.sku || 'N/A',
+          category: row.product.category?.name || 'N/A',
+          currentStock: row.currentStock || 0,
+          stockStatus: row.stockStatus?.replace('_', ' ') || 'N/A',
+          location: getLocationDisplay(location),
+          locationDetails: formatLocation(location),
+          costPrice: formatCurrency(row.costPrice || 0),
+          totalValue: formatCurrency(row.totalValue || 0),
+        };
+      });
+
+      // Calculate summary
+      const totalProducts = filteredInventory.length;
+      const totalStockValue = filteredInventory.reduce((sum: number, item: InventoryItem) => sum + (item.totalValue || 0), 0);
+      const inStockCount = filteredInventory.filter((item: InventoryItem) => item.stockStatus === 'in_stock').length;
+      const lowStockCount = filteredInventory.filter((item: InventoryItem) => item.stockStatus === 'low_stock').length;
+      const outOfStockCount = filteredInventory.filter((item: InventoryItem) => item.stockStatus === 'out_of_stock').length;
+
+      const reportData = {
+        summary: {
+          totalProducts,
+          totalStockValue: formatCurrency(totalStockValue),
+          inStockCount,
+          lowStockCount,
+          outOfStockCount,
+        },
+        items: exportData,
+      };
+
+      const exportColumnsForReport = exportColumns.map(col => ({
+        key: col.key,
+        label: col.label,
+        render: (row: any) => String(row[col.key] || 'N/A')
+      }));
+
+      const warehouseName = inventoryData?.data?.data?.warehouse || 'Warehouse';
+      const filename = `warehouse_inventory_${warehouseName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}`;
+
+      if (format === 'pdf') {
+        await generateReportPDF(`Warehouse Inventory Report - ${warehouseName}`, reportData, exportColumnsForReport, `${filename}.pdf`);
+        toast.success('PDF report downloaded successfully');
+      } else if (format === 'excel') {
+        generateReportExcel(`Warehouse Inventory Report - ${warehouseName}`, reportData, exportColumnsForReport, `${filename}.xlsx`);
+        toast.success('Excel report downloaded successfully');
+      } else {
+        generateReportCSV(`Warehouse Inventory Report - ${warehouseName}`, reportData, exportColumnsForReport, `${filename}.csv`);
+        toast.success('CSV report downloaded successfully');
+      }
+    } catch (error) {
+      console.error('Download error:', error);
+      toast.error('Failed to download report');
+    }
+  };
+
   const columns = [
     {
       key: 'product',
@@ -123,9 +241,9 @@ const WarehouseInventory: React.FC = () => {
       label: 'Stock',
       render: (row: InventoryItem) => (
         <div>
-          <div className="font-medium text-gray-900">{row.product.name}</div>
+          <div className="font-medium text-gray-900">{formatNumber(row.currentStock || 0)}</div>
           <div className="text-sm text-gray-500">
-            ${(row.costPrice || 0).toFixed(2)} per unit
+            {formatCurrency(row.costPrice || 0)} per unit
           </div>
         </div>
       ),
@@ -143,20 +261,29 @@ const WarehouseInventory: React.FC = () => {
     {
       key: 'location',
       label: 'Location',
-      render: (row: InventoryItem) => (
-        <div className="text-sm text-gray-900">
-          {row.location && typeof row.location === 'object' 
-            ? `${row.location.zone}-${row.location.aisle}-${row.location.shelf}-${row.location.bin}` 
-            : row.location || 'No location'}
-        </div>
-      ),
+      render: (row: InventoryItem) => {
+        const location = row.location;
+        const locationDisplay = getLocationDisplay(location);
+        return (
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-900">{locationDisplay}</span>
+            <button
+              onClick={() => handleShowLocation(row)}
+              className="p-1 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded"
+              title="View location details"
+            >
+              <MapPinIcon className="h-4 w-4" />
+            </button>
+          </div>
+        );
+      },
     },
     {
       key: 'totalValue',
       label: 'Value',
       render: (row: InventoryItem) => (
         <div className="font-medium text-gray-900">
-          ${(row.totalValue || 0).toFixed(2)}
+          {formatCurrency(row.totalValue || 0)}
         </div>
       ),
     },
@@ -318,12 +445,13 @@ const WarehouseInventory: React.FC = () => {
 
         {/* Filters */}
         <div className="rounded-lg bg-white p-4 shadow sm:p-6">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-[minmax(0,1fr)_200px]">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-[minmax(0,1fr)_200px_auto]">
             <div className="flex-1">
               <Input
                 placeholder="Search products..."
                 value={searchTerm}
                 onChange={(e) => handleSearch(e.target.value)}
+                leftIcon={<MagnifyingGlassIcon className="h-4 w-4" />}
               />
             </div>
             <div className="flex w-full items-center">
@@ -337,6 +465,54 @@ const WarehouseInventory: React.FC = () => {
                   { value: 'out_of_stock', label: 'Out of Stock' },
                 ]}
               />
+            </div>
+            <div className="relative">
+              <Button
+                variant="outline"
+                onClick={() => setShowExportMenu(!showExportMenu)}
+                leftIcon={<ArrowDownTrayIcon className="h-4 w-4" />}
+              >
+                Export
+              </Button>
+              {showExportMenu && (
+                <>
+                  <div
+                    className="fixed inset-0 z-10"
+                    onClick={() => setShowExportMenu(false)}
+                  />
+                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-20 border border-gray-200">
+                    <div className="py-1">
+                      <button
+                        onClick={() => {
+                          handleDownloadReport('pdf');
+                          setShowExportMenu(false);
+                        }}
+                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        Download as PDF
+                      </button>
+                      <button
+                        onClick={() => {
+                          handleDownloadReport('excel');
+                          setShowExportMenu(false);
+                        }}
+                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        Download as Excel
+                      </button>
+                      <button
+                        onClick={() => {
+                          handleDownloadReport('csv');
+                          setShowExportMenu(false);
+                        }}
+                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        Download as CSV
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -455,6 +631,112 @@ const WarehouseInventory: React.FC = () => {
             warehouseId={warehouseId} 
             onClose={() => setShowStockTakeModal(false)} 
           />
+        </Modal>
+
+        {/* Product Location Modal */}
+        <Modal
+          isOpen={showLocationModal}
+          onClose={() => setShowLocationModal(false)}
+          title="Product Location Details"
+          size="md"
+        >
+          {selectedProductLocation && (
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Product</label>
+                <p className="text-sm text-gray-900">{selectedProductLocation.product}</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">SKU</label>
+                <p className="text-sm text-gray-900">{selectedProductLocation.sku}</p>
+              </div>
+              <div className="border-t pt-4">
+                <label className="block text-sm font-medium text-gray-700 mb-3">Warehouse Location</label>
+                {selectedProductLocation.location ? (
+                  <div className="space-y-3">
+                    {selectedProductLocation.location.zone && (
+                      <div className="flex items-center justify-between py-2 border-b">
+                        <span className="text-sm font-medium text-gray-600">Zone:</span>
+                        <span className="text-sm text-gray-900">{selectedProductLocation.location.zone}</span>
+                      </div>
+                    )}
+                    {selectedProductLocation.location.aisle && (
+                      <div className="flex items-center justify-between py-2 border-b">
+                        <span className="text-sm font-medium text-gray-600">Aisle:</span>
+                        <span className="text-sm text-gray-900">{selectedProductLocation.location.aisle}</span>
+                      </div>
+                    )}
+                    {selectedProductLocation.location.shelf && (
+                      <div className="flex items-center justify-between py-2 border-b">
+                        <span className="text-sm font-medium text-gray-600">Shelf:</span>
+                        <span className="text-sm text-gray-900">{selectedProductLocation.location.shelf}</span>
+                      </div>
+                    )}
+                    {selectedProductLocation.location.bin && (
+                      <div className="flex items-center justify-between py-2 border-b">
+                        <span className="text-sm font-medium text-gray-600">Bin:</span>
+                        <span className="text-sm text-gray-900">{selectedProductLocation.location.bin}</span>
+                      </div>
+                    )}
+                    {selectedProductLocation.location.locationCode && (
+                      <div className="flex items-center justify-between py-2 border-b">
+                        <span className="text-sm font-medium text-gray-600">Location Code:</span>
+                        <span className="text-sm font-semibold text-blue-600">{selectedProductLocation.location.locationCode}</span>
+                      </div>
+                    )}
+                    {selectedProductLocation.location.floor && (
+                      <div className="flex items-center justify-between py-2 border-b">
+                        <span className="text-sm font-medium text-gray-600">Floor:</span>
+                        <span className="text-sm text-gray-900">{selectedProductLocation.location.floor}</span>
+                      </div>
+                    )}
+                    {selectedProductLocation.location.section && (
+                      <div className="flex items-center justify-between py-2 border-b">
+                        <span className="text-sm font-medium text-gray-600">Section:</span>
+                        <span className="text-sm text-gray-900">{selectedProductLocation.location.section}</span>
+                      </div>
+                    )}
+                    {selectedProductLocation.location.coordinates && (
+                      <div className="mt-3 p-3 bg-gray-50 rounded-lg">
+                        <p className="text-sm font-medium text-gray-700 mb-2">Coordinates:</p>
+                        <div className="text-sm text-gray-600">
+                          {selectedProductLocation.location.coordinates.x !== undefined && (
+                            <div>X: {selectedProductLocation.location.coordinates.x}</div>
+                          )}
+                          {selectedProductLocation.location.coordinates.y !== undefined && (
+                            <div>Y: {selectedProductLocation.location.coordinates.y}</div>
+                          )}
+                          {selectedProductLocation.location.coordinates.z !== undefined && (
+                            <div>Z: {selectedProductLocation.location.coordinates.z}</div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                    {selectedProductLocation.location.capacity && (
+                      <div className="flex items-center justify-between py-2 border-b">
+                        <span className="text-sm font-medium text-gray-600">Capacity:</span>
+                        <span className="text-sm text-gray-900">{selectedProductLocation.location.capacity}</span>
+                      </div>
+                    )}
+                    {selectedProductLocation.location.currentOccupancy !== undefined && (
+                      <div className="flex items-center justify-between py-2 border-b">
+                        <span className="text-sm font-medium text-gray-600">Current Occupancy:</span>
+                        <span className="text-sm text-gray-900">{selectedProductLocation.location.currentOccupancy}</span>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <MapPinIcon className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+                    <p className="text-sm text-gray-600">No location information available for this product</p>
+                  </div>
+                )}
+              </div>
+              <div className="flex justify-end pt-4 border-t">
+                <Button onClick={() => setShowLocationModal(false)}>Close</Button>
+              </div>
+            </div>
+          )}
         </Modal>
       </div>
     </WarehousePortalLayout>
@@ -629,6 +911,8 @@ const WarehouseStockTakingModal: React.FC<{
   const [notes, setNotes] = useState('');
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [actualQuantity, setActualQuantity] = useState(0);
+  const [showReview, setShowReview] = useState(false);
+  const [reviewResults, setReviewResults] = useState<any>(null);
 
   const { data: productsList, isLoading: productsLoading } = useQuery({
     queryKey: ['products-list'],
@@ -638,17 +922,13 @@ const WarehouseStockTakingModal: React.FC<{
 
   const stockTakingMutation = useMutation({
     mutationFn: (data: any) => enhancedInventoryAPI.performStockTaking(data),
-    onSuccess: () => {
+    onSuccess: (response: any) => {
       queryClient.invalidateQueries({ queryKey: ['warehouse-inventory'] });
       queryClient.invalidateQueries({ queryKey: ['inventory-levels'] });
       queryClient.invalidateQueries({ queryKey: ['stock-movements'] });
-      toast.success('Stock taking completed successfully');
-      onClose();
-      // Reset form
-      setStockItems([]);
-      setNotes('');
-      setSelectedProduct(null);
-      setActualQuantity(0);
+      // Show review results
+      setReviewResults(response?.data?.data || response?.data);
+      setShowReview(true);
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.message || 'Failed to complete stock taking');
@@ -693,6 +973,84 @@ const WarehouseStockTakingModal: React.FC<{
       notes
     });
   };
+
+  // If showing review results, display them
+  if (showReview && reviewResults) {
+    return (
+      <div className="space-y-6">
+        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <CheckCircleIcon className="h-5 w-5 text-green-600" />
+            <h3 className="text-lg font-semibold text-green-900">Stock Taking Completed Successfully</h3>
+          </div>
+          <p className="text-sm text-green-700">
+            Warehouse: {reviewResults.warehouse} | 
+            Products Checked: {reviewResults.totalProductsChecked} | 
+            Adjustments Made: {reviewResults.adjustmentsMade}
+          </p>
+        </div>
+
+        <div>
+          <h3 className="text-lg font-medium text-gray-900 mb-4">Review Differences</h3>
+          <div className="border rounded-lg overflow-hidden">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Product</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">SKU</th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Recorded Stock</th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actual Stock</th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Difference</th>
+                  <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Status</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {reviewResults.stockTakingResults?.map((result: any, index: number) => (
+                  <tr key={index} className={result.difference !== 0 ? 'bg-yellow-50' : ''}>
+                    <td className="px-4 py-3 text-sm text-gray-900">{result.product}</td>
+                    <td className="px-4 py-3 text-sm text-gray-600">{result.sku}</td>
+                    <td className="px-4 py-3 text-sm text-gray-900 text-right">{result.recordedStock}</td>
+                    <td className="px-4 py-3 text-sm text-gray-900 text-right">{result.actualStock}</td>
+                    <td className={`px-4 py-3 text-sm font-medium text-right ${
+                      result.difference > 0 ? 'text-green-600' : result.difference < 0 ? 'text-red-600' : 'text-gray-600'
+                    }`}>
+                      {result.difference > 0 ? '+' : ''}{result.difference}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-center">
+                      {result.adjusted ? (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                          Adjusted
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                          No Change
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-2">
+          <Button onClick={() => {
+            setShowReview(false);
+            setReviewResults(null);
+            // Reset form
+            setStockItems([]);
+            setNotes('');
+            setSelectedProduct(null);
+            setActualQuantity(0);
+            onClose();
+          }}>
+            Close
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
