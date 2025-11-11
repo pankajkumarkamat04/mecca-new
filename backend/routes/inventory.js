@@ -17,7 +17,9 @@ const {
   getReceivingNotes,
   getStockAlerts,
   getStockAlertStats,
-  checkLowStock
+  checkLowStock,
+  getStockTakeSessions,
+  getStockTakeSessionDetails
 } = require('../controllers/inventoryController');
 
 const router = express.Router();
@@ -102,5 +104,15 @@ router.get('/stock-alert-stats', auth, getStockAlertStats);
 // @desc    Check for low stock products
 // @access  Private
 router.post('/check-low-stock', auth, checkPermission('inventory', 'read'), checkLowStock);
+
+// @route   GET /api/inventory/stock-taking/sessions
+// @desc    Get past stock take sessions
+// @access  Private
+router.get('/stock-taking/sessions', auth, validatePagination(), validateDateRange(), getStockTakeSessions);
+
+// @route   GET /api/inventory/stock-taking/sessions/details
+// @desc    Get stock take session details
+// @access  Private
+router.get('/stock-taking/sessions/details', auth, getStockTakeSessionDetails);
 
 module.exports = router;

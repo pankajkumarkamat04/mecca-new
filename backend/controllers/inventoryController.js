@@ -1135,6 +1135,352 @@ const checkLowStock = async (req, res) => {
   }
 };
 
+// @desc    Get past stock take sessions
+// @route   GET /api/inventory/stock-taking/sessions
+// @access  Private
+const getStockTakeSessions = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+    const warehouseId = req.query.warehouse || '';
+    const startDate = req.query.startDate || '';
+    const endDate = req.query.endDate || '';
+
+    // Build filter for stock take movements
+    const filter = { movementType: 'stock_take' };
+    if (warehouseId) filter.warehouse = warehouseId;
+    
+    if (startDate || endDate) {
+      filter.createdAt = {};
+      if (startDate) filter.createdAt.$gte = new Date(startDate);
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        filter.createdAt.$lte = end;
+      }
+    }
+
+    // Aggregate stock takes to group by session
+    // Group by: createdBy, warehouse, date (rounded to hour), and notes
+    const sessions = await StockMovement.aggregate([
+      { $match: filter },
+      {
+        $group: {
+          _id: {
+            createdBy: '$createdBy',
+            warehouse: '$warehouse',
+            date: {
+              $dateToString: {
+                format: '%Y-%m-%d %H:00:00',
+                date: '$createdAt'
+              }
+            },
+            notes: { $ifNull: ['$notes', ''] }
+          },
+          movements: { $push: '$$ROOT' },
+          totalProducts: { $sum: 1 },
+          totalAdjustments: {
+            $sum: {
+              $cond: [{ $ne: ['$previousStock', '$newStock'] }, 1, 0]
+            }
+          },
+          createdAt: { $min: '$createdAt' },
+          createdAtMax: { $max: '$createdAt' },
+          warehouseName: { $first: '$warehouseName' },
+          createdByUser: { $first: '$createdBy' },
+          movementIds: { $push: '$_id' }
+        }
+      },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'createdByUser',
+          foreignField: '_id',
+          as: 'user'
+        }
+      },
+      {
+        $lookup: {
+          from: 'warehouses',
+          localField: '_id.warehouse',
+          foreignField: '_id',
+          as: 'warehouseData'
+        }
+      },
+      {
+        $project: {
+          _id: 1,
+          movements: 1,
+          movementIds: 1,
+          totalProducts: 1,
+          totalAdjustments: 1,
+          createdAt: 1,
+          createdAtMax: 1,
+          warehouseName: { $ifNull: ['$warehouseName', { $arrayElemAt: ['$warehouseData.name', 0] }] },
+          createdBy: {
+            firstName: { $arrayElemAt: ['$user.firstName', 0] },
+            lastName: { $arrayElemAt: ['$user.lastName', 0] }
+          },
+          notes: '$_id.notes',
+          warehouseId: '$_id.warehouse'
+        }
+      },
+      { $sort: { createdAt: -1 } },
+      { $skip: skip },
+      { $limit: limit }
+    ]);
+
+    // Get total count for pagination
+    const totalCountResult = await StockMovement.aggregate([
+      { $match: filter },
+      {
+        $group: {
+          _id: {
+            createdBy: '$createdBy',
+            warehouse: '$warehouse',
+            date: {
+              $dateToString: {
+                format: '%Y-%m-%d %H:00:00',
+                date: '$createdAt'
+              }
+            },
+            notes: { $ifNull: ['$notes', ''] }
+          }
+        }
+      },
+      { $count: 'total' }
+    ]);
+
+    const total = totalCountResult[0]?.total || 0;
+
+    // Populate product details for each movement and generate sessionId
+    const populatedSessions = await Promise.all(
+      sessions.map(async (session) => {
+        const populatedMovements = await StockMovement.populate(session.movements, {
+          path: 'product',
+          select: 'name sku'
+        });
+        // Generate sessionId from grouping criteria (for display, actual lookup uses query params)
+        const sessionId = `${session._id.createdBy}-${session._id.warehouse}-${session._id.date}-${encodeURIComponent(session._id.notes || '')}`;
+        
+        // Convert movement IDs to strings for easy serialization
+        const movementIdStrings = (session.movementIds || []).map(id => id.toString());
+        
+        return {
+          ...session,
+          movements: populatedMovements,
+          sessionId: sessionId,
+          sessionParams: {
+            createdBy: session._id.createdBy.toString(),
+            warehouse: session._id.warehouse.toString(),
+            date: session._id.date,
+            notes: session._id.notes || '',
+            // Also include the actual timestamps for more reliable querying
+            createdAt: session.createdAt ? new Date(session.createdAt).toISOString() : null,
+            createdAtMax: session.createdAtMax ? new Date(session.createdAtMax).toISOString() : null,
+            movementIds: movementIdStrings
+          }
+        };
+      })
+    );
+
+    res.json({
+      success: true,
+      data: populatedSessions,
+      pagination: {
+        page,
+        limit,
+        total,
+        pages: Math.ceil(total / limit)
+      }
+    });
+  } catch (error) {
+    console.error('Get stock take sessions error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+};
+
+// @desc    Get stock take session details
+// @route   GET /api/inventory/stock-taking/sessions/details
+// @access  Private
+const getStockTakeSessionDetails = async (req, res) => {
+  try {
+    const { createdBy, warehouse, date, notes, createdAt, createdAtMax, movementIds } = req.query;
+
+    // Convert to ObjectId if valid
+    let createdById = createdBy;
+    let warehouseId = warehouse;
+    try {
+      if (mongoose.Types.ObjectId.isValid(createdBy)) {
+        createdById = new mongoose.Types.ObjectId(createdBy);
+      }
+      if (mongoose.Types.ObjectId.isValid(warehouse)) {
+        warehouseId = new mongoose.Types.ObjectId(warehouse);
+      }
+    } catch (error) {
+      console.error('Error converting to ObjectId:', error);
+    }
+
+    let filter = {
+      movementType: 'stock_take',
+      createdBy: createdById,
+      warehouse: warehouseId
+    };
+
+    // If we have movement IDs, use them directly (most reliable)
+    // Handle both array and comma-separated string formats
+    let movementIdArray = [];
+    if (movementIds) {
+      if (Array.isArray(movementIds)) {
+        movementIdArray = movementIds;
+      } else if (typeof movementIds === 'string') {
+        // Handle comma-separated string
+        movementIdArray = movementIds.split(',').map(id => id.trim()).filter(id => id);
+      }
+    }
+    
+    if (movementIdArray.length > 0) {
+      const validIds = movementIdArray.filter(id => mongoose.Types.ObjectId.isValid(id)).map(id => new mongoose.Types.ObjectId(id));
+      if (validIds.length > 0) {
+        filter._id = { $in: validIds };
+        // Remove other filters when using IDs directly
+        delete filter.createdBy;
+        delete filter.warehouse;
+        delete filter.movementType;
+        console.log('Using movement IDs for query:', validIds.length);
+      }
+    } 
+    // If we have actual timestamps, use them (more reliable than date string)
+    else if (createdAt && createdAtMax) {
+      try {
+        const startTime = new Date(createdAt);
+        const endTime = new Date(createdAtMax);
+        // Add a small buffer (1 minute) to account for any timing issues
+        startTime.setSeconds(startTime.getSeconds() - 60);
+        endTime.setSeconds(endTime.getSeconds() + 60);
+        filter.createdAt = {
+          $gte: startTime,
+          $lte: endTime
+        };
+        console.log('Using timestamp range:', { startTime: startTime.toISOString(), endTime: endTime.toISOString() });
+      } catch (error) {
+        console.error('Error parsing timestamps:', error);
+      }
+    }
+    // Fallback to date string parsing
+    else if (date) {
+      console.log('Using date string fallback:', date);
+      let sessionDate;
+      try {
+        if (date.includes(' ')) {
+          const [datePart, timePart] = date.split(' ');
+          const [hours, minutes] = timePart.split(':');
+          sessionDate = new Date(`${datePart}T${hours}:${minutes}:00`);
+        } else {
+          sessionDate = new Date(date);
+        }
+        
+        if (isNaN(sessionDate.getTime())) {
+          throw new Error('Invalid date');
+        }
+        
+        const startTime = new Date(sessionDate);
+        startTime.setMinutes(0);
+        startTime.setSeconds(0);
+        startTime.setMilliseconds(0);
+        
+        const endTime = new Date(startTime);
+        endTime.setHours(endTime.getHours() + 1);
+        
+        filter.createdAt = {
+          $gte: startTime,
+          $lt: endTime
+        };
+      } catch (error) {
+        console.error('Error parsing date:', error);
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid date format: ' + error.message
+        });
+      }
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing required parameters: need either movementIds, createdAt/createdAtMax, or date'
+      });
+    }
+
+    // Handle notes filter - only if not using movement IDs
+    if (!filter._id) {
+      if (notes && notes !== '' && notes !== 'undefined') {
+        const decodedNotes = decodeURIComponent(notes);
+        filter.notes = decodedNotes;
+      } else {
+        filter.$or = [
+          { notes: { $exists: false } },
+          { notes: null },
+          { notes: '' }
+        ];
+      }
+    }
+
+    console.log('Final filter:', JSON.stringify(filter, null, 2));
+
+    const movements = await StockMovement.find(filter)
+      .populate('product', 'name sku category')
+      .populate('createdBy', 'firstName lastName email')
+      .populate('warehouse', 'name')
+      .sort({ createdAt: 1 });
+
+    console.log('Found movements:', movements.length);
+
+    if (movements.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Stock take session not found'
+      });
+    }
+
+    const sessionData = {
+      sessionId: `${createdBy}-${warehouse}-${date}-${notes || ''}`,
+      warehouse: movements[0].warehouseName || movements[0].warehouse?.name,
+      warehouseId: movements[0].warehouse?._id || movements[0].warehouse,
+      createdBy: movements[0].createdBy,
+      createdAt: movements[0].createdAt,
+      notes: movements[0].notes || '',
+      totalProducts: movements.length,
+      totalAdjustments: movements.filter(m => m.previousStock !== m.newStock).length,
+      movements: movements.map(m => ({
+        product: m.product,
+        sku: m.product?.sku,
+        recordedStock: m.previousStock,
+        actualStock: m.newStock,
+        difference: m.newStock - m.previousStock,
+        adjusted: m.previousStock !== m.newStock,
+        quantity: m.quantity,
+        unitCost: m.unitCost,
+        totalCost: m.totalCost,
+        createdAt: m.createdAt
+      }))
+    };
+
+    res.json({
+      success: true,
+      data: sessionData
+    });
+  } catch (error) {
+    console.error('Get stock take session details error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+};
+
 module.exports = {
   getStockMovements,
   createStockMovement,
@@ -1151,5 +1497,7 @@ module.exports = {
   getReceivingNotes,
   getStockAlerts,
   getStockAlertStats,
-  checkLowStock
+  checkLowStock,
+  getStockTakeSessions,
+  getStockTakeSessionDetails
 };

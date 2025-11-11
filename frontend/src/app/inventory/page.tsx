@@ -74,6 +74,7 @@ const StockTakingModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     onSuccess: (response: any) => {
       queryClient.invalidateQueries({ queryKey: ['inventory-levels'] });
       queryClient.invalidateQueries({ queryKey: ['stock-movements'] });
+      queryClient.invalidateQueries({ queryKey: ['stock-take-sessions'] });
       // Show review results
       setReviewResults(response?.data?.data || response?.data);
       setShowReview(true);
@@ -889,6 +890,13 @@ const InventoryPage: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(10);
   const [movementType, setMovementType] = useState('all');
+  
+  // Stock Take Sessions state
+  const [stockTakeSessionsPage, setStockTakeSessionsPage] = useState(1);
+  const [stockTakeSessionsPageSize] = useState(10);
+  const [selectedStockTakeSession, setSelectedStockTakeSession] = useState<any>(null);
+  const [showStockTakeSessionDetails, setShowStockTakeSessionDetails] = useState(false);
+  const [showStockTakeExportMenu, setShowStockTakeExportMenu] = useState(false);
 
   const queryClient = useQueryClient();
 
@@ -947,6 +955,31 @@ const InventoryPage: React.FC = () => {
     queryKey: ['stock-taking-data'],
     queryFn: () => enhancedInventoryAPI.getWarehouseDashboard(),
     enabled: activeTab === 'stock-taking'
+  });
+
+  // Fetch stock take sessions
+  const { data: stockTakeSessionsData, isPending: stockTakeSessionsLoading, refetch: refetchStockTakeSessions } = useQuery({
+    queryKey: ['stock-take-sessions', stockTakeSessionsPage, stockTakeSessionsPageSize],
+    queryFn: () => enhancedInventoryAPI.getStockTakeSessions({
+      page: stockTakeSessionsPage,
+      limit: stockTakeSessionsPageSize
+    }),
+    enabled: activeTab === 'stock-taking'
+  });
+
+  // Fetch stock take session details
+  const { data: stockTakeSessionDetailsData, isPending: stockTakeSessionDetailsLoading, error: stockTakeSessionDetailsError } = useQuery({
+    queryKey: ['stock-take-session-details', selectedStockTakeSession?.sessionParams],
+    queryFn: async () => {
+      if (!selectedStockTakeSession?.sessionParams) {
+        throw new Error('Session parameters not available');
+      }
+      console.log('Fetching session details with params:', selectedStockTakeSession.sessionParams);
+      const response = await enhancedInventoryAPI.getStockTakeSessionDetails(selectedStockTakeSession.sessionParams);
+      console.log('Session details response:', response);
+      return response;
+    },
+    enabled: showStockTakeSessionDetails && !!selectedStockTakeSession?.sessionParams
   });
 
   // Receiving data (fetch when tab is active)
@@ -1175,6 +1208,153 @@ const InventoryPage: React.FC = () => {
       location: product.inventory?.warehouseLocation || null
     });
     setShowLocationModal(true);
+  };
+
+  // Handle view stock take session details
+  const handleViewStockTakeSession = (session: any) => {
+    console.log('Viewing stock take session:', session);
+    console.log('Session params:', session.sessionParams);
+    setSelectedStockTakeSession(session);
+    setShowStockTakeSessionDetails(true);
+  };
+
+  // Handle download stock take session
+  const handleDownloadStockTakeSession = async (format: 'pdf' | 'csv' | 'excel', session?: any) => {
+    try {
+      const sessionData = session || selectedStockTakeSession;
+      if (!sessionData) {
+        toast.error('No stock take session selected');
+        return;
+      }
+
+      // Fetch full session details if not already loaded
+      let details = stockTakeSessionDetailsData?.data?.data;
+      if (!details || details.sessionId !== sessionData.sessionId) {
+        const response = await enhancedInventoryAPI.getStockTakeSessionDetails(sessionData.sessionParams);
+        details = response?.data?.data;
+      }
+
+      if (!details) {
+        toast.error('Failed to load session details');
+        return;
+      }
+
+      const exportColumns = [
+        { key: 'product', label: 'Product' },
+        { key: 'sku', label: 'SKU' },
+        { key: 'recordedStock', label: 'Recorded Stock' },
+        { key: 'actualStock', label: 'Actual Stock' },
+        { key: 'difference', label: 'Difference' },
+        { key: 'adjusted', label: 'Adjusted' },
+        { key: 'unitCost', label: 'Unit Cost' },
+        { key: 'totalCost', label: 'Total Cost' },
+      ];
+
+      const exportData = details.movements.map((movement: any) => ({
+        product: movement.product?.name || 'N/A',
+        sku: movement.sku || 'N/A',
+        recordedStock: movement.recordedStock || 0,
+        actualStock: movement.actualStock || 0,
+        difference: movement.difference || 0,
+        adjusted: movement.adjusted ? 'Yes' : 'No',
+        unitCost: formatCurrency(movement.unitCost || 0),
+        totalCost: formatCurrency(movement.totalCost || 0),
+      }));
+
+      const reportData = {
+        summary: {
+          warehouse: details.warehouse,
+          createdBy: `${details.createdBy?.firstName || ''} ${details.createdBy?.lastName || ''}`.trim(),
+          createdAt: new Date(details.createdAt).toLocaleString(),
+          notes: details.notes || 'N/A',
+          totalProducts: details.totalProducts,
+          totalAdjustments: details.totalAdjustments,
+        },
+        items: exportData,
+      };
+
+      const exportColumnsForReport = exportColumns.map(col => ({
+        key: col.key,
+        label: col.label,
+        render: (row: any) => String(row[col.key] || 'N/A')
+      }));
+
+      const filename = `stock_take_${details.warehouse?.replace(/\s+/g, '_')}_${new Date(details.createdAt).toISOString().split('T')[0]}`;
+
+      if (format === 'pdf') {
+        await generateReportPDF(`Stock Take Report - ${details.warehouse}`, reportData, exportColumnsForReport, `${filename}.pdf`);
+        toast.success('PDF report downloaded successfully');
+      } else if (format === 'excel') {
+        generateReportExcel(`Stock Take Report - ${details.warehouse}`, reportData, exportColumnsForReport, `${filename}.xlsx`);
+        toast.success('Excel report downloaded successfully');
+      } else {
+        generateReportCSV(`Stock Take Report - ${details.warehouse}`, reportData, exportColumnsForReport, `${filename}.csv`);
+        toast.success('CSV report downloaded successfully');
+      }
+    } catch (error) {
+      console.error('Download error:', error);
+      toast.error('Failed to download report');
+    }
+  };
+
+  // Handle download all stock take sessions
+  const handleDownloadAllStockTakeSessions = async (format: 'pdf' | 'csv' | 'excel') => {
+    try {
+      const sessions = stockTakeSessionsData?.data?.data || [];
+      if (sessions.length === 0) {
+        toast.error('No stock take sessions to download');
+        return;
+      }
+
+      const exportColumns = [
+        { key: 'warehouse', label: 'Warehouse' },
+        { key: 'createdBy', label: 'Created By' },
+        { key: 'createdAt', label: 'Date' },
+        { key: 'totalProducts', label: 'Total Products' },
+        { key: 'totalAdjustments', label: 'Adjustments' },
+        { key: 'notes', label: 'Notes' },
+      ];
+
+      const exportData = sessions.map((session: any) => ({
+        warehouse: session.warehouseName || 'N/A',
+        createdBy: `${session.createdBy?.firstName || ''} ${session.createdBy?.lastName || ''}`.trim() || 'N/A',
+        createdAt: new Date(session.createdAt).toLocaleString(),
+        totalProducts: session.totalProducts || 0,
+        totalAdjustments: session.totalAdjustments || 0,
+        notes: session.notes || 'N/A',
+      }));
+
+      const reportData = {
+        summary: {
+          totalSessions: sessions.length,
+          totalProducts: sessions.reduce((sum: number, s: any) => sum + (s.totalProducts || 0), 0),
+          totalAdjustments: sessions.reduce((sum: number, s: any) => sum + (s.totalAdjustments || 0), 0),
+        },
+        items: exportData,
+      };
+
+      const exportColumnsForReport = exportColumns.map(col => ({
+        key: col.key,
+        label: col.label,
+        render: (row: any) => String(row[col.key] || 'N/A')
+      }));
+
+      const filename = `stock_take_sessions_${new Date().toISOString().split('T')[0]}`;
+
+      if (format === 'pdf') {
+        await generateReportPDF('Stock Take Sessions Report', reportData, exportColumnsForReport, `${filename}.pdf`);
+        toast.success('PDF report downloaded successfully');
+      } else if (format === 'excel') {
+        generateReportExcel('Stock Take Sessions Report', reportData, exportColumnsForReport, `${filename}.xlsx`);
+        toast.success('Excel report downloaded successfully');
+      } else {
+        generateReportCSV('Stock Take Sessions Report', reportData, exportColumnsForReport, `${filename}.csv`);
+        toast.success('CSV report downloaded successfully');
+      }
+    } catch (error) {
+      console.error('Download error:', error);
+      toast.error('Failed to download report');
+    }
   };
 
   // Handle download report
@@ -1832,6 +2012,157 @@ const InventoryPage: React.FC = () => {
                 </ol>
               </div>
             </div>
+
+            {/* Past Stock Takes Table */}
+            <div className="bg-white rounded-lg shadow-sm border p-6">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">Past Stock Takes</h3>
+                  <p className="text-sm text-gray-600 mt-1">
+                    View and download past stock take sessions
+                  </p>
+                </div>
+                <div className="relative">
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowStockTakeExportMenu(!showStockTakeExportMenu)}
+                    leftIcon={<ArrowDownTrayIcon className="h-4 w-4" />}
+                  >
+                    Export All
+                  </Button>
+                  {showStockTakeExportMenu && (
+                    <>
+                      <div
+                        className="fixed inset-0 z-10"
+                        onClick={() => setShowStockTakeExportMenu(false)}
+                      />
+                      <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-20 border border-gray-200">
+                        <div className="py-1">
+                          <button
+                            onClick={() => {
+                              handleDownloadAllStockTakeSessions('pdf');
+                              setShowStockTakeExportMenu(false);
+                            }}
+                            className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                          >
+                            Download as PDF
+                          </button>
+                          <button
+                            onClick={() => {
+                              handleDownloadAllStockTakeSessions('excel');
+                              setShowStockTakeExportMenu(false);
+                            }}
+                            className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                          >
+                            Download as Excel
+                          </button>
+                          <button
+                            onClick={() => {
+                              handleDownloadAllStockTakeSessions('csv');
+                              setShowStockTakeExportMenu(false);
+                            }}
+                            className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                          >
+                            Download as CSV
+                          </button>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              <DataTable
+                data={stockTakeSessionsData?.data?.data || []}
+                columns={[
+                  {
+                    key: 'warehouseName',
+                    label: 'Warehouse',
+                    render: (row: any) => (
+                      <div className="text-sm font-medium text-gray-900">
+                        {row.warehouseName || 'N/A'}
+                      </div>
+                    ),
+                  },
+                  {
+                    key: 'createdBy',
+                    label: 'Created By',
+                    render: (row: any) => (
+                      <div className="text-sm text-gray-900">
+                        {row.createdBy?.firstName && row.createdBy?.lastName
+                          ? `${row.createdBy.firstName} ${row.createdBy.lastName}`
+                          : 'N/A'}
+                      </div>
+                    ),
+                  },
+                  {
+                    key: 'createdAt',
+                    label: 'Date',
+                    render: (row: any) => (
+                      <div className="text-sm text-gray-900">
+                        {new Date(row.createdAt).toLocaleString()}
+                      </div>
+                    ),
+                  },
+                  {
+                    key: 'totalProducts',
+                    label: 'Products',
+                    render: (row: any) => (
+                      <div className="text-sm text-gray-900">
+                        {row.totalProducts || 0}
+                      </div>
+                    ),
+                  },
+                  {
+                    key: 'totalAdjustments',
+                    label: 'Adjustments',
+                    render: (row: any) => (
+                      <div className="text-sm text-gray-900">
+                        {row.totalAdjustments || 0}
+                      </div>
+                    ),
+                  },
+                  {
+                    key: 'notes',
+                    label: 'Notes',
+                    render: (row: any) => (
+                      <div className="text-sm text-gray-600 truncate max-w-xs">
+                        {row.notes || 'N/A'}
+                      </div>
+                    ),
+                  },
+                  {
+                    key: 'actions',
+                    label: 'Actions',
+                    render: (row: any) => (
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={() => handleViewStockTakeSession(row)}
+                          className="text-blue-600 hover:text-blue-800"
+                          title="View Details"
+                        >
+                          <EyeIcon className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDownloadStockTakeSession('pdf', row);
+                          }}
+                          className="text-green-600 hover:text-green-800"
+                          title="Download PDF"
+                        >
+                          <ArrowDownTrayIcon className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ),
+                  },
+                ]}
+                loading={stockTakeSessionsLoading}
+                pagination={stockTakeSessionsData?.data?.pagination}
+                onPageChange={setStockTakeSessionsPage}
+                emptyMessage="No stock take sessions found"
+              />
+            </div>
           </div>
         )}
 
@@ -2130,6 +2461,149 @@ const InventoryPage: React.FC = () => {
               <div className="flex justify-end pt-4 border-t">
                 <Button onClick={() => setShowLocationModal(false)}>Close</Button>
               </div>
+            </div>
+          )}
+        </Modal>
+
+        {/* Stock Take Session Details Modal */}
+        <Modal
+          isOpen={showStockTakeSessionDetails}
+          onClose={() => {
+            setShowStockTakeSessionDetails(false);
+            setSelectedStockTakeSession(null);
+          }}
+          title="Stock Take Session Details"
+          size="xl"
+        >
+          {stockTakeSessionDetailsLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="text-gray-500">Loading session details...</div>
+            </div>
+          ) : stockTakeSessionDetailsError ? (
+            <div className="text-center py-8">
+              <p className="text-red-500">Error loading session details: {stockTakeSessionDetailsError.message || 'Unknown error'}</p>
+              <p className="text-sm text-gray-500 mt-2">Session params: {JSON.stringify(selectedStockTakeSession?.sessionParams)}</p>
+            </div>
+          ) : stockTakeSessionDetailsData?.data?.data ? (
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Warehouse</label>
+                  <p className="text-sm text-gray-900">{stockTakeSessionDetailsData.data.data.warehouse}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Created By</label>
+                  <p className="text-sm text-gray-900">
+                    {stockTakeSessionDetailsData.data.data.createdBy?.firstName && stockTakeSessionDetailsData.data.data.createdBy?.lastName
+                      ? `${stockTakeSessionDetailsData.data.data.createdBy.firstName} ${stockTakeSessionDetailsData.data.data.createdBy.lastName}`
+                      : 'N/A'}
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
+                  <p className="text-sm text-gray-900">
+                    {new Date(stockTakeSessionDetailsData.data.data.createdAt).toLocaleString()}
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                  <p className="text-sm text-gray-900">{stockTakeSessionDetailsData.data.data.notes || 'N/A'}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Total Products</label>
+                  <p className="text-sm text-gray-900">{stockTakeSessionDetailsData.data.data.totalProducts}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Adjustments Made</label>
+                  <p className="text-sm text-gray-900">{stockTakeSessionDetailsData.data.data.totalAdjustments}</p>
+                </div>
+              </div>
+
+              <div className="border-t pt-4">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-medium text-gray-900">Products</h3>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDownloadStockTakeSession('pdf')}
+                    >
+                      Download PDF
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDownloadStockTakeSession('excel')}
+                    >
+                      Download Excel
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDownloadStockTakeSession('csv')}
+                    >
+                      Download CSV
+                    </Button>
+                  </div>
+                </div>
+                <div className="border rounded-lg overflow-hidden">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Product</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">SKU</th>
+                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Recorded</th>
+                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actual</th>
+                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Difference</th>
+                        <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Adjusted</th>
+                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Unit Cost</th>
+                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Total Cost</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {stockTakeSessionDetailsData.data.data.movements.map((movement: any, index: number) => (
+                        <tr key={index} className={movement.adjusted ? 'bg-yellow-50' : ''}>
+                          <td className="px-4 py-3 text-sm text-gray-900">{movement.product?.name || 'N/A'}</td>
+                          <td className="px-4 py-3 text-sm text-gray-600">{movement.sku || 'N/A'}</td>
+                          <td className="px-4 py-3 text-sm text-gray-900 text-right">{formatNumber(movement.recordedStock || 0)}</td>
+                          <td className="px-4 py-3 text-sm text-gray-900 text-right">{formatNumber(movement.actualStock || 0)}</td>
+                          <td className={`px-4 py-3 text-sm text-right font-medium ${
+                            (movement.difference || 0) > 0 ? 'text-green-600' : (movement.difference || 0) < 0 ? 'text-red-600' : 'text-gray-900'
+                          }`}>
+                            {movement.difference > 0 ? '+' : ''}{formatNumber(movement.difference || 0)}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-center">
+                            {movement.adjusted ? (
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                Yes
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                No
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-900 text-right">{formatCurrency(movement.unitCost || 0)}</td>
+                          <td className="px-4 py-3 text-sm text-gray-900 text-right">{formatCurrency(movement.totalCost || 0)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div className="flex justify-end pt-4 border-t">
+                <Button onClick={() => {
+                  setShowStockTakeSessionDetails(false);
+                  setSelectedStockTakeSession(null);
+                }}>
+                  Close
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <p className="text-gray-500">No session details available</p>
             </div>
           )}
         </Modal>

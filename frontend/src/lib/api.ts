@@ -370,6 +370,8 @@ export const enhancedInventoryAPI = {
   performStockTaking: (data: any) => api.post('/inventory/stock-taking', data),
   processReceiving: (data: any) => api.post('/inventory/receiving', data),
   processPicking: (data: any) => api.post('/inventory/picking', data),
+  getStockTakeSessions: (params?: any) => api.get('/inventory/stock-taking/sessions', { params }),
+  getStockTakeSessionDetails: (params?: any) => api.get('/inventory/stock-taking/sessions/details', { params }),
 };
 
 // Customer Inquiries API
