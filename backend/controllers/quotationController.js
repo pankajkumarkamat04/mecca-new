@@ -3,6 +3,7 @@ const Customer = require('../models/Customer');
 const Product = require('../models/Product');
 const Invoice = require('../models/Invoice');
 const Order = require('../models/Order');
+const Setting = require('../models/Setting');
 const { notifyWarehouseOfNewOrder } = require('../utils/warehouseNotification');
 
 // @desc    Get all quotations
@@ -113,6 +114,10 @@ const createQuotation = async (req, res) => {
     const quotationData = req.body;
     quotationData.createdBy = req.user._id;
 
+    // Get default tax rate from company settings
+    const settings = await Setting.getSingleton();
+    const defaultTaxRate = Number(settings?.company?.defaultTaxRate || 0);
+
     // Generate quotation number
     quotationData.quotationNumber = await Quotation.generateQuotationNumber();
 
@@ -147,9 +152,10 @@ const createQuotation = async (req, res) => {
         if (!item.unitPrice) {
           item.unitPrice = product.pricing.sellingPrice;
         }
-        // Set default tax rate from product if not provided
-        if (!item.taxRate && product.pricing.taxRate) {
-          item.taxRate = product.pricing.taxRate;
+        // Set tax rate: use provided rate, or product's tax rate, or company default tax rate
+        if (!item.taxRate) {
+          const productTaxRate = product.pricing?.taxRate || 0;
+          item.taxRate = productTaxRate > 0 ? productTaxRate : defaultTaxRate;
         }
         
         // Check inventory availability
@@ -212,6 +218,10 @@ const updateQuotation = async (req, res) => {
       });
     }
 
+    // Get default tax rate from company settings
+    const settings = await Setting.getSingleton();
+    const defaultTaxRate = Number(settings?.company?.defaultTaxRate || 0);
+
     const updateData = req.body;
 
     // Validate customer if provided
@@ -242,6 +252,11 @@ const updateQuotation = async (req, res) => {
           }
           item.name = product.name;
           item.description = product.description;
+          // Set tax rate: use provided rate, or product's tax rate, or company default tax rate
+          if (!item.taxRate) {
+            const productTaxRate = product.pricing?.taxRate || 0;
+            item.taxRate = productTaxRate > 0 ? productTaxRate : defaultTaxRate;
+          }
         }
       }
     }

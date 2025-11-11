@@ -231,8 +231,10 @@ const CustomerQuotationsPage: React.FC = () => {
                       <tr>
                         <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wide text-gray-500">Product</th>
                         <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wide text-gray-500">Quantity</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wide text-gray-500">Unit Price</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wide text-gray-500">Total</th>
+                        <th className="px-4 py-2 text-right text-xs font-medium uppercase tracking-wide text-gray-500">Unit Price</th>
+                        <th className="px-4 py-2 text-right text-xs font-medium uppercase tracking-wide text-gray-500">Discount %</th>
+                        <th className="px-4 py-2 text-right text-xs font-medium uppercase tracking-wide text-gray-500">Tax Rate %</th>
+                        <th className="px-4 py-2 text-right text-xs font-medium uppercase tracking-wide text-gray-500">Total</th>
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
@@ -240,8 +242,10 @@ const CustomerQuotationsPage: React.FC = () => {
                         <tr key={index}>
                           <td className="px-4 py-2 text-sm text-gray-900">{item.name}</td>
                           <td className="px-4 py-2 text-sm text-gray-900">{item.quantity}</td>
-                          <td className="px-4 py-2 text-sm text-gray-900">{formatCurrency(item.unitPrice)}</td>
-                          <td className="px-4 py-2 text-sm text-gray-900">{formatCurrency(item.total)}</td>
+                          <td className="px-4 py-2 text-sm text-gray-900 text-right">{formatCurrency(item.unitPrice)}</td>
+                          <td className="px-4 py-2 text-sm text-gray-900 text-right">{item.discount || 0}%</td>
+                          <td className="px-4 py-2 text-sm text-gray-900 text-right">{item.taxRate || 0}%</td>
+                          <td className="px-4 py-2 text-sm text-gray-900 text-right">{formatCurrency(item.total)}</td>
                         </tr>
                       ))}
                     </tbody>

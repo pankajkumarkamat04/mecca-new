@@ -124,11 +124,17 @@ const CreateQuotationForm: React.FC<CreateQuotationFormProps> = ({
     const updated = [...items];
     updated[index] = { ...updated[index], [field]: value };
     
-    // If product is selected, auto-populate unit price
+    // If product is selected, auto-populate unit price and tax rate
     if (field === 'product' && value) {
       const selectedProduct = products.find((p: any) => p._id === value);
-      if (selectedProduct && selectedProduct.pricing?.sellingPrice) {
-        updated[index].unitPrice = selectedProduct.pricing.sellingPrice;
+      if (selectedProduct) {
+        if (selectedProduct.pricing?.sellingPrice) {
+          updated[index].unitPrice = selectedProduct.pricing.sellingPrice;
+        }
+        // Set tax rate: use product's tax rate if available, otherwise use company default
+        const productTaxRate = selectedProduct.pricing?.taxRate || 0;
+        const defaultTaxRate = company?.defaultTaxRate || 0;
+        updated[index].taxRate = productTaxRate > 0 ? productTaxRate : defaultTaxRate;
       }
     }
     
@@ -298,7 +304,7 @@ const CreateQuotationForm: React.FC<CreateQuotationFormProps> = ({
             <div className="space-y-4">
               {items.map((item, index) => (
                 <div key={index} className="border rounded-lg p-4">
-                  <div className="grid grid-cols-1 md:grid-cols-6 gap-4 items-end">
+                  <div className="grid grid-cols-1 md:grid-cols-7 gap-4 items-end">
                     <div className="md:col-span-2">
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         Product *
@@ -361,6 +367,25 @@ const CreateQuotationForm: React.FC<CreateQuotationFormProps> = ({
                         onChange={(e) => updateItem(index, 'discount', parseFloat(e.target.value) || 0)}
                         className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
                       />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Tax Rate %
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="0.01"
+                        value={item.taxRate || 0}
+                        onChange={(e) => updateItem(index, 'taxRate', parseFloat(e.target.value) || 0)}
+                        className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                        placeholder="Auto"
+                      />
+                      <p className="mt-1 text-xs text-gray-500">
+                        {item.taxRate > 0 ? `${item.taxRate}%` : 'Auto'}
+                      </p>
                     </div>
 
                     <div className="flex items-end">

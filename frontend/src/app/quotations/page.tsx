@@ -530,8 +530,10 @@ const QuotationsPage: React.FC = () => {
                       <tr>
                         <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Product</th>
                         <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Quantity</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Unit Price</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Total</th>
+                        <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Unit Price</th>
+                        <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Discount %</th>
+                        <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Tax Rate %</th>
+                        <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Total</th>
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
@@ -539,8 +541,10 @@ const QuotationsPage: React.FC = () => {
                         <tr key={index}>
                           <td className="px-4 py-2 text-sm text-gray-900">{item.name}</td>
                           <td className="px-4 py-2 text-sm text-gray-900">{item.quantity}</td>
-                          <td className="px-4 py-2 text-sm text-gray-900">${item.unitPrice?.toFixed(2) || '0.00'}</td>
-                          <td className="px-4 py-2 text-sm text-gray-900">${item.total?.toFixed(2) || '0.00'}</td>
+                          <td className="px-4 py-2 text-sm text-gray-900 text-right">${item.unitPrice?.toFixed(2) || '0.00'}</td>
+                          <td className="px-4 py-2 text-sm text-gray-900 text-right">{item.discount || 0}%</td>
+                          <td className="px-4 py-2 text-sm text-gray-900 text-right">{item.taxRate || 0}%</td>
+                          <td className="px-4 py-2 text-sm text-gray-900 text-right">${item.total?.toFixed(2) || '0.00'}</td>
                         </tr>
                       ))}
                     </tbody>

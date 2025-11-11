@@ -55,7 +55,9 @@ const QuotationReceipt: React.FC<QuotationReceiptProps> = ({
   const calculateTotalTax = () => {
     return quotation.items?.reduce((sum, item) => {
       const itemTotal = item.unitPrice * item.quantity;
-      const taxAmount = itemTotal * ((item.taxRate || 0) / 100);
+      const discountAmount = itemTotal * ((item.discount || 0) / 100);
+      const afterDiscount = itemTotal - discountAmount;
+      const taxAmount = afterDiscount * ((item.taxRate || 0) / 100);
       return sum + taxAmount;
     }, 0) || 0;
   };
@@ -68,10 +70,12 @@ const QuotationReceipt: React.FC<QuotationReceiptProps> = ({
     }, 0) || 0;
   };
 
-  const subtotal = calculateSubtotal();
-  const totalTax = calculateTotalTax();
-  const totalDiscount = calculateTotalDiscount();
-  const finalTotal = subtotal + totalTax - totalDiscount;
+  // Prefer backend-provided totals to avoid recomputation mismatches
+  const subtotal = typeof quotation.subtotal === 'number' ? quotation.subtotal : calculateSubtotal();
+  const totalTax = typeof quotation.totalTax === 'number' ? quotation.totalTax : calculateTotalTax();
+  const totalDiscount = typeof quotation.totalDiscount === 'number' ? quotation.totalDiscount : calculateTotalDiscount();
+  const computedTotal = subtotal + totalTax - totalDiscount + (quotation.shippingCost || 0);
+  const finalTotal = typeof quotation.totalAmount === 'number' ? quotation.totalAmount : computedTotal;
 
   // Full quotation receipt
   return (
@@ -163,8 +167,9 @@ const QuotationReceipt: React.FC<QuotationReceiptProps> = ({
             {quotation.items?.map((item, index) => {
               const itemTotal = item.unitPrice * item.quantity;
               const discountAmount = itemTotal * ((item.discount || 0) / 100);
-              const taxAmount = itemTotal * ((item.taxRate || 0) / 100);
-              const finalItemTotal = itemTotal - discountAmount + taxAmount;
+              const afterDiscount = itemTotal - discountAmount;
+              const taxAmount = afterDiscount * ((item.taxRate || 0) / 100);
+              const finalItemTotal = afterDiscount + taxAmount;
 
               return (
                 <tr key={index}>
