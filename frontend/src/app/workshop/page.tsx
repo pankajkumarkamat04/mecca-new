@@ -22,6 +22,8 @@ import api from '@/lib/api';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { formatDate, formatCurrency } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSettings } from '@/contexts/SettingsContext';
+import { generateJobCardPDF } from '@/lib/jobCardUtils';
 import { 
   ClipboardDocumentListIcon, 
   PlusIcon, 
@@ -40,7 +42,8 @@ import {
   UserPlusIcon,
   PencilSquareIcon,
   XMarkIcon,
-  CubeIcon
+  CubeIcon,
+  ArrowDownTrayIcon
 } from '@heroicons/react/24/outline';
 
 // Comprehensive Task Management Modal Component
@@ -1084,6 +1087,7 @@ const JobCompletionModal: React.FC<{
 
 const WorkshopPage: React.FC = () => {
   const { hasPermission } = useAuth();
+  const { company } = useSettings();
   const queryClient = useQueryClient();
   
   const [search, setSearch] = useState('');
@@ -1586,7 +1590,33 @@ const WorkshopPage: React.FC = () => {
     {
       key: 'actions',
       label: 'Actions',
-      render: (job: any) => (
+      render: (job: any) => {
+        const handleDownloadJobCard = async () => {
+          try {
+            // Fetch customer data if available
+            let customer = null;
+            if (job.customer) {
+              try {
+                const customerResponse = await customersAPI.getCustomerById(job.customer);
+                customer = customerResponse?.data?.data || null;
+              } catch (error) {
+                console.error('Error fetching customer:', error);
+              }
+            }
+            
+            await generateJobCardPDF({
+              job: job,
+              company: company || {},
+              customer: customer
+            });
+            toast.success('Job card downloaded successfully');
+          } catch (error) {
+            console.error('Error generating job card PDF:', error);
+            toast.error('Failed to generate job card PDF');
+          }
+        };
+
+        return (
         <div className="flex gap-1">
           {/* 1. View */}
           <Button
@@ -1602,7 +1632,18 @@ const WorkshopPage: React.FC = () => {
             <EyeIcon className="h-4 w-4" />
           </Button>
           
-          {/* 2. Assign */}
+          {/* 2. Download Job Card */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleDownloadJobCard}
+            title="Download Job Card PDF"
+            className="text-indigo-600 hover:text-indigo-700"
+          >
+            <ArrowDownTrayIcon className="h-4 w-4" />
+          </Button>
+          
+          {/* 3. Assign */}
           <Button
             variant="ghost"
             size="sm"
@@ -1696,7 +1737,7 @@ const WorkshopPage: React.FC = () => {
             </Button>
           )}
           
-          {/* 5. Delete */}
+          {/* 6. Delete */}
           <Button
             variant="ghost"
             size="sm"
@@ -1710,8 +1751,9 @@ const WorkshopPage: React.FC = () => {
             <XMarkIcon className="h-4 w-4" />
           </Button>
         </div>
-      )
-    }
+        );
+      }
+    },
   ];
 
   if (!hasPermission('workshop', 'read')) {
@@ -4894,6 +4936,8 @@ const JobDetailsView: React.FC<{
   onClose: () => void;
   updateTaskStatusMutation: any;
 }> = ({ job, onClose, updateTaskStatusMutation }) => {
+  const { company } = useSettings();
+  
   // Fetch fresh job data to ensure tasks are up-to-date
   const { data: jobData, isLoading: isJobLoading } = useQuery({
     queryKey: ['workshop-job', job._id],
@@ -4902,8 +4946,17 @@ const JobDetailsView: React.FC<{
     staleTime: 0, // Always refetch to get latest task status
   });
 
+  // Fetch customer data if available
+  const { data: customerData } = useQuery({
+    queryKey: ['customer', job.customer],
+    queryFn: () => customersAPI.getCustomerById(job.customer),
+    enabled: !!job.customer,
+    staleTime: 5 * 60 * 1000,
+  });
+
   // Use fresh job data if available, otherwise fall back to prop
   const currentJob = jobData?.data?.data || job;
+  const customer = customerData?.data?.data || null;
 
   // Show loading state if query is loading and no cached data
   if (isJobLoading && !jobData) {
@@ -4947,15 +5000,40 @@ const JobDetailsView: React.FC<{
     .filter(([key, value]) => typeof value === 'boolean' && value)
     .map(([key]) => key.replace(/([A-Z])/g, ' $1').trim());
 
+  const handleDownloadJobCard = async () => {
+    try {
+      await generateJobCardPDF({
+        job: currentJob,
+        company: company || {},
+        customer: customer
+      });
+      toast.success('Job card downloaded successfully');
+    } catch (error) {
+      console.error('Error generating job card PDF:', error);
+      toast.error('Failed to generate job card PDF');
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Job Header */}
       <div className="border-b border-gray-200 pb-4">
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-xl font-semibold text-gray-900">{currentJob.title}</h2>
-          <Badge color={getStatusColor(currentJob.status)}>
-            {currentJob.status.replace('_', ' ')}
-          </Badge>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDownloadJobCard}
+              className="flex items-center gap-2"
+            >
+              <ArrowDownTrayIcon className="h-4 w-4" />
+              Download Job Card
+            </Button>
+            <Badge color={getStatusColor(currentJob.status)}>
+              {currentJob.status.replace('_', ' ')}
+            </Badge>
+          </div>
         </div>
         {currentJob.description && (
           <p className="text-gray-600">{currentJob.description}</p>
