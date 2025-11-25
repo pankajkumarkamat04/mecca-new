@@ -4924,6 +4924,29 @@ const JobDetailsView: React.FC<{
     }
   };
 
+  const formatOdometer = (value: any) => {
+    if (value === null || value === undefined || value === '') return 'N/A';
+    const numericValue = Number(value);
+    if (Number.isNaN(numericValue)) return String(value);
+    return `${numericValue.toLocaleString()} km`;
+  };
+
+  const formatFuelLevel = (level: string | undefined) => {
+    if (!level) return 'N/A';
+    const fuelMap: Record<string, string> = {
+      E: 'Empty',
+      '1/4': '¼ Tank',
+      '1/2': 'Half Tank',
+      '3/4': '¾ Tank',
+      F: 'Full'
+    };
+    return fuelMap[level] || level;
+  };
+
+  const precheckIssues = Object.entries(currentJob.precheck || {})
+    .filter(([key, value]) => typeof value === 'boolean' && value)
+    .map(([key]) => key.replace(/([A-Z])/g, ' $1').trim());
+
   return (
     <div className="space-y-6">
       {/* Job Header */}
@@ -5071,6 +5094,46 @@ const JobDetailsView: React.FC<{
                   <span className="text-sm text-gray-900 ml-2">{currentJob.vehicle.vinNumber}</span>
                 </div>
               )}
+              <div>
+                <span className="text-sm text-gray-600">Odometer:</span>
+                <span className="text-sm text-gray-900 ml-2">{formatOdometer(currentJob.vehicle.odometer)}</span>
+              </div>
+              <div>
+                <span className="text-sm text-gray-600">Fuel Level:</span>
+                <span className="text-sm text-gray-900 ml-2">{formatFuelLevel(currentJob.precheck?.fuelLevel)}</span>
+              </div>
+              {currentJob.precheck?.overallCondition && (
+                <div>
+                  <span className="text-sm text-gray-600">Overall Condition:</span>
+                  <span className="text-sm text-gray-900 ml-2 capitalize">{currentJob.precheck.overallCondition}</span>
+                </div>
+              )}
+            </div>
+            {currentJob.precheck?.otherComments && (
+              <div className="mt-3">
+                <span className="text-sm text-gray-600 block">Additional Comments:</span>
+                <p className="text-sm text-gray-900">{currentJob.precheck.otherComments}</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Vehicle Pre-check Summary */}
+      {(precheckIssues.length > 0) && (
+        <div>
+          <h3 className="text-lg font-medium text-gray-900 mb-3">Pre-check Findings</h3>
+          <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-100">
+            <p className="text-sm text-yellow-800 mb-2">The following items were flagged during intake:</p>
+            <div className="flex flex-wrap gap-2">
+              {precheckIssues.map((issue) => (
+                <span
+                  key={issue}
+                  className="text-xs font-medium bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full capitalize"
+                >
+                  {issue}
+                </span>
+              ))}
             </div>
           </div>
         </div>
